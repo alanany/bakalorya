@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>باكالوريا - منصة التعليم الإلكتروني</title>
+  <meta name="description" content="منصة باكالوريا للتعليم الإلكتروني والجلسات التفاعلية المباشرة لطلاب البكالوريا">
+  <!-- Google Fonts: Latin + Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Global Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Arabic RTL font override */
+    :lang(ar), [dir="rtl"] {
+      font-family: 'Cairo', 'Outfit', sans-serif;
+    }
+    /* Logo: white background logo needs a white pill background in dark mode */
+    #header-logo {
+      background: #fff;
+      border-radius: 14px;
+      padding: 6px 18px;
+      height: 90px !important;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    }
+    #header-logo:hover {
+      transform: scale(1.12);
+      box-shadow: 0 6px 26px rgba(0, 86, 210, 0.5);
+    }
+    .app-sidebar .sidebar-header img {
+      background: #fff;
+      border-radius: 14px;
+      padding: 6px 16px;
+      height: 80px !important;
+    }
+
+    /* ── SPLASH INTRO ANIMATION ── */
+    .splash-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #0f172a 0%, #080c14 100%);
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.7s ease;
+    }
+    .splash-logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .splash-logo-img {
+      height: 260px;
+      object-fit: contain;
+      background: #ffffff;
+      border-radius: 36px;
+      padding: 30px 70px;
+      box-shadow: 0 0 120px rgba(0, 86, 210, 0.75), 0 30px 80px rgba(0,0,0,0.6);
+      animation: splashLogoZoom 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    .splash-text {
+      font-family: 'Cairo', 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      animation: splashTextFadeIn 0.8s ease 0.4s forwards;
+    }
+    .splash-loader-bar {
+      width: 200px;
+      height: 5px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .splash-loader-progress {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #0056D2, #6366f1);
+      animation: splashBarFill 1.6s ease forwards;
+    }
+
+    @keyframes splashLogoZoom {
+      0% { transform: scale(0.3); opacity: 0; filter: blur(14px); }
+      60% { transform: scale(1.25); opacity: 1; filter: blur(0); }
+      100% { transform: scale(1.1); opacity: 1; }
+    }
+    @keyframes splashTextFadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes splashBarFill {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(0); }
+    }
+    .splash-overlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="dark-theme">
+  <!-- ── Splash Intro Screen ── -->
+  <div id="splash-overlay" class="splash-overlay">
+    <div class="splash-logo-container">
+      <img src="assets/logo.png" alt="باكالوريا" class="splash-logo-img">
+      <div class="splash-text">منصة باكالوريا للتعليم الإلكتروني 🎓</div>
+      <div class="splash-loader-bar">
+        <div class="splash-loader-progress"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-overlay');
+        if (splash) {
+          splash.classList.add('fade-out');
+          setTimeout(() => splash.remove(), 700);
+        }
+      }, 1800);
+    });
+  </script>
+  <!-- Side Menu Overlay & Sidebar Drawer -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="app-sidebar" id="app-sidebar">
+    <div class="sidebar-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="assets/logo.png" alt="باكالوريا" style="height:42px; object-fit:contain;">
+      </div>
+      <button class="sidebar-close-btn" id="sidebar-close-btn">&times;</button>
+    </div>
+    <div class="sidebar-menu-list" id="sidebar-menu-list">
+      <!-- Dynamic side menu navigation links -->
+    </div>
+  </aside>
+
+  <!-- Main Coursera-Style Header Navbar -->
+  <header class="app-header" style="background:var(--bg-card); border-bottom:1px solid var(--border-color); position:sticky; top:0; z-index:100; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+    <div class="header-container" style="max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+      
+      <!-- Brand Logo + Explore Dropdown + Degrees Link -->
+      <div style="display:flex; align-items:center; gap:20px; flex-shrink:0;">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية / Side Menu" style="display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
+          <i data-lucide="menu" style="width:20px; height:20px;"></i>
+        </button>
+
+        <!-- Bakalorya Logo Image -->
+        <a href="#landing" class="logo-link" style="text-decoration:none; display:flex; align-items:center; gap:8px;">
+          <img src="assets/logo.png" alt="باكالوريا" id="header-logo" style="height:48px; object-fit:contain; transition:opacity 0.2s;" onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">
+        </a>
+      </div>
+
+      <!-- Centered Pill Search Bar (Coursera Exact Style) -->
+      <div style="flex:1; max-width:520px; display:flex; align-items:center; position:relative;">
+        <div style="width:100%; display:flex; align-items:center; background:var(--bg-app); border:1px solid var(--border-color); border-radius:30px; padding:4px 4px 4px 16px; transition:border-color 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" id="header-search-wrapper">
+          <input type="text" id="header-search-input" placeholder="What do you want to learn? (ماذا تريد أن تتعلم اليوم؟)" style="width:100%; border:none; background:transparent; outline:none; font-size:0.88rem; font-family:inherit; color:var(--text-color); padding-inline-start:8px;">
+          <button id="header-search-btn" title="Search" style="width:34px; height:34px; border-radius:50%; background:#0056D2; color:#ffffff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background 0.2s;" onmouseenter="this.style.background='#1e40af'" onmouseleave="this.style.background='#0056D2'">
+            <i data-lucide="search" style="width:16px; height:16px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nav Menu (Injected for logged-in users) -->
+      <nav class="nav-menu" id="nav-menu" style="display:flex; gap:16px; align-items:center;">
+        <!-- Injected navigation -->
+      </nav>
+
+      <!-- Right Header Actions (Log In + Join for Free + Controls) -->
+      <div class="header-actions" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+        <button class="theme-toggle" id="lang-toggle" title="تبديل اللغة / Switch Language" style="font-size:0.75rem; font-weight:700; min-width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
+          EN
+        </button>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle Theme" style="width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center;">
+          <i data-lucide="sun" class="sun-icon" style="width:16px; height:16px;"></i>
+          <i data-lucide="moon" class="moon-icon" style="width:16px; height:16px;"></i>
+        </button>
+
+        <div id="auth-action-container" style="display:flex; align-items:center; gap:12px;">
+          <!-- Injected login/register action or user dropdown -->
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Viewport -->
+  <main id="app-viewport">
+    <!-- Current view gets dynamically injected here -->
+    <div class="app-loader">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <!-- Global Toast Notification -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- SPA Router Script -->
+  <script type="module" src="app.js"></script>
+
+  <!-- Floating WhatsApp Icon -->
+  <a href="https://wa.me/1234567890" target="_blank" class="floating-whatsapp" title="تواصل معنا عبر واتساب / Contact us on WhatsApp">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:28px;height:28px;fill:#fff;">
+      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7 .9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+    </svg>
+  </a>
+  <style>
+    .floating-whatsapp {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 55px;
+      height: 55px;
+      background-color: #25D366;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+      z-index: 1000;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .floating-whatsapp:hover {
+      transform: scale(1.1) translateY(-5px);
+      box-shadow: 0 8px 25px rgba(37, 211, 102, 0.6);
+    }
+    :lang(ar) .floating-whatsapp, [dir="rtl"] .floating-whatsapp {
+      right: auto;
+      left: 20px;
+    }
+  </style>
+</body>
+</html>
