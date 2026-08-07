@@ -24,6 +24,9 @@ export class Lesson {
   @Column({ default: 0 })
   order: number;
 
+  @Column("text", { nullable: true })
+  photo: string;
+
   @ManyToOne(() => Course, { onDelete: "CASCADE" })
   course: Course;
 

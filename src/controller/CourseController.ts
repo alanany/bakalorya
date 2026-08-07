@@ -73,7 +73,7 @@ export class CourseController {
 
   static async addLesson(req: AuthRequest, res: Response) {
     const { courseId } = req.params;
-    const { title, description, videoUrl, duration, chapter, order } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo } = req.body;
 
     if (!title || !videoUrl) {
       return res.status(400).json({ error: "Missing title or videoUrl." });
@@ -103,6 +103,7 @@ export class CourseController {
       lesson.duration = duration || "0:00";
       lesson.chapter = chapter || "General";
       lesson.order = typeof order === "number" ? order : 0;
+      lesson.photo = photo || null;
       lesson.course = course;
 
       await lessonRepository.save(lesson);
@@ -114,7 +115,7 @@ export class CourseController {
 
   static async update(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, category, degree, image, meetingLink, price } = req.body;
+    const { title, description, category, degree, image, meetingLink } = req.body;
 
     try {
       const courseRepository = AppDataSource.getRepository(Course);
@@ -132,12 +133,11 @@ export class CourseController {
       }
 
       if (title) course.title = title;
-      if (description) course.description = description;
-      if (category) course.category = category;
+      if (description !== undefined) course.description = description;
+      if (category !== undefined) course.category = category;
       if (degree !== undefined) course.degree = degree;
-      if (image) course.image = image;
+      if (image !== undefined) course.image = image;
       if (meetingLink !== undefined) course.meetingLink = meetingLink;
-      if (price !== undefined) course.price = price; // Assuming price is a field in Course entity, if not, it will just be ignored by TypeORM if missing from entity, but we should check if price exists. Wait, I will just omit price for now since it wasn't explicitly requested by the user's previous schema unless it exists. Let's omit price.
 
       await courseRepository.save(course);
       return res.status(200).json(course);
@@ -149,7 +149,7 @@ export class CourseController {
 
   static async updateLesson(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, videoUrl, duration, chapter, order } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo } = req.body;
 
     try {
       const lessonRepository = AppDataSource.getRepository(Lesson);
@@ -172,6 +172,7 @@ export class CourseController {
       if (duration) lesson.duration = duration;
       if (chapter) lesson.chapter = chapter;
       if (typeof order === "number") lesson.order = order;
+      if (photo !== undefined) lesson.photo = photo;
 
       await lessonRepository.save(lesson);
       return res.status(200).json(lesson);

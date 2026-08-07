@@ -188,6 +188,23 @@ export default class CoursePlayerView {
 
               <!-- Details Pane -->
               <div class="tab-content-pane ${this.activeTab === "details" ? "active" : ""}" id="pane-details">
+                ${this.currentLesson?.photo ? `
+                  <div style="margin-bottom:20px; background:var(--bg-card); padding:18px; border-radius:18px; border:1px solid var(--border-color); box-shadow:0 8px 30px rgba(0,0,0,0.06);">
+                    <div style="font-size:0.95rem; font-weight:800; color:var(--text-color); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                      <span style="display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="image" style="color:var(--primary); width:20px; height:20px;"></i>
+                        صورة / ملخص الدرس المرفق (${this.currentLesson.title})
+                      </span>
+                      <a href="${this.currentLesson.photo}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:6px 14px; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="external-link" style="width:14px;height:14px;"></i> تكبير وتنزيل الصورة
+                      </a>
+                    </div>
+                    <div style="border-radius:14px; overflow:hidden; border:1px solid var(--border-color); background:rgba(0,0,0,0.03); text-align:center; padding:10px;">
+                      <img src="${this.currentLesson.photo}" alt="ملخص الدرس" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:10px; cursor:pointer;" onclick="window.open('${this.currentLesson.photo}', '_blank')">
+                    </div>
+                  </div>
+                ` : ''}
+
                 <p style="margin-bottom: 16px; line-height: 1.6;">
                   ${this.currentLesson ? (this.currentLesson.description || t("course.noDescription")) : (this.course.description || t("course.noDescription"))}
                 </p>

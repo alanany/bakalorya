@@ -7,6 +7,7 @@ export default class CourseManageView {
     this.course = null;
     this.courseResources = [];
     this.activeTab = "curriculum"; // 'curriculum', 'resources', or 'settings'
+    this.customUnits = [];
   }
 
   async render() {
@@ -124,8 +125,13 @@ export default class CourseManageView {
     const lessons = this.course.lessons || [];
     const chaptersMap = {};
 
+    // Initialize custom empty units
+    (this.customUnits || []).forEach(unitName => {
+      if (!chaptersMap[unitName]) chaptersMap[unitName] = [];
+    });
+
     lessons.forEach(l => {
-      const chName = l.chapter || "الفصل العام (General)";
+      const chName = l.chapter || "الوحدة العامة (General)";
       if (!chaptersMap[chName]) chaptersMap[chName] = [];
       chaptersMap[chName].push(l);
     });
@@ -137,8 +143,16 @@ export default class CourseManageView {
       chaptersHtml = `
         <div class="glass-card" style="text-align:center; padding:50px; color:var(--text-muted);">
           <i data-lucide="book-open" style="width:48px; height:48px; margin-bottom:12px; opacity:0.4;"></i>
-          <h4 style="font-weight:700; margin-bottom:6px;">لا توجد دروس مضافة لهذه الدورة بعد</h4>
-          <p style="font-size:0.9rem;">اضغط على "إضافة درس جديد" لبدء بناء المنهج التعليمي.</p>
+          <h4 style="font-weight:700; margin-bottom:6px;">لا توجد وحدات دراسية أو دروس مضافة بعد</h4>
+          <p style="font-size:0.9rem; margin-bottom:20px;">اضغط على "إضافة وحدة دراسية جديدة" أو "إضافة درس جديد" لبدء تنظيم منهج الدورة.</p>
+          <div style="display:flex; justify-content:center; gap:12px;">
+            <button class="btn-secondary open-add-unit-modal-btn" style="padding:10px 20px; font-weight:800;">
+              <i data-lucide="folder-plus"></i> إضافة وحدة دراسية
+            </button>
+            <button class="btn-primary open-add-lesson-modal-btn" style="padding:10px 20px; font-weight:800;">
+              <i data-lucide="plus-circle"></i> إضافة درس جديد
+            </button>
+          </div>
         </div>
       `;
     } else {
@@ -146,12 +160,24 @@ export default class CourseManageView {
         const chLessons = chaptersMap[chName];
         return `
           <div class="chapter-box">
-            <div class="chapter-header">
-              <span><i data-lucide="folder" style="width:18px;height:18px;vertical-align:middle;margin-inline-end:8px;color:var(--primary);"></i> ${chName}</span>
-              <span style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">${chLessons.length} دروس</span>
+            <div class="chapter-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <i data-lucide="folder-open" style="width:20px;height:20px;color:var(--primary);"></i>
+                <span style="font-size:1.05rem; font-weight:800;">${chName}</span>
+                <span style="font-size:0.78rem; font-weight:700; background:var(--primary-glow); color:var(--primary); padding:3px 10px; border-radius:12px; margin-inline-start:6px;">
+                  ${chLessons.length} دروس
+                </span>
+              </div>
+              <button class="btn-secondary add-lesson-to-unit-btn" data-unit="${chName}" style="font-size:0.8rem; padding:6px 14px; border-radius:20px; font-weight:700;">
+                <i data-lucide="plus" style="width:14px;height:14px;"></i> إضافة درس في هذه الوحدة
+              </button>
             </div>
             <div>
-              ${chLessons.map(l => `
+              ${chLessons.length === 0 ? `
+                <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem; font-style:italic;">
+                  لا توجد دروس في هذه الوحدة بعد. <button class="add-lesson-to-unit-btn" data-unit="${chName}" style="background:none; border:none; color:var(--primary); font-weight:700; cursor:pointer; text-decoration:underline;">إضافة أول درس لهذه الوحدة</button>
+                </div>
+              ` : chLessons.map(l => `
                 <div class="lesson-item">
                   <div style="display:flex; align-items:center; gap:12px;">
                     <div style="width:32px; height:32px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
@@ -183,14 +209,19 @@ export default class CourseManageView {
     }
 
     return `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:14px;">
         <div>
           <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:4px;">منهج الدورة والدروس المسجلة</h3>
-          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة وترتيب الفصول والدروس المسجلة لهذه الدورة</p>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة وتنسيق الوحدات الدراسية (Units) والدروس التابعة لكل وحدة</p>
         </div>
-        <button class="btn-primary" id="open-add-lesson-modal-btn" style="padding:10px 20px; font-weight:800;">
-          <i data-lucide="plus-circle"></i> إضافة درس جديد
-        </button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-secondary open-add-unit-modal-btn" style="padding:10px 18px; font-weight:800; border-color:var(--primary); color:var(--primary);">
+            <i data-lucide="folder-plus"></i> إضافة وحدة دراسية جديدة
+          </button>
+          <button class="btn-primary open-add-lesson-modal-btn" style="padding:10px 20px; font-weight:800;">
+            <i data-lucide="plus-circle"></i> إضافة درس جديد
+          </button>
+        </div>
       </div>
 
       ${chaptersHtml}
@@ -285,42 +316,93 @@ export default class CourseManageView {
   }
 
   renderLessonModal() {
+    const existingUnits = Array.from(new Set([
+      ...(this.course.lessons || []).map(l => l.chapter || "الوحدة العامة (General)"),
+      ...(this.customUnits || [])
+    ]));
+
+    if (existingUnits.length === 0) {
+      existingUnits.push("الوحدة الأولى");
+    }
+
     return `
+      <!-- Add Unit Dedicated Modal -->
+      <div class="modal-overlay" id="unit-modal" style="display:none;">
+        <div class="modal-content" style="max-width:460px;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="folder-plus" style="color:var(--primary);"></i> إضافة وحدة دراسية جديدة
+            </h3>
+            <span class="modal-close-btn" id="close-unit-modal">&times;</span>
+          </div>
+          <form id="unit-form">
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:20px;">
+              <div class="form-group">
+                <label style="font-weight:700; margin-bottom:6px; display:block;">اسم الوحدة الدراسية <span style="color:var(--error);">*</span></label>
+                <input type="text" id="unit-name-input" class="form-input" placeholder="مثال: الوحدة الأولى: الدوال والمتابعات" required style="padding:10px 14px;">
+              </div>
+            </div>
+            <div class="modal-footer" style="padding:14px 20px;">
+              <button type="button" class="btn-secondary" id="cancel-unit-modal">إلغاء</button>
+              <button type="submit" class="btn-primary" style="font-weight:800;">
+                <i data-lucide="check"></i> إنشاء الوحدة
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add/Edit Lesson Modal -->
       <div class="modal-overlay" id="lesson-modal" style="display:none;">
         <div class="modal-content" style="max-width:520px;">
           <div class="modal-header">
-            <h3 class="modal-title" id="lesson-modal-title">إضافة درس جديد</h3>
+            <h3 class="modal-title" id="lesson-modal-title" style="font-size:1.15rem; font-weight:800;">إضافة درس جديد</h3>
             <span class="modal-close-btn" id="close-lesson-modal">&times;</span>
           </div>
           <form id="lesson-form">
             <input type="hidden" id="lesson-id">
-            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:20px;">
               <div class="form-group">
-                <label>اسم الفصل (Chapter)</label>
-                <input type="text" id="lesson-chapter" class="form-input" placeholder="مثال: الفصل الأول: الدوال" required>
+                <label style="font-weight:700; margin-bottom:6px; display:block;">الوحدة الدراسية (Unit / Chapter) <span style="color:var(--error);">*</span></label>
+                <select id="lesson-chapter-select" class="form-select" style="padding:10px 14px; margin-bottom:6px;">
+                  ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join("")}
+                  <option value="__NEW__">➕ إضافة وحدة دراسية جديدة...</option>
+                </select>
+                <input type="text" id="lesson-chapter-custom" class="form-input" placeholder="اكتب اسم الوحدة الجديدة هنا..." style="display:none; padding:10px 14px;">
               </div>
+
               <div class="form-group">
-                <label>عنوان الدرس</label>
-                <input type="text" id="lesson-title" class="form-input" placeholder="مثال: الاستمرارية والنهايات" required>
+                <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان الدرس <span style="color:var(--error);">*</span></label>
+                <input type="text" id="lesson-title" class="form-input" placeholder="مثال: الدرس 1 - الاستمرارية والنهايات" required style="padding:10px 14px;">
               </div>
+
               <div class="form-group">
-                <label>رابط فيديو الدرس (Vimeo / YouTube / Direct MP4)</label>
-                <input type="url" id="lesson-video" class="form-input" placeholder="https://...">
+                <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (YouTube / Vimeo / MP4)</label>
+                <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=..." style="padding:10px 14px;">
               </div>
+
+              <div class="form-group">
+                <label style="font-weight:700; margin-bottom:6px; display:block;">صورة أو ملخص الدرس المرفق (Lesson Photo / Document Summary)</label>
+                <input type="text" id="lesson-photo-url" class="form-input" placeholder="رابط صورة أو ملخص الدرس (https://...)" style="padding:8px 12px; margin-bottom:6px; font-size:0.88rem;">
+                <input type="file" id="lesson-photo-file" class="form-input" accept="image/*" style="padding:8px 12px; font-size:0.85rem;">
+              </div>
+
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                 <div class="form-group">
-                  <label>مدة الدرس (بالدقائق)</label>
-                  <input type="number" id="lesson-duration" class="form-input" value="20">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">مدة الدرس (بالدقائق)</label>
+                  <input type="number" id="lesson-duration" class="form-input" value="20" style="padding:10px 14px;">
                 </div>
                 <div class="form-group">
-                  <label>ترتيب الدرس</label>
-                  <input type="number" id="lesson-order" class="form-input" value="1">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">ترتيب الدرس داخل الوحدة</label>
+                  <input type="number" id="lesson-order" class="form-input" value="1" style="padding:10px 14px;">
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="padding:14px 20px;">
               <button type="button" class="btn-secondary" id="cancel-lesson-modal">إلغاء</button>
-              <button type="submit" class="btn-primary">حفظ الدرس</button>
+              <button type="submit" class="btn-primary" style="font-weight:800;">
+                <i data-lucide="check"></i> حفظ الدرس
+              </button>
             </div>
           </form>
         </div>
@@ -339,17 +421,92 @@ export default class CourseManageView {
 
     // --- CURRICULUM EVENTS ---
     if (this.activeTab === "curriculum") {
-      const modal = document.getElementById("lesson-modal");
-      document.getElementById("open-add-lesson-modal-btn")?.addEventListener("click", () => {
-        document.getElementById("lesson-modal-title").textContent = "إضافة درس جديد";
-        document.getElementById("lesson-id").value = "";
-        document.getElementById("lesson-form").reset();
-        modal.style.display = "flex";
+      const lessonModal = document.getElementById("lesson-modal");
+      const unitModal = document.getElementById("unit-modal");
+      const chapterSelect = document.getElementById("lesson-chapter-select");
+      const customChapterInput = document.getElementById("lesson-chapter-custom");
+
+      // Unit Modal Open & Close
+      this.container.querySelectorAll(".open-add-unit-modal-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.getElementById("unit-form")?.reset();
+          if (unitModal) unitModal.style.display = "flex";
+        });
       });
 
-      document.getElementById("close-lesson-modal")?.addEventListener("click", () => { modal.style.display = "none"; });
-      document.getElementById("cancel-lesson-modal")?.addEventListener("click", () => { modal.style.display = "none"; });
+      document.getElementById("close-unit-modal")?.addEventListener("click", () => { if (unitModal) unitModal.style.display = "none"; });
+      document.getElementById("cancel-unit-modal")?.addEventListener("click", () => { if (unitModal) unitModal.style.display = "none"; });
 
+      // Unit Form Submit
+      document.getElementById("unit-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const unitName = document.getElementById("unit-name-input").value.trim();
+        if (!unitName) return;
+
+        if (!this.customUnits.includes(unitName)) {
+          this.customUnits.push(unitName);
+        }
+
+        if (unitModal) unitModal.style.display = "none";
+        showToast(`تم إنشاء "${unitName}" بنجاح! يمكنك الآن إضافة أول درس بها. ✅`, "success");
+
+        // Re-render and open add-lesson modal for this new unit!
+        this.render().then(() => {
+          const newLessonModal = document.getElementById("lesson-modal");
+          const newSelect = document.getElementById("lesson-chapter-select");
+          if (newSelect) {
+            newSelect.value = unitName;
+          }
+          if (newLessonModal) newLessonModal.style.display = "flex";
+        });
+      });
+
+      // Chapter Select Toggle Custom Input
+      chapterSelect?.addEventListener("change", () => {
+        if (chapterSelect.value === "__NEW__") {
+          if (customChapterInput) {
+            customChapterInput.style.display = "block";
+            customChapterInput.required = true;
+            customChapterInput.focus();
+          }
+        } else {
+          if (customChapterInput) {
+            customChapterInput.style.display = "none";
+            customChapterInput.required = false;
+          }
+        }
+      });
+
+      // Add Lesson Modal Open (General)
+      this.container.querySelectorAll(".open-add-lesson-modal-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.getElementById("lesson-modal-title").textContent = "إضافة درس جديد";
+          document.getElementById("lesson-id").value = "";
+          document.getElementById("lesson-form").reset();
+          if (customChapterInput) customChapterInput.style.display = "none";
+          if (lessonModal) lessonModal.style.display = "flex";
+        });
+      });
+
+      // Add Lesson Modal Open (Bound to specific Unit)
+      this.container.querySelectorAll(".add-lesson-to-unit-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const targetUnit = btn.getAttribute("data-unit");
+          document.getElementById("lesson-modal-title").textContent = `إضافة درس إلى: ${targetUnit}`;
+          document.getElementById("lesson-id").value = "";
+          document.getElementById("lesson-form").reset();
+          if (chapterSelect && targetUnit) {
+            chapterSelect.value = targetUnit;
+          }
+          if (customChapterInput) customChapterInput.style.display = "none";
+          if (lessonModal) lessonModal.style.display = "flex";
+        });
+      });
+
+      document.getElementById("close-lesson-modal")?.addEventListener("click", () => { if (lessonModal) lessonModal.style.display = "none"; });
+      document.getElementById("cancel-lesson-modal")?.addEventListener("click", () => { if (lessonModal) lessonModal.style.display = "none"; });
+
+      // Edit Lesson
       this.container.querySelectorAll(".edit-lesson-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.getAttribute("data-id");
@@ -357,16 +514,32 @@ export default class CourseManageView {
           if (lesson) {
             document.getElementById("lesson-modal-title").textContent = "تعديل الدرس";
             document.getElementById("lesson-id").value = lesson.id;
-            document.getElementById("lesson-chapter").value = lesson.chapter || "";
+            
+            if (chapterSelect) {
+              const hasOpt = Array.from(chapterSelect.options).some(opt => opt.value === lesson.chapter);
+              if (hasOpt) {
+                chapterSelect.value = lesson.chapter;
+                if (customChapterInput) customChapterInput.style.display = "none";
+              } else {
+                chapterSelect.value = "__NEW__";
+                if (customChapterInput) {
+                  customChapterInput.style.display = "block";
+                  customChapterInput.value = lesson.chapter || "";
+                }
+              }
+            }
+
             document.getElementById("lesson-title").value = lesson.title || "";
             document.getElementById("lesson-video").value = lesson.videoUrl || "";
+            document.getElementById("lesson-photo-url").value = lesson.photo || "";
             document.getElementById("lesson-duration").value = lesson.duration || 15;
             document.getElementById("lesson-order").value = lesson.order || 1;
-            modal.style.display = "flex";
+            if (lessonModal) lessonModal.style.display = "flex";
           }
         });
       });
 
+      // Delete Lesson
       this.container.querySelectorAll(".delete-lesson-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
           const id = btn.getAttribute("data-id");
@@ -380,13 +553,43 @@ export default class CourseManageView {
         });
       });
 
+      // Submit Lesson Form
       document.getElementById("lesson-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const id = document.getElementById("lesson-id").value;
+        
+        let selectedChapter = chapterSelect?.value;
+        if (selectedChapter === "__NEW__") {
+          selectedChapter = customChapterInput?.value.trim() || "الوحدة العامة";
+        }
+
+        let photoUrl = document.getElementById("lesson-photo-url")?.value.trim() || "";
+        const photoFileInput = document.getElementById("lesson-photo-file");
+
+        if (photoFileInput && photoFileInput.files.length > 0) {
+          const formData = new FormData();
+          formData.append("file", photoFileInput.files[0]);
+          try {
+            const token = state.token || localStorage.getItem("token");
+            const uploadRes = await fetch("/api/upload", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + token },
+              body: formData
+            });
+            if (uploadRes.ok) {
+              const data = await uploadRes.json();
+              photoUrl = data.url;
+            }
+          } catch (err) {
+            console.error("Photo upload failed", err);
+          }
+        }
+
         const payload = {
-          chapter: document.getElementById("lesson-chapter").value.trim(),
+          chapter: selectedChapter,
           title: document.getElementById("lesson-title").value.trim(),
           videoUrl: document.getElementById("lesson-video").value.trim(),
+          photo: photoUrl,
           duration: parseInt(document.getElementById("lesson-duration").value) || 15,
           order: parseInt(document.getElementById("lesson-order").value) || 1
         };
@@ -399,7 +602,7 @@ export default class CourseManageView {
             await apiFetch(`/courses/${this.courseId}/lessons`, { method: "POST", body: JSON.stringify(payload) });
             showToast("تم إنشاء الدرس الجديد بنجاح! ✅", "success");
           }
-          modal.style.display = "none";
+          if (lessonModal) lessonModal.style.display = "none";
           await this.render();
         } catch (err) { console.error(err); }
       });

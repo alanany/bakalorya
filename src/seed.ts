@@ -19,13 +19,19 @@ async function seed() {
     const enrollmentRepository = AppDataSource.getRepository(Enrollment);
     const categoryRepository = AppDataSource.getRepository(Category);
 
-    // Clear all data
+    // Clear all data cleanly
+    if (AppDataSource.options.type === "mysql") {
+      await AppDataSource.query("SET FOREIGN_KEY_CHECKS = 0;");
+    }
     await enrollmentRepository.clear();
     await lessonRepository.clear();
     await courseRepository.clear();
     await sessionRepository.clear();
     await userRepository.clear();
     await categoryRepository.clear();
+    if (AppDataSource.options.type === "mysql") {
+      await AppDataSource.query("SET FOREIGN_KEY_CHECKS = 1;");
+    }
 
     console.log("All tables cleared.");
 
