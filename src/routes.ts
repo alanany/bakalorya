@@ -12,7 +12,9 @@ import { UploadController } from "./controller/UploadController";
 import { BlogController } from "./controller/BlogController";
 import { CategoryController } from "./controller/CategoryController";
 import { TeacherApplicationController } from "./controller/TeacherApplicationController";
-import { authMiddleware, requireRole } from "./middleware/auth";
+import { QAController } from "./controller/QAController";
+import { ReviewController } from "./controller/ReviewController";
+import { authMiddleware, optionalAuthMiddleware, requireRole } from "./middleware/auth";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
@@ -56,11 +58,26 @@ router.put("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), S
 router.delete("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), SessionController.delete);
 router.patch("/sessions/:id/status", authMiddleware, requireRole(["teacher", "admin"]), SessionController.updateStatus);
 
+import { NotificationController } from "./controller/NotificationController";
+
 // Student Portal & Enrollments
 router.get("/student/enrollments", authMiddleware, StudentController.getEnrollments);
 router.post("/student/enrollments", authMiddleware, StudentController.enroll);
 router.post("/student/enrollments/:courseId/lessons/complete", authMiddleware, StudentController.completeLesson);
 router.get("/student/stats", authMiddleware, StudentController.getDashboardStats);
+
+// Notifications
+router.get("/notifications", authMiddleware, NotificationController.getUserNotifications);
+router.get("/notifications/unread-count", authMiddleware, NotificationController.getUnreadCount);
+router.patch("/notifications/:id/read", authMiddleware, NotificationController.markAsRead);
+router.patch("/notifications/read-all", authMiddleware, NotificationController.markAllAsRead);
+router.delete("/notifications/:id", authMiddleware, NotificationController.delete);
+
+// Reviews & Ratings
+router.post("/reviews", authMiddleware, ReviewController.create);
+router.get("/reviews/course/:courseId", ReviewController.getByCourse);
+router.get("/reviews/teacher/:teacherId", ReviewController.getByTeacher);
+router.delete("/reviews/:id", authMiddleware, ReviewController.delete);
 
 // ─── TEACHER & USER ROUTES ──────────────────────────────────────────────────────────
 router.post("/teacher-applications", TeacherApplicationController.apply);
@@ -112,6 +129,12 @@ router.get("/tests", authMiddleware, TestController.getTests);
 router.post("/tests", authMiddleware, requireRole(["teacher", "admin"]), TestController.createTest);
 router.get("/tests/:id/questions", authMiddleware, TestController.getTestQuestions);
 router.post("/tests/:id/submit", authMiddleware, requireRole(["student"]), TestController.submitTest);
+
+// ── Course Q&A ─────────────────────────────────────────────────────────────
+router.get("/courses/:courseId/qa", optionalAuthMiddleware, QAController.getByCourse);
+router.post("/courses/:courseId/qa", authMiddleware, QAController.createQuestion);
+router.put("/qa/:id/answer", authMiddleware, requireRole(["teacher", "admin"]), QAController.answerQuestion);
+router.delete("/qa/:id", authMiddleware, QAController.deleteQuestion);
 
 // ─── Categories ─────────────────────────────────────────────────────────────
 router.get("/categories", CategoryController.getAll);

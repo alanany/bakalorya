@@ -11,7 +11,6 @@ export default class TeacherApplyView {
         
         <!-- Header / Title -->
         <div style="text-align:center; margin-bottom:36px;">
-          <img src="assets/logo.png" alt="باكالوريا" style="height:90px; object-fit:contain; background:#ffffff; border-radius:16px; padding:8px 20px; margin:0 auto 20px auto; display:block; box-shadow:0 6px 20px rgba(0,0,0,0.12);">
           <div style="display:inline-flex; align-items:center; gap:8px; background:var(--primary-glow); border:1px solid var(--border-focus); border-radius:30px; padding:6px 18px; font-size:0.8rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:14px;">
             <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> الانضمام لنخبة معلمي منصة باكالوريا
           </div>
@@ -48,7 +47,7 @@ export default class TeacherApplyView {
 
               <div class="form-group">
                 <label style="font-weight:700; margin-bottom:8px; display:block;">الولاية / المدينة <span style="color:var(--error);">*</span></label>
-                <input type="text" id="apply-location" class="form-input" placeholder="مثال: الجزائر العاصمة / وهران" required style="padding:12px 16px;">
+                <input type="text" id="apply-location" class="form-input" placeholder="مثال:  العاصمة / " required style="padding:12px 16px;">
               </div>
 
               <div class="form-group" style="grid-column:1/-1;">
@@ -130,5 +129,5 @@ export default class TeacherApplyView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

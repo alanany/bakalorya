@@ -5,6 +5,8 @@ import { Lesson } from "../entity/Lesson";
 import { User } from "../entity/User";
 import { Enrollment } from "../entity/Enrollment";
 import { AuthRequest } from "../middleware/auth";
+import { NotificationController } from "./NotificationController";
+import { createWhatsAppNotificationPayload, buildEnrollmentAcceptedMessage } from "../utils/whatsapp";
 
 export class CourseController {
   static async getAll(req: Request, res: Response) {
@@ -73,7 +75,7 @@ export class CourseController {
 
   static async addLesson(req: AuthRequest, res: Response) {
     const { courseId } = req.params;
-    const { title, description, videoUrl, duration, chapter, order, photo } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions } = req.body;
 
     if (!title || !videoUrl) {
       return res.status(400).json({ error: "Missing title or videoUrl." });
@@ -98,17 +100,22 @@ export class CourseController {
 
       const lesson = new Lesson();
       lesson.title = title;
-      lesson.description = description;
+      lesson.description = description || null;
       lesson.videoUrl = videoUrl;
       lesson.duration = duration || "0:00";
       lesson.chapter = chapter || "General";
       lesson.order = typeof order === "number" ? order : 0;
       lesson.photo = photo || null;
+      lesson.notes = notes || null;
+      lesson.resourceUrl = resourceUrl || null;
+      lesson.resourceTitle = resourceTitle || null;
+      lesson.questions = Array.isArray(questions) ? questions : [];
       lesson.course = course;
 
       await lessonRepository.save(lesson);
       return res.status(201).json(lesson);
     } catch (err) {
+      console.error("addLesson error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -149,7 +156,7 @@ export class CourseController {
 
   static async updateLesson(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, videoUrl, duration, chapter, order, photo } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions } = req.body;
 
     try {
       const lessonRepository = AppDataSource.getRepository(Lesson);
@@ -173,10 +180,15 @@ export class CourseController {
       if (chapter) lesson.chapter = chapter;
       if (typeof order === "number") lesson.order = order;
       if (photo !== undefined) lesson.photo = photo;
+      if (notes !== undefined) lesson.notes = notes;
+      if (resourceUrl !== undefined) lesson.resourceUrl = resourceUrl;
+      if (resourceTitle !== undefined) lesson.resourceTitle = resourceTitle;
+      if (questions !== undefined) lesson.questions = Array.isArray(questions) ? questions : [];
 
       await lessonRepository.save(lesson);
       return res.status(200).json(lesson);
     } catch (err) {
+      console.error("updateLesson error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -243,20 +255,67 @@ export class CourseController {
 
   static async getEnrollmentRequests(req: AuthRequest, res: Response) {
     try {
-      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
-      // Find pending enrollments for courses owned by this teacher
-      const requests = await enrollmentRepository.find({
-        where: {
-          status: "pending",
-          course: {
-            teacher: { id: req.user!.id }
-          }
+      let requests: any[] = [];
+
+      if (req.user?.role === "admin") {
+        // Admin sees all enrollment requests from all courses
+        requests = await AppDataSource.query(`
+          SELECT 
+            e.id, e.status, e.createdAt,
+            u.id as studentId, u.name as studentName, u.email as studentEmail,
+            u.phone as studentPhone, u.avatar as studentAvatar,
+            u.location as studentLocation, u.education as studentEducation,
+            c.id as courseId, c.title as courseTitle,
+            t.id as teacherId, t.name as teacherName
+          FROM enrollment e
+          JOIN user u ON u.id = e.studentId
+          JOIN course c ON c.id = e.courseId
+          JOIN user t ON t.id = c.teacherId
+          ORDER BY e.createdAt DESC
+        `);
+      } else {
+        // Teacher sees all enrollment requests for their own courses
+        requests = await AppDataSource.query(`
+          SELECT 
+            e.id, e.status, e.createdAt,
+            u.id as studentId, u.name as studentName, u.email as studentEmail,
+            u.phone as studentPhone, u.avatar as studentAvatar,
+            u.location as studentLocation, u.education as studentEducation,
+            c.id as courseId, c.title as courseTitle,
+            t.id as teacherId, t.name as teacherName
+          FROM enrollment e
+          JOIN user u ON u.id = e.studentId
+          JOIN course c ON c.id = e.courseId
+          JOIN user t ON t.id = c.teacherId
+          WHERE c.teacherId = ?
+          ORDER BY e.createdAt DESC
+        `, [req.user!.id]);
+      }
+
+      // Reshape to match the existing frontend format
+      const shaped = requests.map((row: any) => ({
+        id: row.id,
+        status: row.status,
+        createdAt: row.createdAt,
+        student: {
+          id: row.studentId,
+          name: row.studentName,
+          email: row.studentEmail,
+          phone: row.studentPhone,
+          avatar: row.studentAvatar,
+          location: row.studentLocation,
+          education: row.studentEducation
         },
-        relations: ["student", "course", "course.teacher"]
-      });
-      return res.status(200).json(requests);
+        course: {
+          id: row.courseId,
+          title: row.courseTitle,
+          teacher: { id: row.teacherId, name: row.teacherName }
+        }
+      }));
+
+      return res.status(200).json(shaped);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching enrollment requests:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -273,22 +332,53 @@ export class CourseController {
       const enrollmentRepository = AppDataSource.getRepository(Enrollment);
       const enrollment = await enrollmentRepository.findOne({
         where: { id },
-        relations: ["course", "course.teacher"]
+        relations: ["student", "course", "course.teacher"]
       });
 
       if (!enrollment) {
         return res.status(404).json({ error: "Enrollment not found." });
       }
 
-      if (enrollment.course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Forbidden." });
-      }
-
       enrollment.status = status;
       await enrollmentRepository.save(enrollment);
-      return res.status(200).json(enrollment);
+
+      // Create internal notification for student
+      if (enrollment.student) {
+        if (status === "active") {
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "تم قبول طلب التسجيل! 🎉",
+            `تهانينا! تم قبول طلب انضمامك إلى دورة "${enrollment.course?.title || 'الدورة التعليمية'}". يمكنك الآن البدء بالمتابعة والتفكير بالتفوق.`,
+            "success",
+            "#courses"
+          );
+        } else if (status === "rejected") {
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "تحديث حالة طلب الانضمام ❌",
+            `نأسف، تم رفض طلب انضمامك إلى دورة "${enrollment.course?.title || 'الدورة التعليمية'}".`,
+            "warning",
+            "#courses"
+          );
+        }
+      }
+
+      let whatsappNotification: any = null;
+      if (status === "active" && enrollment.student && enrollment.student.phone) {
+        const msgText = buildEnrollmentAcceptedMessage(
+          enrollment.student.name,
+          enrollment.course ? enrollment.course.title : "الدورة التعليمية",
+          enrollment.course && enrollment.course.teacher ? enrollment.course.teacher.name : undefined
+        );
+        whatsappNotification = createWhatsAppNotificationPayload(enrollment.student.phone, msgText);
+      }
+
+      return res.status(200).json({
+        ...enrollment,
+        whatsappNotification
+      });
     } catch (err) {
-      console.error(err);
+      console.error("Error updating enrollment request:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }

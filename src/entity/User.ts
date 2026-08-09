@@ -21,6 +21,9 @@ export class User {
   avatar: string;
 
   @Column({ nullable: true })
+  githubId: string;
+
+  @Column({ nullable: true })
   meetingLink: string;
 
   @Column({ nullable: true })

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JWT_SECRET = void 0;
 exports.authMiddleware = authMiddleware;
+exports.optionalAuthMiddleware = optionalAuthMiddleware;
 exports.requireRole = requireRole;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 exports.JWT_SECRET = process.env.JWT_SECRET || "bakalorya_secret_key_123_456";
@@ -25,6 +26,22 @@ function authMiddleware(req, res, next) {
     catch (err) {
         res.status(401).json({ error: "Invalid token." });
     }
+}
+function optionalAuthMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader)
+        return next();
+    const token = authHeader.split(" ")[1];
+    if (!token)
+        return next();
+    try {
+        const decoded = jsonwebtoken_1.default.verify(token, exports.JWT_SECRET);
+        req.user = decoded;
+    }
+    catch (err) {
+        // Ignore invalid token for optional auth
+    }
+    next();
 }
 function requireRole(roles) {
     return (req, res, next) => {

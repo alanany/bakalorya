@@ -27,6 +27,18 @@ export class Lesson {
   @Column("text", { nullable: true })
   photo: string;
 
+  @Column("text", { nullable: true })
+  notes: string;
+
+  @Column("text", { nullable: true })
+  resourceUrl: string;
+
+  @Column("text", { nullable: true })
+  resourceTitle: string;
+
+  @Column("simple-json", { nullable: true })
+  questions: any[];
+
   @ManyToOne(() => Course, { onDelete: "CASCADE" })
   course: Course;
 

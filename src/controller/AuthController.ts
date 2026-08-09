@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
 import { JWT_SECRET, AuthRequest } from "../middleware/auth";
+import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
 
 export class AuthController {
   static async register(req: Request, res: Response) {
@@ -21,6 +22,13 @@ export class AuthController {
         return res.status(400).json({ error: "Email already registered." });
       }
 
+      if (phone) {
+        const existingPhone = await userRepository.findOneBy({ phone });
+        if (existingPhone) {
+          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
+        }
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = new User();
       user.name = name;
@@ -34,6 +42,12 @@ export class AuthController {
 
       await userRepository.save(user);
 
+      let whatsappNotification: any = null;
+      if (user.phone) {
+        const msg = buildRegistrationSuccessMessage(user.name, user.role);
+        whatsappNotification = createWhatsAppNotificationPayload(user.phone, msg);
+      }
+
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
         expiresIn: "7d",
       });
@@ -41,6 +55,7 @@ export class AuthController {
       return res.status(201).json({
         token,
         user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, location: user.location, education: user.education, phone: user.phone },
+        whatsappNotification
       });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });

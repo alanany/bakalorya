@@ -1,194 +1,399 @@
-import { apiFetch, state, showToast, t, checkPendingRequestsNotification } from "../app.js";
+import { apiFetch, state, showToast, t, checkPendingRequestsNotification, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, confirmDialog } from "../app.js";
 
 export default class RequestsView {
   constructor(container) {
     this.container = container;
     this.requests = [];
     this.currentFilter = "pending"; // 'pending', 'active', 'rejected', 'all'
+    this.searchQuery = "";
   }
 
   async render() {
     this.container.innerHTML = `
-      <div style="max-width:1440px; margin:0 auto; padding:40px 24px; height:100%; display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+      <div style="max-width:1440px; margin:0 auto; padding:32px 24px; display:flex; flex-direction:column; gap:24px;">
+        
+        <!-- Header & Action Controls -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
           <div>
-            <h2 class="dashboard-section-title" style="font-size:2rem; margin:0;">
-              <i data-lucide="user-check"></i> ${t("nav.teacher.requests") || "طلبات التسجيل"}
+            <h2 class="dashboard-section-title" style="font-size:1.8rem; margin:0 0 6px 0; display:flex; align-items:center; gap:10px;">
+              <i data-lucide="user-check" style="color:var(--primary);"></i> ${t("nav.teacher.requests") || "طلبات التسجيل بالدورات"}
             </h2>
-            <p style="color:var(--text-muted); font-size:0.9rem; margin-top:4px;">
-              إدارة طلبات الانضمام للدورات والتواصل المباشر مع الطلاب
-            </p>
+            <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة ومراجعة طلبات انضمام الطلاب لدوراتك والتواصل المباشر معهم</p>
           </div>
 
-          <!-- Filter Tabs -->
-          <div style="display:flex; gap:8px; background:var(--bg-app); border:1px solid var(--border-color); padding:4px; border-radius:50px;">
-            <button class="btn-secondary filter-tab-btn ${this.currentFilter === 'pending' ? 'active' : ''}" data-filter="pending" style="padding:6px 16px; font-size:0.85rem; border-radius:50px; border:none;">
-              قيد الانتظار (Pending)
-            </button>
-            <button class="btn-secondary filter-tab-btn ${this.currentFilter === 'active' ? 'active' : ''}" data-filter="active" style="padding:6px 16px; font-size:0.85rem; border-radius:50px; border:none;">
-              المقبولة (Accepted)
-            </button>
-            <button class="btn-secondary filter-tab-btn ${this.currentFilter === 'rejected' ? 'active' : ''}" data-filter="rejected" style="padding:6px 16px; font-size:0.85rem; border-radius:50px; border:none;">
-              المرفوضة (Refused)
-            </button>
-            <button class="btn-secondary filter-tab-btn ${this.currentFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 16px; font-size:0.85rem; border-radius:50px; border:none;">
-              الكل (All)
-            </button>
-          </div>
-        </div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <!-- Search Input -->
+            <div style="position:relative; min-width:240px;">
+              <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+              <input type="text" id="requests-search-input" class="form-input" placeholder="بحث باسم الطالب، الإيميل أو الدورة..." style="padding:10px 40px 10px 14px; font-size:0.88rem; border-radius:30px; background:var(--bg-card);">
+            </div>
 
-        <div class="glass-card" style="padding:24px; flex-grow:1;">
-          <div id="requests-list-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:20px;">
-            <div style="text-align:center; padding:40px; grid-column:1/-1;">
-              <i data-lucide="loader" class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto;"></i>
+            <!-- Filter Status Tabs -->
+            <div style="display:flex; gap:6px; background:var(--bg-app); border:1px solid var(--border-color); padding:4px; border-radius:50px;">
+              <button class="filter-tab-btn ${this.currentFilter === 'pending' ? 'active' : ''}" data-filter="pending">
+                قيد الانتظار <span id="badge-count-pending" class="badge-pill" style="background:var(--warning); color:#fff; font-size:0.7rem; padding:1px 7px; border-radius:10px; margin-inline-start:4px;">0</span>
+              </button>
+              <button class="filter-tab-btn ${this.currentFilter === 'active' ? 'active' : ''}" data-filter="active">
+                المقبولة
+              </button>
+              <button class="filter-tab-btn ${this.currentFilter === 'rejected' ? 'active' : ''}" data-filter="rejected">
+                المرفوضة
+              </button>
+              <button class="filter-tab-btn ${this.currentFilter === 'all' ? 'active' : ''}" data-filter="all">
+                الكل
+              </button>
             </div>
           </div>
         </div>
+
+        <!-- Metrics Row -->
+        <div id="requests-metrics-row" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+          <div class="glass-card" style="padding:18px 22px; border-radius:16px; display:flex; align-items:center; gap:16px;">
+            <div style="width:48px; height:48px; border-radius:14px; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="clock" style="width:24px; height:24px;"></i>
+            </div>
+            <div>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">طلبات قيد الانتظار</div>
+              <div id="metric-pending" style="font-size:1.4rem; font-weight:900; color:var(--text-main);">0</div>
+            </div>
+          </div>
+
+          <div class="glass-card" style="padding:18px 22px; border-radius:16px; display:flex; align-items:center; gap:16px;">
+            <div style="width:48px; height:48px; border-radius:14px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="check-circle" style="width:24px; height:24px;"></i>
+            </div>
+            <div>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">الطلبات المقبولة</div>
+              <div id="metric-accepted" style="font-size:1.4rem; font-weight:900; color:var(--text-main);">0</div>
+            </div>
+          </div>
+
+          <div class="glass-card" style="padding:18px 22px; border-radius:16px; display:flex; align-items:center; gap:16px;">
+            <div style="width:48px; height:48px; border-radius:14px; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="x-circle" style="width:24px; height:24px;"></i>
+            </div>
+            <div>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">الطلبات المرفوضة</div>
+              <div id="metric-rejected" style="font-size:1.4rem; font-weight:900; color:var(--text-main);">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="glass-card" style="padding:0; border-radius:20px; overflow:hidden; border:1px solid var(--border-color);">
+          <div id="requests-table-wrapper" style="overflow-x:auto;">
+            <div style="text-align:center; padding:60px 20px;">
+              <i data-lucide="loader" class="spinner" style="width:36px; height:36px; border-width:3px; margin:0 auto;"></i>
+              <p style="color:var(--text-muted); font-size:0.9rem; margin-top:12px;">جاري تحميل طلبات التسجيل...</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     `;
 
+    // Inline style for filter tabs
+    const styleTag = document.createElement("style");
+    styleTag.textContent = `
+      .filter-tab-btn {
+        padding:7px 18px; font-size:0.85rem; font-weight:700; border-radius:50px; border:none; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.2s ease;
+      }
+      .filter-tab-btn.active {
+        background:var(--primary); color:#fff; box-shadow:0 3px 10px var(--primary-glow);
+      }
+    `;
+    document.head.appendChild(styleTag);
+
     if (window.lucide) window.lucide.createIcons();
+    this.bindGlobalEvents();
     await this.loadRequests();
+  }
+
+  bindGlobalEvents() {
+    this.container.querySelectorAll(".filter-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.container.querySelectorAll(".filter-tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.currentFilter = btn.getAttribute("data-filter");
+        this.renderRequestsTable();
+      });
+    });
+
+    const searchInput = this.container.querySelector("#requests-search-input");
+    searchInput?.addEventListener("input", (e) => {
+      this.searchQuery = e.target.value.toLowerCase().trim();
+      this.renderRequestsTable();
+    });
   }
 
   async loadRequests() {
     try {
       this.requests = await apiFetch("/teacher/enrollment-requests");
-      this.renderList();
+      this.updateMetrics();
+      this.renderRequestsTable();
     } catch (error) {
       console.error("Failed to load enrollment requests:", error);
-      const container = this.container.querySelector("#requests-list-container");
-      if (container) {
-        container.innerHTML = `<div style="text-align:center; color:var(--error); padding:40px; grid-column:1/-1;">فشل تحميل طلبات التسجيل. (Failed to load requests)</div>`;
+      const wrapper = this.container.querySelector("#requests-table-wrapper");
+      if (wrapper) {
+        wrapper.innerHTML = `<div style="text-align:center; color:var(--error); padding:50px; font-weight:700;">حدث خطأ أثناء تحميل طلبات التسجيل: ${error.message || 'يرجى إعادة المحاولة.'}</div>`;
       }
     }
   }
 
-  renderList() {
-    const container = this.container.querySelector("#requests-list-container");
-    if (!container) return;
+  updateMetrics() {
+    const list = this.requests || [];
+    const pendingCount = list.filter(r => r.status === "pending").length;
+    const acceptedCount = list.filter(r => r.status === "active").length;
+    const rejectedCount = list.filter(r => r.status === "rejected").length;
 
-    let filtered = this.requests || [];
+    const pEl = this.container.querySelector("#metric-pending");
+    const aEl = this.container.querySelector("#metric-accepted");
+    const rEl = this.container.querySelector("#metric-rejected");
+    const badgeEl = this.container.querySelector("#badge-count-pending");
+
+    if (pEl) pEl.textContent = pendingCount;
+    if (aEl) aEl.textContent = acceptedCount;
+    if (rEl) rEl.textContent = rejectedCount;
+    if (badgeEl) badgeEl.textContent = pendingCount;
+  }
+
+  getFilteredRequests() {
+    let list = this.requests || [];
     if (this.currentFilter !== "all") {
-      filtered = filtered.filter(r => r.status === this.currentFilter);
+      list = list.filter(r => r.status === this.currentFilter);
     }
+    if (this.searchQuery) {
+      const q = this.searchQuery;
+      list = list.filter(r => {
+        const nameMatch = r.student?.name?.toLowerCase().includes(q);
+        const emailMatch = r.student?.email?.toLowerCase().includes(q);
+        const phoneMatch = r.student?.phone?.toLowerCase().includes(q);
+        const courseMatch = r.course?.title?.toLowerCase().includes(q);
+        return nameMatch || emailMatch || phoneMatch || courseMatch;
+      });
+    }
+    return list;
+  }
+
+  renderRequestsTable() {
+    const wrapper = this.container.querySelector("#requests-table-wrapper");
+    if (!wrapper) return;
+
+    const filtered = this.getFilteredRequests();
 
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div style="text-align:center; color:var(--text-muted); padding:50px 20px; grid-column:1/-1;">
-          <i data-lucide="user-x" style="width:48px; height:48px; margin-bottom:12px; color:var(--border-color);"></i>
-          <h4 style="font-weight:700; margin-bottom:4px;">لا يوجد طلبات في هذه الفئة</h4>
-          <p style="font-size:0.85rem;">No enrollment requests found for this filter.</p>
+      wrapper.innerHTML = `
+        <div style="text-align:center; color:var(--text-muted); padding:60px 20px;">
+          <i data-lucide="user-x" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
+          <h4 style="font-weight:700; margin-bottom:6px;">لا توجد طلبات في هذه الفئة</h4>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">${this.searchQuery ? "جرّب تغيير كلمات البحث" : "لم يتم العثور على طلبات تسجيل تتوافق مع التصفية المختارة"}</p>
         </div>
       `;
       if (window.lucide) window.lucide.createIcons();
       return;
     }
 
-    container.innerHTML = filtered.map(req => this.renderRequestCard(req)).join("");
+    const rowsHTML = filtered.map(req => this.renderTableRow(req)).join("");
+
+    wrapper.innerHTML = `
+      <table style="width:100%; border-collapse:collapse; text-align:start; font-size:0.88rem;">
+        <thead>
+          <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
+            <th style="padding:14px 20px; font-weight:800;">الطالب</th>
+            <th style="padding:14px 16px; font-weight:800;">المستوى والمنطقة</th>
+            <th style="padding:14px 16px; font-weight:800;">الدورة المطلوبة</th>
+            <th style="padding:14px 16px; font-weight:800; text-align:center;">الحالة</th>
+            <th style="padding:14px 16px; font-weight:800; text-align:center;">التواصل</th>
+            <th style="padding:14px 20px; font-weight:800; text-align:end;">الإجراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHTML}
+        </tbody>
+      </table>
+    `;
+
     if (window.lucide) window.lucide.createIcons();
-    this.bindActionButtons();
+    this.bindTableEvents();
   }
 
-  renderRequestCard(req) {
+  renderTableRow(req) {
     const rawPhone = req.student?.phone || '';
     const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
-    const cleanPhoneWa = cleanPhone.replace('+', '');
+    const cleanPhoneWa = getCleanWhatsAppNumber(rawPhone);
     const isPending = req.status === "pending";
     const isAccepted = req.status === "active";
     const isRejected = req.status === "rejected";
 
-    let statusBadge = `<span style="background:var(--warning-glow); color:var(--warning); padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">قيد الانتظار</span>`;
-    if (isAccepted) statusBadge = `<span style="background:var(--success-glow); color:var(--success); padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">مقبول (Accepted)</span>`;
-    if (isRejected) statusBadge = `<span style="background:rgba(239,68,68,0.15); color:var(--error); padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">مرفوض (Refused)</span>`;
+    let statusBadge = `<span style="background:rgba(245,158,11,0.15); color:#f59e0b; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:800; border:1px solid rgba(245,158,11,0.3); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> قيد الانتظار</span>`;
+    if (isAccepted) statusBadge = `<span style="background:rgba(16,185,129,0.15); color:#10b981; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:800; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="check-circle" style="width:12px;height:12px;"></i> مقبول</span>`;
+    if (isRejected) statusBadge = `<span style="background:rgba(239,68,68,0.15); color:#ef4444; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:800; border:1px solid rgba(239,68,68,0.3); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> مرفوض</span>`;
 
     return `
-      <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:14px; border:1px solid var(--border-color);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-          <div style="display:flex; gap:12px; align-items:center;">
-            <img src="${req.student?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + (req.student?.name || 'S')}" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--primary); background:var(--bg-card);">
+      <tr style="border-bottom:1px solid var(--border-color); transition:background 0.15s ease;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+        <!-- Student Info -->
+        <td style="padding:14px 20px; vertical-align:middle;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <img src="${req.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(req.student?.name || 'S')}`}" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
             <div>
-              <div style="font-weight:800; font-size:1.1rem; color:var(--text-color);">${req.student?.name || "Student"}</div>
-              <div style="font-size:0.85rem; color:var(--text-muted);">${req.student?.email || ""}</div>
-              ${req.student?.phone ? `<div style="font-size:0.8rem; color:var(--primary); font-weight:600; margin-top:2px;"><i data-lucide="phone" style="width:12px;height:12px;vertical-align:middle;"></i> ${req.student.phone}</div>` : ''}
+              <div style="font-weight:800; color:var(--text-main); font-size:0.95rem;">${req.student?.name || "طالب"}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+                <i data-lucide="mail" style="width:12px; height:12px; color:var(--primary);"></i> ${req.student?.email || ""}
+              </div>
             </div>
           </div>
+        </td>
+
+        <!-- Level & Location -->
+        <td style="padding:14px 16px; vertical-align:middle;">
+          <div style="display:flex; flex-direction:column; gap:3px; font-size:0.8rem;">
+            ${req.student?.education ? `
+              <span style="font-weight:700; color:var(--primary); display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="graduation-cap" style="width:13px; height:13px;"></i> ${req.student.education}
+              </span>
+            ` : '<span style="color:var(--text-muted);">-</span>'}
+            ${req.student?.location ? `
+              <span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="map-pin" style="width:12px; height:12px;"></i> ${req.student.location}
+              </span>
+            ` : ''}
+          </div>
+        </td>
+
+        <!-- Requested Course -->
+        <td style="padding:14px 16px; vertical-align:middle;">
+          <div style="font-weight:700; color:var(--text-main); font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); border:1px solid var(--border-color); padding:6px 12px; border-radius:12px;">
+            <i data-lucide="book-open" style="width:14px; height:14px; color:var(--primary);"></i>
+            ${req.course?.title || 'الدورة التعليمية'}
+          </div>
+        </td>
+
+        <!-- Status -->
+        <td style="padding:14px 16px; vertical-align:middle; text-align:center;">
           ${statusBadge}
-        </div>
+        </td>
 
-        <!-- Badges -->
-        <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:0.8rem;">
-          ${req.student?.location ? `<span style="background:var(--bg-card); padding:4px 10px; border-radius:14px; border:1px solid var(--border-color); font-weight:600;"><i data-lucide="map-pin" style="width:12px;height:12px;color:var(--primary);"></i> ${req.student.location}</span>` : ''}
-          ${req.student?.education ? `<span style="background:var(--bg-card); padding:4px 10px; border-radius:14px; border:1px solid var(--border-color); font-weight:600;"><i data-lucide="graduation-cap" style="width:12px;height:12px;color:var(--accent);"></i> ${req.student.education}</span>` : ''}
-        </div>
-
-        <div style="font-size:0.9rem; color:var(--text-main); background:var(--bg-app); padding:10px 14px; border-radius:10px; border-inline-start:4px solid var(--primary);">
-          طلب الانضمام إلى دوره: <strong>${req.course?.title || 'Course'}</strong>
-        </div>
-
-        <!-- Contact Actions (وسائل التواصل المباشر) -->
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <!-- Quick Contacts -->
+        <td style="padding:14px 16px; vertical-align:middle; text-align:center;">
           ${rawPhone ? `
-            <a href="tel:${cleanPhone}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; border-color:var(--primary); color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="اتصال">
-              <i data-lucide="phone-call" style="width:14px;height:14px;"></i> Call
-            </a>
-            <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; border-color:var(--success); color:var(--success); text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="واتساب">
-              <i data-lucide="message-circle" style="width:14px;height:14px;"></i> WhatsApp
-            </a>
-            <a href="sms:${cleanPhone}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; border-color:var(--accent); color:var(--accent); text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="رسالة SMS">
-              <i data-lucide="message-square" style="width:14px;height:14px;"></i> SMS
-            </a>
-          ` : ''}
-          <a href="mailto:${req.student?.email}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="إرسال إيميل">
-            <i data-lucide="mail" style="width:14px;height:14px;"></i> Email
-          </a>
-        </div>
+            <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
+              <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:5px 10px; font-size:0.75rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="واتساب المباشر">
+                💬 واتساب
+              </a>
+              <a href="tel:${cleanPhone}" target="_blank" class="btn-secondary" style="padding:5px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="اتصال هاتفي">
+                <i data-lucide="phone-call" style="width:12px; height:12px;"></i> اتصال
+              </a>
+            </div>
+          ` : '<span style="color:var(--text-muted); font-size:0.78rem;">لا يوجد هاتف</span>'}
+        </td>
 
-        <!-- Decision Buttons -->
-        <div style="display:flex; gap:12px; margin-top:6px; border-top:1px solid var(--border-color); padding-top:12px;">
-          <button class="btn-primary handle-request-btn" data-id="${req.id}" data-action="active" style="flex:1; justify-content:center; ${isAccepted ? 'background:var(--success); cursor:default;' : ''}">
-            <i data-lucide="check"></i> ${isAccepted ? 'قبول (Accepted)' : 'قبول (Accept)'}
-          </button>
-          <button class="btn-secondary handle-request-btn" data-id="${req.id}" data-action="rejected" style="flex:1; justify-content:center; color:var(--error); border-color:var(--error); ${isRejected ? 'opacity:0.6;' : ''}">
-            <i data-lucide="x"></i> ${isRejected ? 'مرفوض (Refused)' : 'رفض (Refuse)'}
-          </button>
-        </div>
-      </div>
+        <!-- Actions (Accept Steps / Refuse) -->
+        <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
+          <div style="display:inline-flex; gap:6px; justify-content:flex-end;">
+            ${isPending ? `
+              <button class="btn-primary accept-request-modal-btn" 
+                data-id="${req.id}" 
+                data-name="${req.student?.name || ''}" 
+                data-email="${req.student?.email || ''}" 
+                data-phone="${req.student?.phone || ''}" 
+                data-course="${req.course?.title || ''}" 
+                data-teacher="${req.course?.teacher?.name || ''}" 
+                style="padding:6px 14px; font-size:0.78rem; border-radius:20px; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="user-check" style="width:13px; height:13px;"></i> قبول الطلب
+              </button>
+              <button class="btn-secondary refuse-request-btn" data-id="${req.id}" data-name="${req.student?.name || ''}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="user-x" style="width:13px; height:13px;"></i> رفض
+              </button>
+            ` : isAccepted ? `
+              <button class="btn-secondary refuse-request-btn" data-id="${req.id}" data-name="${req.student?.name || ''}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--warning); color:var(--warning); border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="slash" style="width:13px; height:13px;"></i> حظر / إلغاء
+              </button>
+            ` : `
+              <button class="btn-primary accept-request-modal-btn" 
+                data-id="${req.id}" 
+                data-name="${req.student?.name || ''}" 
+                data-email="${req.student?.email || ''}" 
+                data-phone="${req.student?.phone || ''}" 
+                data-course="${req.course?.title || ''}" 
+                data-teacher="${req.course?.teacher?.name || ''}" 
+                style="padding:6px 12px; font-size:0.78rem; border-radius:20px; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> إحياء وقبول
+              </button>
+            `}
+          </div>
+        </td>
+      </tr>
     `;
   }
 
-  bindActionButtons() {
-    // Filter tab buttons
-    const filterBtns = this.container.querySelectorAll(".filter-tab-btn");
-    filterBtns.forEach(btn => {
+  bindTableEvents() {
+    const wrapper = this.container.querySelector("#requests-table-wrapper");
+    if (!wrapper) return;
+
+    // Accept Request Modal Flow (Step 1 -> Step 2 Greetings)
+    wrapper.querySelectorAll(".accept-request-modal-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        this.currentFilter = btn.getAttribute("data-filter");
-        filterBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        this.renderList();
+        const id = btn.getAttribute("data-id");
+        const studentName = btn.getAttribute("data-name");
+        const studentEmail = btn.getAttribute("data-email");
+        const studentPhone = btn.getAttribute("data-phone");
+        const courseTitle = btn.getAttribute("data-course");
+        const teacherName = btn.getAttribute("data-teacher");
+
+        showEnrollmentAcceptanceModal({
+          enrollmentId: id,
+          studentName,
+          studentEmail,
+          studentPhone,
+          courseTitle,
+          teacherName,
+          onAccept: async (customMsg, sendWhatsApp) => {
+            try {
+              const res = await apiFetch(`/teacher/enrollment-requests/${id}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: "active" })
+              });
+              showToast("تم قبول طلب التسجيل بنجاح!", "success");
+              handleWhatsAppResponse(res);
+              checkPendingRequestsNotification();
+              await this.loadRequests();
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        });
       });
     });
 
-    // Accept / Refuse buttons
-    const actionBtns = this.container.querySelectorAll(".handle-request-btn");
-    actionBtns.forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        const action = e.currentTarget.getAttribute("data-action"); // active or rejected
+    // Refuse Request
+    wrapper.querySelectorAll(".refuse-request-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const studentName = btn.getAttribute("data-name") || "هذا الطالب";
+        const confirmed = await confirmDialog({
+          title: "تأكيد رفض الطلب ⚠️",
+          message: `هل أنت متأكد من رغبتك في رفض طلب الانضمام للطالب "${studentName}"؟`,
+          confirmText: "نعم، رفض الطلب",
+          cancelText: "تراجع",
+          danger: true
+        });
+        if (!confirmed) return;
+
         try {
           await apiFetch(`/teacher/enrollment-requests/${id}`, {
             method: "PUT",
-            body: JSON.stringify({ status: action })
+            body: JSON.stringify({ status: "rejected" })
           });
-          showToast(action === 'active' ? "تم قبول طلب الطالب بنجاح." : "تم رفض الطلب.", "success");
+          showToast("تم رفض طلب التسجيل بنجاح.", "info");
           checkPendingRequestsNotification();
           await this.loadRequests();
         } catch (err) {
           console.error(err);
+          showToast("حدث خطأ أثناء رفض الطلب.", "error");
         }
       });
     });
   }
 
-  onDestroy() { }
+  onDestroy() {}
 }

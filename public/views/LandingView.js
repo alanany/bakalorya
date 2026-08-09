@@ -40,7 +40,7 @@ export default class LandingView {
 
               <div style="position:relative; width:160px; height:200px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
                 <div style="position:absolute; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.15); top:10px; right:-20px;"></div>
-                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400" alt="Student" style="width:140px; height:180px; object-fit:cover; border-radius:100px 100px 20px 20px; position:relative; z-index:2; border:3px solid rgba(255,255,255,0.3);">
+                <img src="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&auto=format&fit=crop&q=80" alt="Education & Learning" style="width:140px; height:180px; object-fit:cover; border-radius:24px; position:relative; z-index:2; border:3px solid rgba(255,255,255,0.3); box-shadow:0 12px 30px rgba(0,0,0,0.25);">
               </div>
             </div>
 
@@ -168,10 +168,10 @@ export default class LandingView {
                   ابدأ تجربتك المجانية لمدة 7 أيام <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
                 </a>
               </div>
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300" style="width:120px; height:150px; object-fit:cover; border-radius:80px 80px 20px 20px; border:2px solid rgba(255,255,255,0.3); flex-shrink:0;">
+              <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=300&auto=format&fit=crop&q=80" alt="Education Books" style="width:120px; height:150px; object-fit:cover; border-radius:20px; border:2px solid rgba(255,255,255,0.3); flex-shrink:0;">
             </div>
 
-            <div class="glass-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3);">
+            <div class="glass-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; color:#93c5fd; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
                   bakalorya <span style="color:#ffffff; font-weight:500;">for teachers & schools</span>
@@ -179,11 +179,11 @@ export default class LandingView {
                 <h3 style="font-size:1.5rem; font-weight:900; line-height:1.3; margin-bottom:12px; color:#ffffff;">
                   مكّن أساتذتك وطلابك من أحدث أدوات التعليم الرقمي
                 </h3>
-                <a href="#signup" style="color:#93c5fd; font-weight:800; font-size:0.95rem; text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">
+                <a href="#teacher-apply" style="color:#93c5fd; font-weight:800; font-size:0.95rem; text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">
                   اكتشف حلول المؤسسات والمدارس <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
                 </a>
               </div>
-              <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300" style="width:120px; height:150px; object-fit:cover; border-radius:80px 80px 20px 20px; border:2px solid rgba(255,255,255,0.2); flex-shrink:0;">
+              <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=80" alt="Digital School Tools" style="width:120px; height:150px; object-fit:cover; border-radius:20px; border:2px solid rgba(255,255,255,0.2); flex-shrink:0;">
             </div>
           </div>
         </section>
@@ -213,53 +213,76 @@ export default class LandingView {
         </section>
 
 
-        <!-- SCREENSHOT 3: SECTION 2 (EXPLORE SPECIALIZATIONS) -->
+        <!-- SECTION 2: EXPLORE SPECIALIZATIONS & DEGREES -->
         <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-            <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0;">
-              استكشف الشعب والمسارات الدراسية <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Explore specializations)</span>
-            </h2>
-            <a href="#courses-section" style="color:var(--primary); font-weight:800; text-decoration:none; font-size:0.9rem;">استكشف الكل ➔</a>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
+                استكشف المراحل والصفوف الدراسية <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Explore All Degrees & Levels)</span>
+              </h2>
+              <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">شامل لجميع الصفوف الدراسية من الابتدائية والإعدادية حتى الثانوية والأزهر الشريف</p>
+            </div>
+            <a href="#courses" style="color:var(--primary); font-weight:800; text-decoration:none; font-size:0.9rem;">عرض جميع المسارات ➔</a>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:20px;">
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+            <!-- Secondary -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div>
-                <div style="background:#fef3c7; border-radius:12px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Spec1" style="width:72px; height:72px; border-radius:50%; position:relative; z-index:2; border:2px solid #fff; background:#fff;">
+                <div style="background:#dbeafe; border-radius:14px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
+                  <span style="font-size:2.2rem; display:block; margin-bottom:4px;">🎓</span>
+                  <span style="font-weight:900; font-size:0.75rem; color:#1e40af; background:#ffffff; padding:2px 10px; border-radius:12px;">1ث - 2ث - 3ث</span>
                 </div>
-                <h3 style="font-size:1.05rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">شعبة العلوم التجريبية</h3>
-                <p style="font-size:0.8rem; color:#64748b; line-height:1.45; margin:0;">علوم الحياة، الفيزياء والكيمياء، والتحليل العلمي لشهادة البكالوريا.</p>
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">المرحلة الثانوية العامة</h3>
+                <p style="font-size:0.82rem; color:#64748b; line-height:1.5; margin:0;">علمي علوم، علمي رياضة، أدبي، والتحضير الشامل للشهادة الثانوية العامة.</p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+            <!-- Prep -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div>
-                <div style="background:#dbeafe; border-radius:12px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Spec2" style="width:72px; height:72px; border-radius:50%; position:relative; z-index:2; border:2px solid #fff; background:#fff;">
+                <div style="background:#dcfce7; border-radius:14px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
+                  <span style="font-size:2.2rem; display:block; margin-bottom:4px;">📘</span>
+                  <span style="font-weight:900; font-size:0.75rem; color:#166534; background:#ffffff; padding:2px 10px; border-radius:12px;">1ع - 2ع - 3ع</span>
                 </div>
-                <h3 style="font-size:1.05rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">شعبة الرياضيات والتقني</h3>
-                <p style="font-size:0.8rem; color:#64748b; line-height:1.45; margin:0;">التفاضل والتكامل، الهندسة الفضائية، ومكانيك الهياكل التقنية.</p>
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">المرحلة الإعدادية</h3>
+                <p style="font-size:0.82rem; color:#64748b; line-height:1.5; margin:0;">الصف الأول، الثاني، والثالث الإعدادي وتأسيس المواد الأساسية المتقدمة.</p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+            <!-- Primary -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div>
-                <div style="background:#dcfce7; border-radius:12px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Spec3" style="width:72px; height:72px; border-radius:50%; position:relative; z-index:2; border:2px solid #fff; background:#fff;">
+                <div style="background:#fef3c7; border-radius:14px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
+                  <span style="font-size:2.2rem; display:block; margin-bottom:4px;">🎒</span>
+                  <span style="font-weight:900; font-size:0.75rem; color:#92400e; background:#ffffff; padding:2px 10px; border-radius:12px;">1ب - 2ب - 3ب - 4ب - 5ب - 6ب</span>
                 </div>
-                <h3 style="font-size:1.05rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">شعبة العلوم الرياضية</h3>
-                <p style="font-size:0.8rem; color:#64748b; line-height:1.45; margin:0;">الجبر المتقدم، الاحتمالات، والفيزياء النظرية العالية.</p>
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">المرحلة الابتدائية</h3>
+                <p style="font-size:0.82rem; color:#64748b; line-height:1.5; margin:0;">صفوف الابتدائي من الصف الأول حتى السادس الابتدائي واللغات والماث.</p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+            <!-- Azhar -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div>
-                <div style="background:#fce7f3; border-radius:12px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Spec4" style="width:72px; height:72px; border-radius:50%; position:relative; z-index:2; border:2px solid #fff; background:#fff;">
+                <div style="background:#fce7f3; border-radius:14px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
+                  <span style="font-size:2.2rem; display:block; margin-bottom:4px;">🕌</span>
+                  <span style="font-weight:900; font-size:0.75rem; color:#9d174d; background:#ffffff; padding:2px 10px; border-radius:12px;">أزهر شريف</span>
                 </div>
-                <h3 style="font-size:1.05rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">شعبة الآداب والعلوم الإنسانية</h3>
-                <p style="font-size:0.8rem; color:#64748b; line-height:1.45; margin:0;">الفلسفة، البلاغة، قواعد الإعراب واللغات الأجنبية.</p>
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">التعليم الأزهري الشريف</h3>
+                <p style="font-size:0.82rem; color:#64748b; line-height:1.5; margin:0;">المواد الشرعية، العلوم العربية، والشهادتين الإعدادية والثانوية الأزهرية.</p>
+              </div>
+            </div>
+
+            <!-- Foundation & KG -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
+              <div>
+                <div style="background:#ffedd5; border-radius:14px; padding:16px; text-align:center; position:relative; overflow:hidden; margin-bottom:14px;">
+                  <span style="font-size:2.2rem; display:block; margin-bottom:4px;">🎨</span>
+                  <span style="font-weight:900; font-size:0.75rem; color:#c2410c; background:#ffffff; padding:2px 10px; border-radius:12px;">KG & Foundation</span>
+                </div>
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 6px 0; color:#0f172a;">التأسيس ورياض الأطفال</h3>
+                <p style="font-size:0.82rem; color:#64748b; line-height:1.5; margin:0;">تأسيس القراءة، الكتابة، الحساب والـ Phonics واللغات للأطفال.</p>
               </div>
             </div>
           </div>
@@ -296,69 +319,64 @@ export default class LandingView {
         </section>
 
 
-        <!-- SCREENSHOT 4: SECTION 1 (WHY PEOPLE CHOOSE TESTIMONIAL GRID) -->
+        <!-- SECTION: WHY PEOPLE CHOOSE BAKALORYA (FEATURE ICONS GRID) -->
         <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
-          <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:24px;">
-            لماذا يختار الطلاب والأساتذة منصة بكالوريا <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Why people choose Bakalorya)</span>
-          </h2>
+          <div style="margin-bottom:24px;">
+            <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
+              لماذا يختار الطلاب والأساتذة منصة بكالوريا <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Why people choose Bakalorya)</span>
+            </h2>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">أهم المزايا والركائز الأساسية التي تضمن تفوق الطلاب وتمكين المعلمين بالمنصة</p>
+          </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            <!-- Feature 1 -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
               <div>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #0056D2;">
-                  <div>
-                    <h4 style="font-size:0.95rem; font-weight:900; margin:0; color:#0f172a;">سارة الهاشمي</h4>
-                    <span style="font-size:0.75rem; color:#64748b; font-weight:600;">طالبة شعبة العلوم التجريبية</span>
-                  </div>
+                <div style="width:52px; height:52px; border-radius:14px; background:rgba(0,86,210,0.12); color:#0056D2; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                  <i data-lucide="award" style="width:26px; height:26px;"></i>
                 </div>
-                <p style="font-size:0.85rem; color:#334155; line-height:1.6; margin:0; font-style:italic;">
-                  "محتوى عالي الجودة مع مرونة تامة للتحضير المباشر والمستمر لامتحانات البكالوريا ومراجعة المواضيع الصعبة."
+                <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">نخبة من أفضل المعلمين المعتمدين</h4>
+                <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
+                  دروس ومراجعات استثنائية مقدمة من نخبة من كبار أساتذة البكالوريا والمراحل الدراسية لضمان استيعاب المفاهيم الصعبة.
                 </p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            <!-- Feature 2 -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#schedule'">
               <div>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #0056D2;">
-                  <div>
-                    <h4 style="font-size:0.95rem; font-weight:900; margin:0; color:#0f172a;">أيوب بوزيد</h4>
-                    <span style="font-size:0.75rem; color:#64748b; font-weight:600;">طالب شعبة الرياضيات</span>
-                  </div>
+                <div style="width:52px; height:52px; border-radius:14px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                  <i data-lucide="video" style="width:26px; height:26px;"></i>
                 </div>
-                <p style="font-size:0.85rem; color:#334155; line-height:1.6; margin:0; font-style:italic;">
-                  "أعادت المنصة لي الثقة وقدرة الاعتماد على النفس للوصول لأعلى النقاط في مادة الرياضيات والفيزياء."
+                <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">جلسات بث مباشر وتفاعل حقيقي</h4>
+                <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
+                  إمكانية طرح الأسئلة مباشرة على الأستاذ أثناء الحصص التفاعلية، ومراجعة التسجيلات في أي وقت ومن أي مكان.
                 </p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            <!-- Feature 3 -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#resources'">
               <div>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                  <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #0056D2;">
-                  <div>
-                    <h4 style="font-size:0.95rem; font-weight:900; margin:0; color:#0f172a;">عبد الله منصور</h4>
-                    <span style="font-size:0.75rem; color:#64748b; font-weight:600;">طالب بكالوريا</span>
-                  </div>
+                <div style="width:52px; height:52px; border-radius:14px; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                  <i data-lucide="book-open-check" style="width:26px; height:26px;"></i>
                 </div>
-                <p style="font-size:0.85rem; color:#334155; line-height:1.6; margin:0; font-style:italic;">
-                  "أصبحت أكثر جاهزية لحل التمارين المعقدة ومتابعة البث المباشر المباشر أسبوعياً مع نخبة الأساتذة."
+                <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">مكتبة ومحتوى مكمل شامل</h4>
+                <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
+                  ملخصات، سلاسل تمارين، اختبارات تفاعلية ومذكرات مرفقة تضمن التأسيس والتفوق في كافة المواد الدراسية.
                 </p>
               </div>
             </div>
 
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:16px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04);">
+            <!-- Feature 4 -->
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
               <div>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                  <img src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #0056D2;">
-                  <div>
-                    <h4 style="font-size:0.95rem; font-weight:900; margin:0; color:#0f172a;">أنس السليمي</h4>
-                    <span style="font-size:0.75rem; color:#64748b; font-weight:600;">طالب متميز</span>
-                  </div>
+                <div style="width:52px; height:52px; border-radius:14px; background:rgba(236,72,153,0.12); color:#ec4899; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                  <i data-lucide="trending-up" style="width:26px; height:26px;"></i>
                 </div>
-                <p style="font-size:0.85rem; color:#334155; line-height:1.6; margin:0; font-style:italic;">
-                  "التطبيق الشامل والموارد المتاحة في Drive مكنتني من مراجعة كافة الدروس والسلاسل بسهولة فائقة."
+                <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">ارتفاع ملحوظ في المعدلات والنتائج</h4>
+                <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
+                  نسبة 91% من الطلاب يلاحظون تحسناً كبيراً في مستواهم الأكاديمي والتحضير لشهادات امتحانات نهاية العام.
                 </p>
               </div>
             </div>
@@ -546,19 +564,19 @@ export default class LandingView {
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">روابط سريعة</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
                   <li><a href="#landing" style="color:var(--text-muted); text-decoration:none;">الصفحة الرئيسية</a></li>
-                  <li><a href="#courses-section" style="color:var(--text-muted); text-decoration:none;">دليل الدورات التعليمية</a></li>
+                  <li><a href="#about" style="color:var(--text-muted); text-decoration:none;">عن منصة بكالوريا (About Us)</a></li>
+                  <li><a href="#courses" style="color:var(--text-muted); text-decoration:none;">دليل الدورات التعليمية</a></li>
                   <li><a href="#schedule" style="color:var(--text-muted); text-decoration:none;">جدول البث المباشر</a></li>
-                  <li><a href="#resources" style="color:var(--text-muted); text-decoration:none;">مكتبة الموارد والملفات</a></li>
+                  <li><a href="#faq" style="color:var(--text-muted); text-decoration:none;">الأسئلة الشائعة (FAQ)</a></li>
                 </ul>
               </div>
 
               <div>
-                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">التخصصات والمواد</h4>
+                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">للمعلمين والمدارس</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
-                  <li><a href="#courses-section" style="color:var(--text-muted); text-decoration:none;">📐 مادة الرياضيات (Math)</a></li>
-                  <li><a href="#courses-section" style="color:var(--text-muted); text-decoration:none;">⚡ مادة الفيزياء (Physics)</a></li>
-                  <li><a href="#courses-section" style="color:var(--text-muted); text-decoration:none;">🧪 مادة الكيمياء (Chemistry)</a></li>
-                  <li><a href="#courses-section" style="color:var(--text-muted); text-decoration:none;">📖 اللغة العربية والعلوم</a></li>
+                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">👨‍🏫 للمعلمين والأساتذة (For Teachers)</a></li>
+                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">🏫 للمدارس والمؤسسات (For Schools)</a></li>
+                  <li><a href="#contact" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">💬 تواصل معنا (Contact Us)</a></li>
                 </ul>
               </div>
 
@@ -571,8 +589,20 @@ export default class LandingView {
               </div>
             </div>
 
-            <div style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; font-size:0.82rem;">
-              <div>جميع الحقوق محفوظة © 2026 منصة بكالوريا التعليمية (Bakalorya Platform)</div>
+            <div style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
+              <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة بكالوريا التعليمية (Bakalorya Platform)</div>
+              
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <a href="#about" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--primary)';" onmouseleave="this.style.borderColor='var(--border-color)';">
+                  <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i> عن المنصة (About Us)
+                </a>
+                <a href="#contact" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='#10b981';" onmouseleave="this.style.borderColor='var(--border-color)';">
+                  <i data-lucide="headphones" style="width:14px; height:14px; color:#10b981;"></i> تواصل معنا (Contact Us)
+                </a>
+                <a href="#faq" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='#f59e0b';" onmouseleave="this.style.borderColor='var(--border-color)';">
+                  <i data-lucide="help-circle" style="width:14px; height:14px; color:#f59e0b;"></i> الأسئلة الشائعة (FAQ)
+                </a>
+              </div>
             </div>
 
           </div>
@@ -615,12 +645,15 @@ export default class LandingView {
         mostPopularContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات متاحة حالياً.</div>`;
       } else {
         mostPopularContainer.innerHTML = items.map(course => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick="window.location.hash='#course-preview/${course.id}'">
+          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='#course-preview/${course.id}'">
             <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
             <div style="flex:1;">
-              <div style="font-size:0.75rem; color:var(--primary); font-weight:800;">${course.category || 'عام'} • ${course.teacher?.name || 'الأستاذ'}</div>
+              <div style="font-size:0.75rem; color:var(--primary); font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                <span>${course.category || 'عام'} • ${course.teacher?.name || 'الأستاذ'}</span>
+                <span style="background:rgba(0,86,210,0.1); color:var(--primary); font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+              </div>
               <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">دورة من قاعدة البيانات • ⭐ 4.9</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.9</div>
             </div>
           </div>
         `).join("");
@@ -635,12 +668,15 @@ export default class LandingView {
         newReleasesContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات حديثة.</div>`;
       } else {
         newReleasesContainer.innerHTML = items.map(course => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick="window.location.hash='#course-preview/${course.id}'">
+          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='#course-preview/${course.id}'">
             <img src="${course.image || 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
             <div style="flex:1;">
-              <div style="font-size:0.75rem; color:#f59e0b; font-weight:800;">${course.category || 'جديد'} • ${course.teacher?.name || 'الأستاذ'}</div>
+              <div style="font-size:0.75rem; color:#f59e0b; font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                <span>${course.category || 'جديد'} • ${course.teacher?.name || 'الأستاذ'}</span>
+                <span style="background:rgba(245,158,11,0.12); color:#f59e0b; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+              </div>
               <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">إصدار حديث • ⭐ 4.95</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.95</div>
             </div>
           </div>
         `).join("");
@@ -655,7 +691,7 @@ export default class LandingView {
         trendingSessionsContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد جلسات مبرمجة حالياً.</div>`;
       } else {
         trendingSessionsContainer.innerHTML = items.map(session => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick="window.location.hash='#schedule'">
+          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color);">
             <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
             <div style="flex:1;">
               <div style="font-size:0.75rem; color:var(--error); font-weight:800;">🔴 بث مباشر • ${session.teacher?.name || 'الأستاذ'}</div>
@@ -679,12 +715,15 @@ export default class LandingView {
             <div>
               <div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; height:120px;">
                 <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400'}" style="width:100%; height:100%; object-fit:cover;">
+                <span style="position:absolute; top:8px; right:8px; background:rgba(0,86,210,0.85); color:#fff; font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; backdrop-filter:blur(4px);">
+                  ${course.degree || 'عام'}
+                </span>
               </div>
               <div style="font-size:0.75rem; color:#0056D2; font-weight:800; margin-bottom:4px;">${course.category || 'دورة تعليمية'} • ${course.teacher?.name || 'الأستاذ'}</div>
               <h4 style="font-size:1rem; font-weight:800; margin:0 0 8px 0; color:#0f172a; line-height:1.35;">${course.title}</h4>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #e2e8f0; font-size:0.78rem; color:#64748b; font-weight:700;">
-              <span>دورة من قاعدة البيانات</span>
+              <span>🎓 ${course.degree || 'عام / لجميع المراحل'}</span>
               <span style="color:#f59e0b; font-weight:800;">⭐ 4.9</span>
             </div>
           </div>

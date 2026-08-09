@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, checkPendingRequestsNotification, renderCourseCard } from "../app.js";
+import { apiFetch, state, showToast, t, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO } from "../app.js";
 
 export default class TeacherView {
   constructor(container) {
@@ -91,146 +91,165 @@ export default class TeacherView {
             </div>
           </div>
 
-          <div id="enrollment-requests-section" class="student-dashboard-layout" style="grid-template-columns: 1fr; padding:0; margin-top:40px;">
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
-                <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="user-plus"></i> Enrollment Requests</h3>
-              </div>
-
-              <div class="schedule-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px;">
-                ${
-                  this.enrollmentRequests.length === 0
-                    ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted); grid-column: 1 / -1;">
-                        No pending enrollment requests.
-                      </div>`
-                    : this.enrollmentRequests.map(req => {
-                        const rawPhone = req.student?.phone || '';
-                        const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
-                        const cleanPhoneWa = cleanPhone.replace('+', '');
-
-                        return `
-                          <div class="glass-card" style="padding: 20px; display:flex; flex-direction:column; gap:14px;">
-                            <div style="display:flex; gap:12px; align-items:center;">
-                              <img src="${req.student?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + (req.student?.name || 'S')}" style="width:48px; height:48px; border-radius:50%; border:2px solid var(--primary);">
-                              <div>
-                                <div style="font-weight:700; font-size:1.1rem;">${req.student?.name || "Student"}</div>
-                                <div style="font-size:0.85rem; color:var(--text-muted);">${req.student?.email || ""}</div>
-                                ${req.student?.phone ? `<div style="font-size:0.8rem; color:var(--primary); font-weight:600;"><i data-lucide="phone" style="width:12px;height:12px;vertical-align:middle;"></i> ${req.student.phone}</div>` : ''}
-                              </div>
-                            </div>
-
-                            <!-- Badges -->
-                            <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:0.8rem;">
-                              ${req.student?.location ? `<span style="background:var(--bg-card); padding:4px 8px; border-radius:12px; border:1px solid var(--border-color); font-weight:600;"><i data-lucide="map-pin" style="width:12px;height:12px;color:var(--primary);"></i> ${req.student.location}</span>` : ''}
-                              ${req.student?.education ? `<span style="background:var(--bg-card); padding:4px 8px; border-radius:12px; border:1px solid var(--border-color); font-weight:600;"><i data-lucide="graduation-cap" style="width:12px;height:12px;color:var(--accent);"></i> ${req.student.education}</span>` : ''}
-                            </div>
-
-                            <div style="font-size:0.95rem; color:var(--text-main); background:rgba(0,0,0,0.03); padding:8px 12px; border-radius:8px; border-inline-start:3px solid var(--primary);">
-                              Requested to join <strong>${req.course?.title || 'Course'}</strong>
-                            </div>
-
-                            <!-- Contact Actions -->
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                              ${rawPhone ? `
-                                <a href="tel:${cleanPhone}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); text-decoration:none;" title="Call">
-                                  <i data-lucide="phone-call" style="width:12px;height:12px;"></i> Call
-                                </a>
-                                <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:var(--success); color:var(--success); text-decoration:none;" title="WhatsApp">
-                                  <i data-lucide="message-circle" style="width:12px;height:12px;"></i> WhatsApp
-                                </a>
-                              ` : ''}
-                              <a href="mailto:${req.student?.email}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; text-decoration:none;" title="Email">
-                                <i data-lucide="mail" style="width:12px;height:12px;"></i> Email
-                              </a>
-                            </div>
-
-                            <div style="display:flex; gap:12px; margin-top:8px;">
-                              <button class="btn-primary handle-request-btn" data-id="${req.id}" data-action="active" style="flex:1; justify-content:center;">Accept</button>
-                              <button class="btn-secondary handle-request-btn" data-id="${req.id}" data-action="rejected" style="flex:1; justify-content:center; color:var(--error); border-color:var(--error);">Refuse</button>
-                            </div>
-                          </div>
-                        `;
-                      }).join("")
-                }
-              </div>
-            </div>
           </div>
         </div>
 
         <!-- Course Creation Modal -->
-        <div class="modal-overlay" id="course-modal" style="display:none;">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 class="modal-title">${t("teacher.createCourse")}</h3>
-              <span class="modal-close-btn" id="close-course-modal">&times;</span>
-            </div>
-            <form id="create-course-form">
-              <div class="modal-body">
-                <div class="form-group">
-                  <label for="course-title">${t("teacher.courseTitle")}</label>
-                  <input type="text" id="course-title" class="form-input" placeholder="${t("teacher.courseTitlePlaceholder")}" required>
+        <div class="modal-overlay" id="course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+          <div class="modal-content" style="max-width:650px; width:92%; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); background:var(--bg-card);">
+            
+            <!-- Modal Header -->
+            <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(0,86,210,0.08), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:46px; height:46px; border-radius:14px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="book-plus" style="width:24px; height:24px;"></i>
                 </div>
-                <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                  <div>
-                    <label for="course-category">${t("teacher.courseCategory")}</label>
-                    <select id="course-category-select" class="form-select" onchange="(function(sel){
-                      var wrap = document.getElementById('course-category-custom-wrap');
-                      var inp = document.getElementById('course-category-custom');
-                      if(sel.value === '__custom__'){
-                        wrap.style.display='block';
-                        inp.required=true;
-                        inp.focus();
-                      } else {
-                        wrap.style.display='none';
-                        inp.required=false;
-                        inp.value='';
-                      }
-                    })(this)">
-                      <option value="Mathematics">${t("subject.math")}</option>
-                      <option value="Physics">${t("subject.physics")}</option>
-                      <option value="Chemistry">${t("subject.chemistry")}</option>
-                      <option value="Arabic">${t("subject.arabic")}</option>
-                      <option value="French">${t("subject.french")}</option>
-                      <option value="History & Geography">التاريخ والجغرافيا</option>
-                      <option value="Philosophy">الفلسفة</option>
-                      <option value="Islamic Studies">التربية الإسلامية</option>
-                      <option value="English">اللغة الإنجليزية</option>
-                      <option value="Biology">علوم الطبيعة والحياة</option>
-                      <option value="__custom__">✏️ تصنيف مخصص (أدخل يدوياً)</option>
+                <div>
+                  <h3 class="modal-title" style="font-size:1.2rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">${t("teacher.createCourse")}</h3>
+                  <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، القسم المعني، والسنة الدراسية للتلميذ</p>
+                </div>
+              </div>
+              <span class="modal-close-btn" id="close-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+            </div>
+
+            <!-- Form -->
+            <form id="create-course-form">
+              <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px;">
+                
+                <!-- Course Title -->
+                <div class="form-group" style="margin:0;">
+                  <label for="course-title" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="heading" style="width:14px; height:14px; color:var(--primary);"></i>
+                    ${t("teacher.courseTitle")}
+                  </label>
+                  <input type="text" id="course-title" class="form-input" placeholder="مثال: مادة الفيزياء - وحدة الكهرباء للثانوية" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
+                </div>
+
+                <!-- Category & Degree Grid -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                  <!-- Platform Category -->
+                  <div class="form-group" style="margin:0;">
+                    <label for="course-category-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="layers" style="width:14px; height:14px; color:#a855f7;"></i>
+                      ${t("teacher.courseCategory")}
+                    </label>
+                    <select id="course-category-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
+                      <option value="">-- اختر التصنيف المعتمد --</option>
                     </select>
-                    <div id="course-category-custom-wrap" style="display:none; margin-top:8px;">
-                      <input type="text" id="course-category-custom" class="form-input" placeholder="أدخل تصنيف الدورة...">
+                  </div>
+
+                  <!-- Grade Level -->
+                  <div class="form-group" style="margin:0;">
+                    <label for="course-degree" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#10b981;"></i>
+                      السنة الدراسية / المستوى
+                    </label>
+                    <select id="course-degree" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
+                      <option value="">-- اختر المستوى --</option>
+                      
+                      <optgroup label="🌱 المرحلة الابتدائية (Primary)">
+                        <option value="الابتدائية - الصف الأول">الصف الأول الابتدائي (Primary 1)</option>
+                        <option value="الابتدائية - الصف الثاني">الصف الثاني الابتدائي (Primary 2)</option>
+                        <option value="الابتدائية - الصف الثالث">الصف الثالث الابتدائي (Primary 3)</option>
+                        <option value="الابتدائية - الصف الرابع">الصف الرابع الابتدائي (Primary 4)</option>
+                        <option value="الابتدائية - الصف الخامس">الصف الخامس الابتدائي (Primary 5)</option>
+                        <option value="الابتدائية - الصف السادس">الصف السادس الابتدائي (Primary 6)</option>
+                      </optgroup>
+
+                      <optgroup label="📘 المرحلة الإعدادية (Intermediate / Prep)">
+                        <option value="الإعدادية - الصف الأول">الصف الأول الإعدادي (Prep 1)</option>
+                        <option value="الإعدادية - الصف الثاني">الصف الثاني الإعدادي (Prep 2)</option>
+                        <option value="الإعدادية - الصف الثالث">الصف الثالث الإعدادي - الشهادة الإعدادية (Prep 3)</option>
+                      </optgroup>
+
+                      <optgroup label="🎓 المرحلة الثانوية (Secondary)">
+                        <option value="الثانوية - الصف الأول">الصف الأول الثانوي (1st Secondary)</option>
+                        <option value="الثانوية - الصف الثاني (علمي)">الصف الثاني الثانوي - علمي (2nd Sec Science)</option>
+                        <option value="الثانوية - الصف الثاني (أدبي)">الصف الثاني الثانوي - أدبي (2nd Sec Arts)</option>
+                        <option value="الثانوية - الصف الثالث (علمي علوم)">الصف الثالث الثانوي - علمي علوم (3rd Sec Science)</option>
+                        <option value="الثانوية - الصف الثالث (علمي رياضة)">الصف الثالث الثانوي - علمي رياضة (3rd Sec Math)</option>
+                        <option value="الثانوية - الصف الثالث (أدبي)">الصف الثالث الثانوي - أدبي (3rd Sec Arts)</option>
+                        <option value="الثانوية الأزهرية">الثانوية الأزهرية (Azhar Secondary)</option>
+                      </optgroup>
+
+                      <optgroup label="🌟 عام وتأسيس (All Grades / General)">
+                        <option value="جميع المراحل والصفوف">جميع المراحل والصفوف (All Grades)</option>
+                        <option value="تأسيس ودورات عامة">تأسيس ودورات تدريبية عامة (General & Foundation)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Course Description -->
+                <div class="form-group" style="margin:0;">
+                  <label for="course-desc" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="file-text" style="width:14px; height:14px; color:var(--text-muted);"></i>
+                    ${t("teacher.courseDesc")}
+                  </label>
+                  <textarea id="course-desc" class="form-input" style="height:90px; resize:none; border-radius:14px; padding:12px 16px; font-size:0.88rem; line-height:1.5;" placeholder="${t("teacher.courseDescPlaceholder")}" required></textarea>
+                </div>
+
+                <!-- Course Image Upload -->
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                    <span style="display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="image" style="width:14px; height:14px; color:#f59e0b;"></i>
+                      ${t("teacher.courseImage")}
+                    </span>
+                    <button type="button" id="toggle-url-input-btn" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.75rem; cursor:pointer;">
+                      أو أدخل رابط صورة مباشرة 🔗
+                    </button>
+                  </label>
+                  
+                  <div id="course-dropzone" style="border:2px dashed var(--border-color); border-radius:16px; padding:18px; text-align:center; background:var(--bg-app); cursor:pointer; transition:all 0.2s ease;">
+                    <input type="file" id="course-image-file" accept="image/*" style="display:none;">
+                    
+                    <div id="image-upload-idle">
+                      <button type="button" class="btn-secondary" id="btn-trigger-upload" style="padding:8px 20px; border-radius:30px; font-size:0.85rem; margin:0 auto; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="upload-cloud" style="width:16px; height:16px;"></i> اختيار صورة غلاف الدورة
+                      </button>
+                      <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصغار المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
+                    </div>
+
+                    <div id="image-upload-loading" style="display:none; padding:10px; color:var(--primary); font-weight:700; font-size:0.88rem;">
+                      <i data-lucide="loader" class="spinner" style="width:20px; height:20px; display:inline-block; vertical-align:middle; margin-inline-end:6px;"></i> جاري رفع الصورة...
+                    </div>
+
+                    <div id="image-preview-wrapper" style="display:none; text-align:center;">
+                      <div style="position:relative; display:inline-block;">
+                        <img id="course-preview-img" src="" style="max-height:130px; border-radius:12px; object-fit:cover; border:2px solid var(--primary); box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                        <button type="button" id="remove-course-image-btn" title="حذف الصورة" style="position:absolute; top:-8px; right:-8px; background:var(--error,#ef4444); color:#fff; border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.3);">✕</button>
+                      </div>
+                      <p style="font-size:0.78rem; color:var(--success,#10b981); font-weight:800; margin:6px 0 0 0;">✓ تم اختيار ورفع غلاف الدورة بنجاح</p>
                     </div>
                   </div>
-                  <div>
-                    <label for="course-degree">السنة الدراسية / المستوى</label>
-                    <select id="course-degree" class="form-select">
-                      <option value="">-- اختر المستوى --</option>
-                      <option value="1ère AS">الأولى ثانوي (1ère AS)</option>
-                      <option value="2ème AS">الثانية ثانوي (2ème AS)</option>
-                      <option value="3ème AS - BAC">الثالثة ثانوي - باكالوريا (3AS / BAC)</option>
-                      <option value="Toutes les classes">جميع المستويات</option>
-                    </select>
+
+                  <div id="url-input-wrapper" style="display:none; margin-top:10px;">
+                    <input type="url" id="course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
                   </div>
-                </div>
-                <div class="form-group">
-                  <label for="course-desc">${t("teacher.courseDesc")}</label>
-                  <textarea id="course-desc" class="form-input" style="height:100px; resize:none;" placeholder="${t("teacher.courseDescPlaceholder")}" required></textarea>
-                </div>
-                <div class="form-group">
-                  <label for="course-image-file">${t("teacher.courseImage")}</label>
-                  <input type="file" id="course-image-file" class="form-input" accept="image/*" style="margin-bottom:8px;">
+
                   <input type="hidden" id="course-image-url">
                 </div>
-                <div class="form-group">
-                  <label for="course-meeting-link">Meeting Link (Zoom, Meet, etc.)</label>
-                  <input type="url" id="course-meeting-link" class="form-input" placeholder="https://zoom.us/j/123456789">
+
+                <!-- Live Meeting Link -->
+                <div class="form-group" style="margin:0;">
+                  <label for="course-meeting-link" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="video" style="width:14px; height:14px; color:#06b6d4;"></i>
+                    رابط البث المباشر (Zoom, Meet, Webex)
+                  </label>
+                  <input type="url" id="course-meeting-link" class="form-input" placeholder="https://zoom.us/j/123456789" style="border-radius:14px; padding:11px 16px; font-size:0.88rem;">
                 </div>
+
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="cancel-course-modal">${t("common.cancel")}</button>
-                <button type="submit" class="btn-primary">${t("teacher.publishCourse")}</button>
+
+              <!-- Modal Footer -->
+              <div class="modal-footer" style="padding:16px 28px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
+                <button type="button" class="btn-secondary" id="cancel-course-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">${t("common.cancel")}</button>
+                <button type="submit" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#0056D2,#a855f7); border:none;">
+                  <i data-lucide="check-circle-2" style="width:16px; height:16px; vertical-align:middle;"></i> ${t("teacher.publishCourse")}
+                </button>
               </div>
+
             </form>
           </div>
         </div>
@@ -278,43 +297,105 @@ export default class TeacherView {
 
         <!-- Lesson Upload Modal -->
         <div class="modal-overlay" id="lesson-modal" style="display:none;">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 class="modal-title" id="lesson-modal-title">${t("teacher.addLesson")}</h3>
+          <div class="modal-content" style="max-width:680px; width:92%; max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+            <div class="modal-header" style="padding:18px 24px; border-bottom:1px solid var(--border-color);">
+              <h3 class="modal-title" id="lesson-modal-title" style="font-size:1.15rem; font-weight:800;">${t("teacher.addLesson")}</h3>
               <span class="modal-close-btn" id="close-lesson-modal">&times;</span>
             </div>
-            <form id="add-lesson-form">
-              <div class="modal-body">
-                <div class="form-group">
-                  <label for="lesson-title">${t("teacher.lessonTitle")}</label>
-                  <input type="text" id="lesson-title" class="form-input" placeholder="${t("teacher.lessonTitlePlaceholder")}" required>
-                </div>
-                <div class="form-group">
-                  <label for="lesson-chapter">${t("teacher.chapterName")}</label>
-                  <input type="text" id="lesson-chapter" class="form-input" placeholder="${t("teacher.chapterPlaceholder")}" value="General" required>
-                </div>
-                <div class="form-group">
-                  <label for="lesson-videourl">${t("teacher.videoUrl")}</label>
-                  <input type="url" id="lesson-videourl" class="form-input" placeholder="https://..." required>
-                </div>
-                <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                  <div>
-                    <label for="lesson-duration">${t("teacher.lessonDuration")}</label>
-                    <input type="text" id="lesson-duration" class="form-input" placeholder="12:45" value="10:00" required>
+
+            <!-- Sub-tabs bar -->
+            <div style="display:flex; border-bottom:1px solid var(--border-color); background:var(--bg-app); padding:4px 16px 0 16px; gap:8px; overflow-x:auto;">
+              <button type="button" class="teacher-lesson-tab-btn active" data-tab="details" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--primary); border-bottom:2px solid var(--primary);">
+                📝 التفاصيل والوصف
+              </button>
+              <button type="button" class="teacher-lesson-tab-btn" data-tab="notes" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+                📌 الملاحظات (Notes)
+              </button>
+              <button type="button" class="teacher-lesson-tab-btn" data-tab="resource" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+                📎 المورد المرفق
+              </button>
+              <button type="button" class="teacher-lesson-tab-btn" data-tab="questions" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+                ❓ أسئلة الدرس
+              </button>
+            </div>
+
+            <form id="add-lesson-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden; margin:0;">
+              <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+                
+                <!-- Tab 1: Details -->
+                <div class="teacher-lesson-tab-content" id="teacher-lesson-tab-details" style="display:flex; flex-direction:column; gap:14px;">
+                  <div class="form-group">
+                    <label for="lesson-title" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.lessonTitle")} <span style="color:var(--error);">*</span></label>
+                    <input type="text" id="lesson-title" class="form-input" placeholder="${t("teacher.lessonTitlePlaceholder")}" required style="padding:10px 14px;">
                   </div>
-                  <div>
-                    <label for="lesson-order">${t("teacher.lessonOrder")}</label>
-                    <input type="number" id="lesson-order" class="form-input" value="1" min="0" required>
+                  <div class="form-group">
+                    <label for="lesson-chapter" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.chapterName")} <span style="color:var(--error);">*</span></label>
+                    <input type="text" id="lesson-chapter" class="form-input" placeholder="${t("teacher.chapterPlaceholder")}" value="General" required style="padding:10px 14px;">
+                  </div>
+                  <div class="form-group">
+                    <label for="lesson-videourl" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.videoUrl")} <span style="color:var(--error);">*</span></label>
+                    <input type="url" id="lesson-videourl" class="form-input" placeholder="https://..." required style="padding:10px 14px;">
+                  </div>
+                  <div class="form-group">
+                    <label for="lesson-desc" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.lessonDesc")}</label>
+                    <textarea id="lesson-desc" class="form-input" style="height:70px; resize:vertical; font-family:inherit; padding:10px 14px;" placeholder="${t("teacher.lessonDescPlaceholder")}"></textarea>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                      <label for="lesson-duration" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.lessonDuration")}</label>
+                      <input type="text" id="lesson-duration" class="form-input" placeholder="12:45" value="10:00" required style="padding:10px 14px;">
+                    </div>
+                    <div>
+                      <label for="lesson-order" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.lessonOrder")}</label>
+                      <input type="number" id="lesson-order" class="form-input" value="1" min="0" required style="padding:10px 14px;">
+                    </div>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label for="lesson-desc">${t("teacher.lessonDesc")}</label>
-                  <textarea id="lesson-desc" class="form-input" style="height:60px; resize:none;" placeholder="${t("teacher.lessonDescPlaceholder")}"></textarea>
+
+                <!-- Tab 2: Notes -->
+                <div class="teacher-lesson-tab-content" id="teacher-lesson-tab-notes" style="display:none; flex-direction:column; gap:14px;">
+                  <div class="form-group">
+                    <label style="font-weight:700; margin-bottom:6px; display:block;">ملاحظات المعلم للدرس (Teacher Notes)</label>
+                    <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:8px;">سيتم عرض هذه الملاحظات للطلاب كإرشادات ونقاط استذكار سريعة لهذا الدرس.</p>
+                    <textarea id="teacher-lesson-notes" class="form-input" rows="6" placeholder="اكتب أهم القوانين، الإرشادات أو التنبيهات الموجهة للطلاب في هذا الدرس..." style="padding:12px 14px; font-family:inherit; resize:vertical;"></textarea>
+                  </div>
                 </div>
+
+                <!-- Tab 3: Resource -->
+                <div class="teacher-lesson-tab-content" id="teacher-lesson-tab-resource" style="display:none; flex-direction:column; gap:14px;">
+                  <div class="form-group">
+                    <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان المورد المرفق (Resource Title)</label>
+                    <input type="text" id="teacher-lesson-resource-title" class="form-input" placeholder="مثال: ملخص PDF للدرس الأول أو كراس التمارين" style="padding:10px 14px;">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-weight:700; margin-bottom:6px; display:block;">رابط الملف المرفق (Resource URL - PDF / Drive)</label>
+                    <input type="url" id="teacher-lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">يستطيع الطالب فتح وتحميل الملف مباشرة من صفحة مشغل الدرس.</p>
+                  </div>
+                </div>
+
+                <!-- Tab 4: Questions -->
+                <div class="teacher-lesson-tab-content" id="teacher-lesson-tab-questions" style="display:none; flex-direction:column; gap:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                      <h4 style="font-weight:800; font-size:0.95rem; margin:0;">أسئلة واختبار الدرس الفوري</h4>
+                      <p style="font-size:0.8rem; color:var(--text-muted); margin:2px 0 0 0;">أنشئ أسئلة اختيار من متعدد ليختبر الطالب فهمه للدرس.</p>
+                    </div>
+                    <button type="button" id="teacher-add-lesson-question-btn" class="btn-secondary" style="font-size:0.82rem; padding:6px 14px; font-weight:700; border-color:var(--primary); color:var(--primary);">
+                      ➕ إضافة سؤال
+                    </button>
+                  </div>
+
+                  <div id="teacher-lesson-questions-list" style="display:flex; flex-direction:column; gap:16px;">
+                    <!-- Dynamic questions list -->
+                  </div>
+                </div>
+
               </div>
-              <div class="modal-footer">
+
+              <div class="modal-footer" style="padding:14px 24px; border-top:1px solid var(--border-color); background:var(--bg-card);">
                 <button type="button" class="btn-secondary" id="cancel-lesson-modal">${t("common.cancel")}</button>
-                <button type="submit" class="btn-primary">${t("teacher.uploadLesson")}</button>
+                <button type="submit" class="btn-primary" style="font-weight:800;">${t("teacher.uploadLesson")}</button>
               </div>
             </form>
           </div>
@@ -413,16 +494,58 @@ export default class TeacherView {
       btn.addEventListener("click", async (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         const action = e.currentTarget.getAttribute("data-action"); // active or rejected
-        try {
-          await apiFetch(`/teacher/enrollment-requests/${id}`, {
-            method: "PUT",
-            body: JSON.stringify({ status: action })
-          });
-          showToast(action === 'active' ? "Request accepted." : "Request refused.", "success");
-          checkPendingRequestsNotification();
-          await this.render();
-        } catch (err) {
-          console.error(err);
+
+        if (action === "active") {
+          try {
+            const requests = await apiFetch("/teacher/enrollment-requests");
+            const req = Array.isArray(requests) ? requests.find(r => r.id === id) : null;
+            
+            showEnrollmentAcceptanceModal({
+              enrollmentId: id,
+              studentName: req?.student?.name || "الطالب",
+              studentPhone: req?.student?.phone || "",
+              studentEmail: req?.student?.email || "",
+              courseTitle: req?.course?.title || "الدورة التعليمية",
+              teacherName: req?.course?.teacher?.name || state.user?.name,
+              onAccept: async (customMsg, sendWhatsApp) => {
+                try {
+                  const res = await apiFetch(`/teacher/enrollment-requests/${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ status: "active" })
+                  });
+                  showToast("تم قبول طلب الطالب بنجاح! 🎉", "success");
+                  checkPendingRequestsNotification();
+                  await this.render();
+
+                  if (sendWhatsApp) {
+                    const phone = req?.student?.phone ? getCleanWhatsAppNumber(req.student.phone) : "";
+                    if (phone) {
+                      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(customMsg)}`;
+                      window.open(waUrl, "_blank");
+                    } else {
+                      handleWhatsAppResponse(res);
+                    }
+                  }
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+            });
+          } catch (err) {
+            console.error(err);
+          }
+        } else {
+          try {
+            await apiFetch(`/teacher/enrollment-requests/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({ status: action })
+            });
+            showToast("تم رفض الطلب.", "info");
+            checkPendingRequestsNotification();
+            await this.render();
+          } catch (err) {
+            console.error(err);
+          }
         }
       });
     });
@@ -449,11 +572,17 @@ export default class TeacherView {
     });
 
     const courseModal = document.getElementById("course-modal");
+    this.setupImageUploadEvents();
     
     // Open for Create
     document.getElementById("open-course-modal-btn")?.addEventListener("click", async () => { 
       document.getElementById("create-course-form").reset();
       document.getElementById("create-course-form").removeAttribute("data-id");
+      document.getElementById("course-image-url").value = "";
+      const previewWrapper = document.getElementById("image-preview-wrapper");
+      const idleBox = document.getElementById("image-upload-idle");
+      if (previewWrapper) previewWrapper.style.display = "none";
+      if (idleBox) idleBox.style.display = "block";
       await this.populateCategoryOptions();
       courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
       courseModal.style.display = "flex"; 
@@ -476,6 +605,18 @@ export default class TeacherView {
           document.getElementById("course-image-url").value = course.image || "";
           document.getElementById("course-meeting-link").value = course.meetingLink || "";
           
+          const previewWrapper = document.getElementById("image-preview-wrapper");
+          const previewImg = document.getElementById("course-preview-img");
+          const idleBox = document.getElementById("image-upload-idle");
+          if (course.image && previewWrapper && previewImg) {
+            previewImg.src = course.image;
+            previewWrapper.style.display = "block";
+            if (idleBox) idleBox.style.display = "none";
+          } else if (previewWrapper) {
+            previewWrapper.style.display = "none";
+            if (idleBox) idleBox.style.display = "block";
+          }
+
           document.getElementById("create-course-form").setAttribute("data-id", courseId);
           courseModal.querySelector(".modal-title").innerText = "Edit Course";
           courseModal.style.display = "flex";
@@ -533,10 +674,13 @@ export default class TeacherView {
     });
 
     const sessionModal = document.getElementById("session-modal");
+    // Open for Session Create
     document.getElementById("open-session-modal-btn")?.addEventListener("click", () => {
       const form = document.getElementById("create-session-form");
       form.reset();
       form.removeAttribute("data-id");
+      const dateInput = document.getElementById("session-date");
+      if (dateInput) dateInput.min = getMinSessionDateTimeISO();
       sessionModal.querySelector(".modal-title").innerText = t("teacher.scheduleSession");
       sessionModal.style.display = "flex";
     });
@@ -549,6 +693,8 @@ export default class TeacherView {
         const form = document.getElementById("create-session-form");
         form.reset();
         form.removeAttribute("data-id");
+        const dateInput = document.getElementById("session-date");
+        if (dateInput) dateInput.min = getMinSessionDateTimeISO();
         sessionModal.querySelector(".modal-title").innerText = t("teacher.scheduleSession");
         sessionModal.style.display = "flex";
         const select = document.getElementById("session-course-id");
@@ -575,6 +721,9 @@ export default class TeacherView {
         document.getElementById("session-desc").value = session.description || "";
         document.getElementById("session-duration").value = session.duration || 60;
 
+        const dateInput = document.getElementById("session-date");
+        if (dateInput) dateInput.min = getMinSessionDateTimeISO();
+
         if (session.scheduledAt) {
           const d = new Date(session.scheduledAt);
           const pad = (n) => String(n).padStart(2, '0');
@@ -596,6 +745,12 @@ export default class TeacherView {
       const scheduledAt = document.getElementById("session-date").value;
       const duration = parseInt(document.getElementById("session-duration").value, 10);
 
+      const validation = validateSessionScheduledDate(scheduledAt);
+      if (!validation.valid) {
+        showToast(validation.errorMsg, "error");
+        return;
+      }
+
       try {
         if (sessionId) {
           await apiFetch(`/sessions/${sessionId}`, {
@@ -614,17 +769,62 @@ export default class TeacherView {
         form.reset();
         form.removeAttribute("data-id");
         await this.render();
-      } catch (err) {}
+      } catch (err) {
+        showToast(err.message || "عفواً، لا يمكنك اختيار تاريخ سابق أو قريب جداً! يجب أن يكون موعد البث المباشر بعد الوقت الحالي بساعة واحدة على الأقل. ❌", "error");
+      }
     });
 
     const lessonModal = document.getElementById("lesson-modal");
     const lessonTitleHeading = document.getElementById("lesson-modal-title");
+
+    // Sub-tab toggling in Lesson Modal
+    this.container.querySelectorAll(".teacher-lesson-tab-btn").forEach(tabBtn => {
+      tabBtn.addEventListener("click", () => {
+        this.container.querySelectorAll(".teacher-lesson-tab-btn").forEach(b => {
+          b.classList.remove("active");
+          b.style.color = "var(--text-muted)";
+          b.style.borderBottom = "none";
+        });
+        tabBtn.classList.add("active");
+        tabBtn.style.color = "var(--primary)";
+        tabBtn.style.borderBottom = "2px solid var(--primary)";
+
+        const targetTab = tabBtn.getAttribute("data-tab");
+        this.container.querySelectorAll(".teacher-lesson-tab-content").forEach(c => c.style.display = "none");
+        const activeContent = document.getElementById(`teacher-lesson-tab-${targetTab}`);
+        if (activeContent) activeContent.style.display = "flex";
+      });
+    });
+
+    const teacherQuestionsContainer = document.getElementById("teacher-lesson-questions-list");
+    this.teacherLessonQuestions = [];
+
+    document.getElementById("teacher-add-lesson-question-btn")?.addEventListener("click", () => {
+      if (!this.teacherLessonQuestions) this.teacherLessonQuestions = [];
+      this.teacherLessonQuestions.push({
+        id: Date.now().toString(),
+        questionText: "",
+        options: ["", "", "", ""],
+        correctAnswer: "0",
+        explanation: ""
+      });
+      this.renderTeacherQuestionItemsInModal(teacherQuestionsContainer);
+    });
+
+    const resetTeacherLessonModalTabs = () => {
+      const firstTab = this.container.querySelector('.teacher-lesson-tab-btn[data-tab="details"]');
+      if (firstTab) firstTab.click();
+    };
 
     document.querySelectorAll(".add-lesson-trigger").forEach(btn => {
       btn.addEventListener("click", () => {
         this.selectedCourseForLesson = btn.getAttribute("data-id");
         const courseTitle = btn.getAttribute("data-title");
         lessonTitleHeading.textContent = `${t("teacher.addLessonTo")}: ${courseTitle}`;
+        this.teacherLessonQuestions = [];
+        this.renderTeacherQuestionItemsInModal(teacherQuestionsContainer);
+        resetTeacherLessonModalTabs();
+        document.getElementById("add-lesson-form")?.reset();
         lessonModal.style.display = "flex";
       });
     });
@@ -634,16 +834,24 @@ export default class TeacherView {
 
     document.getElementById("add-lesson-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = document.getElementById("lesson-title").value;
-      const chapter = document.getElementById("lesson-chapter").value;
-      const videoUrl = document.getElementById("lesson-videourl").value;
-      const duration = document.getElementById("lesson-duration").value;
-      const order = parseInt(document.getElementById("lesson-order").value);
-      const description = document.getElementById("lesson-desc").value;
+      const title = document.getElementById("lesson-title").value.trim();
+      const chapter = document.getElementById("lesson-chapter").value.trim() || "General";
+      const videoUrl = document.getElementById("lesson-videourl").value.trim();
+      const duration = document.getElementById("lesson-duration").value.trim() || "10:00";
+      const order = parseInt(document.getElementById("lesson-order").value) || 1;
+      const description = document.getElementById("lesson-desc").value.trim() || null;
+      const notes = document.getElementById("teacher-lesson-notes")?.value.trim() || null;
+      const resourceTitle = document.getElementById("teacher-lesson-resource-title")?.value.trim() || null;
+      const resourceUrl = document.getElementById("teacher-lesson-resource-url")?.value.trim() || null;
+
+      const validQuestions = (this.teacherLessonQuestions || []).filter(q => q.questionText && q.questionText.trim().length > 0);
+
       try {
         await apiFetch(`/courses/${this.selectedCourseForLesson}/lessons`, {
           method: "POST",
-          body: JSON.stringify({ title, chapter, videoUrl, duration, order, description })
+          body: JSON.stringify({
+            title, chapter, videoUrl, duration, order, description, notes, resourceTitle, resourceUrl, questions: validQuestions
+          })
         });
         showToast(t("toast.lessonUploaded"), "success");
         lessonModal.style.display = "none";
@@ -690,58 +898,207 @@ export default class TeacherView {
       console.error("Failed to fetch categories", e);
     }
 
-    let customList = [];
-    if (state.user?.customCategories) {
-      customList = state.user.customCategories
-        .split(/[,،]/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-    }
-
-    let optionsHTML = "";
+    let optionsHTML = `<option value="">-- اختر التصنيف المعتمد بالمنصة --</option>`;
     
-    // Official Global Admin Categories
     if (apiCategories && apiCategories.length > 0) {
-      optionsHTML += `<optgroup label="التصنيفات المعتمدة من إدارة المنصة">`;
       apiCategories.forEach(cat => {
-        optionsHTML += `<option value="${cat.name}">${cat.name}</option>`;
+        const isSel = selectedCategory && (selectedCategory === cat.name || selectedCategory.toLowerCase() === cat.name.toLowerCase());
+        optionsHTML += `<option value="${cat.name}" ${isSel ? 'selected' : ''}>${cat.name}</option>`;
       });
-      optionsHTML += `</optgroup>`;
     }
-
-    // Teacher Custom Categories (from settings)
-    if (customList.length > 0) {
-      optionsHTML += `<optgroup label="تخصصاتك الخاصة (من الإعدادات)">`;
-      customList.forEach(cat => {
-        optionsHTML += `<option value="${cat}">${cat}</option>`;
-      });
-      optionsHTML += `</optgroup>`;
-    }
-
-    optionsHTML += `<option value="__custom__">✏️ تصنيف جديد (أدخل يدوياً)</option>`;
 
     catSelect.innerHTML = optionsHTML;
-
-    const catCustomWrap = document.getElementById("course-category-custom-wrap");
-    const catCustomInput = document.getElementById("course-category-custom");
-
-    const allDefined = [
-      ...(apiCategories || []).map(c => c.name),
-      ...customList
-    ];
-
-    if (selectedCategory && !allDefined.includes(selectedCategory)) {
-      catSelect.value = "__custom__";
-      if (catCustomWrap) catCustomWrap.style.display = "block";
-      if (catCustomInput) catCustomInput.value = selectedCategory;
-    } else if (selectedCategory) {
+    if (selectedCategory && catSelect.querySelector(`option[value="${selectedCategory}"]`)) {
       catSelect.value = selectedCategory;
-      if (catCustomWrap) catCustomWrap.style.display = "none";
-      if (catCustomInput) catCustomInput.value = "";
-    } else {
-      if (catCustomWrap) catCustomWrap.style.display = "none";
-      if (catCustomInput) catCustomInput.value = "";
     }
+  }
+
+  renderTeacherQuestionItemsInModal(questionsContainer) {
+    if (!questionsContainer) return;
+    if (!this.teacherLessonQuestions) this.teacherLessonQuestions = [];
+
+    if (this.teacherLessonQuestions.length === 0) {
+      questionsContainer.innerHTML = `
+        <div style="text-align:center; padding:20px; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:10px; font-size:0.85rem;">
+          لا توجد أسئلة مضافة حتى الآن. اضغط على "إضافة سؤال" لبدء إضافة الأسئلة لهذا الدرس.
+        </div>
+      `;
+      return;
+    }
+
+    questionsContainer.innerHTML = this.teacherLessonQuestions.map((q, idx) => `
+      <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:800; font-size:0.85rem; color:var(--primary);">سؤال ${idx + 1}</span>
+          <button type="button" class="remove-teacher-question-btn" data-index="${idx}" style="background:none; border:none; color:var(--error); cursor:pointer; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i> حذف السؤال
+          </button>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:0.8rem; font-weight:700; display:block; margin-bottom:4px;">نص السؤال</label>
+          <input type="text" class="form-input t-q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;" required>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="2" placeholder="الخيار (ج)" value="${q.options?.[2] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="3" placeholder="الخيار (د)" value="${q.options?.[3] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:0.78rem; font-weight:700; display:block; margin-bottom:4px;">الإجابة الصحيحة</label>
+            <select class="form-select t-q-correct-select" data-index="${idx}" style="padding:6px 10px; font-size:0.82rem;">
+              <option value="0" ${q.correctAnswer === '0' || q.correctAnswer === q.options?.[0] ? 'selected' : ''}>الخيار (أ)</option>
+              <option value="1" ${q.correctAnswer === '1' || q.correctAnswer === q.options?.[1] ? 'selected' : ''}>الخيار (ب)</option>
+              <option value="2" ${q.correctAnswer === '2' || q.correctAnswer === q.options?.[2] ? 'selected' : ''}>الخيار (ج)</option>
+              <option value="3" ${q.correctAnswer === '3' || q.correctAnswer === q.options?.[3] ? 'selected' : ''}>الخيار (د)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem; font-weight:700; display:block; margin-bottom:4px;">شرح الإجابة (توضيح اختيار الطالب)</label>
+            <input type="text" class="form-input t-q-explanation-input" data-index="${idx}" placeholder="سبب وتفسير الإجابة الصحيحة..." value="${q.explanation || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Bind inputs changes
+    questionsContainer.querySelectorAll(".t-q-text-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.teacherLessonQuestions[i]) this.teacherLessonQuestions[i].questionText = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".t-q-opt-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        const optIdx = parseInt(e.target.getAttribute("data-opt"));
+        if (this.teacherLessonQuestions[i]) {
+          if (!this.teacherLessonQuestions[i].options) this.teacherLessonQuestions[i].options = ["", "", "", ""];
+          this.teacherLessonQuestions[i].options[optIdx] = e.target.value;
+        }
+      });
+    });
+
+    questionsContainer.querySelectorAll(".t-q-correct-select").forEach(select => {
+      select.addEventListener("change", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.teacherLessonQuestions[i]) this.teacherLessonQuestions[i].correctAnswer = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".t-q-explanation-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.teacherLessonQuestions[i]) this.teacherLessonQuestions[i].explanation = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".remove-teacher-question-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const i = parseInt(e.currentTarget.getAttribute("data-index"));
+        this.teacherLessonQuestions.splice(i, 1);
+        this.renderTeacherQuestionItemsInModal(questionsContainer);
+      });
+    });
+  }
+
+  setupImageUploadEvents() {
+    const fileInput = document.getElementById("course-image-file");
+    const triggerBtn = document.getElementById("btn-trigger-upload");
+    const dropzone = document.getElementById("course-dropzone");
+    const idleBox = document.getElementById("image-upload-idle");
+    const loadingBox = document.getElementById("image-upload-loading");
+    const previewWrapper = document.getElementById("image-preview-wrapper");
+    const previewImg = document.getElementById("course-preview-img");
+    const removeBtn = document.getElementById("remove-course-image-btn");
+    const hiddenUrlInput = document.getElementById("course-image-url");
+    const toggleUrlBtn = document.getElementById("toggle-url-input-btn");
+    const urlInputWrapper = document.getElementById("url-input-wrapper");
+    const directUrlInput = document.getElementById("course-image-url-direct");
+
+    triggerBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput?.click();
+    });
+
+    dropzone?.addEventListener("click", (e) => {
+      if (e.target === dropzone || idleBox?.contains(e.target)) {
+        fileInput?.click();
+      }
+    });
+
+    toggleUrlBtn?.addEventListener("click", () => {
+      if (urlInputWrapper.style.display === "none") {
+        urlInputWrapper.style.display = "block";
+        toggleUrlBtn.innerText = "إلغاء أدخل الرابط ✕";
+      } else {
+        urlInputWrapper.style.display = "none";
+        toggleUrlBtn.innerText = "أو أدخل رابط صورة مباشرة 🔗";
+      }
+    });
+
+    directUrlInput?.addEventListener("input", (e) => {
+      const val = e.target.value.trim();
+      if (val) {
+        hiddenUrlInput.value = val;
+        previewImg.src = val;
+        previewWrapper.style.display = "block";
+        if (idleBox) idleBox.style.display = "none";
+      }
+    });
+
+    removeBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hiddenUrlInput.value = "";
+      if (fileInput) fileInput.value = "";
+      if (directUrlInput) directUrlInput.value = "";
+      previewWrapper.style.display = "none";
+      if (idleBox) idleBox.style.display = "block";
+    });
+
+    fileInput?.addEventListener("change", async () => {
+      if (!fileInput.files || fileInput.files.length === 0) return;
+      const file = fileInput.files[0];
+
+      if (idleBox) idleBox.style.display = "none";
+      if (loadingBox) loadingBox.style.display = "block";
+      if (previewWrapper) previewWrapper.style.display = "none";
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const token = state.token || localStorage.getItem("token");
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token },
+          body: formData
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          hiddenUrlInput.value = data.url;
+          previewImg.src = data.url;
+          if (loadingBox) loadingBox.style.display = "none";
+          if (previewWrapper) previewWrapper.style.display = "block";
+          showToast("تم رفع صورة الدورة بنجاح 🎉", "success");
+        } else {
+          throw new Error("Upload failed with status " + res.status);
+        }
+      } catch (err) {
+        console.error("Image upload failed", err);
+        if (loadingBox) loadingBox.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+        showToast("تعذر رفع الصورة، الرجاء إعادة المحاولة.", "error");
+      }
+    });
   }
 
   onDestroy() {}

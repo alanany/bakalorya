@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, switchLanguage } from "../app.js";
+import { apiFetch, state, showToast, t, switchLanguage, renderPhoneInputGroup, renderEducationSelectHTML } from "../app.js";
 
 export default class SettingsView {
   constructor(container) {
@@ -30,9 +30,44 @@ export default class SettingsView {
             
             <form id="settings-profile-form">
               <div class="form-group">
-                <label>Name</label>
+                <label style="font-weight:700;">الاسم الكامل (Full Name)</label>
                 <input type="text" id="settings-name" class="form-input" value="${state.user.name}" required>
               </div>
+
+              <div class="form-group" style="margin-top:16px;">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
+                  <i data-lucide="phone" style="width:16px;height:16px;color:var(--primary);"></i>
+                  رقم الهاتف والرمز الدولي (Phone Number & Country Key)
+                </label>
+                ${renderPhoneInputGroup({
+                  selectId: "settings-phone-code",
+                  inputId: "settings-phone-number",
+                  defaultCode: "+213",
+                  value: state.user.phone || "",
+                  placeholder: "0555123456",
+                  required: false
+                })}
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">اختر مفتاح الدولة واكتب رقم هاتفك لاستلام إشعارات البكالوريا عبر واتساب.</small>
+              </div>
+
+              ${state.user.role === 'student' ? `
+              <div class="form-group" style="margin-top:16px;">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
+                  <i data-lucide="graduation-cap" style="width:16px;height:16px;color:var(--primary);"></i>
+                  المستوى والتخصص الدراسي (Education Level / Stream)
+                </label>
+                ${renderEducationSelectHTML ? renderEducationSelectHTML("settings-education", state.user.education || "3ème AS - Sciences Expérimentales (علوم تجريبية)") : `
+                  <select id="settings-education" class="form-select">
+                    <option value="3ème AS - Sciences Expérimentales (علوم تجريبية)" ${state.user.education?.includes("Sciences") ? "selected" : ""}>3ème AS - Sciences Expérimentales (علوم تجريبية)</option>
+                    <option value="3ème AS - Mathématiques (رياضيات)" ${state.user.education?.includes("Mathématiques") ? "selected" : ""}>3ème AS - Mathématiques (رياضيات)</option>
+                    <option value="3ème AS - Technique Math (تقني رياضي)" ${state.user.education?.includes("Technique") ? "selected" : ""}>3ème AS - Technique Math (تقني رياضي)</option>
+                    <option value="3ème AS - Gestion et Économie (تسيير واقتصاد)" ${state.user.education?.includes("Gestion") ? "selected" : ""}>3ème AS - Gestion et Économie (تسيير واقتصاد)</option>
+                    <option value="3ème AS - Lettres et Philosophie (آداب وفلسفة)" ${state.user.education?.includes("Lettres") ? "selected" : ""}>3ème AS - Lettres et Philosophie (آداب وفلسفة)</option>
+                    <option value="3ème AS - Langues Étrangères (لغات أجنبية)" ${state.user.education?.includes("Langues") ? "selected" : ""}>3ème AS - Langues Étrangères (لغات أجنبية)</option>
+                  </select>
+                `}
+              </div>
+              ` : ''}
               
               ${(state.user.role === 'teacher' || state.user.role === 'admin') ? `
               <div class="form-group" style="margin-top:16px;">
@@ -44,17 +79,9 @@ export default class SettingsView {
                 <small style="color:var(--text-muted); display:block; margin-top:4px;">هذا الرابط سيستخدم تلقائياً لجميع الجلسات التي ليس لها رابط مخصص في المقرر.</small>
               </div>
 
-              <div class="form-group" style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border-color);">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700;">
-                  <i data-lucide="layers" style="width:16px;height:16px;color:#a855f7;"></i> 
-                  إدارة التصنيفات الخاصة بك (Teacher Custom Categories)
-                </label>
-                <input type="text" id="settings-custom-categories" class="form-input" value="${state.user.customCategories || ''}" placeholder="مثال: رياضيات, فيزياء, هندسة مدنية, علوم الطبيعة والحياة">
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">اكتب التصنيفات والتخصصات الخاصة بك مفصولة بفاصلة (، أو ,). ستظهر هذه التصنيفات خياراً جاهزاً عند إنشاء أي دورة جديدة.</small>
-              </div>
               ` : ''}
 
-              <button type="submit" class="btn-primary" style="margin-top:20px;">حفظ التغييرات / Save Changes</button>
+              <button type="submit" class="btn-primary" style="margin-top:24px;">حفظ التغييرات / Save Changes</button>
             </form>
           </div>
 
@@ -101,13 +128,22 @@ export default class SettingsView {
       const newName = document.getElementById("settings-name").value;
       const meetingLinkInput = document.getElementById("settings-meeting-link");
       const customCatInput = document.getElementById("settings-custom-categories");
+      const phoneCode = document.getElementById("settings-phone-code")?.value || "+213";
+      const phoneNum = document.getElementById("settings-phone-number")?.value.trim() || "";
+      const educationInput = document.getElementById("settings-education");
       
-      const payload = { name: newName };
+      const fullPhone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
+
+      const payload = { 
+        name: newName,
+        phone: fullPhone
+      };
+
+      if (educationInput) {
+        payload.education = educationInput.value;
+      }
       if (meetingLinkInput) {
         payload.meetingLink = meetingLinkInput.value;
-      }
-      if (customCatInput) {
-        payload.customCategories = customCatInput.value;
       }
 
       try {
@@ -118,7 +154,7 @@ export default class SettingsView {
         
         if (updatedUser && updatedUser.id) {
           state.user = updatedUser;
-          showToast("Profile settings saved successfully", "success");
+          showToast("تم حفظ إعدادات الملف الشخصي بنجاح! ✅", "success");
         }
       } catch (err) {
         console.error(err);

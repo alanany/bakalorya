@@ -6,6 +6,8 @@ import { Lesson } from "../entity/Lesson";
 import { User } from "../entity/User";
 import { AuthRequest } from "../middleware/auth";
 
+import { NotificationController } from "./NotificationController";
+
 export class StudentController {
   static async getEnrollments(req: AuthRequest, res: Response) {
     try {
@@ -14,7 +16,10 @@ export class StudentController {
         where: { student: { id: req.user!.id } },
         relations: ["course", "course.teacher"]
       });
-      return res.status(200).json(enrollments);
+
+      // Filter out rejected or banned enrollments so they do not clutter student dashboard
+      const activeOrPending = (enrollments || []).filter(e => e.status !== "rejected" && e.status !== "banned");
+      return res.status(200).json(activeOrPending);
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
     }
@@ -31,18 +36,10 @@ export class StudentController {
       const courseRepository = AppDataSource.getRepository(Course);
       const userRepository = AppDataSource.getRepository(User);
 
-      const existing = await enrollmentRepository.findOne({
-        where: {
-          student: { id: req.user!.id },
-          course: { id: courseId }
-        }
+      const course = await courseRepository.findOne({
+        where: { id: courseId },
+        relations: ["teacher"]
       });
-
-      if (existing) {
-        return res.status(200).json(existing);
-      }
-
-      const course = await courseRepository.findOneBy({ id: courseId });
       if (!course) {
         return res.status(404).json({ error: "Course not found." });
       }
@@ -52,16 +49,44 @@ export class StudentController {
         return res.status(404).json({ error: "Student profile not found." });
       }
 
-      const enrollment = new Enrollment();
-      enrollment.student = student;
-      enrollment.course = course;
-      enrollment.progress = 0;
-      enrollment.status = "pending";
-      enrollment.completedLessons = [];
+      let enrollment = await enrollmentRepository.findOne({
+        where: {
+          student: { id: req.user!.id },
+          course: { id: courseId }
+        }
+      });
 
-      await enrollmentRepository.save(enrollment);
+      if (enrollment) {
+        if (enrollment.status === "rejected") {
+          enrollment.status = "pending";
+          await enrollmentRepository.save(enrollment);
+        } else {
+          return res.status(200).json(enrollment);
+        }
+      } else {
+        enrollment = new Enrollment();
+        enrollment.student = student;
+        enrollment.course = course;
+        enrollment.progress = 0;
+        enrollment.status = "pending";
+        enrollment.completedLessons = [];
+        await enrollmentRepository.save(enrollment);
+      }
+
+      // Notify teacher about new enrollment request
+      if (course.teacher) {
+        await NotificationController.createNotification(
+          course.teacher.id,
+          "طلب تسجيل جديد 📩",
+          `قدّم الطالب "${student.name}" طلباً للانضمام إلى دورة "${course.title}".`,
+          "info",
+          "#enrollment-requests"
+        );
+      }
+
       return res.status(201).json(enrollment);
     } catch (err) {
+      console.error(err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }

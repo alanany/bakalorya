@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, renderCourseCard } from "../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard, showEnrollmentRequestedModal, canJoinSession } from "../app.js";
 
 export default class StudentView {
   constructor(container) {
@@ -124,21 +124,21 @@ export default class StudentView {
   renderSessionCard(session) {
     const isLive = session.status === "live";
     const date = new Date(session.scheduledAt);
-    const isSoon = !isLive && (date.getTime() - Date.now() < 3 * 60 * 60 * 1000) && (date.getTime() - Date.now() > 0);
+    const isJoinable = isLive || canJoinSession(session);
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
 
     let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
-    let actionBtn = `<button class="btn-secondary session-action" disabled>${t("session.scheduledFor")} ${formattedTime}</button>`;
+    let actionBtn = "";
 
     if (isLive) {
       statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--success); box-shadow:0 4px 15px var(--success-glow);"><i data-lucide="external-link"></i> Join Meeting</a>`;
-    } else if (isSoon) {
+      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--success); box-shadow:0 4px 15px var(--success-glow);"><i data-lucide="external-link"></i> دخول البث المباشر 🎥</a>`;
+    } else if (isJoinable) {
       statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info);">${t("session.startingSoon")}</span>`;
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-secondary session-action" style="border-color:var(--info); color:var(--info);"><i data-lucide="external-link"></i> Join Meeting</a>`;
+      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--primary);"><i data-lucide="external-link"></i> دخول البث 🎥</a>`;
     } else {
-      actionBtn = `<button class="btn-secondary session-action" style="cursor:default;" disabled>${t("session.starts")} ${formattedDate} @ ${formattedTime}</button>`;
+      actionBtn = `<button class="btn-secondary session-action restricted-join-btn" style="cursor:pointer; opacity:0.9;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> الانضمام (قبل الموعد بـ 30د)</button>`;
     }
 
     return `
@@ -188,7 +188,8 @@ export default class StudentView {
         if (window.lucide) window.lucide.createIcons();
         try {
           await apiFetch("/student/enrollments", { method: "POST", body: JSON.stringify({ courseId }) });
-          showToast(t("toast.enrolled"), "success");
+          showToast("تم تقديم طلب التسجيل بنجاح! في انتظار موافقة المعلم.", "success");
+          showEnrollmentRequestedModal();
           await this.render();
         } catch (err) {
           btn.disabled = false;

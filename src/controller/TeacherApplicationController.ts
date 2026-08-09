@@ -4,6 +4,7 @@ import { AppDataSource } from "../data-source";
 import { TeacherApplication } from "../entity/TeacherApplication";
 import { User } from "../entity/User";
 import { AuthRequest } from "../middleware/auth";
+import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
 
 export class TeacherApplicationController {
 
@@ -92,6 +93,7 @@ export class TeacherApplicationController {
         return res.status(400).json({ error: `تمت معالجة هذا الطلب سابقاً (الحالة الحالية: ${application.status}).` });
       }
 
+      let whatsappNotification: any = null;
       if (status === "approved") {
         // Create active teacher account
         const teacher = userRepo.create({
@@ -105,6 +107,11 @@ export class TeacherApplicationController {
           avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(application.name)}`
         });
         await userRepo.save(teacher);
+
+        if (application.phone) {
+          const msg = buildRegistrationSuccessMessage(application.name, "teacher");
+          whatsappNotification = createWhatsAppNotificationPayload(application.phone, msg);
+        }
       }
 
       application.status = status;
@@ -112,7 +119,8 @@ export class TeacherApplicationController {
 
       return res.json({
         message: status === "approved" ? "تم قبول طلب المعلم وتفعيل حسابه بنجاح!" : "تم رفض طلب الانضمام.",
-        application
+        application,
+        whatsappNotification
       });
     } catch (error) {
       console.error("Error reviewing teacher application:", error);

@@ -42,6 +42,18 @@ export class SessionController {
       return res.status(400).json({ error: "Missing title or scheduledAt date." });
     }
 
+    const scheduledDate = new Date(scheduledAt);
+    const now = new Date();
+    const minAllowedTime = new Date(now.getTime() + 59 * 60 * 1000);
+
+    if (isNaN(scheduledDate.getTime())) {
+      return res.status(400).json({ error: "تاريخ البث المباشر غير صالح." });
+    }
+
+    if (scheduledDate < minAllowedTime) {
+      return res.status(400).json({ error: "عفواً، موعد البث المباشر يجب أن يكون في المستقبل وبعد الوقت الحالي بساعة واحدة على الأقل." });
+    }
+
     try {
       const sessionRepository = AppDataSource.getRepository(Session);
       const userRepository = AppDataSource.getRepository(User);
@@ -56,7 +68,7 @@ export class SessionController {
       session.title = title;
       session.description = description;
       session.teacher = teacher;
-      session.scheduledAt = new Date(scheduledAt);
+      session.scheduledAt = scheduledDate;
       session.duration = duration || 60;
       session.status = "scheduled";
 
@@ -97,7 +109,20 @@ export class SessionController {
 
       if (title) session.title = title;
       if (description !== undefined) session.description = description;
-      if (scheduledAt) session.scheduledAt = new Date(scheduledAt);
+      if (scheduledAt) {
+        const scheduledDate = new Date(scheduledAt);
+        const now = new Date();
+        const minAllowedTime = new Date(now.getTime() + 59 * 60 * 1000);
+
+        if (isNaN(scheduledDate.getTime())) {
+          return res.status(400).json({ error: "تاريخ البث المباشر غير صالح." });
+        }
+
+        if (scheduledDate < minAllowedTime) {
+          return res.status(400).json({ error: "عفواً، موعد البث المباشر يجب أن يكون في المستقبل وبعد الوقت الحالي بساعة واحدة على الأقل." });
+        }
+        session.scheduledAt = scheduledDate;
+      }
       if (duration) session.duration = Number(duration);
 
       if (courseId) {

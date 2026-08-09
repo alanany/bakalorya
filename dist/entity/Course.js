@@ -12,13 +12,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Course = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
+const Lesson_1 = require("./Lesson");
+const Enrollment_1 = require("./Enrollment");
 let Course = class Course {
     id;
     title;
     description;
     category;
     image;
+    degree;
+    meetingLink;
     teacher;
+    lessons;
+    enrollments;
     createdAt;
     updatedAt;
 };
@@ -44,9 +50,25 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "image", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Course.prototype, "degree", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Course.prototype, "meetingLink", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true, onDelete: "CASCADE" }),
     __metadata("design:type", User_1.User)
 ], Course.prototype, "teacher", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Lesson_1.Lesson, lesson => lesson.course, { cascade: true }),
+    __metadata("design:type", Array)
+], Course.prototype, "lessons", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Enrollment_1.Enrollment, enrollment => enrollment.course, { cascade: true }),
+    __metadata("design:type", Array)
+], Course.prototype, "enrollments", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

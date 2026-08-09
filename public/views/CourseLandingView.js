@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t } from "../app.js";
+import { apiFetch, state, showToast, t, showEnrollmentRequestedModal } from "../app.js";
 
 export default class CourseLandingView {
   constructor(container, courseId) {
@@ -192,7 +192,12 @@ export default class CourseLandingView {
           method: "POST",
           body: JSON.stringify({ courseId: this.course.id })
         });
-        showToast("Enrollment requested. Waiting for teacher approval.", "success");
+        showToast("تم تقديم طلب التسجيل بنجاح! في انتظار موافقة المعلم.", "success");
+        showEnrollmentRequestedModal({
+          courseTitle: this.course.title,
+          teacherName: this.course.teacher?.name,
+          courseImage: this.course.image
+        });
         await this.render(); // Re-render to show pending status
       } catch (err) {
         console.error("Enrollment error", err);

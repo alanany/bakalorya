@@ -20,6 +20,11 @@ let Lesson = class Lesson {
     duration;
     chapter;
     order;
+    photo;
+    notes;
+    resourceUrl;
+    resourceTitle;
+    questions;
     course;
     createdAt;
     updatedAt;
@@ -53,6 +58,26 @@ __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)
 ], Lesson.prototype, "order", void 0);
+__decorate([
+    (0, typeorm_1.Column)("text", { nullable: true }),
+    __metadata("design:type", String)
+], Lesson.prototype, "photo", void 0);
+__decorate([
+    (0, typeorm_1.Column)("text", { nullable: true }),
+    __metadata("design:type", String)
+], Lesson.prototype, "notes", void 0);
+__decorate([
+    (0, typeorm_1.Column)("text", { nullable: true }),
+    __metadata("design:type", String)
+], Lesson.prototype, "resourceUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)("text", { nullable: true }),
+    __metadata("design:type", String)
+], Lesson.prototype, "resourceTitle", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Array)
+], Lesson.prototype, "questions", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)

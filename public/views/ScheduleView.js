@@ -1,12 +1,12 @@
-import { apiFetch, state, showToast, t } from "../app.js";
+import { apiFetch, state, showToast, t, canJoinSession, validateSessionScheduledDate, getMinSessionDateTimeISO } from "../app.js";
 
 export default class ScheduleView {
   constructor(container) {
     this.container = container;
     this.sessions = [];
     this.courses = [];
-    this.sessionFilter = "weekly"; // Default to weekly timetable
-    
+    this.sessionFilter = "daily"; // Default to weekly timetable
+
     // Set current week start (Sunday)
     const now = new Date();
     this.currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
@@ -22,9 +22,9 @@ export default class ScheduleView {
             <h2 class="dashboard-section-title" style="font-size:2rem; margin:0;">
               <i data-lucide="calendar"></i> ${t("nav.schedule")}
             </h2>
-            ${state.user.role === 'teacher' || state.user.role === 'admin' ? 
-              `<button class="btn-primary" id="open-session-modal-btn"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>` : ''
-            }
+            ${state.user.role === 'teacher' || state.user.role === 'admin' ?
+          `<button class="btn-primary" id="open-session-modal-btn"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>` : ''
+        }
           </div>
           
           <div style="display:flex; align-items:center; gap:6px; margin-bottom:24px; flex-wrap:wrap; background:var(--bg-card); padding:8px 12px; border-radius:30px; border:1px solid var(--border-color); width:fit-content;">
@@ -93,7 +93,7 @@ export default class ScheduleView {
   async loadContent() {
     try {
       const allSessions = await apiFetch("/sessions");
-      
+
       if (state.user.role === "teacher") {
         this.sessions = (allSessions || []).filter(s => s.teacher?.id === state.user.id);
         this.courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id));
@@ -152,7 +152,7 @@ export default class ScheduleView {
 
   renderGridView(container) {
     const filtered = this.filterSessionsForGrid();
-    
+
     if (filtered.length === 0) {
       container.innerHTML = `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted); font-size:1.1rem; width:100%;">
         ${t(state.user.role === 'teacher' ? "teacher.noSessions" : "student.noSessions")}
@@ -170,7 +170,7 @@ export default class ScheduleView {
     const isLive = session.status === "live";
     const isCompleted = session.status === "completed";
     const date = new Date(session.scheduledAt);
-    const isSoon = !isLive && !isCompleted && (date.getTime() - Date.now() < 3 * 60 * 60 * 1000) && (date.getTime() - Date.now() > 0);
+    const isJoinable = isLive || canJoinSession(session);
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
 
@@ -187,13 +187,13 @@ export default class ScheduleView {
           </div>
         `;
       } else {
-        sessionAction = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="margin-top:16px; background:var(--success); box-shadow:0 4px 15px var(--success-glow); font-size:0.9rem; padding:10px; justify-content:center;"><i data-lucide="external-link"></i> Join Meeting</a>`;
+        sessionAction = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="margin-top:16px; background:var(--success); box-shadow:0 4px 15px var(--success-glow); font-size:0.9rem; padding:10px; justify-content:center;"><i data-lucide="external-link"></i> دخول البث 🎥</a>`;
       }
     } else if (isCompleted) {
       statusTag = `<span class="session-tag" style="background:var(--border-color); color:var(--text-muted); border-color:transparent;">Finished</span>`;
       sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:16px; font-size:0.9rem; padding:10px;" disabled>Ended</button>`;
     } else {
-      if (isSoon) statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info);">Starting Soon</span>`;
+      if (isJoinable) statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info);">Starting Soon</span>`;
       if (isTeacher) {
         sessionAction = `
           <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:16px;">
@@ -201,10 +201,10 @@ export default class ScheduleView {
           </div>
         `;
       } else {
-        if (isSoon) {
-          sessionAction = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-secondary session-action" style="border-color:var(--info); color:var(--info); margin-top:16px; font-size:0.9rem; padding:10px; justify-content:center;"><i data-lucide="external-link"></i> Enter Meeting</a>`;
+        if (isJoinable) {
+          sessionAction = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--primary); margin-top:16px; font-size:0.9rem; padding:10px; justify-content:center;"><i data-lucide="external-link"></i> دخول البث 🎥</a>`;
         } else {
-          sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:16px; font-size:0.9rem; padding:10px;" disabled>Starts ${formattedDate} @ ${formattedTime}</button>`;
+          sessionAction = `<button class="btn-secondary session-action restricted-join-btn" style="cursor:pointer; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.9;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> الانضمام (قبل الموعد بـ 30د)</button>`;
         }
       }
     }
@@ -235,10 +235,10 @@ export default class ScheduleView {
   renderTimetableView(container) {
     const weekEnd = new Date(this.currentWeekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
-    
+
     const locale = document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US';
     const rangeText = `${this.currentWeekStart.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}`;
-    
+
     let html = `
       <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:12px 24px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:24px; flex-wrap:wrap; gap:16px;">
         <div style="display:flex; gap:8px;">
@@ -258,7 +258,7 @@ export default class ScheduleView {
     for (let i = 0; i < 7; i++) {
       const dayDate = new Date(this.currentWeekStart);
       dayDate.setDate(dayDate.getDate() + i);
-      
+
       const isToday = dayDate.toDateString() === now.toDateString();
       const dayName = dayDate.toLocaleDateString(locale, { weekday: 'long' });
       const dayNum = dayDate.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
@@ -275,9 +275,9 @@ export default class ScheduleView {
             <div style="font-size:0.75rem; color:var(--text-muted);">${dayNum}</div>
           </div>
           <div style="padding:8px; flex-grow:1; display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden;">
-            ${daySessions.length === 0 ? `<div style="text-align:center; color:var(--text-muted); font-size:0.75rem; padding:10px 0;">-</div>` : 
-              daySessions.map(s => this.renderTimetableCard(s)).join("")
-            }
+            ${daySessions.length === 0 ? `<div style="text-align:center; color:var(--text-muted); font-size:0.75rem; padding:10px 0;">-</div>` :
+          daySessions.map(s => this.renderTimetableCard(s)).join("")
+        }
           </div>
         </div>
       `;
@@ -291,12 +291,12 @@ export default class ScheduleView {
       this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
       this.renderCurrentView();
     });
-    
+
     document.getElementById("next-week-btn")?.addEventListener("click", () => {
       this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
       this.renderCurrentView();
     });
-    
+
     document.getElementById("today-btn")?.addEventListener("click", () => {
       const now = new Date();
       this.currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
@@ -331,7 +331,7 @@ export default class ScheduleView {
     } else if (isLive && isTeacher) {
       actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Enter</a>`;
     } else if (isSoon && isTeacher) {
-       actionBtn = `<button class="btn-primary start-session-btn" data-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Start</button>`;
+      actionBtn = `<button class="btn-primary start-session-btn" data-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Start</button>`;
     }
 
     return `
@@ -345,72 +345,72 @@ export default class ScheduleView {
   }
 
   // --- Monthly View Logic ---
-  
+
   renderMonthlyCalendarView(container) {
     const locale = document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US';
     const now = new Date();
     // Default to current month for simplicity, or we could add month navigation
     const year = now.getFullYear();
     const month = now.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDay = firstDay.getDay(); // 0 (Sun) to 6 (Sat)
-    
+
     const monthName = firstDay.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
-    
+
     let html = `
       <div style="display:flex; justify-content:center; align-items:center; background:var(--bg-card); padding:12px 24px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:24px;">
         <div style="font-size:1.3rem; font-weight:700; color:var(--text-color);">${monthName}</div>
       </div>
       <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:4px; background:var(--border-color); border:1px solid var(--border-color); border-radius:8px; overflow:hidden;">
     `;
-    
+
     // Day Headers
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     days.forEach(d => {
       html += `<div style="background:var(--bg-card); padding:10px; text-align:center; font-weight:700; font-size:0.9rem;">${d}</div>`;
     });
-    
+
     // Empty cells before start of month
     for (let i = 0; i < startingDay; i++) {
       html += `<div style="background:var(--bg-app); min-height:100px;"></div>`;
     }
-    
+
     // Days
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDate = new Date(year, month, i);
       const isToday = currentDate.toDateString() === now.toDateString();
-      
+
       const daySessions = this.sessions.filter(s => {
         return new Date(s.scheduledAt).toDateString() === currentDate.toDateString();
       });
-      
+
       html += `
         <div style="background:var(--bg-card); min-height:100px; padding:8px; display:flex; flex-direction:column; border: ${isToday ? '2px solid var(--primary)' : 'none'};">
           <div style="text-align:right; font-weight:bold; color:${isToday ? 'var(--primary)' : 'var(--text-muted)'}; margin-bottom:4px;">${i}</div>
           <div style="display:flex; flex-direction:column; gap:4px;">
             ${daySessions.map(s => {
-              const sTime = new Date(s.scheduledAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-              return `<div style="background:var(--primary-glow); color:var(--primary); font-size:0.7rem; padding:4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.title}">
+        const sTime = new Date(s.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `<div style="background:var(--primary-glow); color:var(--primary); font-size:0.7rem; padding:4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.title}">
                 <b>${sTime}</b> ${s.title}
               </div>`;
-            }).join('')}
+      }).join('')}
           </div>
         </div>
       `;
     }
-    
+
     // Empty cells after end of month
     const totalCells = startingDay + daysInMonth;
     const remainder = 7 - (totalCells % 7);
     if (remainder < 7) {
       for (let i = 0; i < remainder; i++) {
-         html += `<div style="background:var(--bg-app); min-height:100px;"></div>`;
+        html += `<div style="background:var(--bg-app); min-height:100px;"></div>`;
       }
     }
-    
+
     html += `</div>`;
     container.innerHTML = html;
   }
@@ -430,7 +430,13 @@ export default class ScheduleView {
     });
 
     const sessionModal = document.getElementById("session-modal");
-    document.getElementById("open-session-modal-btn")?.addEventListener("click", () => { sessionModal.style.display = "flex"; });
+    document.getElementById("open-session-modal-btn")?.addEventListener("click", () => {
+      const sessionDateInput = document.getElementById("session-date");
+      if (sessionDateInput) {
+        sessionDateInput.min = getMinSessionDateTimeISO();
+      }
+      sessionModal.style.display = "flex"; 
+    });
     document.getElementById("close-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
     document.getElementById("cancel-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
 
@@ -441,12 +447,21 @@ export default class ScheduleView {
       const description = document.getElementById("session-desc").value;
       const scheduledAt = document.getElementById("session-date").value;
       const duration = parseInt(document.getElementById("session-duration").value);
+
+      const validation = validateSessionScheduledDate(scheduledAt);
+      if (!validation.valid) {
+        showToast(validation.errorMsg, "error");
+        return;
+      }
+
       try {
         await apiFetch("/sessions", { method: "POST", body: JSON.stringify({ title, courseId, description, scheduledAt, duration }) });
         showToast(t("toast.sessionScheduled"), "success");
         sessionModal.style.display = "none";
         await this.loadContent();
-      } catch (err) {}
+      } catch (err) {
+        showToast(err.message || "عفواً، لا يمكنك اختيار تاريخ سابق أو قريب جداً! يجب أن يكون موعد البث المباشر بعد الوقت الحالي بساعة واحدة على الأقل. ❌", "error");
+      }
     });
   }
 
@@ -458,7 +473,7 @@ export default class ScheduleView {
           await apiFetch(`/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "live" }) });
           showToast(t("toast.sessionLive") || "Session Live", "success");
           await this.loadContent();
-        } catch (err) {}
+        } catch (err) { }
       });
     });
 
@@ -469,10 +484,10 @@ export default class ScheduleView {
           await apiFetch(`/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "completed" }) });
           showToast(t("toast.sessionEnded") || "Session Ended", "info");
           await this.loadContent();
-        } catch (err) {}
+        } catch (err) { }
       });
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

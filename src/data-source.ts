@@ -17,6 +17,9 @@ import { TestAttempt } from "./entity/TestAttempt";
 import { Blog } from "./entity/Blog";
 import { Category } from "./entity/Category";
 import { TeacherApplication } from "./entity/TeacherApplication";
+import { QuestionAnswer } from "./entity/QuestionAnswer";
+import { Notification } from "./entity/Notification";
+import { Review } from "./entity/Review";
 
 const dbType = (process.env.DB_TYPE || "sqlite").toLowerCase() as "mysql" | "sqlite" | "postgres";
 
@@ -35,7 +38,8 @@ if (dbType === "mysql" || dbType === "postgres") {
     entities: [
       User, Course, Lesson, Enrollment, Session,
       Assignment, AssignmentSubmission, Resource, Test,
-      TestQuestion, TestAttempt, Blog, Category, TeacherApplication
+      TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
+      QuestionAnswer, Notification, Review
     ],
   };
 } else {
@@ -47,7 +51,8 @@ if (dbType === "mysql" || dbType === "postgres") {
     entities: [
       User, Course, Lesson, Enrollment, Session,
       Assignment, AssignmentSubmission, Resource, Test,
-      TestQuestion, TestAttempt, Blog, Category, TeacherApplication
+      TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
+      QuestionAnswer, Notification, Review
     ],
   };
 }

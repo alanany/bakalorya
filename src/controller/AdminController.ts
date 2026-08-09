@@ -7,6 +7,7 @@ import { Session } from "../entity/Session";
 import { Enrollment } from "../entity/Enrollment";
 import { Lesson } from "../entity/Lesson";
 import { AuthRequest } from "../middleware/auth";
+import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
 
 export class AdminController {
 
@@ -87,9 +88,17 @@ export class AdminController {
       });
 
       await userRepo.save(user);
+
+      let whatsappNotification: any = null;
+      if (user.phone) {
+        const msg = buildRegistrationSuccessMessage(user.name, user.role);
+        whatsappNotification = createWhatsAppNotificationPayload(user.phone, msg);
+      }
+
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, education: user.education, avatar: user.avatar, createdAt: user.createdAt }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, education: user.education, avatar: user.avatar, createdAt: user.createdAt },
+        whatsappNotification
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to create user." });

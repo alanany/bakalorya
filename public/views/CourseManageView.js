@@ -354,51 +354,119 @@ export default class CourseManageView {
 
       <!-- Add/Edit Lesson Modal -->
       <div class="modal-overlay" id="lesson-modal" style="display:none;">
-        <div class="modal-content" style="max-width:520px;">
-          <div class="modal-header">
+        <div class="modal-content" style="max-width:680px; width:92%; max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+          <div class="modal-header" style="padding:18px 24px; border-bottom:1px solid var(--border-color);">
             <h3 class="modal-title" id="lesson-modal-title" style="font-size:1.15rem; font-weight:800;">إضافة درس جديد</h3>
             <span class="modal-close-btn" id="close-lesson-modal">&times;</span>
           </div>
-          <form id="lesson-form">
+          
+          <!-- Sub-tabs bar -->
+          <div style="display:flex; border-bottom:1px solid var(--border-color); background:var(--bg-app); padding:4px 16px 0 16px; gap:8px; overflow-x:auto;">
+            <button type="button" class="lesson-tab-btn active" data-tab="details" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--primary); border-bottom:2px solid var(--primary);">
+              📝 التفاصيل والوصف
+            </button>
+            <button type="button" class="lesson-tab-btn" data-tab="notes" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+              📌 الملاحظات (Notes)
+            </button>
+            <button type="button" class="lesson-tab-btn" data-tab="resource" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+              📎 المورد المرفق
+            </button>
+            <button type="button" class="lesson-tab-btn" data-tab="questions" style="padding:10px 16px; border:none; background:none; font-weight:700; font-size:0.88rem; cursor:pointer; color:var(--text-muted);">
+              ❓ أسئلة الدرس
+            </button>
+          </div>
+
+          <form id="lesson-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden; margin:0;">
             <input type="hidden" id="lesson-id">
-            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:20px;">
-              <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">الوحدة الدراسية (Unit / Chapter) <span style="color:var(--error);">*</span></label>
-                <select id="lesson-chapter-select" class="form-select" style="padding:10px 14px; margin-bottom:6px;">
-                  ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join("")}
-                  <option value="__NEW__">➕ إضافة وحدة دراسية جديدة...</option>
-                </select>
-                <input type="text" id="lesson-chapter-custom" class="form-input" placeholder="اكتب اسم الوحدة الجديدة هنا..." style="display:none; padding:10px 14px;">
-              </div>
-
-              <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان الدرس <span style="color:var(--error);">*</span></label>
-                <input type="text" id="lesson-title" class="form-input" placeholder="مثال: الدرس 1 - الاستمرارية والنهايات" required style="padding:10px 14px;">
-              </div>
-
-              <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (YouTube / Vimeo / MP4)</label>
-                <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=..." style="padding:10px 14px;">
-              </div>
-
-              <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">صورة أو ملخص الدرس المرفق (Lesson Photo / Document Summary)</label>
-                <input type="text" id="lesson-photo-url" class="form-input" placeholder="رابط صورة أو ملخص الدرس (https://...)" style="padding:8px 12px; margin-bottom:6px; font-size:0.88rem;">
-                <input type="file" id="lesson-photo-file" class="form-input" accept="image/*" style="padding:8px 12px; font-size:0.85rem;">
-              </div>
-
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            
+            <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- Tab 1: Details -->
+              <div class="lesson-tab-content" id="lesson-tab-details" style="display:flex; flex-direction:column; gap:14px;">
                 <div class="form-group">
-                  <label style="font-weight:700; margin-bottom:6px; display:block;">مدة الدرس (بالدقائق)</label>
-                  <input type="number" id="lesson-duration" class="form-input" value="20" style="padding:10px 14px;">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">الوحدة الدراسية (Unit / Chapter) <span style="color:var(--error);">*</span></label>
+                  <select id="lesson-chapter-select" class="form-select" style="padding:10px 14px; margin-bottom:6px;">
+                    ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join("")}
+                    <option value="__NEW__">➕ إضافة وحدة دراسية جديدة...</option>
+                  </select>
+                  <input type="text" id="lesson-chapter-custom" class="form-input" placeholder="اكتب اسم الوحدة الجديدة هنا..." style="display:none; padding:10px 14px;">
+                </div>
+
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان الدرس <span style="color:var(--error);">*</span></label>
+                  <input type="text" id="lesson-title" class="form-input" placeholder="مثال: الدرس 1 - الاستمرارية والنهايات" required style="padding:10px 14px;">
+                </div>
+
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (YouTube / Vimeo / MP4) <span style="color:var(--error);">*</span></label>
+                  <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=..." required style="padding:10px 14px;">
+                </div>
+
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">شرح وتفاصيل الدرس (Lesson Details & Description)</label>
+                  <textarea id="lesson-desc" class="form-input" rows="3" placeholder="أدخل ملخص وفكرة هذا الدرس..." style="padding:10px 14px; resize:vertical; font-family:inherit;"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">صورة أو ملخص الدرس المرفق (Photo / Summary Image)</label>
+                  <input type="text" id="lesson-photo-url" class="form-input" placeholder="رابط صورة الملخص (https://...)" style="padding:8px 12px; margin-bottom:6px; font-size:0.88rem;">
+                  <input type="file" id="lesson-photo-file" class="form-input" accept="image/*" style="padding:8px 12px; font-size:0.85rem;">
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <div class="form-group">
+                    <label style="font-weight:700; margin-bottom:6px; display:block;">مدة الدرس (بالدقائق)</label>
+                    <input type="text" id="lesson-duration" class="form-input" value="20:00" style="padding:10px 14px;">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-weight:700; margin-bottom:6px; display:block;">ترتيب الدرس داخل الوحدة</label>
+                    <input type="number" id="lesson-order" class="form-input" value="1" style="padding:10px 14px;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: Notes -->
+              <div class="lesson-tab-content" id="lesson-tab-notes" style="display:none; flex-direction:column; gap:14px;">
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">ملاحظات المعلم للدرس (Teacher Notes)</label>
+                  <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:8px;">سيتم عرض هذه الملاحظات للطلاب كإرشادات ونقاط استذكار سريعة لهذا الدرس.</p>
+                  <textarea id="lesson-notes" class="form-input" rows="6" placeholder="اكتب أهم القوانين، الإرشادات أو التنبيهات الموجهة للطلاب في هذا الدرس..." style="padding:12px 14px; font-family:inherit; resize:vertical;"></textarea>
+                </div>
+              </div>
+
+              <!-- Tab 3: Resource -->
+              <div class="lesson-tab-content" id="lesson-tab-resource" style="display:none; flex-direction:column; gap:14px;">
+                <div class="form-group">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان المورد المرفق (Resource Title)</label>
+                  <input type="text" id="lesson-resource-title" class="form-input" placeholder="مثال: ملخص PDF للدرس الأول أو كراس التمارين" style="padding:10px 14px;">
                 </div>
                 <div class="form-group">
-                  <label style="font-weight:700; margin-bottom:6px; display:block;">ترتيب الدرس داخل الوحدة</label>
-                  <input type="number" id="lesson-order" class="form-input" value="1" style="padding:10px 14px;">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">رابط الملف المرفق (Resource URL - PDF / Drive)</label>
+                  <input type="url" id="lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
+                  <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">يستطيع الطالب فتح وتحميل الملف مباشرة من صفحة مشغل الدرس.</p>
                 </div>
               </div>
+
+              <!-- Tab 4: Questions -->
+              <div class="lesson-tab-content" id="lesson-tab-questions" style="display:none; flex-direction:column; gap:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div>
+                    <h4 style="font-weight:800; font-size:0.95rem; margin:0;">أسئلة واختبار الدرس الفوري</h4>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin:2px 0 0 0;">أنشئ أسئلة اختيار من متعدد ليختبر الطالب فهمه للدرس.</p>
+                  </div>
+                  <button type="button" id="add-lesson-question-btn" class="btn-secondary" style="font-size:0.82rem; padding:6px 14px; font-weight:700; border-color:var(--primary); color:var(--primary);">
+                    ➕ إضافة سؤال
+                  </button>
+                </div>
+
+                <div id="lesson-questions-list" style="display:flex; flex-direction:column; gap:16px;">
+                  <!-- Dynamic questions list -->
+                </div>
+              </div>
+
             </div>
-            <div class="modal-footer" style="padding:14px 20px;">
+
+            <div class="modal-footer" style="padding:14px 24px; border-top:1px solid var(--border-color); background:var(--bg-card);">
               <button type="button" class="btn-secondary" id="cancel-lesson-modal">إلغاء</button>
               <button type="submit" class="btn-primary" style="font-weight:800;">
                 <i data-lucide="check"></i> حفظ الدرس
@@ -477,12 +545,54 @@ export default class CourseManageView {
         }
       });
 
+      // Sub-tab toggling in Lesson Modal
+      this.container.querySelectorAll(".lesson-tab-btn").forEach(tabBtn => {
+        tabBtn.addEventListener("click", () => {
+          this.container.querySelectorAll(".lesson-tab-btn").forEach(b => {
+            b.classList.remove("active");
+            b.style.color = "var(--text-muted)";
+            b.style.borderBottom = "none";
+          });
+          tabBtn.classList.add("active");
+          tabBtn.style.color = "var(--primary)";
+          tabBtn.style.borderBottom = "2px solid var(--primary)";
+
+          const targetTab = tabBtn.getAttribute("data-tab");
+          this.container.querySelectorAll(".lesson-tab-content").forEach(c => c.style.display = "none");
+          const activeContent = document.getElementById(`lesson-tab-${targetTab}`);
+          if (activeContent) activeContent.style.display = "flex";
+        });
+      });
+
+      const questionsContainer = document.getElementById("lesson-questions-list");
+      this.editingLessonQuestions = [];
+
+      document.getElementById("add-lesson-question-btn")?.addEventListener("click", () => {
+        if (!this.editingLessonQuestions) this.editingLessonQuestions = [];
+        this.editingLessonQuestions.push({
+          id: Date.now().toString(),
+          questionText: "",
+          options: ["", "", "", ""],
+          correctAnswer: "0",
+          explanation: ""
+        });
+        this.renderQuestionItemsInModal(questionsContainer);
+      });
+
+      const resetLessonModalTabs = () => {
+        const firstTab = this.container.querySelector('.lesson-tab-btn[data-tab="details"]');
+        if (firstTab) firstTab.click();
+      };
+
       // Add Lesson Modal Open (General)
       this.container.querySelectorAll(".open-add-lesson-modal-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           document.getElementById("lesson-modal-title").textContent = "إضافة درس جديد";
           document.getElementById("lesson-id").value = "";
           document.getElementById("lesson-form").reset();
+          this.editingLessonQuestions = [];
+          this.renderQuestionItemsInModal(questionsContainer);
+          resetLessonModalTabs();
           if (customChapterInput) customChapterInput.style.display = "none";
           if (lessonModal) lessonModal.style.display = "flex";
         });
@@ -495,6 +605,9 @@ export default class CourseManageView {
           document.getElementById("lesson-modal-title").textContent = `إضافة درس إلى: ${targetUnit}`;
           document.getElementById("lesson-id").value = "";
           document.getElementById("lesson-form").reset();
+          this.editingLessonQuestions = [];
+          this.renderQuestionItemsInModal(questionsContainer);
+          resetLessonModalTabs();
           if (chapterSelect && targetUnit) {
             chapterSelect.value = targetUnit;
           }
@@ -532,8 +645,17 @@ export default class CourseManageView {
             document.getElementById("lesson-title").value = lesson.title || "";
             document.getElementById("lesson-video").value = lesson.videoUrl || "";
             document.getElementById("lesson-photo-url").value = lesson.photo || "";
-            document.getElementById("lesson-duration").value = lesson.duration || 15;
+            document.getElementById("lesson-duration").value = lesson.duration || "20:00";
             document.getElementById("lesson-order").value = lesson.order || 1;
+            document.getElementById("lesson-desc").value = lesson.description || "";
+            document.getElementById("lesson-notes").value = lesson.notes || "";
+            document.getElementById("lesson-resource-title").value = lesson.resourceTitle || "";
+            document.getElementById("lesson-resource-url").value = lesson.resourceUrl || "";
+
+            this.editingLessonQuestions = Array.isArray(lesson.questions) ? [...lesson.questions] : [];
+            this.renderQuestionItemsInModal(questionsContainer);
+
+            resetLessonModalTabs();
             if (lessonModal) lessonModal.style.display = "flex";
           }
         });
@@ -585,13 +707,21 @@ export default class CourseManageView {
           }
         }
 
+        // Clean questions array
+        const validQuestions = (this.editingLessonQuestions || []).filter(q => q.questionText && q.questionText.trim().length > 0);
+
         const payload = {
           chapter: selectedChapter,
           title: document.getElementById("lesson-title").value.trim(),
           videoUrl: document.getElementById("lesson-video").value.trim(),
           photo: photoUrl,
-          duration: parseInt(document.getElementById("lesson-duration").value) || 15,
-          order: parseInt(document.getElementById("lesson-order").value) || 1
+          duration: document.getElementById("lesson-duration").value.trim() || "20:00",
+          order: parseInt(document.getElementById("lesson-order").value) || 1,
+          description: document.getElementById("lesson-desc").value.trim() || null,
+          notes: document.getElementById("lesson-notes").value.trim() || null,
+          resourceTitle: document.getElementById("lesson-resource-title").value.trim() || null,
+          resourceUrl: document.getElementById("lesson-resource-url").value.trim() || null,
+          questions: validQuestions
         };
 
         try {
@@ -727,6 +857,102 @@ export default class CourseManageView {
         }
       });
     }
+  }
+
+  renderQuestionItemsInModal(questionsContainer) {
+    if (!questionsContainer) return;
+    if (!this.editingLessonQuestions) this.editingLessonQuestions = [];
+
+    if (this.editingLessonQuestions.length === 0) {
+      questionsContainer.innerHTML = `
+        <div style="text-align:center; padding:20px; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:10px; font-size:0.85rem;">
+          لا توجد أسئلة مضافة حتى الآن. اضغط على "إضافة سؤال" لبدء إضافة الأسئلة لهذا الدرس.
+        </div>
+      `;
+      return;
+    }
+
+    questionsContainer.innerHTML = this.editingLessonQuestions.map((q, idx) => `
+      <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:800; font-size:0.85rem; color:var(--primary);">سؤال ${idx + 1}</span>
+          <button type="button" class="remove-question-btn" data-index="${idx}" style="background:none; border:none; color:var(--error); cursor:pointer; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i> حذف السؤال
+          </button>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:0.8rem; font-weight:700; display:block; margin-bottom:4px;">نص السؤال</label>
+          <input type="text" class="form-input q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;" required>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="2" placeholder="الخيار (ج)" value="${q.options?.[2] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="3" placeholder="الخيار (د)" value="${q.options?.[3] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:0.78rem; font-weight:700; display:block; margin-bottom:4px;">الإجابة الصحيحة</label>
+            <select class="form-select q-correct-select" data-index="${idx}" style="padding:6px 10px; font-size:0.82rem;">
+              <option value="0" ${q.correctAnswer === '0' || q.correctAnswer === q.options?.[0] ? 'selected' : ''}>الخيار (أ)</option>
+              <option value="1" ${q.correctAnswer === '1' || q.correctAnswer === q.options?.[1] ? 'selected' : ''}>الخيار (ب)</option>
+              <option value="2" ${q.correctAnswer === '2' || q.correctAnswer === q.options?.[2] ? 'selected' : ''}>الخيار (ج)</option>
+              <option value="3" ${q.correctAnswer === '3' || q.correctAnswer === q.options?.[3] ? 'selected' : ''}>الخيار (د)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem; font-weight:700; display:block; margin-bottom:4px;">شرح الإجابة (توضيح اختيار الطالب)</label>
+            <input type="text" class="form-input q-explanation-input" data-index="${idx}" placeholder="سبب وتفسير الإجابة الصحيحة..." value="${q.explanation || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Bind inputs changes
+    questionsContainer.querySelectorAll(".q-text-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.editingLessonQuestions[i]) this.editingLessonQuestions[i].questionText = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".q-opt-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        const optIdx = parseInt(e.target.getAttribute("data-opt"));
+        if (this.editingLessonQuestions[i]) {
+          if (!this.editingLessonQuestions[i].options) this.editingLessonQuestions[i].options = ["", "", "", ""];
+          this.editingLessonQuestions[i].options[optIdx] = e.target.value;
+        }
+      });
+    });
+
+    questionsContainer.querySelectorAll(".q-correct-select").forEach(select => {
+      select.addEventListener("change", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.editingLessonQuestions[i]) this.editingLessonQuestions[i].correctAnswer = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".q-explanation-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const i = parseInt(e.target.getAttribute("data-index"));
+        if (this.editingLessonQuestions[i]) this.editingLessonQuestions[i].explanation = e.target.value;
+      });
+    });
+
+    questionsContainer.querySelectorAll(".remove-question-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const i = parseInt(e.currentTarget.getAttribute("data-index"));
+        this.editingLessonQuestions.splice(i, 1);
+        this.renderQuestionItemsInModal(questionsContainer);
+      });
+    });
   }
 
   onDestroy() {}

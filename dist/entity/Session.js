@@ -12,11 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Session = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
+const Course_1 = require("./Course");
 let Session = class Session {
     id;
     title;
     description;
     teacher;
+    course;
     scheduledAt;
     duration; // in minutes
     status;
@@ -40,6 +42,10 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true, onDelete: "CASCADE" }),
     __metadata("design:type", User_1.User)
 ], Session.prototype, "teacher", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, nullable: true, onDelete: "CASCADE" }),
+    __metadata("design:type", Course_1.Course)
+], Session.prototype, "course", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Date)

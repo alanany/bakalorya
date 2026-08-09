@@ -31,6 +31,22 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 }
 
+export function optionalAuthMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return next();
+
+  const token = authHeader.split(" ")[1];
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.user = decoded;
+  } catch (err) {
+    // Ignore invalid token for optional auth
+  }
+  next();
+}
+
 export function requireRole(roles: string[]) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {

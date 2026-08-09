@@ -6,6 +6,7 @@ const Enrollment_1 = require("../entity/Enrollment");
 const Course_1 = require("../entity/Course");
 const Lesson_1 = require("../entity/Lesson");
 const User_1 = require("../entity/User");
+const NotificationController_1 = require("./NotificationController");
 class StudentController {
     static async getEnrollments(req, res) {
         try {
@@ -14,7 +15,9 @@ class StudentController {
                 where: { student: { id: req.user.id } },
                 relations: ["course", "course.teacher"]
             });
-            return res.status(200).json(enrollments);
+            // Filter out rejected or banned enrollments so they do not clutter student dashboard
+            const activeOrPending = (enrollments || []).filter(e => e.status !== "rejected" && e.status !== "banned");
+            return res.status(200).json(activeOrPending);
         }
         catch (err) {
             return res.status(500).json({ error: "Internal server error." });
@@ -29,16 +32,10 @@ class StudentController {
             const enrollmentRepository = data_source_1.AppDataSource.getRepository(Enrollment_1.Enrollment);
             const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
             const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
-            const existing = await enrollmentRepository.findOne({
-                where: {
-                    student: { id: req.user.id },
-                    course: { id: courseId }
-                }
+            const course = await courseRepository.findOne({
+                where: { id: courseId },
+                relations: ["teacher"]
             });
-            if (existing) {
-                return res.status(200).json(existing);
-            }
-            const course = await courseRepository.findOneBy({ id: courseId });
             if (!course) {
                 return res.status(404).json({ error: "Course not found." });
             }
@@ -46,15 +43,38 @@ class StudentController {
             if (!student) {
                 return res.status(404).json({ error: "Student profile not found." });
             }
-            const enrollment = new Enrollment_1.Enrollment();
-            enrollment.student = student;
-            enrollment.course = course;
-            enrollment.progress = 0;
-            enrollment.completedLessons = [];
-            await enrollmentRepository.save(enrollment);
+            let enrollment = await enrollmentRepository.findOne({
+                where: {
+                    student: { id: req.user.id },
+                    course: { id: courseId }
+                }
+            });
+            if (enrollment) {
+                if (enrollment.status === "rejected") {
+                    enrollment.status = "pending";
+                    await enrollmentRepository.save(enrollment);
+                }
+                else {
+                    return res.status(200).json(enrollment);
+                }
+            }
+            else {
+                enrollment = new Enrollment_1.Enrollment();
+                enrollment.student = student;
+                enrollment.course = course;
+                enrollment.progress = 0;
+                enrollment.status = "pending";
+                enrollment.completedLessons = [];
+                await enrollmentRepository.save(enrollment);
+            }
+            // Notify teacher about new enrollment request
+            if (course.teacher) {
+                await NotificationController_1.NotificationController.createNotification(course.teacher.id, "طلب تسجيل جديد 📩", `قدّم الطالب "${student.name}" طلباً للانضمام إلى دورة "${course.title}".`, "info", "#enrollment-requests");
+            }
             return res.status(201).json(enrollment);
         }
         catch (err) {
+            console.error(err);
             return res.status(500).json({ error: "Internal server error." });
         }
     }

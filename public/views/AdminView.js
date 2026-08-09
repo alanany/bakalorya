@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML } from "../app.js";
+import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse } from "../app.js";
 
 export default class AdminView {
   constructor(container) {
@@ -26,43 +26,44 @@ export default class AdminView {
           position: relative;
         }
         .admin-sidebar {
-          width: 260px;
-          min-width: 260px;
-          background: linear-gradient(180deg, #0a0f1e 0%, #0d1530 50%, #0a0e1c 100%);
-          border-right: 1px solid rgba(99, 102, 241, 0.15);
+          width: 270px;
+          min-width: 270px;
+          background: var(--bg-card);
+          backdrop-filter: blur(12px);
+          border-inline-end: 1px solid var(--border-color);
           display: flex;
           flex-direction: column;
           overflow: hidden;
           z-index: 10;
-          box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+          box-shadow: 4px 0 24px rgba(0,0,0,0.06);
         }
         .admin-sidebar-brand {
-          padding: 28px 24px 20px;
-          border-bottom: 1px solid rgba(255,255,255,0.07);
+          padding: 24px 20px 18px;
+          border-bottom: 1px solid var(--border-color);
         }
         .admin-sidebar-brand .brand-badge {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2));
-          border: 1px solid rgba(168,85,247,0.35);
-          border-radius: 10px;
+          background: var(--primary-glow);
+          border: 1px solid var(--border-focus);
+          border-radius: 12px;
           padding: 6px 14px;
           font-size: 0.72rem;
           font-weight: 800;
-          letter-spacing: 1.5px;
-          color: #a78bfa;
+          letter-spacing: 0.5px;
+          color: var(--primary);
           text-transform: uppercase;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .admin-sidebar-brand h3 {
-          color: #fff;
+          color: var(--text-main);
           font-size: 1.05rem;
-          font-weight: 700;
+          font-weight: 800;
           margin: 0 0 3px 0;
         }
         .admin-sidebar-brand p {
-          color: rgba(255,255,255,0.4);
+          color: var(--text-muted);
           font-size: 0.75rem;
           margin: 0;
         }
@@ -74,13 +75,14 @@ export default class AdminView {
         }
         .admin-nav::-webkit-scrollbar { display: none; }
         .admin-nav-section {
-          font-size: 0.65rem;
+          font-size: 0.68rem;
           font-weight: 800;
-          letter-spacing: 1.5px;
-          color: rgba(255,255,255,0.25);
+          letter-spacing: 1px;
+          color: var(--text-muted);
           text-transform: uppercase;
-          padding: 12px 12px 6px;
+          padding: 14px 12px 6px;
           margin-top: 4px;
+          opacity: 0.75;
         }
         .admin-nav-btn {
           display: flex;
@@ -88,78 +90,86 @@ export default class AdminView {
           gap: 12px;
           width: 100%;
           padding: 11px 14px;
-          border: none;
+          border: 1px solid transparent;
           background: transparent;
-          border-radius: 10px;
+          border-radius: 12px;
           cursor: pointer;
-          font-size: 0.87rem;
-          font-weight: 500;
-          color: rgba(255,255,255,0.55);
+          font-size: 0.88rem;
+          font-weight: 600;
+          color: var(--text-muted);
           text-align: start;
           transition: all 0.2s ease;
-          margin-bottom: 2px;
+          margin-bottom: 3px;
           position: relative;
         }
         .admin-nav-btn:hover {
-          background: rgba(255,255,255,0.06);
-          color: rgba(255,255,255,0.9);
+          background: var(--bg-app);
+          color: var(--text-main);
         }
         .admin-nav-btn.active {
-          background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.2));
-          color: #e0d7ff;
-          font-weight: 700;
-          border: 1px solid rgba(168,85,247,0.3);
+          background: var(--primary-glow);
+          color: var(--primary);
+          font-weight: 800;
+          border: 1px solid var(--border-focus);
+          box-shadow: 0 4px 15px var(--primary-glow);
         }
         .admin-nav-btn.active::before {
           content: '';
           position: absolute;
-          right: 0;
+          inset-inline-start: 0;
           top: 20%;
           height: 60%;
-          width: 3px;
-          background: linear-gradient(180deg, #818cf8, #a855f7);
-          border-radius: 3px 0 0 3px;
+          width: 4px;
+          background: var(--primary);
+          border-radius: 0 4px 4px 0;
         }
         .admin-nav-btn i, .admin-nav-btn svg {
-          width: 17px; height: 17px;
+          width: 18px; height: 18px;
           flex-shrink: 0;
         }
         .admin-nav-badge {
-          margin-left: auto;
-          background: rgba(99,102,241,0.25);
-          color: #a78bfa;
-          font-size: 0.65rem;
+          margin-inline-start: auto;
+          background: var(--bg-app);
+          color: var(--primary);
+          font-size: 0.7rem;
           font-weight: 800;
-          padding: 2px 7px;
+          padding: 2px 8px;
           border-radius: 20px;
+          border: 1px solid var(--border-color);
           min-width: 22px;
           text-align: center;
         }
+        .admin-nav-btn.active .admin-nav-badge {
+          background: var(--primary);
+          color: #ffffff;
+          border-color: transparent;
+        }
         .admin-sidebar-footer {
           padding: 16px 20px;
-          border-top: 1px solid rgba(255,255,255,0.07);
+          border-top: 1px solid var(--border-color);
+          background: var(--bg-app);
         }
         .admin-sidebar-user {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
         .admin-sidebar-user img {
-          width: 36px; height: 36px;
-          border-radius: 10px;
-          border: 2px solid rgba(168,85,247,0.4);
+          width: 38px; height: 38px;
+          border-radius: 50%;
+          border: 2px solid var(--primary);
           object-fit: cover;
         }
         .admin-sidebar-user .user-info p { margin: 0; }
         .admin-sidebar-user .user-name {
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: #e0d7ff;
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: var(--text-main);
         }
         .admin-sidebar-user .user-role {
-          font-size: 0.68rem;
-          color: #a78bfa;
-          font-weight: 600;
+          font-size: 0.7rem;
+          color: var(--primary);
+          font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
@@ -217,15 +227,6 @@ export default class AdminView {
       <div class="admin-shell">
         <!-- ── SIDEBAR ── -->
         <aside class="admin-sidebar">
-          <div class="admin-sidebar-brand">
-            <img src="assets/logo.png" alt="باكالوريا" style="height:110px; object-fit:contain; background:#ffffff; border-radius:16px; padding:10px 20px; margin-bottom:14px; display:block; margin-left:auto; margin-right:auto; box-shadow:0 6px 20px rgba(0,0,0,0.2);">
-            <div class="brand-badge" style="justify-content:center;">
-              <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
-              لوحة تحكم المشرف
-            </div>
-            <p style="text-align:center;">${now}</p>
-          </div>
-
           <nav class="admin-nav">
             <div class="admin-nav-section">لوحة التحكم</div>
             <button class="admin-nav-btn ${this.activeTab === "stats" ? "active" : ""}" data-tab="stats">
@@ -477,43 +478,84 @@ export default class AdminView {
     const categories = this.categories || [];
 
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
         <div>
-          <h3 style="font-weight:800; margin:0 0 4px 0; font-size:1.3rem;">تصنيفات المنصة المعتمدة (${categories.length})</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">إدارة التصنيفات والتخصصات الرسمية المتاحة لجميع المعلمين في المنصة</p>
+          <h3 style="font-weight:800; margin:0 0 4px 0; font-size:1.3rem; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="layers" style="color:var(--primary);"></i> تصنيفات المنصة المعتمدة (${categories.length})
+          </h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">إدارة وتعديل الأقسام والتخصصات الرسمية المتاحة لجميع المعلمين والطلاب في المنصة</p>
         </div>
-        <button class="btn-primary" id="open-create-category-btn" style="font-size:0.85rem;padding:10px 18px;background:linear-gradient(135deg,#a855f7,#0056D2); border:none; display:flex; align-items:center; gap:8px;">
+        <button class="btn-primary" id="open-create-category-btn" style="font-size:0.88rem; padding:10px 20px; border-radius:30px; background:linear-gradient(135deg,#a855f7,#0056D2); border:none; display:flex; align-items:center; gap:8px; font-weight:800;">
           <i data-lucide="plus-circle"></i> إضافة تصنيف جديد
         </button>
       </div>
 
-      ${categories.length === 0
-        ? `<div class="glass-card" style="text-align:center;padding:50px;color:var(--text-muted);">لا توجد تصنيفات معرفة بعد. انقر فوق "إضافة تصنيف جديد" لإضافة أول تصنيف.</div>`
-        : `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
-            ${categories.map(cat => `
-              <div class="glass-card" style="border-radius:16px; border:1px solid var(--border-color); padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
-                <div>
-                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                    <div style="width:40px; height:40px; border-radius:10px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
-                      <i data-lucide="${cat.icon || 'layers'}" style="width:20px; height:20px;"></i>
-                    </div>
-                    <span style="font-size:0.72rem; color:var(--text-muted);">${new Date(cat.createdAt).toLocaleDateString("ar-DZ")}</span>
-                  </div>
-                  <h4 style="font-size:1.1rem; font-weight:800; color:var(--text-color); margin:0 0 6px 0;">${cat.name}</h4>
-                  <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin:0 0 16px 0;">${cat.description || 'تصنيف رسمي معتمد لدروس البكالوريا'}</p>
-                </div>
-                <div style="padding-top:12px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
-                  <button class="btn-secondary edit-category-btn" data-id="${cat.id}" style="flex:1; padding:6px; font-size:0.8rem; border-color:var(--primary); color:var(--primary); justify-content:center; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="edit-3" style="width:14px; height:14px;"></i> تعديل
-                  </button>
-                  <button class="btn-secondary delete-category-btn" data-id="${cat.id}" style="flex:1; padding:6px; font-size:0.8rem; border-color:var(--error); color:var(--error); justify-content:center; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="trash-2" style="width:14px; height:14px;"></i> حذف
-                  </button>
-                </div>
-              </div>
-            `).join("")}
-          </div>`
-      }
+      <div class="glass-card" style="padding:0; border-radius:20px; overflow:hidden; border:1px solid var(--border-color);">
+        ${categories.length === 0
+          ? `<div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+              <i data-lucide="layers" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
+              <h4 style="font-weight:700; margin-bottom:6px;">لا توجد تصنيفات معرفة بعد</h4>
+              <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">انقر فوق "إضافة تصنيف جديد" لإضافة أول تخصص رسمي بالمنصة.</p>
+            </div>`
+          : `<div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; text-align:start; font-size:0.88rem;">
+                <thead>
+                  <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
+                    <th style="padding:14px 20px; font-weight:800;">التصنيف والتخصص</th>
+                    <th style="padding:14px 16px; font-weight:800;">الوصف والشرح</th>
+                    <th style="padding:14px 16px; font-weight:800;">تاريخ الإنشاء</th>
+                    <th style="padding:14px 20px; font-weight:800; text-align:end;">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${categories.map(cat => `
+                    <tr style="border-bottom:1px solid var(--border-color); transition:background 0.15s ease;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                      <!-- Category Name & Icon -->
+                      <td style="padding:14px 20px; vertical-align:middle;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <div style="width:42px; height:42px; border-radius:12px; background:rgba(168,85,247,0.12); color:#a855f7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i data-lucide="${cat.icon || 'layers'}" style="width:22px; height:22px;"></i>
+                          </div>
+                          <div>
+                            <div style="font-weight:800; color:var(--text-main); font-size:0.95rem;">${cat.name}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">تخصص معتمد 🎓</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Description -->
+                      <td style="padding:14px 16px; vertical-align:middle;">
+                        <div style="font-size:0.85rem; color:var(--text-main); line-height:1.5;">
+                          ${cat.description || 'تصنيف رسمي معتمد لدروس البكالوريا'}
+                        </div>
+                      </td>
+
+                      <!-- Created Date -->
+                      <td style="padding:14px 16px; vertical-align:middle;">
+                        <span style="font-size:0.8rem; color:var(--text-muted); background:var(--bg-app); border:1px solid var(--border-color); padding:4px 10px; border-radius:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="calendar" style="width:12px; height:12px; color:var(--primary);"></i>
+                          ${cat.createdAt ? new Date(cat.createdAt).toLocaleDateString("ar-DZ") : "-"}
+                        </span>
+                      </td>
+
+                      <!-- Actions -->
+                      <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
+                        <div style="display:inline-flex; gap:8px; justify-content:flex-end;">
+                          <button class="btn-secondary edit-category-btn" data-id="${cat.id}" style="padding:6px 14px; font-size:0.78rem; border-color:var(--primary); color:var(--primary); border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="edit-3" style="width:13px; height:13px;"></i> تعديل
+                          </button>
+                          <button class="btn-secondary delete-category-btn" data-id="${cat.id}" style="padding:6px 14px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="trash-2" style="width:13px; height:13px;"></i> حذف
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>`
+        }
+      </div>
     `;
   }
 
@@ -947,6 +989,7 @@ export default class AdminView {
         try {
           const res = await apiFetch(`/admin/teacher-applications/${id}`, { method: "PUT", body: JSON.stringify({ status: "approved" }) });
           showToast(res.message || "تم قبول الطلب بنجاح!", "success");
+          handleWhatsAppResponse(res);
           await this.loadAllData();
           this.updateBadges();
           this.renderTab("teacherApplications");
@@ -1235,11 +1278,12 @@ export default class AdminView {
           });
           showToast(t("admin.toast.userUpdated"), "success");
         } else {
-          await apiFetch("/admin/users", {
+          const res = await apiFetch("/admin/users", {
             method: "POST",
             body: JSON.stringify({ name, email, role, password, phone, education })
           });
           showToast(t("admin.toast.userCreated"), "success");
+          handleWhatsAppResponse(res);
         }
         closeModal();
         await this.loadAllData();

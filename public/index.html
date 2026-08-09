@@ -120,15 +120,25 @@
     </div>
   </div>
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
+    function hideSplash() {
       setTimeout(() => {
         const splash = document.getElementById('splash-overlay');
         if (splash) {
           splash.classList.add('fade-out');
-          setTimeout(() => splash.remove(), 700);
+          setTimeout(() => splash.remove(), 600);
         }
-      }, 1800);
-    });
+      }, 800);
+    }
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', hideSplash);
+    } else {
+      hideSplash();
+    }
+    // Safety fallback
+    setTimeout(() => {
+      const splash = document.getElementById('splash-overlay');
+      if (splash) splash.remove();
+    }, 3000);
   </script>
   <!-- Side Menu Overlay & Sidebar Drawer -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -149,7 +159,7 @@
     <div class="header-container" style="max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
       
       <!-- Brand Logo + Explore Dropdown + Degrees Link -->
-      <div style="display:flex; align-items:center; gap:20px; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:16px; flex-shrink:0;">
         <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية / Side Menu" style="display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
           <i data-lucide="menu" style="width:20px; height:20px;"></i>
         </button>
@@ -157,6 +167,11 @@
         <!-- Bakalorya Logo Image -->
         <a href="#landing" class="logo-link" style="text-decoration:none; display:flex; align-items:center; gap:8px;">
           <img src="assets/logo.png" alt="باكالوريا" id="header-logo" style="height:48px; object-fit:contain; transition:opacity 0.2s;" onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">
+        </a>
+
+        <!-- Header Teachers & Schools Direct Link -->
+        <a href="#teacher-apply" class="header-teachers-link" title="للمعلمين والأساتذة وللمدارس والمؤسسات (For Teachers & Schools)" style="text-decoration:none; font-size:0.82rem; font-weight:800; color:var(--primary); background:rgba(0,86,210,0.08); border:1px solid rgba(0,86,210,0.15); padding:6px 14px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s ease;" onmouseenter="this.style.background='var(--primary)'; this.style.color='#ffffff';" onmouseleave="this.style.background='rgba(0,86,210,0.08)'; this.style.color='var(--primary)';">
+          <i data-lucide="graduation-cap" style="width:15px; height:15px;"></i> للمعلمين والمدارس
         </a>
       </div>
 
@@ -196,9 +211,6 @@
   <!-- Viewport -->
   <main id="app-viewport">
     <!-- Current view gets dynamically injected here -->
-    <div class="app-loader">
-      <div class="spinner"></div>
-    </div>
   </main>
 
   <!-- Global Toast Notification -->

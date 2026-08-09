@@ -18,6 +18,7 @@ let Enrollment = class Enrollment {
     student;
     course;
     progress; // 0 to 100
+    status;
     completedLessons; // List of completed lesson IDs
     createdAt;
     updatedAt;
@@ -39,6 +40,10 @@ __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)
 ], Enrollment.prototype, "progress", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: "pending" }),
+    __metadata("design:type", String)
+], Enrollment.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.Column)("simple-json", { nullable: true }),
     __metadata("design:type", Array)

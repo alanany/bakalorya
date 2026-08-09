@@ -5,6 +5,11 @@ import { User } from "../entity/User";
 import { Enrollment } from "../entity/Enrollment";
 import { Course } from "../entity/Course";
 import { AuthRequest } from "../middleware/auth";
+import { 
+  createWhatsAppNotificationPayload, 
+  buildEnrollmentAcceptedMessage, 
+  buildRegistrationSuccessMessage 
+} from "../utils/whatsapp";
 
 export class UserController {
   static async getTeachers(req: Request, res: Response) {
@@ -43,59 +48,70 @@ export class UserController {
 
   static async getStudents(req: AuthRequest, res: Response) {
     try {
-      // Allow teacher or admin
       if (req.user?.role !== "teacher" && req.user?.role !== "admin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      let students: User[] = [];
+      const userRepo = AppDataSource.getRepository(User);
+      const enrollRepo = AppDataSource.getRepository(Enrollment);
+      const courseRepo = AppDataSource.getRepository(Course);
 
-      if (req.user?.role === "admin") {
-        const userRepository = AppDataSource.getRepository(User);
-        students = await userRepository.find({
-          where: { role: "student" },
-          select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "createdAt"]
+      // Fetch all students registered in platform
+      const allStudents = await userRepo.find({
+        where: { role: "student" },
+        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "createdAt"],
+        order: { createdAt: "DESC" }
+      });
+
+      // Fetch all enrollments with relations
+      const allEnrollments = await enrollRepo.find({
+        relations: ["student", "course"]
+      });
+
+      let teacherCourseIds: string[] = [];
+      if (req.user.role === "teacher") {
+        const teacherCourses = await courseRepo.find({
+          where: { teacher: { id: req.user.id } }
         });
-      } else {
-        const enrollmentRepository = AppDataSource.getRepository("Enrollment");
-        const enrollments = await enrollmentRepository.find({
-          where: { course: { teacher: { id: req.user!.id } } },
-          relations: ["student", "course"]
-        }) as any[];
-        
-        // Group by student
-        const studentsMap = new Map();
-        for (const enroll of enrollments) {
-          if (enroll.student && enroll.student.role === "student") {
-            const sid = enroll.student.id;
-            if (!studentsMap.has(sid)) {
-              studentsMap.set(sid, {
-                id: enroll.student.id,
-                name: enroll.student.name,
-                email: enroll.student.email,
-                role: enroll.student.role,
-                avatar: enroll.student.avatar,
-                location: enroll.student.location,
-                education: enroll.student.education,
-                phone: enroll.student.phone,
-                createdAt: enroll.student.createdAt,
-                enrollments: []
-              });
-            }
-            studentsMap.get(sid).enrollments.push({
-              id: enroll.id,
-              status: enroll.status,
-              course: enroll.course ? { id: enroll.course.id, title: enroll.course.title } : { id: "", title: "Course" }
-            });
-          }
-        }
-        students = Array.from(studentsMap.values());
+        teacherCourseIds = teacherCourses.map(c => String(c.id));
       }
 
-      return res.json(students);
+      let resultStudents = allStudents.map(s => {
+        const sEnrollments = allEnrollments
+          .filter(e => {
+            if (!e.student || String(e.student.id) !== String(s.id)) return false;
+            if (req.user?.role === "admin") return true;
+            return e.course && teacherCourseIds.includes(String(e.course.id));
+          })
+          .map(e => ({
+            id: e.id,
+            status: e.status,
+            course: e.course ? { id: e.course.id, title: e.course.title } : { id: "", title: "دورة تعليمية" }
+          }));
+
+        return {
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          role: s.role || "student",
+          avatar: s.avatar,
+          phone: s.phone,
+          location: s.location,
+          education: s.education,
+          createdAt: s.createdAt,
+          enrollments: sEnrollments
+        };
+      });
+
+      if (req.user?.role === "teacher") {
+        // Only return students enrolled in this teacher's courses
+        resultStudents = resultStudents.filter(s => s.enrollments && s.enrollments.length > 0);
+      }
+
+      return res.json(resultStudents);
     } catch (error) {
       console.error("Error fetching students:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ error: "فشل جلب قائمة الطلاب." });
     }
   }
 
@@ -111,7 +127,7 @@ export class UserController {
       const enrollmentRepository = AppDataSource.getRepository("Enrollment");
       const enrollment = await enrollmentRepository.findOne({
         where: { id: enrollmentId },
-        relations: ["course", "course.teacher"]
+        relations: ["course", "course.teacher", "student"]
       }) as any;
 
       if (!enrollment) {
@@ -125,7 +141,21 @@ export class UserController {
       enrollment.status = status;
       await enrollmentRepository.save(enrollment);
 
-      return res.json({ message: "Status updated", status: enrollment.status });
+      let whatsappNotification: any = null;
+      if (status === "active" && enrollment.student?.phone) {
+        const msg = buildEnrollmentAcceptedMessage(
+          enrollment.student.name,
+          enrollment.course?.title || "الدورة التعليمية",
+          enrollment.course?.teacher?.name
+        );
+        whatsappNotification = createWhatsAppNotificationPayload(enrollment.student.phone, msg);
+      }
+
+      return res.json({
+        message: status === "active" ? "تم قبول الطلب وتفعيل التسجيل بنجاح!" : "تم تحديث الحالة",
+        status: enrollment.status,
+        whatsappNotification
+      });
     } catch (error) {
       console.error("Error toggling ban:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -134,7 +164,7 @@ export class UserController {
 
   static async updateProfile(req: AuthRequest, res: Response) {
     try {
-      const { name, meetingLink, customCategories } = req.body;
+      const { name, meetingLink, customCategories, phone, education, location } = req.body;
       const userRepository = AppDataSource.getRepository(User);
       
       const user = await userRepository.findOneBy({ id: req.user!.id });
@@ -142,7 +172,17 @@ export class UserController {
         return res.status(404).json({ error: "User not found" });
       }
 
+      if (phone) {
+        const existingPhoneUser = await userRepository.findOneBy({ phone });
+        if (existingPhoneUser && existingPhoneUser.id !== user.id) {
+          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
+        }
+      }
+
       if (name) user.name = name;
+      if (phone !== undefined) user.phone = phone;
+      if (education !== undefined) user.education = education;
+      if (location !== undefined) user.location = location;
       if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (customCategories !== undefined) user.customCategories = customCategories;
 
@@ -174,6 +214,14 @@ export class UserController {
       const courseRepo = AppDataSource.getRepository(Course);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
 
+      // Check phone uniqueness if provided
+      if (phone) {
+        const existingPhoneUser = await userRepo.findOneBy({ phone });
+        if (existingPhoneUser && existingPhoneUser.email !== email) {
+          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
+        }
+      }
+
       // Check if user already exists
       let student = await userRepo.findOneBy({ email });
 
@@ -191,38 +239,64 @@ export class UserController {
           avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
         });
         await userRepo.save(student);
+      } else {
+        // Update existing student details if provided
+        if (name) student.name = name;
+        if (phone) student.phone = phone;
+        if (location) student.location = location;
+        if (education) student.education = education;
+        await userRepo.save(student);
       }
 
-      // Enroll in course if courseId provided
-      if (courseId) {
-        const course = await courseRepo.findOne({
-          where: { id: courseId },
+      // Determine target course for enrollment
+      let targetCourse: Course | null = null;
+      if (req.user.role === "teacher") {
+        const teacherCourses = await courseRepo.find({
+          where: { teacher: { id: req.user.id } },
           relations: ["teacher"]
         });
 
-        if (!course) {
-          return res.status(404).json({ error: "الدورة غير موجودة." });
+        if (courseId) {
+          targetCourse = teacherCourses.find(c => String(c.id) === String(courseId)) || null;
+          if (!targetCourse && teacherCourses.length > 0) {
+            targetCourse = teacherCourses[0];
+          }
+        } else if (teacherCourses.length > 0) {
+          targetCourse = teacherCourses[0];
         }
+      } else if (courseId) {
+        targetCourse = await courseRepo.findOne({
+          where: { id: courseId },
+          relations: ["teacher"]
+        });
+      }
 
-        if (req.user.role === "teacher" && course.teacher?.id !== req.user.id) {
-          return res.status(403).json({ error: "غير مصرح لك بإضافة طالب لدورة معلم آخر." });
-        }
-
+      if (targetCourse) {
         let enrollment = await enrollmentRepo.findOne({
-          where: { student: { id: student.id }, course: { id: course.id } }
+          where: { student: { id: student.id }, course: { id: targetCourse.id } }
         });
 
         if (!enrollment) {
           enrollment = enrollmentRepo.create({
             student,
-            course,
-            status: "active",
-            requestMessage: "تمت الإضافة مباشرة بواسطة المعلم/الأدمن"
+            course: targetCourse,
+            status: "active"
           });
         } else {
           enrollment.status = "active";
         }
         await enrollmentRepo.save(enrollment);
+      }
+
+      let whatsappNotification: any = null;
+      if (student.phone) {
+        if (targetCourse) {
+          const msg = buildEnrollmentAcceptedMessage(student.name, targetCourse.title || "الدورة التعليمية", targetCourse.teacher?.name);
+          whatsappNotification = createWhatsAppNotificationPayload(student.phone, msg);
+        } else {
+          const msg = buildRegistrationSuccessMessage(student.name, "student");
+          whatsappNotification = createWhatsAppNotificationPayload(student.phone, msg);
+        }
       }
 
       return res.status(201).json({
@@ -232,7 +306,8 @@ export class UserController {
           name: student.name,
           email: student.email,
           phone: student.phone
-        }
+        },
+        whatsappNotification
       });
     } catch (error) {
       console.error("Error adding student:", error);

@@ -9,6 +9,7 @@ const Course_1 = require("./entity/Course");
 const Lesson_1 = require("./entity/Lesson");
 const Session_1 = require("./entity/Session");
 const Enrollment_1 = require("./entity/Enrollment");
+const Category_1 = require("./entity/Category");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 async function seed() {
     try {
@@ -19,193 +20,178 @@ async function seed() {
         const lessonRepository = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
         const sessionRepository = data_source_1.AppDataSource.getRepository(Session_1.Session);
         const enrollmentRepository = data_source_1.AppDataSource.getRepository(Enrollment_1.Enrollment);
-        // Clear existing data
+        const categoryRepository = data_source_1.AppDataSource.getRepository(Category_1.Category);
+        // Clear all data cleanly
+        if (data_source_1.AppDataSource.options.type === "mysql") {
+            await data_source_1.AppDataSource.query("SET FOREIGN_KEY_CHECKS = 0;");
+        }
         await enrollmentRepository.clear();
         await lessonRepository.clear();
         await courseRepository.clear();
         await sessionRepository.clear();
         await userRepository.clear();
-        console.log("Existing database tables cleared.");
-        // Create default accounts
+        await categoryRepository.clear();
+        if (data_source_1.AppDataSource.options.type === "mysql") {
+            await data_source_1.AppDataSource.query("SET FOREIGN_KEY_CHECKS = 1;");
+        }
+        console.log("All tables cleared.");
+        // Seed official platform categories (All Egyptian Grades: Primary, Prep, Secondary, Azhar, KG)
+        const initialCategories = [
+            // ── Stage 1: المرحلة الثانوية (Secondary School) ──
+            { name: "اللغة العربية - الثانوية العامة", description: "النحو والصرّف، البلاغة، الأدب، والنصوص للمرحلة الثانوية", icon: "book-open" },
+            { name: "اللغة الإنجليزية - الثانوية العامة", description: "منهج اللغة الإنجليزية والتراكيب اللغوية للمرحلة الثانوية", icon: "languages" },
+            { name: "اللغة الفرنسية - الثانوية العامة", description: "اللغة الأجنبية الثانية (Français)", icon: "message-square" },
+            { name: "اللغة الألمانية - الثانوية العامة", description: "اللغة الأجنبية الثانية (Deutsch)", icon: "globe" },
+            { name: "اللغة الإيطالية - الثانوية العامة", description: "اللغة الأجنبية الثانية (Italiano)", icon: "sparkles" },
+            { name: "اللغة الإسبانية - الثانوية العامة", description: "اللغة الأجنبية الثانية (Español)", icon: "compass" },
+            { name: "الفيزياء - المرحلة الثانوية", description: "الكهربية والمغناطيسية والفيزياء الحديثة - شعبة علمي", icon: "zap" },
+            { name: "الكيمياء - المرحلة الثانوية", description: "الكيمياء غير العضوية والتحليلية والعضوية - شعبة علمي", icon: "flask-conical" },
+            { name: "الأحياء - المرحلة الثانوية", description: "التركيب والوظيفة والبيولوجيا الجزيئية - علمي علوم", icon: "dna" },
+            { name: "الجيولوجيا والعلوم البيئية", description: "مكونات الأرض والتطور الصخري والبيئة - علمي علوم", icon: "mountain" },
+            { name: "التفاضل والتكامل - الثانوي", description: "الرياضيات البحتة - شعبة علمي رياضة", icon: "calculator" },
+            { name: "الجبر والهندسة الفراغية - الثانوي", description: "الرياضيات البحتة والمصفوفات والأشكال الفراغية - شعبة علمي رياضة", icon: "shapes" },
+            { name: "الاستاتيكا والديناميكا - الثانوي", description: "الرياضيات التطبيقية وقوانين الحركة والاتزان - شعبة علمي رياضة", icon: "activity" },
+            { name: "الرياضيات العامة - أولى وثانية ثانوي", description: "الجبر وحساب المثلثات والهندسة التحليلية", icon: "calculator" },
+            { name: "التاريخ - المرحلة الثانوية", description: "تاريخ مصر الحديث والمعاصر والشرق الأوسط - الشعبة الأدبية", icon: "landmark" },
+            { name: "الجغرافيا السياسيّة - الثانوي", description: "مقومات الدولة والجغرافيا الاقتصادية والسياسية - الشعبة الأدبية", icon: "map-pin" },
+            { name: "الفلسفة والمنطق - الثانوي", description: "الفلسفة التطبيقية والبيئية والمنطق الرمزي - الشعبة الأدبية", icon: "feather" },
+            { name: "علم النفس والاجتماع - الثانوي", description: "مبادئ التعلم والنمو وعلم الاجتماع البشري - الشعبة الأدبية", icon: "smile" },
+            { name: "القرآن الكريم والعلوم الشرعية (الأزهر)", description: "التفسير والفقه والحديث والتجويد - الثانوية الأزهرية", icon: "book-marked" },
+            { name: "الحاسب الآلي وتكنولوجيا المعلومات (ICT)", description: "البرمجة وقواعد البيانات والذكاء الاصطناعي", icon: "cpu" },
+            { name: "الإحصاء والاقتصاد - الثانوي", description: "المفاهيم الاقتصادية والتحليل الإحصائي للبيانات", icon: "bar-chart-2" },
+            // ── Stage 2: المرحلة الإعدادية (Preparatory School) ──
+            { name: "اللغة العربية - المرحلة الإعدادية", description: "منهج القراءة والنصوص والنحو والإملاء للإعدادية", icon: "book-open" },
+            { name: "اللغة الإنجليزية - المرحلة الإعدادية", description: "منهج اللغة الإنجليزية والتواصل للإعدادية", icon: "languages" },
+            { name: "الرياضيات - المرحلة الإعدادية", description: "الجبر والهندسة وحساب المثلثات للإعدادية", icon: "calculator" },
+            { name: "العلوم - المرحلة الإعدادية", description: "الفيزياء والكيمياء والأحياء المبسطة للإعدادية", icon: "flask-conical" },
+            { name: "الدراسات الاجتماعية - المرحلة الإعدادية", description: "التاريخ والجغرافيا الوطنية والإقليمية للإعدادية", icon: "globe" },
+            { name: "التربية الدينية الإسلامية - الإعدادية", description: "السيرة والعقيدة والأحكام والأخلاق الإسلامية", icon: "bookmark" },
+            { name: "تكنولوجيا المعلومات والاتصالات - الإعدادية", description: "مبادئ الحاسب الآلي والإنترنت والبرمجة المبسطة", icon: "cpu" },
+            // ── Stage 3: المرحلة الابتدائية (Primary School) ──
+            { name: "اللغة العربية - المرحلة الابتدائية", description: "تأسيس القراءة والنحو والقواعد والخط العربي", icon: "book-open" },
+            { name: "اللغة الإنجليزية - الابتدائية (Connect)", description: "مناهج Connect & Connect Plus والتأسيس اللغوي", icon: "languages" },
+            { name: "الرياضيات (Math) - المرحلة الابتدائية", description: "أساسيات الحساب والعمليات الرياضية والهندسة الابتدائية", icon: "calculator" },
+            { name: "العلوم (Science) - المرحلة الابتدائية", description: "استكشاف الطبيعة والحيوانات والمادة والمناخ", icon: "zap" },
+            { name: "الدراسات الاجتماعية - المرحلة الابتدائية", description: "معالم مصر الجغرافية والتاريخية المبسطة", icon: "map-pin" },
+            { name: "المهارات المهنية - المرحلة الابتدائية", description: "المهارات العملية والتفكير الإبداعي والحرف", icon: "hammer" },
+            { name: "القيم واحترام الآخر - الابتدائية", description: "الأخلاق والتربية السلوكية والقيم الإنسانية", icon: "heart" },
+            { name: "تكنولوجيا المعلومات ICT - الابتدائية", description: "التعامل الرقمي الآمن وأساسيات الكومبيوتر", icon: "laptop" },
+            // ── Stage 4: رياض الأطفال والتأسيس (KG & Foundation) ──
+            { name: "تأسيس لغة عربية وقراءة مبكرة", description: "تعليم الحروف والتشكيل والتهجي للأطفال", icon: "smile" },
+            { name: "تأسيس إنجليزي وفونكس (Phonics)", description: "نطق الأصوات والكلمات الأولى وتأسيس الإنجليزية", icon: "music" },
+            { name: "تأسيس رياضيات وحساب ذهني (Mental Math)", description: "الأرقام والعد والعمليات الحسابية السريعة للأطفال", icon: "plus-circle" }
+        ];
+        for (const catData of initialCategories) {
+            const cat = categoryRepository.create(catData);
+            await categoryRepository.save(cat);
+        }
+        console.log("✅ Platform Categories seeded.");
+        // Create only the base accounts — no fake courses or sessions
         const passwordHash = await bcryptjs_1.default.hash("password123", 10);
-        const student = new User_1.User();
-        student.name = "Mohamed";
-        student.email = "student@bakalorya.com";
-        student.password = passwordHash;
-        student.role = "student";
-        student.avatar = "https://api.dicebear.com/7.x/adventurer/svg?seed=Mohamed";
+        const adminPasswordHash = await bcryptjs_1.default.hash("admin123", 10);
+        const student = userRepository.create({
+            name: "طالب تجريبي",
+            email: "student@bakalorya.com",
+            password: passwordHash,
+            role: "student",
+            avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Student"
+        });
         await userRepository.save(student);
-        const teacher = new User_1.User();
-        teacher.name = "Dr. Youssef Al-Hassan";
-        teacher.email = "teacher@bakalorya.com";
-        teacher.password = passwordHash;
-        teacher.role = "teacher";
-        teacher.avatar = "https://api.dicebear.com/7.x/adventurer/svg?seed=Youssef";
+        const teacher = userRepository.create({
+            name: "معلم تجريبي",
+            email: "teacher@bakalorya.com",
+            password: passwordHash,
+            role: "teacher",
+            avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher"
+        });
         await userRepository.save(teacher);
-        const admin = new User_1.User();
-        admin.name = "Bakalorya Admin";
-        admin.email = "admin@bakalorya.com";
-        admin.password = passwordHash;
-        admin.role = "admin";
-        admin.avatar = "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin";
+        const admin = userRepository.create({
+            name: "مشرف باكالوريا",
+            email: "admin@bakalorya.com",
+            password: adminPasswordHash,
+            role: "admin",
+            avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin"
+        });
         await userRepository.save(admin);
-        console.log("Users created: student@bakalorya.com, teacher@bakalorya.com, admin@bakalorya.com (password: password123)");
-        // Create Courses
-        const mathCourse = new Course_1.Course();
-        mathCourse.title = "Pure Mathematics: Limits, Derivatives & Integration";
-        mathCourse.description = "A comprehensive preparation course covering the entire math syllabus for the scientific baccalaureate track. Learn calculus step-by-step with solved exams.";
-        mathCourse.category = "Mathematics";
-        mathCourse.image = "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=500&auto=format&fit=crop&q=60";
-        mathCourse.teacher = teacher;
-        await courseRepository.save(mathCourse);
-        const physicsCourse = new Course_1.Course();
-        physicsCourse.title = "Mastering Physics: Mechanics & Electromagnetism";
-        physicsCourse.description = "From Newton's laws to electromagnetic waves, master all physics concepts, formulas, and experimental proofs required for the high school baccalaureate exam.";
-        physicsCourse.category = "Physics";
-        physicsCourse.image = "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=500&auto=format&fit=crop&q=60";
-        physicsCourse.teacher = teacher;
-        await courseRepository.save(physicsCourse);
-        const arabicCourse = new Course_1.Course();
-        arabicCourse.title = "Arabic Grammar, Syntax & Poetry Analysis";
-        arabicCourse.description = "Learn how to parse texts (I'rab) and analyze classical Arabic poetry. A structured curriculum designed for high scores in both literary and scientific tracks.";
-        arabicCourse.category = "Arabic";
-        arabicCourse.image = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=60";
-        arabicCourse.teacher = teacher;
-        await courseRepository.save(arabicCourse);
-        console.log("Courses created.");
-        // Create Lessons for Mathematics
-        const mathLessons = [
-            {
-                title: "Introduction to Limits & Continuity",
-                description: "Understanding the concept of limits, intuitive definitions, left and right hand limits, and continuity on an interval.",
-                videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-                duration: "09:32",
-                chapter: "Chapter 1: Limits & Continuity",
-                order: 1
-            },
-            {
-                title: "Solving Indeterminate Forms (0/0, inf/inf)",
-                description: "Advanced techniques for solving indeterminate limits using factorization, conjugates, and L'Hopital's rule.",
-                videoUrl: "https://www.w3schools.com/html/movie.mp4",
-                duration: "14:15",
-                chapter: "Chapter 1: Limits & Continuity",
-                order: 2
-            },
-            {
-                title: "Basics of the Derivative & Rates of Change",
-                description: "Definition of the derivative, geometric meaning as slope of the tangent line, and standard differentiation formulas.",
-                videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-                duration: "11:05",
-                chapter: "Chapter 2: Differentiation",
-                order: 3
-            },
-            {
-                title: "Chain Rule & Composite Functions",
-                description: "How to differentiate composite functions using the chain rule, alongside trigonometric derivatives.",
-                videoUrl: "https://www.w3schools.com/html/movie.mp4",
-                duration: "18:40",
-                chapter: "Chapter 2: Differentiation",
-                order: 4
-            },
-            {
-                title: "Introduction to Antiderivatives & Integrals",
-                description: "Reversing differentiation: the concept of indefinite integration and fundamental theorem of calculus.",
-                videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-                duration: "15:20",
-                chapter: "Chapter 3: Integration",
-                order: 5
-            }
-        ];
-        const savedMathLessons = [];
-        for (const l of mathLessons) {
-            const lesson = new Lesson_1.Lesson();
-            lesson.title = l.title;
-            lesson.description = l.description;
-            lesson.videoUrl = l.videoUrl;
-            lesson.duration = l.duration;
-            lesson.chapter = l.chapter;
-            lesson.order = l.order;
-            lesson.course = mathCourse;
-            const saved = await lessonRepository.save(lesson);
-            savedMathLessons.push(saved);
-        }
-        // Create Lessons for Physics
-        const physicsLessons = [
-            {
-                title: "Newtonian Mechanics: Laws of Motion",
-                description: "Deep dive into Newton's First, Second, and Third laws with interactive force diagrams and translational motion vector dynamics.",
-                videoUrl: "https://www.w3schools.com/html/movie.mp4",
-                duration: "12:50",
-                chapter: "Chapter 1: Translational Dynamics",
-                order: 1
-            },
-            {
-                title: "Work, Energy & Power Theorem",
-                description: "Calculating work done by constant and variable forces, kinetic vs potential energy, and mechanical energy conservation.",
-                videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-                duration: "16:22",
-                chapter: "Chapter 1: Translational Dynamics",
-                order: 2
-            },
-            {
-                title: "Electric Fields & Coulomb's Law",
-                description: "Understanding electric charges, lines of forces, calculating electric field vectors of point charges, and voltage potential.",
-                videoUrl: "https://www.w3schools.com/html/movie.mp4",
-                duration: "14:10",
-                chapter: "Chapter 2: Electromagnetism",
-                order: 3
-            }
-        ];
-        for (const l of physicsLessons) {
-            const lesson = new Lesson_1.Lesson();
-            lesson.title = l.title;
-            lesson.description = l.description;
-            lesson.videoUrl = l.videoUrl;
-            lesson.duration = l.duration;
-            lesson.chapter = l.chapter;
-            lesson.order = l.order;
-            lesson.course = physicsCourse;
-            await lessonRepository.save(lesson);
-        }
-        console.log("Lessons created.");
-        // Enroll student in Mathematics and Physics courses
-        const mathEnrollment = new Enrollment_1.Enrollment();
-        mathEnrollment.student = student;
-        mathEnrollment.course = mathCourse;
-        mathEnrollment.progress = 20; // 1 out of 5 lessons completed
-        mathEnrollment.completedLessons = [savedMathLessons[0].id];
-        await enrollmentRepository.save(mathEnrollment);
-        const physicsEnrollment = new Enrollment_1.Enrollment();
-        physicsEnrollment.student = student;
-        physicsEnrollment.course = physicsCourse;
-        physicsEnrollment.progress = 0;
-        physicsEnrollment.completedLessons = [];
-        await enrollmentRepository.save(physicsEnrollment);
-        console.log("Student course enrollments completed.");
-        // Create Live Sessions
-        const liveSessionToday = new Session_1.Session();
-        liveSessionToday.title = "Live Q&A: Integration & Definite Integrals Basics";
-        liveSessionToday.description = "Join Dr. Youssef Al-Hassan for a live review session. We will solve past baccalaureate exam questions on calculus and definite integrals. Bring your questions!";
-        liveSessionToday.teacher = teacher;
-        const tenMinFromNow = new Date();
-        tenMinFromNow.setMinutes(tenMinFromNow.getMinutes() + 10); // Start in 10 minutes
-        liveSessionToday.scheduledAt = tenMinFromNow;
-        liveSessionToday.duration = 60;
-        liveSessionToday.status = "scheduled";
-        await sessionRepository.save(liveSessionToday);
-        const liveSessionTomorrow = new Session_1.Session();
-        liveSessionTomorrow.title = "Electricity & Circuits: R-L-C Oscillations";
-        liveSessionTomorrow.description = "Interactive class covering resistor-inductor-capacitor circuits, electrical resonance, and differential equations. Highly recommended for physics tracks.";
-        liveSessionTomorrow.teacher = teacher;
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(15, 0, 0, 0); // 3 PM tomorrow
-        liveSessionTomorrow.scheduledAt = tomorrow;
-        liveSessionTomorrow.duration = 90;
-        liveSessionTomorrow.status = "scheduled";
-        await sessionRepository.save(liveSessionTomorrow);
-        console.log("Live sessions scheduled.");
-        console.log("Seeding database finished successfully!");
+        const blogRepository = data_source_1.AppDataSource.getRepository("Blog");
+        await blogRepository.clear();
+        const blog1 = blogRepository.create({
+            title: "أفضل 5 طرق لتنظيم الوقت وتفادي التوتر أثناء التحضير للبكالوريا",
+            content: "تعلم كيفية بناء جدول مراجعة أسبوعي متوازن يجمع بين التركيز العالي وأوقات الراحة المستحقة لضمان تحصيل أفضل النتائج.",
+            category: "📐 تنظيم الوقت",
+            image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600",
+            readTime: "📖 5 دقائق قراءة",
+            author: teacher
+        });
+        const blog2 = blogRepository.create({
+            title: "كيف تتجنب الأخطاء الشائعة في تمارين الفيزياء والكيمياء؟",
+            content: "دليل خطوة بخطوة لفهم صياغة الأسئلة وتحليل الدارات الكهربائية والتفاعلات الكيميائية بدقة تامة والابتعاد عن التسرع.",
+            category: "⚡ منهجية الامتحانات",
+            image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600",
+            readTime: "📖 7 دقائق قراءة",
+            author: teacher
+        });
+        const blog3 = blogRepository.create({
+            title: "أسرار الحصول على علامة ممتازة في البلاغة والتعبير الكتابي",
+            content: "نماذج تطبيقية وطرق التعبير الأدبي وتلخيص النصوص بأسلوب متميز يضمن إعجاب المصحح والحصول على النقاط المكتملة.",
+            category: "📖 الإنشاء والتعبير",
+            image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600",
+            readTime: "📖 4 دقائق قراءة",
+            author: teacher
+        });
+        await blogRepository.save([blog1, blog2, blog3]);
+        console.log("✅ Initial blog articles seeded.");
+        // Seed sample initial Baccalaureate courses
+        const course1 = courseRepository.create({
+            title: "الدورة الشاملة في الرياضيات - باكالوريا 2026",
+            description: "شرح وافٍ وتطبيقات شاملة في الدوال العددية، المتتاليات، والاحتمالات مخصصة لشعب العلوم، الرياضيات وتقني رياضي.",
+            category: "الرياضيات",
+            degree: "3ème AS - BAC",
+            image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&auto=format&fit=crop&q=60",
+            meetingLink: "https://zoom.us/j/123456789",
+            teacher: teacher
+        });
+        const course2 = courseRepository.create({
+            title: "العلوم الفيزيائية والتركيز العالي (وحدات المتابعة والكهرباء)",
+            description: "تمارين نموذجية وموضوعات محلولة بدقة عالية في الكيمياء والفيزياء لفهم المتابعة الزمنية والدارة RC و RL.",
+            category: "العلوم الفيزيائية",
+            degree: "3ème AS - BAC",
+            image: "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=600&auto=format&fit=crop&q=60",
+            meetingLink: "https://zoom.us/j/987654321",
+            teacher: teacher
+        });
+        const course3 = courseRepository.create({
+            title: "علوم الطبيعة والحياة - تركيب البروتين والإنزيمات",
+            description: "منهجية الإجابة الدقيقة وتحديد آليات الاستدلال العلمي لضمان النقطة الكاملة في تمارين علوم الحياة.",
+            category: "علوم الطبيعة والحياة",
+            degree: "3ème AS - BAC",
+            image: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=600&auto=format&fit=crop&q=60",
+            meetingLink: "https://zoom.us/j/456789123",
+            teacher: teacher
+        });
+        await courseRepository.save([course1, course2, course3]);
+        // Seed lessons for course 1
+        const lesson1 = lessonRepository.create({
+            title: "الدرس الأول: دراسة تغيرات الدوال وإثبات وجود الحلول",
+            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            description: "شرح تفصيلي لدراسة التغيرات وجدول الإشارات للمتتاليات والدوال",
+            duration: "45:00",
+            chapter: "الوحدة الأولى: الدوال العددية",
+            order: 1,
+            course: course1
+        });
+        const lesson2 = lessonRepository.create({
+            title: "الدرس الثاني: المتتاليات الحسابية والهندسية وعلاقات التراجع",
+            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            description: "طرق البرهان بالتراجع وحساب عبارات الحد العام والمجموع",
+            duration: "50:00",
+            chapter: "الوحدة الثانية: المتتاليات",
+            order: 2,
+            course: course1
+        });
+        await lessonRepository.save([lesson1, lesson2]);
+        console.log("✅ Initial Baccalaureate Courses & Lessons seeded.");
+        console.log("🎉 Seeding completed successfully!");
         process.exit(0);
     }
     catch (error) {
