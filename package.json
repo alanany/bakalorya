@@ -2,7 +2,7 @@
   "name": "bakalorya-platform",
   "version": "1.0.0",
   "description": "E-learning and Online Sessions Platform for Baccalaureate Students",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
