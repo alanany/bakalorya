@@ -7,11 +7,17 @@ require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const data_source_1 = require("./data-source");
 const routes_1 = __importDefault(require("./routes"));
 const PORT = process.env.PORT || 3000;
 async function startServer() {
     try {
+        // Ensure uploads directory exists
+        const uploadsDir = path_1.default.join(__dirname, "../public/uploads");
+        if (!fs_1.default.existsSync(uploadsDir)) {
+            fs_1.default.mkdirSync(uploadsDir, { recursive: true });
+        }
         // Initialize TypeORM DataSource
         await data_source_1.AppDataSource.initialize();
         console.log("Data Source has been initialized!");

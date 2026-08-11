@@ -2,6 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import { AppDataSource } from "./data-source";
 import router from "./routes";
 
@@ -9,6 +10,12 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
+    // Ensure uploads directory exists
+    const uploadsDir = path.join(__dirname, "../public/uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
     // Initialize TypeORM DataSource
     await AppDataSource.initialize();
     console.log("Data Source has been initialized!");
