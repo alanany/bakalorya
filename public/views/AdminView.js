@@ -401,7 +401,7 @@ export default class AdminView {
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -410,7 +410,8 @@ export default class AdminView {
         apiFetch("/admin/teacher-applications").catch(() => []),
         apiFetch("/sessions").catch(() => []),
         apiFetch("/admin/subscriptions").catch(() => []),
-        apiFetch("/admin/earnings").catch(() => null)
+        apiFetch("/admin/earnings").catch(() => null),
+        apiFetch("/subscription-plans").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];

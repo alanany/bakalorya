@@ -1235,7 +1235,7 @@ export async function router() {
     window.location.hash = "#landing";
     return router();
   }
-  if (routeBase === "#admin-dashboard" && (!state.user || state.user.role !== "admin")) {
+  if (routeBase === "#admin-dashboard" && state.user && state.user.role !== "admin") {
     showToast(t("error.adminOnly") || "الوصول مقيد للمشرفين فقط.", "error");
     window.location.hash = "#landing";
     return router();

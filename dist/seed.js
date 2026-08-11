@@ -228,8 +228,58 @@ async function seed() {
             sessionDurationMins: 60,
             isActive: true
         });
-        await planRepository.save([basicPlan, standardPlan, premiumPlan]);
-        console.log("✅ Initial Monthly Subscription Plans seeded.");
+        const plan30_4 = planRepository.create({
+            name: "باقة المراجعة السريعة (4 حصص / 30 دقيقة)",
+            description: "4 حصص شهرياً مدة الحصة 30 دقيقة للمراجعات السريعة وحل الأسئلة المحددة",
+            sessionsCount: 4,
+            price: 400,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 30,
+            isActive: true
+        });
+        const plan30_8 = planRepository.create({
+            name: "باقة الدعم المنتظم (8 حصص / 30 دقيقة)",
+            description: "8 حصص شهرياً مدة الحصة 30 دقيقة للتثبيت المستمر للمفاهيم الأساسية",
+            sessionsCount: 8,
+            price: 750,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 30,
+            isActive: true
+        });
+        const plan40_4 = planRepository.create({
+            name: "الباقة الاقتصادية (4 حصص / 40 دقيقة)",
+            description: "4 حصص شهرياً مدة الحصة 40 دقيقة، شرح مبسط وتركيز على النقاط الهامة",
+            sessionsCount: 4,
+            price: 500,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 40,
+            isActive: true
+        });
+        const plan40_8 = planRepository.create({
+            name: "الباقة المتوازنة (8 حصص / 40 دقيقة)",
+            description: "8 حصص شهرياً مدة الحصة 40 دقيقة لضمان الفهم والتدريب على الامتحانات",
+            sessionsCount: 8,
+            price: 950,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 40,
+            isActive: true
+        });
+        const plan40_12 = planRepository.create({
+            name: "الباقة الشاملة (12 حصة / 40 دقيقة)",
+            description: "12 حصة شهرياً مدة الحصة 40 دقيقة لمتابعة مكثفة وتحصيل دراسي عالي",
+            sessionsCount: 12,
+            price: 1350,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 40,
+            isActive: true
+        });
+        await planRepository.save([basicPlan, standardPlan, premiumPlan, plan30_4, plan30_8, plan40_4, plan40_8, plan40_12]);
+        console.log("✅ Initial Monthly Subscription Plans (60, 40 & 30 mins) seeded.");
         // Seed Sample Student Subscription
         const subRepo = data_source_1.AppDataSource.getRepository(Subscription_1.Subscription);
         const sub = subRepo.create({

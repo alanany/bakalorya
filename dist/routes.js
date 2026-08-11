@@ -68,17 +68,32 @@ router.post("/subscription-plans", auth_1.authMiddleware, (0, auth_1.requireRole
 router.put("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.updatePlan);
 router.post("/subscriptions", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.subscribe);
 router.get("/subscriptions/my", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getMySubscriptions);
+router.get("/subscriptions/teacher-assigned", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), SubscriptionController_1.SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.getAllSubscriptions);
 router.patch("/admin/subscriptions/:id/assign-teacher", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.assignTeacher);
+router.delete("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.deletePlan);
+router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.markAsPaid);
 // Teacher Availability (Session Teacher capability enforced)
 router.get("/teachers/:id/availability", TeacherAvailabilityController_1.TeacherAvailabilityController.getByTeacher);
 router.post("/teacher/availability", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), TeacherAvailabilityController_1.TeacherAvailabilityController.setAvailability);
 router.delete("/teacher/availability/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), TeacherAvailabilityController_1.TeacherAvailabilityController.deleteSlot);
 // Private Session Booking & Completion
 router.post("/sessions/book", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.bookSession);
+router.post("/sessions/batch-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.batchScheduleSessions);
+router.get("/subscriptions/:id/schedule-details", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getSubscriptionScheduleDetails);
+router.post("/sessions/preview-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.previewPackageSchedule);
+router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.completeSession);
 router.post("/sessions/:id/cancel", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.cancelSession);
+router.post("/sessions/:id/no-show", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.noShowSession);
+router.patch("/sessions/:id/reschedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.rescheduleSession);
 router.put("/sessions/:id/reassign-teacher", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.reassignSessionTeacher);
+// Student private sessions
+router.get("/sessions/my-private", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getMyPrivateSessions);
+// Teacher private sessions
+router.get("/teacher/private-sessions", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.getTeacherPrivateSessions);
+router.get("/teacher/private-sessions/today", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.getTodayPrivateSessions);
+router.get("/teacher/availability/mine", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.getMyAvailability);
 // Teacher Earnings & Financial Settlements
 router.get("/teacher/earnings", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), TeacherEarningController_1.TeacherEarningController.getTeacherEarnings);
 router.get("/admin/earnings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.getAdminEarnings);
