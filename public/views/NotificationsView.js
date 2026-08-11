@@ -150,7 +150,7 @@ export default class NotificationsView {
       iconColor = "#ef4444";
     }
 
-    const dateStr = notif.createdAt ? new Date(notif.createdAt).toLocaleString("ar-DZ", {
+    const dateStr = notif.createdAt ? new Date(notif.createdAt).toLocaleString("ar", {
       month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
     }) : "";
 

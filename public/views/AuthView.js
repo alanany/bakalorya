@@ -51,18 +51,21 @@ export default class AuthView {
 
           <!-- Quick Demo Buttons -->
           <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
-            <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 12px; text-transform: uppercase;">
-              ⚡ ${t("auth.quickDemo") || "تسجيل دخول سريع للتجربة"}
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-align: center; margin-bottom: 12px;">
+              🔑 بيانات الدخول للتجربة للمعلمين والطلاب:
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button class="btn-secondary" id="fill-teacher-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center; border-color: var(--primary); color: var(--primary);">
+                👨‍🏫 معلم دورات وجلسات
+              </button>
+              <button class="btn-secondary" id="fill-session-teacher-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center; border-color: #a855f7; color: #a855f7;">
+                ⏱️ معلم حصص خاصة
+              </button>
               <button class="btn-secondary" id="fill-student-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center;">
-                👨‍🎓 ${t("auth.student") || "طالب"}
+                👨‍🎓 حساب طالب
               </button>
-              <button class="btn-secondary" id="fill-teacher-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center;">
-                👨‍🏫 ${t("auth.teacher") || "معلم"}
-              </button>
-              <button class="btn-secondary" id="fill-admin-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center; border-color: var(--primary); color: var(--primary);">
-                🛡️ ${t("auth.admin") || "مشرف"}
+              <button class="btn-secondary" id="fill-admin-btn" style="padding: 8px; font-size: 0.75rem; justify-content: center;">
+                🛡️ مشرف أدمن
               </button>
             </div>
           </div>
@@ -152,6 +155,28 @@ export default class AuthView {
     }
 
     // Quick demo buttons
+    document.getElementById("fill-teacher-btn")?.addEventListener("click", async () => {
+      this.isRegisterMode = false;
+      await this.render();
+      const email = document.getElementById("login-email");
+      const pass = document.getElementById("login-password");
+      if (email && pass) {
+        email.value = "teacher1@bakalorya.com";
+        pass.value = "teacher123";
+      }
+    });
+
+    document.getElementById("fill-session-teacher-btn")?.addEventListener("click", async () => {
+      this.isRegisterMode = false;
+      await this.render();
+      const email = document.getElementById("login-email");
+      const pass = document.getElementById("login-password");
+      if (email && pass) {
+        email.value = "sessionteacher@bakalorya.com";
+        pass.value = "teacher123";
+      }
+    });
+
     document.getElementById("fill-student-btn")?.addEventListener("click", async () => {
       this.isRegisterMode = false;
       await this.render();
@@ -159,17 +184,6 @@ export default class AuthView {
       const pass = document.getElementById("login-password");
       if (email && pass) {
         email.value = "student@bakalorya.com";
-        pass.value = "password123";
-      }
-    });
-
-    document.getElementById("fill-teacher-btn")?.addEventListener("click", async () => {
-      this.isRegisterMode = false;
-      await this.render();
-      const email = document.getElementById("login-email");
-      const pass = document.getElementById("login-password");
-      if (email && pass) {
-        email.value = "teacher@bakalorya.com";
         pass.value = "password123";
       }
     });

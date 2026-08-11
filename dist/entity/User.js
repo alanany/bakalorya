@@ -15,9 +15,16 @@ let User = class User {
     id;
     name;
     email;
-    password; // Hashed password, made optional in queries/responses where we don't return it
+    password; // Hashed password, optional until invitation is accepted
     role;
+    status;
+    teacherCapabilities; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]
+    invitationToken;
+    invitationExpiresAt;
+    country;
+    language;
     avatar;
+    githubId;
     meetingLink;
     customCategories;
     location;
@@ -40,7 +47,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
 __decorate([
@@ -48,9 +55,37 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: "ACTIVE" }),
+    __metadata("design:type", String)
+], User.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
+    __metadata("design:type", Array)
+], User.prototype, "teacherCapabilities", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "invitationToken", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], User.prototype, "invitationExpiresAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "country", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "language", void 0);
+__decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "avatar", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "githubId", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

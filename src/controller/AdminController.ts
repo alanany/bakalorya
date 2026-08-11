@@ -84,6 +84,9 @@ export class AdminController {
         role,
         phone: phone || null,
         education: education || null,
+        teacherCapabilities: role === "teacher" 
+          ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]) 
+          : undefined,
         avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
       });
 
@@ -133,6 +136,9 @@ export class AdminController {
           return res.status(400).json({ error: "Cannot remove admin role from yourself." });
         }
         user.role = role;
+      }
+      if (req.body.teacherCapabilities && Array.isArray(req.body.teacherCapabilities)) {
+        user.teacherCapabilities = req.body.teacherCapabilities;
       }
       if (password && password.trim().length >= 4) {
         user.password = await bcrypt.hash(password, 10);

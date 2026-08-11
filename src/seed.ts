@@ -5,6 +5,8 @@ import { Lesson } from "./entity/Lesson";
 import { Session } from "./entity/Session";
 import { Enrollment } from "./entity/Enrollment";
 import { Category } from "./entity/Category";
+import { Subscription } from "./entity/Subscription";
+import { SessionCreditLedger } from "./entity/SessionCreditLedger";
 import bcrypt from "bcryptjs";
 
 async function seed() {
@@ -19,16 +21,20 @@ async function seed() {
     const enrollmentRepository = AppDataSource.getRepository(Enrollment);
     const categoryRepository = AppDataSource.getRepository(Category);
 
+    const qaRepository = AppDataSource.getRepository("QuestionAnswer");
+
     // Clear all data cleanly
     if (AppDataSource.options.type === "mysql") {
       await AppDataSource.query("SET FOREIGN_KEY_CHECKS = 0;");
+      await AppDataSource.query("TRUNCATE TABLE `question_answer`;").catch(() => {});
     }
-    await enrollmentRepository.clear();
-    await lessonRepository.clear();
-    await courseRepository.clear();
-    await sessionRepository.clear();
-    await userRepository.clear();
-    await categoryRepository.clear();
+    await enrollmentRepository.clear().catch(() => {});
+    await lessonRepository.clear().catch(() => {});
+    await courseRepository.clear().catch(() => {});
+    await sessionRepository.clear().catch(() => {});
+    await userRepository.clear().catch(() => {});
+    await categoryRepository.clear().catch(() => {});
+    await qaRepository.clear().catch(() => {});
     if (AppDataSource.options.type === "mysql") {
       await AppDataSource.query("SET FOREIGN_KEY_CHECKS = 1;");
     }
@@ -209,6 +215,169 @@ async function seed() {
 
     await lessonRepository.save([lesson1, lesson2]);
     console.log("✅ Initial Baccalaureate Courses & Lessons seeded.");
+
+    // Seed Subscription Plans
+    const planRepository = AppDataSource.getRepository("SubscriptionPlan");
+    const basicPlan = planRepository.create({
+      name: "الباقة الأساسية (4 حصص / شهر)",
+      description: "حصة أسبوعية واحدة مباشرة 1-على-1 مع أستاذك المفضل مع متابعة شاملة",
+      sessionsCount: 4,
+      price: 600,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 60,
+      isActive: true
+    });
+
+    const standardPlan = planRepository.create({
+      name: "الباقة القياسية (8 حصص / شهر)",
+      description: "حصتان أسبوعياً للتركيز وتغطية كافة الوحدات والتمارين المنهجية التطبيقية",
+      sessionsCount: 8,
+      price: 1100,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 60,
+      isActive: true
+    });
+
+    const premiumPlan = planRepository.create({
+      name: "الباقة المكثفة (12 حصة / شهر)",
+      description: "3 حصص أسبوعياً للمكثف والمراجعات الشاملة لحصد أعلى العلامات في البكالوريا",
+      sessionsCount: 12,
+      price: 1500,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 60,
+      isActive: true
+    });
+
+    const plan30_4 = planRepository.create({
+      name: "باقة المراجعة السريعة (4 حصص / 30 دقيقة)",
+      description: "4 حصص شهرياً مدة الحصة 30 دقيقة للمراجعات السريعة وحل الأسئلة المحددة",
+      sessionsCount: 4,
+      price: 400,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 30,
+      isActive: true
+    });
+
+    const plan30_8 = planRepository.create({
+      name: "باقة الدعم المنتظم (8 حصص / 30 دقيقة)",
+      description: "8 حصص شهرياً مدة الحصة 30 دقيقة للتثبيت المستمر للمفاهيم الأساسية",
+      sessionsCount: 8,
+      price: 750,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 30,
+      isActive: true
+    });
+
+    const plan40_4 = planRepository.create({
+      name: "الباقة الاقتصادية (4 حصص / 40 دقيقة)",
+      description: "4 حصص شهرياً مدة الحصة 40 دقيقة، شرح مبسط وتركيز على النقاط الهامة",
+      sessionsCount: 4,
+      price: 500,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 40,
+      isActive: true
+    });
+
+    const plan40_8 = planRepository.create({
+      name: "الباقة المتوازنة (8 حصص / 40 دقيقة)",
+      description: "8 حصص شهرياً مدة الحصة 40 دقيقة لضمان الفهم والتدريب على الامتحانات",
+      sessionsCount: 8,
+      price: 950,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 40,
+      isActive: true
+    });
+
+    const plan40_12 = planRepository.create({
+      name: "الباقة الشاملة (12 حصة / 40 دقيقة)",
+      description: "12 حصة شهرياً مدة الحصة 40 دقيقة لمتابعة مكثفة وتحصيل دراسي عالي",
+      sessionsCount: 12,
+      price: 1350,
+      currency: "EGP",
+      durationDays: 30,
+      sessionDurationMins: 40,
+      isActive: true
+    });
+
+    await planRepository.save([basicPlan, standardPlan, premiumPlan, plan30_4, plan30_8, plan40_4, plan40_8, plan40_12]);
+    console.log("✅ Initial Monthly Subscription Plans (60, 40 & 30 mins) seeded.");
+
+    // Seed Sample Student Subscription
+    const subRepo = AppDataSource.getRepository(Subscription);
+    const sub = subRepo.create({
+      student: student,
+      teacher: teacher,
+      plan: standardPlan,
+      totalSessions: 8,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      status: "ACTIVE"
+    });
+    await subRepo.save(sub);
+
+    // Seed Credit Ledger Entry (+8 credits)
+    const ledgerRepo = AppDataSource.getRepository(SessionCreditLedger);
+    const ledger = ledgerRepo.create({
+      subscription: sub,
+      amount: 8,
+      type: "SUBSCRIPTION_PURCHASE",
+      reason: "شراء الباقة القياسية (8 حصص / شهر)",
+      createdBy: student
+    });
+    await ledgerRepo.save(ledger);
+
+    // Seed Sample Sessions
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days in future
+
+    const liveSession = sessionRepository.create({
+      title: "بث مباشر: حل مسائل وموضوعات النموذجية لربط وحدات الدوال والفيزياء",
+      description: "جلسة تطبيقية تفاعلية لمراجعة أسئلة الامتحانات المنهجية بدقة",
+      scheduledAt: now,
+      duration: 60,
+      status: "live",
+      course: course1,
+      teacher: teacher
+    });
+
+    const scheduledPrivateSession = sessionRepository.create({
+      title: "حصة خاصة 1-على-1: مراجعة شاملة في متتاليات التراجع والبرهان بالتراجع",
+      description: "جلسة فردية مع الطالب لشرح الصعوبات وتثبيت قواعد المتتاليات",
+      scheduledAt: futureDate,
+      duration: 60,
+      status: "SCHEDULED",
+      subscription: sub,
+      student: student,
+      teacher: teacher
+    });
+
+    const completedPrivateSession = sessionRepository.create({
+      title: "حصة خاصة 1-على-1: أساسيات التفاضل والتكامل وتعيين ثوابت الدوال",
+      description: "متابعة وتقييم مستوى الطالب في اشتقاق الدوال العددية",
+      scheduledAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      startedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      completedAt: new Date(now.getTime() - 23 * 60 * 60 * 1000),
+      duration: 60,
+      status: "COMPLETED",
+      topic: "الدوال والاشتقاقية",
+      whatWasCovered: "دراسة الاتصال والاشتقاق وتعيين مماس المنحنى C_f",
+      studentPerformance: "ممتاز ومستعد بشكل رائع مع انضباط تام",
+      homework: "حل التمرينين 14 و 15 ص 45 من الكتاب المدرسي",
+      teacherNotes: "تم الخصم بنجاح وتسجيل الرصيد",
+      subscription: sub,
+      student: student,
+      teacher: teacher
+    });
+
+    await sessionRepository.save([liveSession, scheduledPrivateSession, completedPrivateSession]);
+    console.log("✅ Initial Live Classrooms & 1-on-1 Private Sessions seeded.");
 
     console.log("🎉 Seeding completed successfully!");
     process.exit(0);

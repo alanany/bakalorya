@@ -11,11 +11,29 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
-  password?: string; // Hashed password, made optional in queries/responses where we don't return it
+  @Column({ nullable: true })
+  password?: string; // Hashed password, optional until invitation is accepted
 
   @Column({ default: "student" })
   role: "student" | "teacher" | "admin";
+
+  @Column({ default: "ACTIVE" })
+  status: "PENDING" | "ACTIVE" | "SUSPENDED" | "INACTIVE";
+
+  @Column({ type: "simple-array", nullable: true })
+  teacherCapabilities: string[]; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]
+
+  @Column({ nullable: true })
+  invitationToken?: string;
+
+  @Column({ nullable: true })
+  invitationExpiresAt?: Date;
+
+  @Column({ nullable: true })
+  country?: string;
+
+  @Column({ nullable: true })
+  language?: string;
 
   @Column({ nullable: true })
   avatar: string;

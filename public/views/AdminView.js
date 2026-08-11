@@ -418,6 +418,7 @@ export default class AdminView {
       this.reportsData = reportsData || {};
       this.categories = categories || [];
       this.teacherApplications = teacherApplications || [];
+      this.allPlans = allPlans || [];
       this.allSessions = sessions || [];
       this.subscriptions = subscriptions || [];
       this.adminEarnings = earnings || null;
@@ -459,9 +460,10 @@ export default class AdminView {
     members:             { heading: "🛡️ جميع الأعضاء",             sub: "عرض وإدارة جميع مستخدمي المنصة" },
     subscriptions:       { heading: "📅 إدارة الاشتراكات",         sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings:            { heading: "💰 المدفوعات والمستحقات",    sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
+    plans:               { heading: "✨ خطط الاشتراكات الشهرية",   sub: "إدارة وتعديل خطط الحصص الخاصة المتاحة للطلاب" },
   };
 
-  renderTab(tab) {
+  renderTab(tab, args = null) {
     const content = document.getElementById("admin-tab-content");
     if (!content) return;
 
@@ -479,10 +481,11 @@ export default class AdminView {
     else if (tab === "teacherApplications") content.innerHTML = this.renderTeacherApplicationsTab();
     else if (tab === "members")         content.innerHTML = this.renderMembersTab();
     else if (tab === "courses")         content.innerHTML = this.renderCoursesTab();
-    else if (tab === "sessions")        content.innerHTML = this.renderSessionsTab();
+    else if (tab === "sessions")        content.innerHTML = this.renderSessionsTab(args);
     else if (tab === "reports")         content.innerHTML = this.renderReportsTab();
     else if (tab === "subscriptions")   content.innerHTML = this.renderSubscriptionsTab();
     else if (tab === "earnings")        content.innerHTML = this.renderEarningsTab();
+    else if (tab === "plans")           content.innerHTML = this.renderPlansTab();
 
     // Always keep sidebar badges fresh
     this.updateBadges();
@@ -928,8 +931,12 @@ export default class AdminView {
   }
 
   // ── 5. Sessions Management Tab ────────────────────────────────────────────────
-  renderSessionsTab() {
-    const sessions = this.allSessions || [];
+  renderSessionsTab(filterSubId = null) {
+    let sessions = this.allSessions || [];
+    if (filterSubId) {
+      sessions = sessions.filter(s => String(s.subscription?.id) === String(filterSubId));
+    }
+
 
     const getStatusBadge = (status) => {
       const s = (status || "").toLowerCase();
@@ -942,9 +949,13 @@ export default class AdminView {
     return `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
         <div>
-          <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">إدارة الحصص والجلسات المباشرة (${sessions.length})</h3>
+          <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
+            ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0,8)} (${sessions.length})` : `إدارة الحصص والجلسات المباشرة (${sessions.length})`}
+          </h3>
           <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">يمكن للأدمن متابعة كافة الحصص الخاصة والجماعية وإلغائها أو تعديل حالتها عند الحاجة.</p>
         </div>
+        ${filterSubId ? `<button class="btn-secondary admin-view-all-sessions-btn" style="padding:8px 16px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لكل الحصص</button>` : ''}
+      </div>
       </div>
 
       <div class="glass-card" style="padding:0; border-radius:18px; overflow:hidden; border:1px solid var(--border-color);">
@@ -1143,7 +1154,7 @@ export default class AdminView {
     `;
   }
   // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
-  renderSubscriptionsTab() {
+    renderSubscriptionsTab() {
     return `
       <div class="glass-card" style="padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -1158,36 +1169,68 @@ export default class AdminView {
               <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.8rem;">
                 <th style="padding:12px;font-weight:700;">المعرف</th>
                 <th style="padding:12px;font-weight:700;">الطالب</th>
-                <th style="padding:12px;font-weight:700;">الخطة</th>
+                <th style="padding:12px;font-weight:700;">الخطة / الحصص</th>
                 <th style="padding:12px;font-weight:700;">المعلم المعين</th>
                 <th style="padding:12px;font-weight:700;">الحالة</th>
                 <th style="padding:12px;font-weight:700;">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              ${(this.subscriptions || []).map(s => `
+              ${(this.subscriptions || []).map(s => {
+                const totalSessions = s.totalSessions || s.plan?.sessionsCount || 0;
+                
+                // Calculate metrics based on loaded sessions if available
+                const allSessions = this.allSessions || [];
+                const subSessions = allSessions.filter(sess => sess.subscription?.id === s.id);
+                const completedSessions = subSessions.filter(sess => sess.status === 'COMPLETED' || sess.status === 'completed').length;
+                const scheduledSessions = subSessions.filter(sess => sess.status === 'SCHEDULED' || sess.status === 'scheduled' || sess.status === 'RESCHEDULED').length;
+                const totalBooked = completedSessions + scheduledSessions;
+                const remainingToBook = Math.max(0, totalSessions - totalBooked);
+                
+                return `
                 <tr style="border-bottom:1px solid var(--border-color);font-size:0.85rem;">
-                  <td style="padding:12px;color:var(--text-muted);">#${s.id}</td>
+                  <td style="padding:12px;color:var(--text-muted);">#${s.id.substring(0,8)}</td>
                   <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
-                  <td style="padding:12px;">${s.plan?.name || '-'}</td>
+                  <td style="padding:12px;">
+                    ${s.plan?.name || '-'} 
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                      ${totalSessions} حصص الإجمالي
+                    </div>
+                  </td>
                   <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
                   <td style="padding:12px;">
-                    <span class="badge" style="background:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'};color:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? '#f59e0b' : '#10b981'};">
+                    <span class="badge" style="background:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'};color:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? '#f59e0b' : '#10b981' };">
                       ${s.status}
                     </span>
                   </td>
-                  <td style="padding:12px;display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
-                      <i data-lucide="user-plus" style="width:14px;height:14px;"></i> تعيين/تغيير المعلم
-                    </button>
+                  <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
+                        <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
+                        </button>
+                        ${s.status === 'ACTIVE' ? `
+                        <button class="btn-primary admin-package-wizard-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;">
+                        <i data-lucide="calendar-range" style="width:14px;height:14px;"></i> جدولة الباقة 🗓️
+                        </button>
+                        <button class="btn-secondary admin-edit-schedule-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;border-color:var(--primary);color:var(--primary);font-weight:700;">
+                        <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل الجدولة ✏️
+                        </button>
+                        <button class="btn-secondary admin-view-sub-sessions-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;gap:4px;">
+                        <i data-lucide="list" style="width:14px;height:14px;"></i> عرض الحصص 🔍
+                        </button>
+                        ` : ''}
+                    </div>
                     ${s.status === 'ACTIVE' ? `
-                    <button class="btn-primary admin-schedule-session-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;">
-                      <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i> جدولة حصة
-                    </button>
+                    <div style="font-size:0.75rem; display:flex; gap:12px; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
+                        <span style="color:#10b981;font-weight:600;">مكتملة: ${completedSessions}</span>
+                        <span style="color:var(--primary);font-weight:600;">مجدولة: ${scheduledSessions}</span>
+                        <span style="color:#ef4444;font-weight:600;">متبقية: ${remainingToBook}</span>
+                    </div>
                     ` : ''}
                   </td>
                 </tr>
-              `).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات حتى الآن.</td></tr>`}
+              `;
+              }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات حتى الآن.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1267,12 +1310,47 @@ export default class AdminView {
       });
     });
 
-    // Admin Schedule Session for Subscription
+
     this.container.querySelectorAll(".admin-schedule-session-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const subId = btn.getAttribute("data-id");
         const teacherId = btn.getAttribute("data-teacher");
-        this.renderAdminScheduleSessionModal(subId, teacherId);
+        this.renderPackageScheduleWizardModal(subId, teacherId, false);
+      });
+    });
+
+        this.container.querySelectorAll(".admin-view-sub-sessions-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-id");
+        this.activeTab = "sessions";
+        this.container.querySelectorAll(".admin-nav-btn").forEach(b => {
+            b.classList.remove("active");
+            if(b.getAttribute("data-tab") === "sessions") b.classList.add("active");
+        });
+        this.renderTab("sessions", subId);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-view-all-sessions-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.activeTab = "sessions";
+        this.renderTab("sessions", null);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-package-wizard-btn, .admin-batch-schedule-session-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-id");
+        const teacherId = btn.getAttribute("data-teacher");
+        this.renderPackageScheduleWizardModal(subId, teacherId, false);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-edit-schedule-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-id");
+        const teacherId = btn.getAttribute("data-teacher");
+        this.renderPackageScheduleWizardModal(subId, teacherId, true);
       });
     });
 
@@ -1465,6 +1543,39 @@ export default class AdminView {
           await this.loadAllData();
           this.renderTab("courses");
         } catch (err) { btn.disabled = false; }
+      });
+    });
+
+    // Plans Tab Handlers
+    document.getElementById("add-plan-btn")?.addEventListener("click", () => {
+      this.renderPlanModal(null);
+    });
+
+    this.container.querySelectorAll(".edit-plan-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const plan = (this.allPlans || []).find(p => p.id === id);
+        if (plan) this.renderPlanModal(plan);
+      });
+    });
+
+    this.container.querySelectorAll(".toggle-plan-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const isActive = e.currentTarget.getAttribute("data-active") === "true";
+        const plan = (this.allPlans || []).find(p => p.id === id);
+        if (!plan) return;
+        try {
+          await apiFetch(`/subscription-plans/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ ...plan, isActive: !isActive })
+          });
+          showToast(isActive ? "تم إلغاء تفعيل الخطة." : "تم تفعيل الخطة! ✅", "success");
+          await this.loadAllData();
+          this.renderTab("plans");
+        } catch (err) {
+          showToast(err.message || "فشل تحديث حالة الخطة.", "error");
+        }
       });
     });
   }
@@ -1736,16 +1847,16 @@ export default class AdminView {
             <div class="modal-body">
               <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">اختر المعلم الجديد الذي سيتم إسناد هذه الحصة له بنجاح مع حفظ سجلات الحصص السابقة المكتملة باسم المعلم الأصلي.</p>
               <div class="form-group">
-                <label for="reassign-teacher-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">اختر المعلم الجديد:</label>
-                <select id="reassign-teacher-select" class="form-select" required style="padding:10px; font-size:0.9rem; width:100%;">
-                  <option value="">-- اختر معلم المنصة --</option>
-                  ${teachers.map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join("")}
+                
+                <label for="reassign-teacher-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">اختر المعلم:</label>
+                <select id="reassign-teacher-select" class="form-input" style="width:100%; padding:10px;">
+                  ${teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
                 </select>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn-secondary" id="cancel-reassign-modal">إلغاء</button>
-              <button type="submit" class="btn-primary">حفظ وتعيين المعلم 🔄</button>
+              <button type="button" class="btn-secondary" id="cancel-reassign-btn">إلغاء</button>
+              <button type="submit" class="btn-primary">تغيير المعلم</button>
             </div>
           </form>
         </div>
@@ -1754,83 +1865,574 @@ export default class AdminView {
 
     const closeModal = () => { container.innerHTML = ""; };
     document.getElementById("close-reassign-modal")?.addEventListener("click", closeModal);
-    document.getElementById("cancel-reassign-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-reassign-btn")?.addEventListener("click", closeModal);
 
     document.getElementById("reassign-teacher-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const teacherId = document.getElementById("reassign-teacher-select").value;
-      if (!teacherId) return;
-
       try {
-        await apiFetch(`/sessions/${sessionId}/reassign-teacher`, {
+        const res = await apiFetch(`/sessions/${sessionId}/reassign-teacher`, {
           method: "PUT",
           body: JSON.stringify({ teacherId })
         });
-        showToast("تم إعادة تعيين المعلم للحصة بنجاح! 👨‍🏫", "success");
+        showToast(res.message || "تم التعيين بنجاح", "success");
         closeModal();
         await this.loadAllData();
         this.renderTab("sessions");
-      } catch (err) { }
+      } catch (err) {
+        showToast(err.message || "فشل التعيين", "error");
+      }
     });
   }
 
-  renderAssignTeacherToSubscriptionModal(subId) {
+  async renderPackageScheduleWizardModal(subId, defaultTeacherId = null, isEditMode = false) {
     const container = document.getElementById("admin-modal-container");
     if (!container) return;
 
+    let scheduleDetails = null;
+    try {
+      scheduleDetails = await apiFetch(`/subscriptions/${subId}/schedule-details`);
+    } catch (err) {
+      showToast("تعذر جلب تفاصيل الاشتراك للجدولة", "error");
+      return;
+    }
+
+    const { subscription, availability = [], completedCount = 0, scheduledCount = 0, totalSessions = 8 } = scheduleDetails;
     const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
+    const activeTeacherId = defaultTeacherId || subscription.teacher?.id || (teachers[0]?.id || "");
+
+    let currentStep = 1;
+    let previewData = null;
+
+    const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const availDaysList = availability.map(a => `${daysAr[a.dayOfWeek]} (${a.startTime} - ${a.endTime})`);
+
+    const now = new Date();
+    const nextSaturday = new Date();
+    nextSaturday.setDate(now.getDate() + ((6 - now.getDay() + 7) % 7 || 7));
+    const defaultStartDateStr = nextSaturday.toISOString().slice(0, 10);
 
     container.innerHTML = `
-      <div class="modal-overlay" id="assign-sub-teacher-modal" style="display:flex;">
-        <div class="modal-content" style="max-width:480px;">
+      <div class="modal-overlay" id="package-wizard-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:680px; width:95%;">
+          
           <div class="modal-header">
-            <h3 class="modal-title">تعيين / تغيير المعلم للاشتراك</h3>
-            <span class="modal-close-btn" id="close-assign-sub-modal">&times;</span>
+            <h3 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="calendar-range" style="color:var(--primary);"></i>
+              ${isEditMode ? 'تعديل جدول حصص الباقة ✏️' : 'جدولة الباقة (Package Scheduler) 🗓️'}
+            </h3>
+            <span class="modal-close-btn" id="close-wiz-modal">&times;</span>
           </div>
-          <form id="assign-sub-teacher-form">
-            <div class="modal-body">
-              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">اختر المعلم الذي سيتم إسناد هذا الاشتراك له. بعد التعيين، سيتمكن الطالب من حجز الحصص مع هذا المعلم.</p>
-              <div class="form-group">
-                <label for="assign-sub-teacher-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">اختر المعلم:</label>
-                <select id="assign-sub-teacher-select" class="form-select" required style="padding:10px; font-size:0.9rem; width:100%;">
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 24px 0; padding:12px; background:var(--bg-app); border-radius:14px; border:1px solid var(--border-color);">
+            <div id="wiz-nav-1" style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:0.88rem; color:var(--primary);">
+              <span style="width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center;">1</span>
+              <span>الباقة والمعلم</span>
+            </div>
+            <div style="flex:1; height:2px; background:var(--border-color); margin:0 12px;" id="wiz-line-1"></div>
+            <div id="wiz-nav-2" style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:0.88rem; color:var(--text-muted);">
+              <span style="width:28px; height:28px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center;">2</span>
+              <span>نمط الجدولة</span>
+            </div>
+            <div style="flex:1; height:2px; background:var(--border-color); margin:0 12px;" id="wiz-line-2"></div>
+            <div id="wiz-nav-3" style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:0.88rem; color:var(--text-muted);">
+              <span style="width:28px; height:28px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center;">3</span>
+              <span>معاينة وتأكيد</span>
+            </div>
+          </div>
+
+          <div class="modal-body" style="min-height:300px;">
+            
+            <div id="step-content-1">
+              <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px; margin-bottom:20px;">
+                <h4 style="font-weight:800; font-size:0.95rem; color:var(--primary); margin:0 0 12px 0;">📋 بيانات اشتراك الطالب</h4>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:0.88rem;">
+                  <div><span style="color:var(--text-muted);">الطالب:</span> <strong>${subscription.student?.name || '-'}</strong></div>
+                  <div><span style="color:var(--text-muted);">الباقة والخطة:</span> <strong>${subscription.plan?.name || '-'}</strong></div>
+                  <div><span style="color:var(--text-muted);">مدة الحصة:</span> <strong>${subscription.plan?.sessionDurationMins || 60} دقيقة</strong></div>
+                  <div>
+                    <span style="color:var(--text-muted);">الحصص:</span> 
+                    <span class="badge" style="background:rgba(79,70,229,0.1); color:var(--primary); font-weight:700;">
+                      مجدولة: ${scheduledCount} / مكتملة: ${completedCount} (إجمالي ${totalSessions})
+                    </span>
+                  </div>
+                </div>
+                ${isEditMode && completedCount > 0 ? `
+                  <div style="margin-top:12px; padding:8px 12px; background:rgba(245,158,11,0.1); border-radius:8px; font-size:0.8rem; color:#b45309; font-weight:700;">
+                    🔒 ملاحظة: توجد ${completedCount} حصة مكتملة سابقاً ولا يتم تعديلها أو حذفها. التعديل يشمل الحصص المتبقية فقط.
+                  </div>
+                ` : ''}
+              </div>
+
+              <div class="form-group" style="margin-bottom:16px;">
+                <label for="wiz-teacher-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">تحديد معلم الباقة:</label>
+                <select id="wiz-teacher-select" class="form-select" style="padding:10px; font-size:0.9rem; width:100%;">
                   <option value="">-- اختر معلم المنصة --</option>
-                  ${teachers.map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join("")}
+                  ${teachers.map(t => `
+                    <option value="${t.id}" ${String(t.id) === String(activeTeacherId) ? 'selected' : ''}>
+                      ${t.name} (${t.email})
+                    </option>
+                  `).join("")}
                 </select>
               </div>
+
+              <div id="wiz-avail-box" style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:12px; padding:12px;">
+                <div style="font-size:0.82rem; font-weight:700; color:#10b981; margin-bottom:6px;">
+                  <i data-lucide="check-circle" style="width:14px;height:14px;"></i> أوقات وأيام التفرغ المحددة للمعلم:
+                </div>
+                <div id="wiz-avail-badges" style="display:flex; flex-wrap:wrap; gap:6px;">
+                  ${availDaysList.length > 0 ? availDaysList.map(a => `<span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-size:0.78rem;">✓ ${a}</span>`).join('') : '<span style="font-size:0.8rem; color:var(--text-muted);">لم يتم تسجيل جدول تفرغ محدد (متاح جميع الأيام).</span>'}
+                </div>
+              </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn-secondary" id="cancel-assign-sub-modal">إلغاء</button>
-              <button type="submit" class="btn-primary">حفظ وتعيين المعلم 👨‍🏫</button>
+
+            <div id="step-content-2" style="display:none;">
+              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+                حدد أيام وأوقات تكرار الحصص ليقوم النظام بإنشاء وتحديد مواعيد الـ ${totalSessions - completedCount} حصة المتبقية تلقائياً.
+              </p>
+
+              <div class="form-group" style="margin-bottom:16px;">
+                <label for="wiz-freq-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">طريقة وتكرار الجدولة:</label>
+                <select id="wiz-freq-select" class="form-select" style="padding:10px; font-size:0.9rem; width:100%;">
+                  <option value="custom_days">مواعيد أيام محددة (أسبوعياً)</option>
+                  <option value="weekly">أسبوعياً (حصة واحدة كل 7 أيام)</option>
+                  <option value="biweekly">حصتان أسبوعياً (توزيع منتظم)</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:8px;">أيام الحصص الأسبوعية:</label>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; background:var(--bg-app); padding:12px; border-radius:12px; border:1px solid var(--border-color);">
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="6" checked /> السبت</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="0" /> الأحد</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="1" checked /> الاثنين</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="2" /> الثلاثاء</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="3" /> الأربعاء</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="4" /> الخميس</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="wizDays" value="5" /> الجمعة</label>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+                <div class="form-group">
+                  <label for="wiz-start-date" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">تاريخ بداية الباقة (الحصة الأولى):</label>
+                  <input type="date" id="wiz-start-date" class="form-input" value="${defaultStartDateStr}" style="padding:10px; font-size:0.9rem; width:100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="wiz-time-of-day" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">وقت الموعد اليومي:</label>
+                  <input type="time" id="wiz-time-of-day" class="form-input" value="18:00" style="padding:10px; font-size:0.9rem; width:100%;" />
+                </div>
+              </div>
+
+              <button type="button" id="wiz-gen-btn" class="btn-primary" style="width:100%; padding:12px; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <i data-lucide="sparkles"></i> إنشاء ومعاينة مواعيد الحصص تلقائياً (Auto Schedule) ⚡
+              </button>
+            </div>
+
+            <div id="step-content-3" style="display:none;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                <h4 style="font-weight:800; font-size:1rem; margin:0;">جدول معاينة حصص الباقة</h4>
+                <span id="wiz-count-badge" class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-weight:700; padding:6px 12px;">-</span>
+              </div>
+
+              <div id="wiz-conflict-banner" style="display:none; background:rgba(245,158,11,0.1); border:1px solid #f59e0b; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:0.83rem; color:#b45309; font-weight:600;">
+                ⚠️ تنبيه: تم اكتشاف تعارض أو عدم توفر في بعض المواعيد. يمكنك تعديل التاريخ/الوقت مباشرة في الجدول أدناه لكل حصة قبل الحفظ.
+              </div>
+
+              <div style="overflow-x:auto; max-height:280px; overflow-y:auto; border:1px solid var(--border-color); border-radius:12px; margin-bottom:16px;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.83rem;">
+                  <thead style="position:sticky; top:0; background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted);">
+                    <tr>
+                      <th style="padding:10px 12px; text-align:start;">#</th>
+                      <th style="padding:10px 12px; text-align:start;">اليوم والتاريخ</th>
+                      <th style="padding:10px 12px; text-align:start;">الوقت</th>
+                      <th style="padding:10px 12px; text-align:start;">المعلم</th>
+                      <th style="padding:10px 12px; text-align:start;">الحالة</th>
+                      <th style="padding:10px 12px; text-align:end;">تعديل الموعد يدويًا</th>
+                    </tr>
+                  </thead>
+                  <tbody id="wiz-preview-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid var(--border-color); padding-top:16px;">
+            <button type="button" class="btn-secondary" id="wiz-prev-btn" style="display:none;">⬅️ السابق</button>
+            <div style="display:flex; gap:8px; margin-inline-start:auto;">
+              <button type="button" class="btn-secondary" id="wiz-cancel-btn">إلغاء</button>
+              <button type="button" class="btn-primary" id="wiz-next-btn">التالي (نمط الجدولة) ➡️</button>
+              <button type="button" class="btn-primary" id="wiz-confirm-btn" style="display:none;">تأكيد الجدولة وحفظ الباقة 🚀</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-wiz-modal")?.addEventListener("click", closeModal);
+    document.getElementById("wiz-cancel-btn")?.addEventListener("click", closeModal);
+
+    const step1El = document.getElementById("step-content-1");
+    const step2El = document.getElementById("step-content-2");
+    const step3El = document.getElementById("step-content-3");
+
+    const nav1 = document.getElementById("wiz-nav-1");
+    const nav2 = document.getElementById("wiz-nav-2");
+    const nav3 = document.getElementById("wiz-nav-3");
+
+    const prevBtn = document.getElementById("wiz-prev-btn");
+    const nextBtn = document.getElementById("wiz-next-btn");
+    const confirmBtn = document.getElementById("wiz-confirm-btn");
+
+    const setStep = (step) => {
+      currentStep = step;
+      step1El.style.display = step === 1 ? "block" : "none";
+      step2El.style.display = step === 2 ? "block" : "none";
+      step3El.style.display = step === 3 ? "block" : "none";
+
+      prevBtn.style.display = step > 1 ? "block" : "none";
+      nextBtn.style.display = step < 3 ? "block" : "none";
+      confirmBtn.style.display = step === 3 ? "block" : "none";
+
+      [nav1, nav2, nav3].forEach((nav, idx) => {
+        const s = idx + 1;
+        const iconSpan = nav.querySelector("span:first-child");
+        if (s === step) {
+          nav.style.color = "var(--primary)";
+          nav.style.fontWeight = "800";
+          iconSpan.style.background = "var(--primary)";
+          iconSpan.style.color = "#fff";
+        } else if (s < step) {
+          nav.style.color = "#10b981";
+          nav.style.fontWeight = "700";
+          iconSpan.style.background = "#10b981";
+          iconSpan.style.color = "#fff";
+        } else {
+          nav.style.color = "var(--text-muted)";
+          nav.style.fontWeight = "600";
+          iconSpan.style.background = "var(--bg-card)";
+          iconSpan.style.color = "var(--text-muted)";
+        }
+      });
+    };
+
+    nextBtn.addEventListener("click", () => {
+      if (currentStep === 1) setStep(2);
+      else if (currentStep === 2) {
+        document.getElementById("wiz-gen-btn").click();
+      }
+    });
+
+    prevBtn.addEventListener("click", () => {
+      if (currentStep > 1) setStep(currentStep - 1);
+    });
+
+    document.getElementById("wiz-gen-btn")?.addEventListener("click", async () => {
+      const teacherId = document.getElementById("wiz-teacher-select").value;
+      const frequency = document.getElementById("wiz-freq-select").value;
+      const daysOfWeek = Array.from(document.querySelectorAll('input[name="wizDays"]:checked')).map(cb => parseInt(cb.value, 10));
+      const startDate = document.getElementById("wiz-start-date").value;
+      const timeOfDay = document.getElementById("wiz-time-of-day").value;
+
+      if (!startDate) {
+        showToast("يرجى اختيار تاريخ بدء الباقة", "error");
+        return;
+      }
+      if (frequency === "custom_days" && daysOfWeek.length === 0) {
+        showToast("يرجى اختيار يوم واحد على الأقل من أيام الأسبوع", "error");
+        return;
+      }
+
+      try {
+        const payload = {
+          subscriptionId: subId,
+          teacherId,
+          startDate,
+          frequency,
+          daysOfWeek,
+          timeOfDay,
+          isEditMode
+        };
+
+        previewData = await apiFetch("/sessions/preview-package-schedule", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        renderPreviewTable(previewData);
+        setStep(3);
+      } catch (err) {
+        showToast(err.message || "فشلت معاينة جدول الباقة", "error");
+      }
+    });
+
+    const renderPreviewTable = (data) => {
+      const tbody = document.getElementById("wiz-preview-tbody");
+      const badge = document.getElementById("wiz-count-badge");
+      const conflictBanner = document.getElementById("wiz-conflict-banner");
+
+      if (!tbody) return;
+
+      badge.textContent = `${data.validCount} / ${data.countGenerated} حصة جاهزة للجدولة`;
+      if (data.conflictCount > 0) {
+        conflictBanner.style.display = "block";
+      } else {
+        conflictBanner.style.display = "none";
+      }
+
+      tbody.innerHTML = (data.items || []).map((item, idx) => {
+        const d = new Date(item.scheduledAt);
+        const dateStr = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+        const timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+        const isoLocal = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+        return `
+          <tr style="border-bottom:1px solid var(--border-color);" data-idx="${idx}">
+            <td style="padding:10px 12px; font-weight:700;">#${item.index}</td>
+            <td style="padding:10px 12px; font-weight:700;">${item.dayName} ${dateStr}</td>
+            <td style="padding:10px 12px;">${timeStr}</td>
+            <td style="padding:10px 12px;">${item.teacherName}</td>
+            <td style="padding:10px 12px;">
+              ${item.status === 'VALID' 
+                ? '<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981;">✓ جاهزة</span>' 
+                : `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;" title="${item.conflictReason || ''}">⚠️ تعارض</span>`
+              }
+            </td>
+            <td style="padding:10px 12px; text-align:end;">
+              <input type="datetime-local" class="form-input wiz-row-date" data-idx="${idx}" value="${isoLocal}" style="padding:4px 8px; font-size:0.8rem;" />
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      tbody.querySelectorAll(".wiz-row-date").forEach(input => {
+        input.addEventListener("change", (e) => {
+          const idx = parseInt(e.target.getAttribute("data-idx"), 10);
+          if (previewData && previewData.items[idx]) {
+            previewData.items[idx].scheduledAt = new Date(e.target.value).toISOString();
+            previewData.items[idx].status = "VALID";
+            previewData.items[idx].conflictReason = null;
+            renderPreviewTable(previewData);
+          }
+        });
+      });
+    };
+
+    confirmBtn.addEventListener("click", async () => {
+      if (!previewData || !previewData.items || previewData.items.length === 0) {
+        showToast("لا توجد حصص لمعاينتها وتأكيدها", "error");
+        return;
+      }
+
+      const teacherId = document.getElementById("wiz-teacher-select").value;
+      confirmBtn.disabled = true;
+
+      try {
+        const payload = {
+          subscriptionId: subId,
+          teacherId,
+          sessions: previewData.items,
+          isEditMode
+        };
+
+        const res = await apiFetch("/sessions/confirm-package-schedule", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        showToast(res.message || "تمت جدولة كافة حصص الباقة بنجاح! 🚀", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("sessions");
+      } catch (err) {
+        showToast(err.message || "فشل تأكيد جدولة الباقة", "error");
+        confirmBtn.disabled = false;
+      }
+    });
+  }
+  
+
+  // ── 12. Subscription Plans Tab ────────────────────────────────────────────────
+  renderPlansTab() {
+    const plans = this.allPlans || [];
+
+    return `
+      <div style="margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h3 style="font-size:1.2rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">✨ إدارة خطط الاشتراكات الشهرية</h3>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">الخطط المتاحة للشراء من صفحة الاشتراكات. يمكنك إضافة خطط جديدة، تعديل الأسعار، أو إخفاء الخطط غير المفعلة.</p>
+        </div>
+        <button id="add-plan-btn" class="btn-primary" style="gap:8px; white-space:nowrap; padding:10px 20px; border-radius:12px;">
+          <i data-lucide="plus-circle" style="width:18px;height:18px;"></i> إضافة خطة جديدة
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+        ${plans.length === 0 ? `
+          <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;">
+            <i data-lucide="sparkles" style="width:40px;height:40px;margin-bottom:12px;opacity:0.3;"></i>
+            <p>لا توجد خطط اشتراك بعد. أضف أولى الخطط الآن!</p>
+          </div>
+        ` : plans.map(p => `
+          <div class="glass-card" style="padding:22px; border-radius:18px; border:2px solid ${p.isActive ? 'var(--primary)' : 'var(--border-color)'}; position:relative; ${!p.isActive ? 'opacity:0.65;' : ''}">
+            ${p.isActive ? '' : '<span style="position:absolute;top:14px;left:14px;background:var(--error,#ef4444);color:#fff;font-size:0.72rem;font-weight:800;padding:3px 10px;border-radius:10px;">غير نشطة</span>'}
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+              <div>
+                <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:12px; background:var(--primary-glow); color:var(--primary); display:inline-block; margin-bottom:8px;">
+                  ${p.sessionsCount} حصة / ${p.durationDays} يوم
+                </span>
+                <h3 style="font-weight:800; font-size:1.15rem; margin:0; color:var(--text-main);">${p.name}</h3>
+              </div>
+              <div style="text-align:end;">
+                <div style="font-size:1.5rem; font-weight:900; color:var(--primary);">${p.price}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">${p.currency}</div>
+              </div>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px; min-height:38px; line-height:1.5;">${p.description || 'بدون وصف'}</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:18px; text-align:center;">
+              <div style="background:var(--bg-app); border-radius:10px; padding:8px; border:1px solid var(--border-color);">
+                <div style="font-size:0.7rem; color:var(--text-muted);">المدة</div>
+                <div style="font-size:0.85rem; font-weight:800;">${p.durationDays} يوم</div>
+              </div>
+              <div style="background:var(--bg-app); border-radius:10px; padding:8px; border:1px solid var(--border-color);">
+                <div style="font-size:0.7rem; color:var(--text-muted);">مدة الحصة</div>
+                <div style="font-size:0.85rem; font-weight:800;">${p.sessionDurationMins} دقيقة</div>
+              </div>
+              <div style="background:var(--bg-app); border-radius:10px; padding:8px; border:1px solid var(--border-color);">
+                <div style="font-size:0.7rem; color:var(--text-muted);">الحصص</div>
+                <div style="font-size:0.85rem; font-weight:800;">${p.sessionsCount} حصة</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn-secondary edit-plan-btn" data-id="${p.id}" style="flex:1; justify-content:center; font-size:0.82rem; border-color:var(--primary); color:var(--primary); font-weight:700;">
+                <i data-lucide="pencil" style="width:14px;height:14px;"></i> تعديل
+              </button>
+              <button class="btn-secondary toggle-plan-btn" data-id="${p.id}" data-active="${p.isActive}" style="flex:1; justify-content:center; font-size:0.82rem; font-weight:700; ${p.isActive ? 'border-color:var(--error,#ef4444);color:var(--error,#ef4444);' : 'border-color:var(--success,#10b981);color:var(--success,#10b981);'}">
+                <i data-lucide="${p.isActive ? 'eye-off' : 'eye'}" style="width:14px;height:14px;"></i> ${p.isActive ? 'إلغاء التفعيل' : 'تفعيل'}
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  renderPlanModal(plan = null) {
+    const isEdit = !!plan;
+    const modalId = 'plan-modal-overlay';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.style.display = 'flex';
+    overlay.style.backdropFilter = 'blur(8px)';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:560px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card);">
+        <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(0,86,210,0.08), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:44px; height:44px; border-radius:12px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="sparkles" style="width:22px;height:22px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main);">${isEdit ? 'تعديل خطة الاشتراك' : 'إضافة خطة اشتراك جديدة'}</h3>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">ستظهر هذه الخطة لجميع الطلاب على صفحة الاشتراكات</p>
+            </div>
+          </div>
+          <span id="close-plan-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+        </div>
+        <div style="padding:28px; background:var(--bg-app); max-height:70vh; overflow-y:auto;">
+          <form id="plan-form" style="display:flex; flex-direction:column; gap:16px;">
+            <input type="hidden" id="plan-id" value="${plan?.id || ''}">
+            <div>
+              <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">اسم الخطة <span style="color:var(--error,#ef4444);">*</span></label>
+              <input type="text" id="plan-name" class="form-input" required style="width:100%; padding:10px;" placeholder="مثال: الخطة الأساسية (4 حصص)" value="${plan?.name || ''}">
+            </div>
+            <div>
+              <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">الوصف</label>
+              <textarea id="plan-desc" class="form-input" rows="2" style="width:100%; padding:10px; resize:vertical;" placeholder="وصف مختصر لما تتضمنه هذه الخطة...">${plan?.description || ''}</textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">عدد الحصص <span style="color:var(--error,#ef4444);">*</span></label>
+                <input type="number" id="plan-sessions" class="form-input" required min="1" style="width:100%; padding:10px;" placeholder="مثال: 8" value="${plan?.sessionsCount || ''}">
+              </div>
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">مدة الخطة (أيام) <span style="color:var(--error,#ef4444);">*</span></label>
+                <input type="number" id="plan-duration" class="form-input" required min="1" style="width:100%; padding:10px;" placeholder="مثال: 30" value="${plan?.durationDays || 30}">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">السعر <span style="color:var(--error,#ef4444);">*</span></label>
+                <input type="number" id="plan-price" class="form-input" required min="0" style="width:100%; padding:10px;" placeholder="مثال: 600" value="${plan?.price || ''}">
+              </div>
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">العملة</label>
+                <input type="text" id="plan-currency" class="form-input" style="width:100%; padding:10px;" placeholder="EGP" value="${plan?.currency || 'EGP'}">
+              </div>
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">مدة الحصة (دقيقة)</label>
+                <input type="number" id="plan-session-mins" class="form-input" min="15" style="width:100%; padding:10px;" value="${plan?.sessionDurationMins || 60}">
+              </div>
+            </div>
+            <div>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" id="plan-active" ${(!plan || plan.isActive) ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--primary);">
+                <span style="font-size:0.9rem; font-weight:600;">الخطة نشطة وظاهرة للطلاب</span>
+              </label>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:8px; justify-content:flex-end;">
+              <button type="button" id="cancel-plan-modal" class="btn-secondary">إلغاء</button>
+              <button type="submit" class="btn-primary">${isEdit ? 'حفظ التعديلات ✅' : 'إضافة الخطة 🚀'}</button>
             </div>
           </form>
         </div>
       </div>
     `;
 
-    const closeModal = () => { container.innerHTML = ""; };
-    document.getElementById("close-assign-sub-modal")?.addEventListener("click", closeModal);
-    document.getElementById("cancel-assign-sub-modal")?.addEventListener("click", closeModal);
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
 
-    document.getElementById("assign-sub-teacher-form")?.addEventListener("submit", async (e) => {
+    const closeModal = () => overlay.remove();
+    document.getElementById('close-plan-modal')?.addEventListener('click', closeModal);
+    document.getElementById('cancel-plan-modal')?.addEventListener('click', closeModal);
+
+    document.getElementById('plan-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const teacherId = document.getElementById("assign-sub-teacher-select").value;
-      if (!teacherId) return;
-
-      const btn = e.target.querySelector('button[type="submit"]');
-      btn.disabled = true;
+      const id = document.getElementById('plan-id').value;
+      const payload = {
+        name: document.getElementById('plan-name').value.trim(),
+        description: document.getElementById('plan-desc').value.trim(),
+        sessionsCount: parseInt(document.getElementById('plan-sessions').value),
+        durationDays: parseInt(document.getElementById('plan-duration').value),
+        price: parseFloat(document.getElementById('plan-price').value),
+        currency: document.getElementById('plan-currency').value.trim() || 'EGP',
+        sessionDurationMins: parseInt(document.getElementById('plan-session-mins').value) || 60,
+        isActive: document.getElementById('plan-active').checked
+      };
 
       try {
-        await apiFetch(`/admin/subscriptions/${subId}/assign-teacher`, {
-          method: "PATCH",
-          body: JSON.stringify({ teacherId })
-        });
-        showToast("تم تعيين المعلم للاشتراك بنجاح! ✅", "success");
+        if (id) {
+          await apiFetch(`/subscription-plans/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          showToast('تم تحديث الخطة بنجاح! ✅', 'success');
+        } else {
+          await apiFetch('/subscription-plans', { method: 'POST', body: JSON.stringify(payload) });
+          showToast('تم إضافة الخطة بنجاح! 🚀', 'success');
+        }
         closeModal();
         await this.loadAllData();
-        this.renderTab("subscriptions");
-      } catch (err) { 
-        showToast(err.message || "فشل تعيين المعلم", "error");
-        btn.disabled = false;
+        this.renderTab('plans');
+      } catch (err) {
+        showToast(err.message || 'فشل حفظ الخطة.', 'error');
       }
     });
   }

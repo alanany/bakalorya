@@ -14,7 +14,7 @@ export class QuestionAnswer {
   @Column("text", { nullable: true })
   answerText: string;
 
-  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
+  @ManyToOne(() => User, { eager: true, nullable: true, onDelete: "CASCADE" })
   student: User;
 
   @ManyToOne(() => User, { eager: true, nullable: true, onDelete: "SET NULL" })

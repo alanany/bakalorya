@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, renderCourseCard, showEnrollmentRequestedModal, canJoinSession } from "../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate } from "../app.js";
 
 export default class StudentView {
   constructor(container) {
@@ -9,16 +9,17 @@ export default class StudentView {
 
   async render() {
     try {
-      const [stats, enrollments, allCourses, sessions] = await Promise.all([
+      const [stats, enrollments, allCourses, sessions, subscriptions] = await Promise.all([
         apiFetch("/student/stats"),
         apiFetch("/student/enrollments"),
         apiFetch("/courses"),
-        apiFetch("/sessions")
+        apiFetch("/sessions"),
+        apiFetch("/subscriptions/my").catch(() => [])
       ]);
+      const mySubscriptions = subscriptions || [];
 
       this.rawSessions = sessions || [];
       const enrolledCourseIds = (enrollments || []).map(e => e.course?.id);
-      const catalogCourses = (allCourses || []).filter(c => !enrolledCourseIds.includes(c.id));
       const filteredSessions = this.filterSessions(this.rawSessions);
 
       this.container.innerHTML = `
@@ -53,23 +54,25 @@ export default class StudentView {
               </div>
             </div>
 
-            <!-- Active Courses (Recent) -->
+            <!-- Enrolled Courses -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
               <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="graduation-cap"></i> ${t("student.myTrack")}</h3>
               <a href="#courses" style="font-size:0.9rem; color:var(--primary); font-weight:600; display:flex; align-items:center; gap:4px;">
                 ${t("nav.courses")} <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
               </a>
             </div>
-            ${
-              (enrollments || []).length === 0
-                ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted); margin-bottom: 40px;">
+            ${(enrollments || []).length === 0
+          ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted); margin-bottom: 40px;">
                     <p style="margin-bottom:16px;">${t("student.noEnrollments")}</p>
                     <a href="#courses" class="btn-primary" style="justify-content:center; width:fit-content; margin:0 auto;">${t("student.checkCatalog")}</a>
                   </div>`
-                : `<div class="courses-grid" style="margin-bottom: 40px;">
+          : `<div class="courses-grid" style="margin-bottom: 40px;">
                     ${enrollments.slice(0, 2).map(enroll => this.renderCourseCard(enroll.course, enroll.progress, true, enroll.status)).join("")}
                   </div>`
-            }
+        }
+
+            <!-- Active Subscriptions Widget -->
+         
           </div>
 
           <!-- Sidebar (Today's Sessions) -->
@@ -82,16 +85,16 @@ export default class StudentView {
             </div>
 
             <div class="schedule-list" id="student-schedule-container" style="display:flex; flex-direction:column; gap:16px;">
-              ${
-                filteredSessions.length === 0
-                  ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted);">
+              ${filteredSessions.length === 0
+          ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted);">
                       ${t("student.noSessions")}
                     </div>`
-                  : filteredSessions.map(session => this.renderSessionCard(session)).join("")
-              }
+          : filteredSessions.map(session => this.renderSessionCard(session)).join("")
+        }
             </div>
           </div>
         </div>
+
       `;
 
       this.bindEvents();
@@ -102,103 +105,39 @@ export default class StudentView {
   }
 
   filterSessions(sessions) {
-    if (!sessions || sessions.length === 0) return [];
-    const now = new Date();
-    
-    // In Dashboard, we ONLY show today's sessions by default
-    return sessions.filter(s => {
-      const d = new Date(s.scheduledAt);
-      return d.toDateString() === now.toDateString();
+    const todayStr = new Date().toDateString();
+    return (sessions || []).filter(s => {
+      const d = new Date(s.scheduledAt).toDateString();
+      return d === todayStr;
     });
   }
 
-  renderCourseCard(course, progress, isEnrolled, status = "active") {
-    const isBanned = status === "banned";
-    return renderCourseCard(course, {
-      enrollmentStatus: isEnrolled ? (isBanned ? "rejected" : "active") : null,
-      isBanned,
-      progress
-    });
+  renderCourseCard(course, progress, showContinue = false, enrollmentStatus = "active") {
+    return renderCourseCard(course, progress, showContinue, enrollmentStatus);
   }
 
   renderSessionCard(session) {
-    const isLive = session.status === "live";
-    const date = new Date(session.scheduledAt);
-    const isJoinable = isLive || canJoinSession(session);
-    const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
-
-    let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
-    let actionBtn = "";
-
-    if (isLive) {
-      statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--success); box-shadow:0 4px 15px var(--success-glow);"><i data-lucide="external-link"></i> دخول البث المباشر 🎥</a>`;
-    } else if (isJoinable) {
-      statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info);">${t("session.startingSoon")}</span>`;
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary session-action" style="background:var(--primary);"><i data-lucide="external-link"></i> دخول البث 🎥</a>`;
-    } else {
-      actionBtn = `<button class="btn-secondary session-action restricted-join-btn" style="cursor:pointer; opacity:0.9;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> الانضمام (قبل الموعد بـ 30د)</button>`;
-    }
+    const isJoinable = canJoinSession(session);
+    const dateFormatted = new Date(session.scheduledAt).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
 
     return `
-      <div class="glass-card session-card" style="${isLive ? "border-color: var(--success);" : ""}">
-        <div class="session-header-row">
-          ${statusTag}
-          <span style="font-size: 0.75rem; color:var(--text-muted); font-weight:600;">${session.duration} ${t("session.mins")}</span>
+      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.8rem; font-weight:700; color:var(--primary);">${session.title || 'حصة خاصة'}</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);">${dateFormatted}</span>
         </div>
-        <h4 class="session-title">${session.title}</h4>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; line-height:1.4;">${session.description || ''}</p>
-        <div class="session-time">
-          <i data-lucide="calendar" style="width:14px;height:14px;"></i>
-          <span>${formattedDate} ${t("session.at")} ${formattedTime}</span>
-        </div>
-        ${actionBtn}
+        <p style="font-size:0.85rem; margin:0; color:var(--text-main); font-weight:600;">المعلم: ${session.teacher?.name || '-'}</p>
+        ${session.topic ? `<p style="font-size:0.78rem; color:var(--text-muted); margin:0;">الموضوع: ${session.topic}</p>` : ''}
+        ${isJoinable
+        ? `<a href="#course-player?session=${session.id}" class="btn-primary" style="padding:6px 12px; font-size:0.78rem; justify-content:center; text-decoration:none; margin-top:4px;">انضم للبث المباشر 🔴</a>`
+        : `<button class="btn-secondary restricted-join-btn" style="padding:6px 12px; font-size:0.78rem; justify-content:center; margin-top:4px; opacity:0.7;">الرابط غير متاح بعد 🔒</button>`
+      }
       </div>
     `;
   }
 
   bindEvents() {
-    // Schedule filter buttons click handler
-    const filterBtns = this.container.querySelectorAll("[data-schedule-filter]");
-    filterBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const filter = btn.getAttribute("data-schedule-filter");
-        this.sessionFilter = filter;
-        filterBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        const container = this.container.querySelector("#student-schedule-container");
-        if (container) {
-          const filtered = this.filterSessions(this.rawSessions);
-          container.innerHTML = filtered.length === 0
-            ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted);">${t("student.noSessions")}</div>`
-            : filtered.map(session => this.renderSessionCard(session)).join("");
-          if (window.lucide) window.lucide.createIcons();
-        }
-      });
-    });
-
-    const enrollButtons = this.container.querySelectorAll(".enroll-course-btn");
-    enrollButtons.forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const courseId = e.currentTarget.getAttribute("data-id");
-        btn.disabled = true;
-        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:14px;height:14px;border-width:2px;"></i> ${t("course.enrolling")}`;
-        if (window.lucide) window.lucide.createIcons();
-        try {
-          await apiFetch("/student/enrollments", { method: "POST", body: JSON.stringify({ courseId }) });
-          showToast("تم تقديم طلب التسجيل بنجاح! في انتظار موافقة المعلم.", "success");
-          showEnrollmentRequestedModal();
-          await this.render();
-        } catch (err) {
-          btn.disabled = false;
-          btn.innerHTML = `<i data-lucide="plus-circle"></i> ${t("course.enroll")}`;
-          if (window.lucide) window.lucide.createIcons();
-        }
-      });
-    });
+    // Only used for global event binding if needed, no longer handles private sessions here.
   }
 
-  onDestroy() {}
 }

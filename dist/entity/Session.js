@@ -13,15 +13,26 @@ exports.Session = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Course_1 = require("./Course");
+const Subscription_1 = require("./Subscription");
 let Session = class Session {
     id;
     title;
     description;
     teacher;
+    student; // Nullable for group course sessions; set for 1-on-1 private sessions
     course;
+    subscription;
     scheduledAt;
     duration; // in minutes
     status;
+    startedAt;
+    completedAt;
+    // Session Report / Lesson Notes Fields
+    topic;
+    whatWasCovered;
+    studentPerformance; // "Excellent" | "Good" | "Needs Practice"
+    homework;
+    teacherNotes;
     createdAt;
     updatedAt;
 };
@@ -31,7 +42,7 @@ __decorate([
     __metadata("design:type", String)
 ], Session.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Session.prototype, "title", void 0);
 __decorate([
@@ -43,9 +54,17 @@ __decorate([
     __metadata("design:type", User_1.User)
 ], Session.prototype, "teacher", void 0);
 __decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true, nullable: true, onDelete: "SET NULL" }),
+    __metadata("design:type", User_1.User)
+], Session.prototype, "student", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, nullable: true, onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)
 ], Session.prototype, "course", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Subscription_1.Subscription, { eager: true, nullable: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Subscription_1.Subscription)
+], Session.prototype, "subscription", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Date)
@@ -55,9 +74,37 @@ __decorate([
     __metadata("design:type", Number)
 ], Session.prototype, "duration", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ default: "scheduled" }),
+    (0, typeorm_1.Column)({ default: "SCHEDULED" }),
     __metadata("design:type", String)
 ], Session.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Session.prototype, "startedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Session.prototype, "completedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Session.prototype, "topic", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Session.prototype, "whatWasCovered", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Session.prototype, "studentPerformance", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Session.prototype, "homework", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Session.prototype, "teacherNotes", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

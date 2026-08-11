@@ -497,6 +497,8 @@ export default class CoursePlayerView {
         </div>
       </div>
     `;
+  }
+
   renderReviewsPane() {
     const reviews = this.courseReviews || [];
     const averageRating = this.courseAvgRating || 0;
@@ -874,8 +876,8 @@ export default class CoursePlayerView {
         if (!answerText) return;
 
         try {
-          await apiFetch(`/qa/${qaId}/answer`, {
-            method: "PUT",
+          await apiFetch(`/qa/${qaId}/answers`, {
+            method: "POST",
             body: JSON.stringify({ answerText })
           });
           showToast("تم إرسال إجابة المعلم بنجاح! ✅", "success");

@@ -26,6 +26,18 @@ export class Course {
   @Column({ nullable: true })
   meetingLink: string;
 
+  @Column({ default: "PUBLISHED" }) // Default for legacy courses; new submitted courses use PENDING_REVIEW
+  status: "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "ARCHIVED";
+
+  @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
+  approvedBy: User;
+
+  @Column({ nullable: true })
+  approvedAt: Date;
+
+  @Column({ type: "text", nullable: true })
+  rejectionReason: string;
+
   @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
   teacher: User;
 

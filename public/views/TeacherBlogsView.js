@@ -118,7 +118,7 @@ export default class TeacherBlogsView {
           </div>
           <div style="padding:18px;">
             <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; font-weight:600;">
-              ${new Date(blog.createdAt).toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" })} &nbsp;•&nbsp; ${blog.readTime}
+              ${new Date(blog.createdAt).toLocaleDateString("ar", { year: "numeric", month: "long", day: "numeric" })} &nbsp;•&nbsp; ${blog.readTime}
             </div>
             <h4 style="font-size:1rem; font-weight:800; color:var(--text-color); margin:0 0 8px 0; line-height:1.45;">${blog.title}</h4>
             <p style="font-size:0.83rem; color:var(--text-muted); line-height:1.6; margin:0;">${blog.content.substring(0, 120)}...</p>

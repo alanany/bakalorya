@@ -57,7 +57,7 @@ export default class BlogDetailsView {
     const b = this.blog;
     const authorName = b.author?.name || "فريق المنصة";
     const authorAvatar = b.author?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${authorName}`;
-    const pubDate = new Date(b.createdAt).toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" });
+    const pubDate = new Date(b.createdAt).toLocaleDateString("ar", { year: "numeric", month: "long", day: "numeric" });
     const formattedContent = b.content ? b.content.split('\n\n').map(p => `<p style="line-height:1.9; font-size:1.1rem; color:var(--text-color); margin-bottom:20px;">${p.trim()}</p>`).join('') : '';
 
     this.container.innerHTML = `

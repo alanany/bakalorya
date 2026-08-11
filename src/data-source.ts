@@ -20,6 +20,23 @@ import { TeacherApplication } from "./entity/TeacherApplication";
 import { QuestionAnswer } from "./entity/QuestionAnswer";
 import { Notification } from "./entity/Notification";
 import { Review } from "./entity/Review";
+import { SubscriptionPlan } from "./entity/SubscriptionPlan";
+import { Subscription } from "./entity/Subscription";
+import { SessionCreditLedger } from "./entity/SessionCreditLedger";
+import { TeacherAvailability } from "./entity/TeacherAvailability";
+import { SessionAttendance } from "./entity/SessionAttendance";
+import { TeacherEarning } from "./entity/TeacherEarning";
+import { Payment } from "./entity/Payment";
+import { AuditLog } from "./entity/AuditLog";
+
+const allEntities = [
+  User, Course, Lesson, Enrollment, Session,
+  Assignment, AssignmentSubmission, Resource, Test,
+  TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
+  QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
+  SessionCreditLedger, TeacherAvailability, SessionAttendance,
+  TeacherEarning, Payment, AuditLog
+];
 
 const dbType = (process.env.DB_TYPE || "sqlite").toLowerCase() as "mysql" | "sqlite" | "postgres";
 
@@ -35,12 +52,7 @@ if (dbType === "mysql" || dbType === "postgres") {
     database: process.env.DB_NAME || "bakalorya_db",
     synchronize: true,
     logging: false,
-    entities: [
-      User, Course, Lesson, Enrollment, Session,
-      Assignment, AssignmentSubmission, Resource, Test,
-      TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
-      QuestionAnswer, Notification, Review
-    ],
+    entities: allEntities,
   };
 } else {
   options = {
@@ -48,12 +60,7 @@ if (dbType === "mysql" || dbType === "postgres") {
     database: process.env.DB_NAME || "database.sqlite",
     synchronize: true,
     logging: false,
-    entities: [
-      User, Course, Lesson, Enrollment, Session,
-      Assignment, AssignmentSubmission, Resource, Test,
-      TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
-      QuestionAnswer, Notification, Review
-    ],
+    entities: allEntities,
   };
 }
 

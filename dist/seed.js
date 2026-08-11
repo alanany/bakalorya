@@ -10,6 +10,8 @@ const Lesson_1 = require("./entity/Lesson");
 const Session_1 = require("./entity/Session");
 const Enrollment_1 = require("./entity/Enrollment");
 const Category_1 = require("./entity/Category");
+const Subscription_1 = require("./entity/Subscription");
+const SessionCreditLedger_1 = require("./entity/SessionCreditLedger");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 async function seed() {
     try {
@@ -21,16 +23,19 @@ async function seed() {
         const sessionRepository = data_source_1.AppDataSource.getRepository(Session_1.Session);
         const enrollmentRepository = data_source_1.AppDataSource.getRepository(Enrollment_1.Enrollment);
         const categoryRepository = data_source_1.AppDataSource.getRepository(Category_1.Category);
+        const qaRepository = data_source_1.AppDataSource.getRepository("QuestionAnswer");
         // Clear all data cleanly
         if (data_source_1.AppDataSource.options.type === "mysql") {
             await data_source_1.AppDataSource.query("SET FOREIGN_KEY_CHECKS = 0;");
+            await data_source_1.AppDataSource.query("TRUNCATE TABLE `question_answer`;").catch(() => { });
         }
-        await enrollmentRepository.clear();
-        await lessonRepository.clear();
-        await courseRepository.clear();
-        await sessionRepository.clear();
-        await userRepository.clear();
-        await categoryRepository.clear();
+        await enrollmentRepository.clear().catch(() => { });
+        await lessonRepository.clear().catch(() => { });
+        await courseRepository.clear().catch(() => { });
+        await sessionRepository.clear().catch(() => { });
+        await userRepository.clear().catch(() => { });
+        await categoryRepository.clear().catch(() => { });
+        await qaRepository.clear().catch(() => { });
         if (data_source_1.AppDataSource.options.type === "mysql") {
             await data_source_1.AppDataSource.query("SET FOREIGN_KEY_CHECKS = 1;");
         }
@@ -191,6 +196,103 @@ async function seed() {
         });
         await lessonRepository.save([lesson1, lesson2]);
         console.log("✅ Initial Baccalaureate Courses & Lessons seeded.");
+        // Seed Subscription Plans
+        const planRepository = data_source_1.AppDataSource.getRepository("SubscriptionPlan");
+        const basicPlan = planRepository.create({
+            name: "الباقة الأساسية (4 حصص / شهر)",
+            description: "حصة أسبوعية واحدة مباشرة 1-على-1 مع أستاذك المفضل مع متابعة شاملة",
+            sessionsCount: 4,
+            price: 600,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 60,
+            isActive: true
+        });
+        const standardPlan = planRepository.create({
+            name: "الباقة القياسية (8 حصص / شهر)",
+            description: "حصتان أسبوعياً للتركيز وتغطية كافة الوحدات والتمارين المنهجية التطبيقية",
+            sessionsCount: 8,
+            price: 1100,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 60,
+            isActive: true
+        });
+        const premiumPlan = planRepository.create({
+            name: "الباقة المكثفة (12 حصة / شهر)",
+            description: "3 حصص أسبوعياً للمكثف والمراجعات الشاملة لحصد أعلى العلامات في البكالوريا",
+            sessionsCount: 12,
+            price: 1500,
+            currency: "EGP",
+            durationDays: 30,
+            sessionDurationMins: 60,
+            isActive: true
+        });
+        await planRepository.save([basicPlan, standardPlan, premiumPlan]);
+        console.log("✅ Initial Monthly Subscription Plans seeded.");
+        // Seed Sample Student Subscription
+        const subRepo = data_source_1.AppDataSource.getRepository(Subscription_1.Subscription);
+        const sub = subRepo.create({
+            student: student,
+            teacher: teacher,
+            plan: standardPlan,
+            totalSessions: 8,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: "ACTIVE"
+        });
+        await subRepo.save(sub);
+        // Seed Credit Ledger Entry (+8 credits)
+        const ledgerRepo = data_source_1.AppDataSource.getRepository(SessionCreditLedger_1.SessionCreditLedger);
+        const ledger = ledgerRepo.create({
+            subscription: sub,
+            amount: 8,
+            type: "SUBSCRIPTION_PURCHASE",
+            reason: "شراء الباقة القياسية (8 حصص / شهر)",
+            createdBy: student
+        });
+        await ledgerRepo.save(ledger);
+        // Seed Sample Sessions
+        const now = new Date();
+        const futureDate = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days in future
+        const liveSession = sessionRepository.create({
+            title: "بث مباشر: حل مسائل وموضوعات النموذجية لربط وحدات الدوال والفيزياء",
+            description: "جلسة تطبيقية تفاعلية لمراجعة أسئلة الامتحانات المنهجية بدقة",
+            scheduledAt: now,
+            duration: 60,
+            status: "live",
+            course: course1,
+            teacher: teacher
+        });
+        const scheduledPrivateSession = sessionRepository.create({
+            title: "حصة خاصة 1-على-1: مراجعة شاملة في متتاليات التراجع والبرهان بالتراجع",
+            description: "جلسة فردية مع الطالب لشرح الصعوبات وتثبيت قواعد المتتاليات",
+            scheduledAt: futureDate,
+            duration: 60,
+            status: "SCHEDULED",
+            subscription: sub,
+            student: student,
+            teacher: teacher
+        });
+        const completedPrivateSession = sessionRepository.create({
+            title: "حصة خاصة 1-على-1: أساسيات التفاضل والتكامل وتعيين ثوابت الدوال",
+            description: "متابعة وتقييم مستوى الطالب في اشتقاق الدوال العددية",
+            scheduledAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+            startedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+            completedAt: new Date(now.getTime() - 23 * 60 * 60 * 1000),
+            duration: 60,
+            status: "COMPLETED",
+            topic: "الدوال والاشتقاقية",
+            whatWasCovered: "دراسة الاتصال والاشتقاق وتعيين مماس المنحنى C_f",
+            studentPerformance: "ممتاز ومستعد بشكل رائع مع انضباط تام",
+            homework: "حل التمرينين 14 و 15 ص 45 من الكتاب المدرسي",
+            teacherNotes: "تم الخصم بنجاح وتسجيل الرصيد",
+            subscription: sub,
+            student: student,
+            teacher: teacher
+        });
+        await sessionRepository.save([liveSession, scheduledPrivateSession, completedPrivateSession]);
+        console.log("✅ Initial Live Classrooms & 1-on-1 Private Sessions seeded.");
         console.log("🎉 Seeding completed successfully!");
         process.exit(0);
     }

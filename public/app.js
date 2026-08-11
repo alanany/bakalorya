@@ -24,10 +24,15 @@ import SearchView from "./views/SearchView.js";
 import AboutView from "./views/AboutView.js";
 import ContactView from "./views/ContactView.js";
 import FAQView from "./views/FAQView.js";
+import SubscriptionPlansView from "./views/SubscriptionPlansView.js";
+import TeacherAvailabilityView from "./views/TeacherAvailabilityView.js";
+import StudentPrivateSessionsView from "./views/StudentPrivateSessionsView.js";
+import TeacherPrivateSessionsView from "./views/TeacherPrivateSessionsView.js";
+import SubscriptionSessionsView from "./views/SubscriptionSessionsView.js";
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
 export const COUNTRY_CODES = [
-  { code: "+20",  flag: "🇪🇬", name: "مصر (+20)" },
+  { code: "+20", flag: "🇪🇬", name: "مصر (+20)" },
   { code: "+213", flag: "🇩🇿", name: "الجزائر (+213)" },
   { code: "+212", flag: "🇲🇦", name: "المغرب (+212)" },
   { code: "+216", flag: "🇹🇳", name: "تونس (+216)" },
@@ -45,9 +50,9 @@ export const COUNTRY_CODES = [
   { code: "+218", flag: "🇱🇾", name: "ليبيا (+218)" },
   { code: "+222", flag: "🇲🇷", name: "موريتانيا (+222)" },
   { code: "+249", flag: "🇸🇩", name: "السودان (+249)" },
-  { code: "+33",  flag: "🇫🇷", name: "فرنسا (+33)" },
-  { code: "+44",  flag: "🇬🇧", name: "بريطانيا (+44)" },
-  { code: "+1",   flag: "🇺🇸", name: "أمريكا (+1)" }
+  { code: "+33", flag: "🇫🇷", name: "فرنسا (+33)" },
+  { code: "+44", flag: "🇬🇧", name: "بريطانيا (+44)" },
+  { code: "+1", flag: "🇺🇸", name: "أمريكا (+1)" }
 ];
 
 export function renderPhoneInputGroup({ selectId = "phone-code", inputId = "phone-number", defaultCode = "+213", value = "", placeholder = "0555123456", required = false } = {}) {
@@ -170,9 +175,9 @@ export function getSessionJoinInfo(session) {
       const mins = minutesLeft % 60;
       timeText = `${hours} ساعة ${mins > 0 ? `و ${mins}د` : ''}`;
     }
-    return { 
-      canJoin: false, 
-      text: `متاح الانضمام قبل الموعد بـ 30 دقيقة فقط` 
+    return {
+      canJoin: false,
+      text: `متاح الانضمام قبل الموعد بـ 30 دقيقة فقط`
     };
   }
 }
@@ -205,9 +210,13 @@ export function validateSessionScheduledDate(scheduledAtVal) {
  * Returns formatted ISO string for datetime-local min attribute (now + 1 hour)
  */
 export function getMinSessionDateTimeISO() {
-  const minDate = new Date(Date.now() + 60 * 60 * 1000);
-  const tzOffset = minDate.getTimezoneOffset() * 60000;
-  return new Date(minDate.getTime() - tzOffset).toISOString().slice(0, 16);
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // ─── Shared Course Card Renderer ──────────────────────────────────────────────
@@ -221,7 +230,7 @@ export function renderCourseCard(course, { enrollmentStatus = null, isBanned = f
   const teacherName = course.teacher?.name || "المعلم الفاضل";
   const teacherAvatar = course.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
 
-  let actionButtonHTML = `<a href="#course-preview/${course.id}" class="course-price-pill">مجاني</a>`;
+  let actionButtonHTML = `<a href="#course-preview/${course.id}" class="course-price-pill">الاشتراك في الكورس</a>`;
 
   if (isTeacherView) {
     actionButtonHTML = `
@@ -418,18 +427,18 @@ setTimeout(() => {
 async function initApp() {
   try {
     applyTheme(state.theme);
-    await loadTranslations(state.language).catch(() => {});
+    await loadTranslations(state.language).catch(() => { });
     document.documentElement.lang = state.language;
     document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
 
     setupEventListeners();
     window.addEventListener("hashchange", router);
-    await checkAuth().catch(() => {});
+    await checkAuth().catch(() => { });
     await router();
   } catch (err) {
     console.error("initApp failed:", err);
     // Guarantee the router still runs to clear the spinner
-    try { await router(); } catch(e) {
+    try { await router(); } catch (e) {
       const vp = document.getElementById("app-viewport");
       if (vp) vp.innerHTML = '<div style="text-align:center;padding:100px 24px;"><h2>فشل تحميل الصفحة</h2><p style="color:#6b7280;">يرجى تحديث الصفحة أو المحاولة لاحقاً.</p></div>';
     }
@@ -677,6 +686,12 @@ export function updateHeader() {
           <a href="#schedule" class="sidebar-nav-item">
             <i data-lucide="calendar"></i> ${t("nav.teacher.schedule")}
           </a>
+          <a href="#teacher-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
+            <i data-lucide="users"></i> طلابي في الحصص الخاصة
+          </a>
+          <a href="#teacher-availability" class="sidebar-nav-item" style="color:var(--primary);">
+            <i data-lucide="clock"></i> مواعيد التوفر
+          </a>
           <a href="#assignments" class="sidebar-nav-item">
             <i data-lucide="clipboard-list"></i> ${t("nav.teacher.assignments")}
           </a>
@@ -710,6 +725,9 @@ export function updateHeader() {
           </a>
           <a href="#schedule" class="sidebar-nav-item">
             <i data-lucide="calendar"></i> ${t("nav.schedule")}
+          </a>
+          <a href="#student-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
+            <i data-lucide="sparkles"></i> اشتراكاتي والحصص الخاصة
           </a>
           <a href="#assignments" class="sidebar-nav-item">
             <i data-lucide="clipboard-list"></i> ${t("nav.assignments")}
@@ -769,9 +787,9 @@ export function updateHeader() {
     });
   }
 
-    checkPendingRequestsNotification();
-    updateHeaderNotificationCount();
-    setupHeaderSearch();
+  checkPendingRequestsNotification();
+  updateHeaderNotificationCount();
+  setupHeaderSearch();
 }
 
 export function setupHeaderSearch() {
@@ -843,7 +861,7 @@ export async function updateHeaderNotificationCount() {
         badge.style.display = "none";
       }
     }
-  } catch (err) {}
+  } catch (err) { }
 }
 window.updateHeaderNotificationCount = updateHeaderNotificationCount;
 
@@ -1197,7 +1215,7 @@ export async function router() {
     routeBase = mainParts[0];
     const queryString = mainParts[1] || "";
     const params = new URLSearchParams(queryString);
-    routeParam = params.get("q") || "";
+    routeParam = params.get("id") || params.get("q") || queryString;
   } else if (hash.includes("/")) {
     const routeParts = hash.split("/");
     routeBase = routeParts[0];
@@ -1212,7 +1230,7 @@ export async function router() {
     window.location.hash = "#landing";
     return router();
   }
-  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-blogs") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
+  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-blogs" || routeBase === "#teacher-private-sessions") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
     showToast(t("error.accessRestricted") || "الوصول مقيد للمعلمين والمشرفين.", "error");
     window.location.hash = "#landing";
     return router();
@@ -1237,8 +1255,12 @@ export async function router() {
     case "#signup":
     case "#auth": ViewClass = AuthView; break;
     case "#student-dashboard": ViewClass = StudentView; break;
+    case "#student-private-sessions": ViewClass = StudentPrivateSessionsView; break;
+    case "#subscription-sessions": ViewClass = SubscriptionSessionsView; break;
     case "#course": ViewClass = CoursePlayerView; break;
     case "#teacher-portal": ViewClass = TeacherView; break;
+    case "#teacher-private-sessions": ViewClass = TeacherPrivateSessionsView; break;
+    case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;
     case "#enrollment-requests": ViewClass = RequestsView; break;
@@ -1260,6 +1282,7 @@ export async function router() {
     case "#about": ViewClass = AboutView; break;
     case "#contact": ViewClass = ContactView; break;
     case "#faq": ViewClass = FAQView; break;
+    case "#subscription-plans": ViewClass = SubscriptionPlansView; break;
     default:
       ViewClass = LandingView;
   }

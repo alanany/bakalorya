@@ -258,7 +258,7 @@ export default class CourseManageView {
                   </button>
                 </div>
                 <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">
-                  <i data-lucide="calendar" style="width:12px;height:12px;vertical-align:middle;"></i> ${new Date(r.createdAt).toLocaleDateString("ar-DZ")}
+                  <i data-lucide="calendar" style="width:12px;height:12px;vertical-align:middle;"></i> ${new Date(r.createdAt).toLocaleDateString("ar")}
                 </div>
               </div>
               <a href="${r.url}" target="_blank" class="btn-primary" style="font-size:0.85rem; padding:8px 14px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">

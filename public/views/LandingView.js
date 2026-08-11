@@ -189,25 +189,34 @@ export default class LandingView {
         </section>
 
 
-        <!-- SCREENSHOT 3: SECTION 1 (WHAT BRINGS YOU TODAY?) -->
+        <!-- SCREENSHOT 3: SECTION 1 (MAIN UX PATHS) -->
         <section style="max-width:1280px; margin:0 auto; padding:16px 24px 32px 24px;">
-          <div class="glass-card" style="background:rgba(99,102,241,0.06); border:1px solid var(--border-color); border-radius:20px; padding:24px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
-            <h3 style="font-size:1.25rem; font-weight:900; color:var(--text-color); margin:0;">
-              ما الذي تسعى لتحقيقه في منصة بكالوريا اليوم؟
-            </h3>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-              <button class="goal-pill-btn" style="display:flex; align-items:center; gap:10px; background:#ffffff; color:#0f172a; padding:10px 20px; border-radius:30px; font-size:0.88rem; font-weight:800; border:1px solid #cbd5e1; cursor:pointer;">
-                <span style="background:#0056D2; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">🚀</span>
-                التحضير لاجتياز البكالوريا
-              </button>
-              <button class="goal-pill-btn" style="display:flex; align-items:center; gap:10px; background:#ffffff; color:#0f172a; padding:10px 20px; border-radius:30px; font-size:0.88rem; font-weight:800; border:1px solid #cbd5e1; cursor:pointer;">
-                <span style="background:#2563eb; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">🔀</span>
-                مراجعة وتدارك النقائص
-              </button>
-              <button class="goal-pill-btn" style="display:flex; align-items:center; gap:10px; background:#ffffff; color:#0f172a; padding:10px 20px; border-radius:30px; font-size:0.88rem; font-weight:800; border:1px solid #cbd5e1; cursor:pointer;">
-                <span style="background:#10b981; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">📈</span>
-                الرفع من معدل المواد الأساسية
-              </button>
+          <h2 style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
+            ماذا تريد أن تتعلم؟
+          </h2>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+            <!-- Courses Path -->
+            <div class="glass-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
+              <div style="width:80px; height:80px; background:rgba(37,99,235,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#2563eb;">
+                <i data-lucide="book-open" style="width:40px; height:40px;"></i>
+              </div>
+              <h3 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">📚 الكورسات</h3>
+              <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
+                تعلم من خلال كورسات منظمة خطوة بخطوة مع نخبة من الأساتذة.
+              </p>
+              <a href="#courses" class="btn-primary" style="padding:14px 32px; font-size:1.05rem; border-radius:30px; width:100%; text-decoration:none; justify-content:center;">استكشف الكورسات</a>
+            </div>
+
+            <!-- Private Lessons Path -->
+            <div class="glass-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
+              <div style="width:80px; height:80px; background:rgba(16,185,129,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#10b981;">
+                <i data-lucide="users" style="width:40px; height:40px;"></i>
+              </div>
+              <h3 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">👨‍🏫 حصص فردية</h3>
+              <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
+                اختر مدرسًا واحجز حصصًا خاصة (1 على 1) تناسب جدولك ومستواك الدراسي.
+              </p>
+              <a href="#subscription-plans" class="btn-primary" style="background:#10b981; border-color:#10b981; padding:14px 32px; font-size:1.05rem; border-radius:30px; width:100%; text-decoration:none; justify-content:center;">احجز حصتك الخاصة</a>
             </div>
           </div>
         </section>

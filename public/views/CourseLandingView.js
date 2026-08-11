@@ -20,7 +20,7 @@ export default class CourseLandingView {
 
       const results = await Promise.all(fetchPromises);
       this.course = results[0];
-      
+
       if (results[1]) {
         const enrollments = results[1];
         const myEnrollment = enrollments.find(e => e.course?.id === this.courseId);
@@ -29,11 +29,11 @@ export default class CourseLandingView {
         }
       } else if (state.user && (state.user.role === 'teacher' || state.user.role === 'admin')) {
         // Teachers/Admins don't "enroll" but they have access
-        this.enrollmentStatus = 'active'; 
+        this.enrollmentStatus = 'active';
       }
 
       const hasLessons = this.course.lessons && this.course.lessons.length > 0;
-      
+
       const chaptersMap = {};
       let totalDuration = 0;
       if (hasLessons) {
@@ -41,7 +41,7 @@ export default class CourseLandingView {
           const chName = l.chapter || "General";
           if (!chaptersMap[chName]) chaptersMap[chName] = [];
           chaptersMap[chName].push(l);
-          
+
           // Basic duration parsing (assuming MM:SS format)
           const parts = l.duration ? l.duration.split(':') : [];
           if (parts.length === 2) {
@@ -69,24 +69,29 @@ export default class CourseLandingView {
                 ${this.course.title}
               </h1>
               
-              <div style="display:flex; gap:16px; align-items:center; margin-top: 24px;">
+              <div style="display:flex; gap:16px; align-items:center; margin-top: 24px; flex-wrap:wrap; justify-content:center;">
                 ${this.enrollmentStatus === 'active' ? `
                   <a href="#course/${this.course.id}" class="btn-primary" style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
                     <i data-lucide="play-circle"></i> ${t("course.continueLearning") || "Go to Course"}
                   </a>
                 ` : this.enrollmentStatus === 'pending' ? `
                   <button class="btn-primary" disabled style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; opacity:0.7; cursor:not-allowed;">
-                    <i data-lucide="clock"></i> Pending Approval
+                    <i data-lucide="clock"></i> تم إرسال طلب الحجز إلى المعلم، وهو الآن في انتظار الموافقة. 
                   </button>
                 ` : this.enrollmentStatus === 'rejected' ? `
                   <button class="btn-primary" disabled style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; background:var(--error); border-color:var(--error); opacity:0.8;">
-                    <i data-lucide="x-circle"></i> Enrollment Rejected
+                    <i data-lucide="x-circle"></i> تم الرفض
                   </button>
                 ` : `
                   <button id="enroll-hero-btn" class="btn-primary" style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
                     <i data-lucide="plus-circle"></i> ${t("course.enroll") || "Enroll Now"}
                   </button>
                 `}
+                ${this.course.teacher && (!state.user || state.user.role === 'student' && this.enrollmentStatus === 'active') ? `
+                  <button id="book-private-session-hero-btn" class="btn-secondary" style="padding: 14px 28px; font-size: 1rem; border-radius: 30px; background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.5); color:#fff; backdrop-filter:blur(8px);">
+                    <i data-lucide="user-check"></i> احجز حصص  خاصة مع المعلم
+                  </button>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -149,6 +154,29 @@ export default class CourseLandingView {
                   </div>
                 </div>
               </div>
+
+              <!-- Cross-sell section -->
+               <div class="glass-card" style="padding: 24px; margin-top:24px; background:linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02)); border:1px solid rgba(16,185,129,0.25);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; color:#10b981;">
+                  <div style="width:42px; height:42px; border-radius:12px; background:rgba(16,185,129,0.12); display:flex; align-items:center; justify-content:center;">
+                    <i data-lucide="video" style="width:22px; height:22px;"></i>
+                  </div>
+                  <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main);">حصة خاصة مع المعلم</h3>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                  <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:40px; height:40px; border-radius:50%; border:2px solid rgba(16,185,129,0.4);">
+                  <div>
+                    <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${this.course.teacher?.name || 'المعلم'}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">متاح للحصص الفردية (1-على-1)</div>
+                  </div>
+                </div>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
+                  احجز حصة خاصة مباشرة مع هذا المعلم لشرح مخصص وتفاعل فردي.
+                </p>
+               ${this.enrollmentStatus !== 'active' ? `` : ` <button id="book-private-session-card-btn" class="btn-primary" style="background:#10b981; border-color:#10b981; width:100%; justify-content:center;">
+                  <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> احجز حصة خاصة الآن
+                </button>`}
+              </div>
             </div>
 
           </div>
@@ -206,7 +234,19 @@ export default class CourseLandingView {
 
     document.getElementById("enroll-hero-btn")?.addEventListener("click", handleEnroll);
     document.getElementById("enroll-card-btn")?.addEventListener("click", handleEnroll);
+
+    const handleBookPrivateSession = () => {
+      if (!state.user) {
+        showToast("سجل دخولك أولاً لحجز حصة خاصة.", "info");
+        window.location.hash = "#login";
+        return;
+      }
+      window.location.hash = "#subscription-plans";
+    };
+
+    document.getElementById("book-private-session-hero-btn")?.addEventListener("click", handleBookPrivateSession);
+    document.getElementById("book-private-session-card-btn")?.addEventListener("click", handleBookPrivateSession);
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

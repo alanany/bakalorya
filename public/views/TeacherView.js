@@ -5,29 +5,50 @@ export default class TeacherView {
     this.container = container;
     this.courses = [];
     this.sessions = [];
+    this.privateSessions = [];
+    this.todaySessions = [];
+    this.availability = [];
     this.sessionFilter = "all";
+    this.privateSessionFilter = "all";
     this.selectedCourseForLesson = null;
+    this.assignedSubscriptions = [];
+    
+    // New View State
+    this.currentViewMode = 'dashboard';
+    this.selectedSubscriptionId = null;
+    this.sessionsFilterStatus = 'all';
   }
 
   async render() {
     try {
-      const [allCourses, sessions, students, requests, allBlogs] = await Promise.all([
+      const [allCourses, sessions, students, requests, allBlogs, privateSessions, todaySessions, availability, earnings, assignedSubscriptions] = await Promise.all([
         apiFetch("/courses"),
         apiFetch("/sessions"),
         apiFetch("/users/students"),
         apiFetch("/teacher/enrollment-requests"),
-        apiFetch("/blogs")
+        apiFetch("/blogs"),
+        apiFetch("/teacher/private-sessions").catch(() => []),
+        apiFetch("/teacher/private-sessions/today").catch(() => []),
+        apiFetch("/teacher/availability/mine").catch(() => []),
+        apiFetch("/teacher/earnings").catch(() => ({ stats: { pendingAmount: 0, totalEarned: 0 } })),
+        apiFetch("/subscriptions/teacher-assigned").catch(() => [])
       ]);
 
       this.courses = (allCourses || []).filter(c => c.teacher?.id === state.user.id);
       this.sessions = (sessions || []).filter(s => s.teacher?.id === state.user.id);
+      this.privateSessions = privateSessions || [];
+      this.todaySessions = todaySessions || [];
+      this.availability = availability || [];
       this.blogs = (allBlogs || []).filter(b => b.author?.id === state.user.id);
+      this.assignedSubscriptions = assignedSubscriptions || [];
 
       const totalCourses = this.courses.length;
       const upcomingSessions = this.sessions.filter(s => s.status === "scheduled").length;
       const activeStudentsCount = students ? students.length : 0;
       const filteredSessions = this.filterSessions(this.sessions);
       this.enrollmentRequests = requests || [];
+      const pendingEarnings = earnings?.stats?.pendingAmount || 0;
+      const completedPrivate = this.privateSessions.filter(s => s.status === "COMPLETED").length;
 
       this.container.innerHTML = `
         <div class="teacher-layout">
@@ -44,7 +65,6 @@ export default class TeacherView {
             </div>
           </div>
 
-          <!-- Stats -->
           <div class="dashboard-stats-grid" style="margin-bottom: 40px;">
             <div class="glass-card stat-box">
               <div class="stat-box-icon"><i data-lucide="book-open"></i></div>
@@ -67,13 +87,48 @@ export default class TeacherView {
                 <div class="stat-box-lbl">${t("teacher.activeStudents")}</div>
               </div>
             </div>
+            <div class="glass-card stat-box">
+              <div class="stat-box-icon" style="color:#10b981; background:rgba(16,185,129,0.1);"><i data-lucide="calendar-check"></i></div>
+              <div>
+                <div class="stat-box-val">${completedPrivate}</div>
+                <div class="stat-box-lbl">حصص خاصة مكتملة</div>
+              </div>
+            </div>
+            <div class="glass-card stat-box">
+              <div class="stat-box-icon" style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i data-lucide="wallet"></i></div>
+              <div>
+                <div class="stat-box-val">${pendingEarnings.toLocaleString()} ج.م</div>
+                <div class="stat-box-lbl">مستحقات معلقة</div>
+              </div>
+            </div>
           </div>
 
+          <!-- Private Sessions Section (Today) -->
+          <div style="margin-bottom:40px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
+              <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="user-check"></i> حصصي الخاصة اليوم</h3>
+              <button class="btn-secondary" id="view-all-private-btn" style="font-size:0.82rem; padding:7px 16px; border-color:var(--primary); color:var(--primary);">
+                <i data-lucide="list" style="width:14px;height:14px;"></i> عرض الكل
+              </button>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px;" id="today-private-sessions">
+              ${this.todaySessions.length === 0
+                ? `<div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted); grid-column:1/-1;">
+                    <i data-lucide="calendar" style="width:32px;height:32px;margin-bottom:8px;opacity:0.4;"></i>
+                    <p>لا توجد حصص خاصة مجدولة اليوم</p>
+                  </div>`
+                : this.todaySessions.map(s => this.renderPrivateSessionCard(s)).join('')
+              }
+            </div>
+          </div>
+
+
+
           <div class="student-dashboard-layout" style="grid-template-columns: 1fr; padding:0;">
-            <!-- Sessions (Today only for Dashboard) -->
+            <!-- Live Sessions (Group) -->
             <div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
-                <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="video"></i> Today's Sessions</h3>
+                <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="video"></i> جلسات المجموعة اليوم</h3>
                 <a href="#schedule" style="font-size:0.9rem; color:var(--primary); font-weight:600; display:flex; align-items:center; gap:4px;">
                   ${t("nav.schedule")} <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
                 </a>
@@ -400,6 +455,72 @@ export default class TeacherView {
             </form>
           </div>
         </div>
+
+
+
+        <!-- Complete Private Session Modal (Lesson Report) -->
+        <div class="modal-overlay" id="complete-private-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+          <div class="modal-content" style="max-width:520px; width:92%; border-radius:20px; padding:0; border:1px solid var(--border-color); max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div class="modal-header" style="padding:20px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.08));">
+              <h3 style="margin:0; font-size:1.1rem; font-weight:800;">✅ إكمال الحصة + تقرير الدرس</h3>
+              <span id="close-complete-modal" style="cursor:pointer; font-size:1.4rem; color:var(--text-muted);">&times;</span>
+            </div>
+            <div style="padding:24px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; flex:1;">
+              <input type="hidden" id="complete-session-id">
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:5px; display:block;">📚 موضوع الحصة (Topic)</label>
+                <input type="text" id="complete-topic" class="form-input" placeholder="مثال: الكسور وعملياتها" style="border-radius:12px; padding:10px 14px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:5px; display:block;">📝 ما تم شرحه</label>
+                <textarea id="complete-covered" class="form-input" rows="2" placeholder="ماذا تم تغطيته في هذه الحصة..." style="border-radius:12px; padding:10px 14px; resize:none;"></textarea>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:5px; display:block;">⭐ أداء الطالب</label>
+                <select id="complete-performance" class="form-select" style="border-radius:12px; padding:10px 14px;">
+                  <option value="">-- اختر التقييم --</option>
+                  <option value="ممتاز">ممتاز ❤️</option>
+                  <option value="جيد">جيد 👍</option>
+                  <option value="متوسط">متوسط ⚠️</option>
+                  <option value="يحتاج متابعة">يحتاج متابعة ⚠️</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:5px; display:block;">📖 الواجب المنزلي</label>
+                <input type="text" id="complete-homework" class="form-input" placeholder="مثال: تمارين 1 ← 10 صفحة 45" style="border-radius:12px; padding:10px 14px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:5px; display:block;">💬 ملاحظات المعلم</label>
+                <textarea id="complete-notes" class="form-input" rows="2" placeholder="أي ملاحظات إضافية..." style="border-radius:12px; padding:10px 14px; resize:none;"></textarea>
+              </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+              <button class="btn-secondary" id="cancel-complete-modal" style="padding:9px 18px; border-radius:30px;">إلغاء</button>
+              <button class="btn-primary" id="submit-complete-btn" style="padding:9px 22px; border-radius:30px; font-weight:800; background:linear-gradient(135deg,#10b981,#3b82f6); border:none;">
+                ✅ تأكيد إكمال الحصة
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Private Sessions Modal -->
+        <div class="modal-overlay" id="all-private-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+          <div class="modal-content" style="max-width:700px; width:95%; border-radius:20px; padding:0; border:1px solid var(--border-color); max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div class="modal-header" style="padding:20px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h3 style="margin:0; font-size:1.1rem; font-weight:800;">📋 جميع حصصي الخاصة</h3>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                  <button class="private-filter-btn active" data-status="all" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--primary); color:#fff; cursor:pointer;">الكل</button>
+                  <button class="private-filter-btn" data-status="SCHEDULED" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">مجدولة</button>
+                  <button class="private-filter-btn" data-status="COMPLETED" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">مكتملة</button>
+                  <button class="private-filter-btn" data-status="CANCELLED_BY_STUDENT" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">ملغاة</button>
+                </div>
+              </div>
+              <span id="close-all-private-modal" style="cursor:pointer; font-size:1.4rem; color:var(--text-muted);">&times;</span>
+            </div>
+            <div id="all-private-sessions-list" style="padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; overflow-y:auto; flex:1;"></div>
+          </div>
+        </div>
       `;
 
       this.bindEvents();
@@ -428,12 +549,61 @@ export default class TeacherView {
   filterSessions(sessions) {
     if (!sessions || sessions.length === 0) return [];
     const now = new Date();
-
-    // In Dashboard, we ONLY show today's sessions by default
     return sessions.filter(s => {
       const d = new Date(s.scheduledAt);
       return d.toDateString() === now.toDateString();
     });
+  }
+
+  renderPrivateSessionCard(session) {
+    const date = new Date(session.scheduledAt);
+    const timeStr = date.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleDateString('ar', { weekday: 'short', month: 'short', day: 'numeric' });
+    const statusMap = {
+      'SCHEDULED': { label: 'مجدولة', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+      'CONFIRMED': { label: 'مؤكدة', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+      'COMPLETED': { label: 'مكتملة', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+      'RESCHEDULED': { label: 'معاد جدولتها', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+      'CANCELLED_BY_STUDENT': { label: 'ملغاة (طالب)', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+      'CANCELLED_BY_TEACHER': { label: 'ملغاة (معلم)', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+      'NO_SHOW_STUDENT': { label: 'غياب طالب', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+    };
+    const st = statusMap[session.status] || { label: session.status, color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
+    const isActive = ['SCHEDULED', 'CONFIRMED', 'scheduled'].includes(session.status);
+
+    return `
+      <div class="glass-card" style="padding:20px; border-radius:18px; border:1px solid var(--border-color);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+          <span style="font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:20px; background:${st.bg}; color:${st.color};">${st.label}</span>
+          <span style="font-size:0.78rem; color:var(--text-muted);">${session.duration || 60} دقيقة</span>
+        </div>
+
+        <h4 style="font-weight:800; font-size:0.95rem; margin:0 0 6px 0; color:var(--text-main);">${session.topic || session.title || 'حصة خاصة'}</h4>
+        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:6px;">
+          <i data-lucide="user" style="width:13px;height:13px;"></i> ${session.student?.name || 'طالب'}
+        </div>
+        <div style="font-size:0.82rem; color:var(--primary); font-weight:600;">
+          <i data-lucide="calendar" style="width:13px;height:13px;"></i> ${dateStr} • ${timeStr}
+        </div>
+
+        ${isActive ? `
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:14px;">
+          <button class="btn-primary complete-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; background:var(--success,#10b981); border-color:var(--success,#10b981);">
+            <i data-lucide="check" style="width:13px;height:13px;"></i> إكمال
+          </button>
+          <button class="btn-secondary noshow-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; color:#8b5cf6; border-color:#8b5cf6;">
+            <i data-lucide="user-x" style="width:13px;height:13px;"></i> غياب
+          </button>
+          <button class="btn-secondary cancel-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; color:var(--error,#ef4444); border-color:var(--error,#ef4444);">
+            <i data-lucide="x" style="width:13px;height:13px;"></i> إلغاء
+          </button>
+        </div>` : session.status === 'COMPLETED' ? `
+        <div style="margin-top:12px; padding:10px; background:rgba(16,185,129,0.05); border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
+          ${session.topic ? `<div style="font-size:0.8rem;"><strong>الموضوع:</strong> ${session.topic}</div>` : ''}
+          ${session.homework ? `<div style="font-size:0.8rem;"><strong>الواجب:</strong> ${session.homework}</div>` : ''}
+        </div>` : ''}
+      </div>
+    `;
   }
 
   renderCourseListCard(course) {
@@ -489,7 +659,49 @@ export default class TeacherView {
     `;
   }
 
-  bindEvents() {
+  
+bindEvents() {
+    document.querySelectorAll(".teacher-view-sub-sessions-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const subId = e.currentTarget.getAttribute("data-id");
+        this.selectedSubscriptionId = subId;
+        this.currentViewMode = 'student_sessions';
+        this.render();
+      });
+    });
+
+    document.getElementById("back-to-dashboard-btn")?.addEventListener("click", () => {
+        this.currentViewMode = 'dashboard';
+        this.selectedSubscriptionId = null;
+        this.render();
+    });
+
+    document.getElementById("student-sessions-status-filter")?.addEventListener("change", (e) => {
+        this.sessionsFilterStatus = e.target.value;
+        this.render();
+    });
+
+    // Session Table Actions
+    document.querySelectorAll(".start-session-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        try {
+          const res = await apiFetch(`/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "live" }) });
+          if (res.message) showToast(res.message, "success");
+          this.render();
+        } catch (err) {
+          showToast(err.message || "فشل بدء الجلسة", "error");
+        }
+      });
+    });
+
+    document.querySelectorAll(".end-session-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        this.renderEndSessionReportModal(id);
+      });
+    });
+
     document.querySelectorAll(".handle-request-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const id = e.currentTarget.getAttribute("data-id");
@@ -861,6 +1073,127 @@ export default class TeacherView {
     });
 
     this.bindSessionActionButtons();
+    this.bindPrivateSessionEvents();
+  }
+
+  bindPrivateSessionEvents() {
+    // ─── Complete Private Session Modal ───
+    const completeModal = document.getElementById('complete-private-modal');
+
+    this.container.querySelectorAll('.complete-private-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        document.getElementById('complete-session-id').value = id;
+        document.getElementById('complete-topic').value = '';
+        document.getElementById('complete-covered').value = '';
+        document.getElementById('complete-performance').value = '';
+        document.getElementById('complete-homework').value = '';
+        document.getElementById('complete-notes').value = '';
+        completeModal.style.display = 'flex';
+      });
+    });
+
+    document.getElementById('close-complete-modal')?.addEventListener('click', () => {
+      completeModal.style.display = 'none';
+    });
+    document.getElementById('cancel-complete-modal')?.addEventListener('click', () => {
+      completeModal.style.display = 'none';
+    });
+
+    document.getElementById('submit-complete-btn')?.addEventListener('click', async () => {
+      const id = document.getElementById('complete-session-id').value;
+      const topic = document.getElementById('complete-topic').value;
+      const whatWasCovered = document.getElementById('complete-covered').value;
+      const studentPerformance = document.getElementById('complete-performance').value;
+      const homework = document.getElementById('complete-homework').value;
+      const teacherNotes = document.getElementById('complete-notes').value;
+
+      const btn = document.getElementById('submit-complete-btn');
+      btn.disabled = true;
+      btn.textContent = 'جاري الحفظ...';
+      try {
+        await apiFetch(`/sessions/${id}/complete`, {
+          method: 'POST',
+          body: JSON.stringify({ topic, whatWasCovered, studentPerformance, homework, teacherNotes })
+        });
+        showToast('🎉 تم إكمال الحصة وتسجيل التقرير بنجاح!', 'success');
+        completeModal.style.display = 'none';
+        await this.render();
+      } catch (err) {
+        showToast(err.message || 'تعذر إكمال الحصة.', 'error');
+        btn.disabled = false;
+        btn.textContent = '✅ تأكيد إكمال الحصة';
+      }
+    });
+
+    // ─── No-Show ───
+    this.container.querySelectorAll('.noshow-private-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!confirm('تسجيل غياب الطالب؟ سيتم خصم حصة من رصيد الاشتراك وفق سياسة الأكاديمية.')) return;
+        try {
+          await apiFetch(`/sessions/${id}/no-show`, { method: 'POST' });
+          showToast('تم تسجيل غياب الطالب وخصم حصة.', 'info');
+          await this.render();
+        } catch (err) {
+          showToast(err.message || 'تعذر تسجيل الغياب.', 'error');
+        }
+      });
+    });
+
+    // ─── Cancel Private Session ───
+    this.container.querySelectorAll('.cancel-private-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!confirm('إلغاء الحصة؟ سيتم استرداد حصة للطالب وتسجيل الإلغاء.')) return;
+        try {
+          await apiFetch(`/sessions/${id}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: 'إلغاء من المعلم' })
+          });
+          showToast('تم إلغاء الحصة واسترداد رصيد للطالب.', 'info');
+          await this.render();
+        } catch (err) {
+          showToast(err.message || 'تعذر إلغاء الحصة.', 'error');
+        }
+      });
+    });
+
+    // ─── View All Private Sessions Modal ───
+    const allModal = document.getElementById('all-private-modal');
+    const allList = document.getElementById('all-private-sessions-list');
+
+    const renderAllSessions = (filter = 'all') => {
+      const filtered = filter === 'all'
+        ? this.privateSessions
+        : this.privateSessions.filter(s => s.status === filter || (filter === 'CANCELLED_BY_STUDENT' && s.status.startsWith('CANCELLED')));
+      allList.innerHTML = filtered.length === 0
+        ? `<div style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;">لا توجد حصص في هذا التصنيف.</div>`
+        : filtered.map(s => this.renderPrivateSessionCard(s)).join('');
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    document.getElementById('view-all-private-btn')?.addEventListener('click', () => {
+      renderAllSessions('all');
+      allModal.style.display = 'flex';
+    });
+    document.getElementById('close-all-private-modal')?.addEventListener('click', () => {
+      allModal.style.display = 'none';
+    });
+
+    document.querySelectorAll('.private-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.private-filter-btn').forEach(b => {
+          b.style.background = 'none';
+          b.style.color = '';
+          b.classList.remove('active');
+        });
+        btn.style.background = 'var(--primary)';
+        btn.style.color = '#fff';
+        btn.classList.add('active');
+        renderAllSessions(btn.getAttribute('data-status'));
+      });
+    });
   }
 
   bindSessionActionButtons() {
@@ -875,14 +1208,10 @@ export default class TeacherView {
       });
     });
 
-    this.container.querySelectorAll(".end-session-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        try {
-          await apiFetch(`/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "completed" }) });
-          showToast(t("toast.sessionEnded"), "info");
-          await this.render();
-        } catch (err) {}
+    document.querySelectorAll(".end-session-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        this.renderEndSessionReportModal(id);
       });
     });
   }

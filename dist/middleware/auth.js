@@ -7,7 +7,10 @@ exports.JWT_SECRET = void 0;
 exports.authMiddleware = authMiddleware;
 exports.optionalAuthMiddleware = optionalAuthMiddleware;
 exports.requireRole = requireRole;
+exports.requireCapability = requireCapability;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const data_source_1 = require("../data-source");
+const User_1 = require("../entity/User");
 exports.JWT_SECRET = process.env.JWT_SECRET || "bakalorya_secret_key_123_456";
 function authMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -52,5 +55,35 @@ function requireRole(roles) {
             return res.status(403).json({ error: "Forbidden. Insufficient permissions." });
         }
         next();
+    };
+}
+function requireCapability(capability) {
+    return async (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ error: "Authentication required." });
+        }
+        if (req.user.role === "admin") {
+            return next(); // Admin has all capabilities
+        }
+        if (req.user.role !== "teacher") {
+            return res.status(403).json({ error: "Forbidden. Teacher role required." });
+        }
+        try {
+            const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+            const user = await userRepository.findOneBy({ id: req.user.id });
+            if (!user || user.status === "SUSPENDED" || user.status === "INACTIVE") {
+                return res.status(403).json({ error: "حساب المعلم غير نشط أو معلق من الإدارة." });
+            }
+            const capabilities = user.teacherCapabilities || [];
+            if (!capabilities.includes(capability)) {
+                return res.status(403).json({
+                    error: `عفواً، لا يملك حسابك صلاحية ${capability === "COURSE_INSTRUCTOR" ? "مُحاضر كورس" : "مُدرس حصص خاصة"}.`
+                });
+            }
+            next();
+        }
+        catch (err) {
+            res.status(500).json({ error: "Internal server error." });
+        }
     };
 }

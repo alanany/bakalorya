@@ -58,8 +58,83 @@ class CourseController {
             course.meetingLink = meetingLink || null;
             course.image = image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60";
             course.teacher = teacher;
+            course.status = req.user.role === "admin" ? "PUBLISHED" : "DRAFT";
             await courseRepository.save(course);
             return res.status(201).json(course);
+        }
+        catch (err) {
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Teacher submits course for Admin review
+    static async submitForReview(req, res) {
+        const { id } = req.params;
+        try {
+            const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const course = await courseRepository.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "الدورة غير موجودة." });
+            if (course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "غير مصرح لك بتحديث هذه الدورة." });
+            }
+            course.status = "PENDING_REVIEW";
+            await courseRepository.save(course);
+            return res.status(200).json({ message: "تم إرسال الدورة للمراجعة والاعتماد من قبل الإدارة بنجاح! ⏳", course });
+        }
+        catch (err) {
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Admin approves course
+    static async approveCourse(req, res) {
+        const { id } = req.params;
+        try {
+            const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const course = await courseRepository.findOneBy({ id });
+            if (!course)
+                return res.status(404).json({ error: "الدورة غير موجودة." });
+            course.status = "PUBLISHED";
+            course.approvedBy = { id: req.user.id };
+            course.approvedAt = new Date();
+            course.rejectionReason = null;
+            await courseRepository.save(course);
+            return res.status(200).json({ message: "تمت الموافقة على نشر الدورة بنجاح! 🎉", course });
+        }
+        catch (err) {
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Admin rejects course
+    static async rejectCourse(req, res) {
+        const { id } = req.params;
+        const { rejectionReason } = req.body;
+        try {
+            const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const course = await courseRepository.findOneBy({ id });
+            if (!course)
+                return res.status(404).json({ error: "الدورة غير موجودة." });
+            course.status = "DRAFT";
+            course.rejectionReason = rejectionReason || "المحتوى غير مطابق لشروط الأكاديمية.";
+            await courseRepository.save(course);
+            return res.status(200).json({ message: "تم رفض الاعتماد وتوجيه الدورة للمسودة مع إرسال السبب.", course });
+        }
+        catch (err) {
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Admin lists pending courses for review
+    static async getPendingCourses(req, res) {
+        try {
+            const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const courses = await courseRepository.find({
+                where: { status: "PENDING_REVIEW" },
+                relations: ["teacher", "lessons"],
+                order: { createdAt: "DESC" }
+            });
+            return res.status(200).json(courses);
         }
         catch (err) {
             return res.status(500).json({ error: "Internal server error." });

@@ -22,6 +22,10 @@ let Course = class Course {
     image;
     degree;
     meetingLink;
+    status;
+    approvedBy;
+    approvedAt;
+    rejectionReason;
     teacher;
     lessons;
     enrollments;
@@ -57,6 +61,23 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Course.prototype, "meetingLink", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: "PUBLISHED" }) // Default for legacy courses; new submitted courses use PENDING_REVIEW
+    ,
+    __metadata("design:type", String)
+], Course.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, onDelete: "SET NULL" }),
+    __metadata("design:type", User_1.User)
+], Course.prototype, "approvedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Course.prototype, "approvedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Course.prototype, "rejectionReason", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true, onDelete: "CASCADE" }),
     __metadata("design:type", User_1.User)
