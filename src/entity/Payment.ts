@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, OneToOne } from "typeorm";
 import { User } from "./User";
 import { Enrollment } from "./Enrollment";
 import { Subscription } from "./Subscription";
@@ -34,6 +34,12 @@ export class Payment {
 
   @Column({ default: "SUCCESS" })
   status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+
+  @Column({ nullable: true })
+  receiptUrl: string; // Uploaded receipt image URL
+
+  @Column({ type: "text", nullable: true })
+  notes: string; // Free-form transaction notes
 
   @CreateDateColumn()
   createdAt: Date;

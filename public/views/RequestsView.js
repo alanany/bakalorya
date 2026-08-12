@@ -330,7 +330,7 @@ export default class RequestsView {
     const wrapper = this.container.querySelector("#requests-table-wrapper");
     if (!wrapper) return;
 
-    // Accept Request Modal Flow (Step 1 -> Step 2 Greetings)
+    // Accept Request Modal Flow (Step 1 → Step 2 Payment → Step 3 Greetings)
     wrapper.querySelectorAll(".accept-request-modal-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
@@ -347,18 +347,23 @@ export default class RequestsView {
           studentPhone,
           courseTitle,
           teacherName,
-          onAccept: async (customMsg, sendWhatsApp) => {
+          onAccept: async (customMsg, sendWhatsApp, paymentData) => {
             try {
+              const body = { status: "active" };
+              if (paymentData) body.paymentData = paymentData;
+
               const res = await apiFetch(`/teacher/enrollment-requests/${id}`, {
                 method: "PUT",
-                body: JSON.stringify({ status: "active" })
+                body: JSON.stringify(body)
               });
               showToast("تم قبول طلب التسجيل بنجاح!", "success");
+              if (paymentData) showToast("تم تسجيل بيانات الدفع بنجاح! 💳", "info");
               handleWhatsAppResponse(res);
               checkPendingRequestsNotification();
               await this.loadRequests();
             } catch (err) {
               console.error(err);
+              showToast("حدث خطأ أثناء قبول الطلب.", "error");
             }
           }
         });

@@ -13,6 +13,7 @@ exports.Enrollment = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Course_1 = require("./Course");
+const Payment_1 = require("./Payment");
 let Enrollment = class Enrollment {
     id;
     student;
@@ -20,6 +21,7 @@ let Enrollment = class Enrollment {
     progress; // 0 to 100
     status;
     completedLessons; // List of completed lesson IDs
+    payment; // Linked payment/receipt for this enrollment
     createdAt;
     updatedAt;
 };
@@ -48,6 +50,11 @@ __decorate([
     (0, typeorm_1.Column)("simple-json", { nullable: true }),
     __metadata("design:type", Array)
 ], Enrollment.prototype, "completedLessons", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Payment_1.Payment, { nullable: true, eager: false, onDelete: "SET NULL" }),
+    (0, typeorm_1.JoinColumn)(),
+    __metadata("design:type", Payment_1.Payment)
+], Enrollment.prototype, "payment", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

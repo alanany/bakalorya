@@ -1017,20 +1017,6 @@ export function showEnrollmentAcceptanceModal({
 
   let currentStep = 1;
   const formattedPhone = studentPhone ? getCleanWhatsAppNumber(studentPhone) : "";
-  let paymentData = null;
-  let receiptPreviewUrl = null;
-  let receiptUploadPath = null;
-
-  function getStep2Data() {
-    return {
-      amount: document.getElementById("pay-amount")?.value?.trim() || "",
-      currency: document.getElementById("pay-currency")?.value || "EGP",
-      provider: document.getElementById("pay-method")?.value || "manual",
-      providerTransactionId: document.getElementById("pay-tx-id")?.value?.trim() || "",
-      notes: document.getElementById("pay-notes")?.value?.trim() || "",
-      receiptUrl: receiptUploadPath || null
-    };
-  }
 
   const defaultGreetingText = `مرحباً ${studentName || 'عزيزي الطالب'}! 📚🎓
 
@@ -1042,237 +1028,110 @@ export function showEnrollmentAcceptanceModal({
 
 نتمنى لك توفيقاً وحصداً لأعلى العلامات في البكالوريا! 🌟💯`;
 
-  function buildStepHTML() {
-    const dots = [1,2,3].map(s =>
-      `<div style="width:${s===currentStep?'20px':'7px'};height:7px;border-radius:10px;background:${s===currentStep?'var(--primary)':s<currentStep?'rgba(99,102,241,0.45)':'var(--border-color)'};transition:all 0.3s;"></div>`
-    ).join('');
-
-    const titles = ['Step 1','Step 2','Step 3'];
-
-    let body = '';
-    if (currentStep === 1) {
-      body = `
-        <div style="background:rgba(99,102,241,0.08);border:1px solid var(--primary-glow);padding:16px;border-radius:16px;margin-bottom:18px;">
-          <h4 style="font-weight:800;font-size:1rem;margin:0 0 10px 0;color:var(--text-main);display:flex;align-items:center;gap:8px;">
-            <i data-lucide="user-check" style="color:var(--primary);"></i>
-            <span id="_s1_title"></span>
-          </h4>
-          <div style="font-size:0.87rem;display:flex;flex-direction:column;gap:7px;color:var(--text-main);">
-            <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1rem;">&#128100;</span><div><div style="font-size:0.74rem;color:var(--text-muted);" id="_lbl_student"></div><div style="font-weight:800;">${studentName}</div></div></div>
-            ${studentEmail ? `<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1rem;">&#128231;</span><div><div style="font-size:0.74rem;color:var(--text-muted);" id="_lbl_email"></div><div style="font-weight:700;">${studentEmail}</div></div></div>` : ''}
-            <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1rem;">&#128241;</span><div><div style="font-size:0.74rem;color:var(--text-muted);" id="_lbl_phone"></div><div style="font-weight:700;">${studentPhone || '&#8212;'}</div></div></div>
-            <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1rem;">&#128214;</span><div><div style="font-size:0.74rem;color:var(--text-muted);" id="_lbl_course"></div><div style="font-weight:800;color:var(--primary);">${courseTitle}</div></div></div>
-          </div>
-        </div>
-        <p style="color:var(--text-muted);font-size:0.84rem;line-height:1.6;margin-bottom:20px;" id="_s1_desc"></p>
-        <div style="display:flex;justify-content:flex-end;gap:12px;">
-          <button id="cancel-acceptance-modal" class="btn-secondary" style="padding:9px 18px;border-radius:30px;" id="_btn_cancel"></button>
-          <button id="next-acceptance-step" class="btn-primary" style="padding:9px 22px;border-radius:30px;font-weight:800;display:inline-flex;align-items:center;gap:6px;" id="_btn_next1"></button>
-        </div>
-      `;
-    } else if (currentStep === 2) {
-      const receiptZone = receiptPreviewUrl
-        ? `<img src="${receiptPreviewUrl}" style="max-height:100px;max-width:100%;border-radius:10px;margin-bottom:6px;object-fit:contain;"><div id="receipt-upload-status" style="font-size:0.78rem;color:#10b981;font-weight:700;" id="_s2_receipt_ok"></div>`
-        : `<i data-lucide="upload-cloud" style="width:28px;height:28px;color:var(--primary);margin-bottom:6px;"></i><div id="receipt-upload-status" style="font-size:0.78rem;color:var(--text-muted);font-weight:600;" id="_s2_receipt_hint"></div>`;
-      body = `
-        <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);padding:10px 14px;border-radius:12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-size:0.81rem;color:var(--warning);">
-          <i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;"></i><span id="_s2_optional"></span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px;">
-          <div><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_amount"></label>
-            <input type="number" id="pay-amount" class="form-input" placeholder="0.00" min="0" step="0.01" value="${paymentData?paymentData.amount||'':''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
-          <div><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_currency"></label>
-            <select id="pay-currency" class="form-input" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;">
-              <option value="EGP" ${!paymentData||!paymentData.currency||paymentData.currency==='EGP'?'selected':''}>&shy;</option>
-              <option value="USD" ${paymentData&&paymentData.currency==='USD'?'selected':''}>USD</option>
-              <option value="SAR" ${paymentData&&paymentData.currency==='SAR'?'selected':''}>SAR</option>
-            </select></div>
-        </div>
-        <div style="margin-bottom:11px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_method"></label>
-          <select id="pay-method" class="form-input" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;">
-            <option value="manual" ${!paymentData||!paymentData.provider||paymentData.provider==='manual'?'selected':''}>&shy;</option>
-            <option value="bank_transfer" ${paymentData&&paymentData.provider==='bank_transfer'?'selected':''}>&#128970;</option>
-            <option value="vodafone_cash" ${paymentData&&paymentData.provider==='vodafone_cash'?'selected':''}>Vodafone</option>
-            <option value="instapay" ${paymentData&&paymentData.provider==='instapay'?'selected':''}>InstaPay</option>
-            <option value="other" ${paymentData&&paymentData.provider==='other'?'selected':''}>&#8212;</option>
-          </select></div>
-        <div style="margin-bottom:11px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_txid"></label>
-          <input type="text" id="pay-tx-id" class="form-input" value="${paymentData?paymentData.providerTransactionId||'':''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
-        <div style="margin-bottom:13px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_notes"></label>
-          <textarea id="pay-notes" class="form-input" rows="2" style="padding:8px 10px;font-size:0.84rem;border-radius:10px;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;">${paymentData?paymentData.notes||'':''}</textarea></div>
-        <div style="margin-bottom:16px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;" id="_lbl_receipt"></label>
-          <div id="receipt-upload-zone" style="border:2px dashed var(--border-color);border-radius:13px;padding:15px;text-align:center;cursor:pointer;background:var(--bg-app);" onclick="document.getElementById('receipt-file-input').click()">${receiptZone}</div>
-          <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="display:none;"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px;">
-          <button id="prev-acceptance-step" class="btn-secondary" style="padding:7px 13px;border-radius:30px;font-size:0.82rem;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="arrow-right" style="width:13px;height:13px;"></i> <span id="_btn_prev2"></span></button>
-          <div style="display:flex;gap:8px;">
-            <button id="skip-payment-step" class="btn-secondary" style="padding:7px 13px;border-radius:30px;font-size:0.81rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="skip-forward" style="width:12px;height:12px;"></i> <span id="_btn_skip"></span></button>
-            <button id="next-payment-step" class="btn-primary" style="padding:7px 16px;border-radius:30px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;gap:4px;"><span id="_btn_next2"></span> <i data-lucide="arrow-left" style="width:13px;height:13px;"></i></button>
-          </div>
-        </div>
-      `;
-    } else {
-      const payBanner = paymentData
-        ? `<div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);padding:9px 13px;border-radius:11px;font-size:0.79rem;margin-bottom:13px;display:flex;align-items:center;gap:7px;color:#10b981;"><i data-lucide="check-circle" style="width:15px;height:15px;flex-shrink:0;"></i><span id="_s3_paybanner"></span></div>`
-        : `<div style="background:rgba(99,102,241,0.07);border:1px solid var(--primary-glow);padding:9px 13px;border-radius:11px;font-size:0.79rem;margin-bottom:13px;display:flex;align-items:center;gap:7px;color:var(--primary);"><i data-lucide="info" style="width:15px;height:15px;flex-shrink:0;"></i><span id="_s3_nopay"></span></div>`;
-      const waBanner = formattedPhone
-        ? `<div style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25D366;padding:9px 13px;border-radius:11px;font-size:0.79rem;margin-bottom:18px;display:flex;align-items:center;gap:7px;"><i data-lucide="message-circle" style="width:16px;height:16px;flex-shrink:0;"></i><span id="_s3_wa"></span></div>`
-        : `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:var(--warning);padding:9px 13px;border-radius:11px;font-size:0.79rem;margin-bottom:18px;" id="_s3_nophone"></div>`;
-      body = `
-        ${payBanner}
-        <label style="font-weight:800;font-size:0.88rem;margin-bottom:7px;display:block;color:var(--text-main);" id="_lbl_greeting"></label>
-        <textarea id="custom-greeting-text" class="form-input" rows="6" style="width:100%;padding:11px;font-family:inherit;font-size:0.84rem;line-height:1.5;resize:vertical;margin-bottom:13px;border-radius:12px;box-sizing:border-box;">${defaultGreetingText}</textarea>
-        ${waBanner}
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px;">
-          <button id="prev-acceptance-step" class="btn-secondary" style="padding:7px 13px;border-radius:30px;font-size:0.82rem;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="arrow-right" style="width:13px;height:13px;"></i> <span id="_btn_prev3"></span></button>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button id="confirm-acceptance-only-btn" class="btn-secondary" style="padding:9px 15px;border-radius:30px;font-size:0.82rem;font-weight:700;" id="_btn_confirmonly"></button>
-            <button id="confirm-acceptance-whatsapp-btn" class="btn-primary" style="padding:9px 18px;border-radius:30px;font-size:0.82rem;font-weight:800;background:linear-gradient(135deg,#059669,#10b981);border:none;box-shadow:0 5px 18px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:5px;" id="_btn_confirmwa"></button>
-          </div>
-        </div>
-      `;
-    }
-
-    return { dots, body };
-  }
-
-  function setTexts() {
-    const T = window._bak_i18n || {};
-    const s = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-    const h = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-    if (currentStep === 1) {
-      s('_s1_title', T['req.studentData'] || '\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0637\u0627\u0644\u0628 \u0648\u0627\u0644\u062f\u0648\u0631\u0629');
-      s('_lbl_student', T['lbl.name'] || '\u0627\u0633\u0645 \u0627\u0644\u0637\u0627\u0644\u0628');
-      s('_lbl_email', T['lbl.email'] || '\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a');
-      s('_lbl_phone', T['lbl.phone'] || '\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641');
-      s('_lbl_course', T['lbl.course'] || '\u0627\u0644\u062f\u0648\u0631\u0629');
-      s('_s1_desc', T['req.step1desc'] || '\u0641\u064a \u0627\u0644\u062e\u0637\u0648\u0629 \u0627\u0644\u062a\u0627\u0644\u064a\u0629 \u064a\u0645\u06a9\u0646\u06a9 \u062a\u0633\u062c\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639 \u0648\u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644.');
-      h('cancel-acceptance-modal', T['btn.cancel'] || '\u0625\u0644\u063a\u0627\u0621');
-      h('next-acceptance-step', (T['btn.nextPayment'] || '\u0627\u0644\u062a\u0627\u0644\u064a: \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639') + ' \u2192');
-    } else if (currentStep === 2) {
-      s('_s2_optional', T['req.payOptional'] || '\u0647\u0630\u0647 \u0627\u0644\u062e\u0637\u0648\u0629 \u0627\u062e\u062a\u064a\u0627\u0631\u064a\u0629 \u2014 \u064a\u0645\u06a9\u0646\u06a9 \u062a\u062e\u0637\u064a\u0647\u0627 \u0648\u0642\u0628\u0648\u0644 \u0627\u0644\u0637\u0627\u0644\u0628 \u0628\u062f\u0648\u0646 \u062a\u0633\u062c\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639.');
-      s('_lbl_amount', T['lbl.amount'] || '\uD83D\uDCB0 \u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u062f\u0641\u0648\u0639');
-      s('_lbl_currency', T['lbl.currency'] || '\uD83D\uDCB1 \u0627\u0644\u0639\u0645\u0644\u0629');
-      const payMethodEl = document.getElementById('pay-currency');
-      if (payMethodEl) {
-        const opts = payMethodEl.options;
-        if (opts[0]) opts[0].text = T['currency.EGP'] || '\u062C\u0646\u064A\u0647 \u0645\u0635\u0631\u064A (EGP)';
-      }
-      s('_lbl_method', T['lbl.payMethod'] || '\uD83C\uDFE6 \u0637\u0631\u064a\u0642\u0629 \u0627\u0644\u062f\u0641\u0639');
-      const pmEl = document.getElementById('pay-method');
-      if (pmEl) {
-        const o = pmEl.options;
-        if (o[0]) o[0].text = T['method.cash'] || '\u0646\u0642\u062f\u0627\u064b (\u06a9\u0627\u0634)';
-        if (o[1]) o[1].text = T['method.bank'] || '\u062a\u062d\u0648\u064a\u0644 \u0628\u0646\u06a9\u064a';
-        if (o[2]) o[2].text = T['method.vf'] || '\u0641\u0648\u062f\u0627\u0641\u0648\u0646 \u06a9\u0627\u0634';
-        if (o[3]) o[3].text = 'InstaPay';
-        if (o[4]) o[4].text = T['method.other'] || '\u0623\u062e\u0631\u0649';
-      }
-      s('_lbl_txid', T['lbl.txid'] || '\uD83D\uDD22 \u0631\u0642\u0645 \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0629 / \u0627\u0644\u0625\u064A\u0635\u0627\u0644 (\u0627\u062e\u062a\u064A\u0627\u0631\u064A)');
-      const txEl = document.getElementById('pay-tx-id');
-      if (txEl) txEl.placeholder = T['ph.txid'] || '\u0645\u062b\u0627\u0644: TXN-2024-001...';
-      s('_lbl_notes', T['lbl.notes'] || '\uD83D\uDCDD \u0645\u0644\u0627\u062d\u0638\u0627\u062a (\u0627\u062e\u062a\u064A\u0627\u0631\u064A)');
-      const ntEl = document.getElementById('pay-notes');
-      if (ntEl) ntEl.placeholder = T['ph.notes'] || '\u0623\u064A \u0645\u0644\u0627\u062d\u0638\u0627\u062a \u062D\u0648\u0644 \u0627\u0644\u062F\u0641\u0639\u0629...';
-      s('_lbl_receipt', T['lbl.receipt'] || '\uD83E\uDDFE \u0631\u0641\u0639 \u0627\u0644\u0625\u064A\u0635\u0627\u0644 / \u0635\u0648\u0631\u0629 \u0627\u0644\u062F\u0641\u0639');
-      s('receipt-upload-status', receiptPreviewUrl ? (T['receipt.ok']||'\u2705 \u062a\u0645 \u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0628\u0646\u062c\u0627\u062d') : (T['receipt.hint']||'\u0627\u0636\u063a\u0637 \u0644\u0627\u062e\u062a\u064a\u0627\u0631 \u0635\u0648\u0631\u0629 \u0627\u0644\u0625\u064a\u0635\u0627\u0644'));
-      s('_btn_prev2', T['btn.prev'] || '\u0627\u0644\u0633\u0627\u0628\u0642');
-      s('_btn_skip', T['btn.skip'] || '\u062a\u062e\u0637\u064a');
-      s('_btn_next2', T['btn.nextGreeting'] || '\u0627\u0644\u062a\u0627\u0644\u064a: \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u062a\u0631\u062d\u064a\u0628');
-    } else {
-      if (paymentData) {
-        s('_s3_paybanner', (T['pay.recorded'] || '\u2705 \u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639') + (paymentData.receiptUrl ? (' ' + (T['pay.andReceipt']||'\u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644')) : ''));
-      } else {
-        s('_s3_nopay', T['pay.skipped'] || '\u062a\u062e\u0637\u064a \u0627\u0644\u062f\u0641\u0639 \u2014 \u0633\u064a\u062a\u0645 \u0642\u0628\u0648\u0644 \u0627\u0644\u0637\u0627\u0644\u0628 \u0628\u062f\u0648\u0646 \u0633\u062c\u0644 \u0645\u0627\u0644\u064a.');
-      }
-      s('_lbl_greeting', T['lbl.greeting'] || '\uD83D\uDCAC \u0646\u0635 \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u062A\u0647\u0646\u0626\u0629 \u0644\u0644\u0637\u0627\u0644\u0628');
-      if (formattedPhone) {
-        s('_s3_wa', (T['wa.sendTo'] || '\u0633\u064A\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u062A\u0647\u0646\u0626\u0629 \u0625\u0644\u0649 \u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628:') + ' +' + formattedPhone);
-      } else {
-        s('_s3_nophone', T['wa.noPhone'] || '\u26A0\uFE0F \u0627\u0644\u0637\u0627\u0644\u0628 \u0644\u0645 \u064A\u0633\u062C\u0644 \u0631\u0642\u0645 \u0647\u0627\u062A\u0641.');
-      }
-      s('_btn_prev3', T['btn.prev'] || '\u0627\u0644\u0633\u0627\u0628\u0642');
-      h('confirm-acceptance-only-btn', T['btn.confirmOnly'] || '\u062a\u0623\u06a9\u064a\u062f \u0627\u0644\u0642\u0628\u0648\u0644 \u0641\u0642\u0637');
-      h('confirm-acceptance-whatsapp-btn', '\uD83D\uDCAC ' + (T['btn.confirmWa'] || '\u0642\u0628\u0648\u0644 + \u0648\u0627\u062a\u0633\u0627\u0628'));
-    }
-  }
-
   function renderModalContent() {
-    const { dots, body } = buildStepHTML();
-    const stepTitleMap = {
-      1: '\u0627\u0644\u062e\u0637\u0648\u0629 1: \u062a\u0623\u06a9\u064a\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0637\u0627\u0644\u0628',
-      2: '\u0627\u0644\u062e\u0637\u0648\u0629 2: \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639 \u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644',
-      3: '\u0627\u0644\u062e\u0637\u0648\u0629 3: \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u062a\u0631\u062d\u064a\u0628'
-    };
     modalOverlay.innerHTML = `
-      <div style="background:var(--bg-card);border:1px solid var(--border-color);width:100%;max-width:560px;border-radius:24px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.5);position:relative;max-height:92vh;overflow-y:auto;">
-        <button id="close-acceptance-modal-x" style="position:absolute;top:20px;left:20px;background:transparent;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;z-index:1;">&times;</button>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:13px;border-bottom:1px solid var(--border-color);">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="background:var(--primary);color:#fff;width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.84rem;flex-shrink:0;">${currentStep}</span>
-            <span style="font-weight:800;font-size:0.97rem;color:var(--text-main);">${stepTitleMap[currentStep]}</span>
+      <div style="background:var(--bg-card); border:1px solid var(--border-color); width:100%; max-width:540px; border-radius:24px; padding:28px; box-shadow:0 24px 60px rgba(0,0,0,0.5); position:relative; overflow:hidden;">
+        <!-- Close Button -->
+        <button id="close-acceptance-modal-x" style="position:absolute; top:20px; left:20px; background:transparent; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer;">&times;</button>
+        
+        <!-- Step Progress Indicator -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--border-color);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="background:var(--primary); color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">${currentStep}</span>
+            <span style="font-weight:800; font-size:1rem; color:var(--text-main);">
+              ${currentStep === 1 ? 'الخطوة 1: تأكيد قبول الطالب' : 'الخطوة 2: إعداد رسالة التهنئة (Greetings)'}
+            </span>
           </div>
-          <div style="display:flex;gap:5px;align-items:center;">${dots}</div>
+          <span style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">خطوة ${currentStep} من 2</span>
         </div>
-        ${body}
+
+        ${currentStep === 1 ? `
+          <!-- STEP 1 CONTENT -->
+          <div style="text-align:start;">
+            <div style="background:rgba(99,102,241,0.08); border:1px solid var(--primary-glow); padding:16px; border-radius:16px; margin-bottom:20px;">
+              <h4 style="font-weight:800; font-size:1.05rem; margin:0 0 10px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <i data-lucide="user-check" style="color:var(--primary);"></i> بيانات الطالب والدورة
+              </h4>
+              <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:6px; color:var(--text-main);">
+                <div>👤 <strong>اسم الطالب:</strong> ${studentName}</div>
+                ${studentEmail ? `<div>📧 <strong>البريد الإلكتروني:</strong> ${studentEmail}</div>` : ''}
+                <div>📱 <strong>رقم الهاتف:</strong> ${studentPhone || 'غير مسجل'}</div>
+                <div>📖 <strong>الدورة المطلوبة:</strong> <span style="color:var(--primary); font-weight:800;">${courseTitle}</span></div>
+              </div>
+            </div>
+
+            <p style="color:var(--text-muted); font-size:0.88rem; line-height:1.6; margin-bottom:24px;">
+              عند إكمال القبول، سيتم تفعيل حساب الطالب فوراً وتوجيه رسالة ترحيبية له.
+            </p>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button id="cancel-acceptance-modal" class="btn-secondary" style="padding:10px 20px; border-radius:30px;">إلغاء</button>
+              <button id="next-acceptance-step" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                التالي: إعداد رسالة التهنئة والواتساب ➔
+              </button>
+            </div>
+          </div>
+        ` : `
+          <!-- STEP 2 CONTENT -->
+          <div style="text-align:start;">
+            <label style="font-weight:800; font-size:0.9rem; margin-bottom:8px; display:block; color:var(--text-main);">
+              💬 نص رسالة التهنئة والترحيب للطالب (Greetings Message)
+            </label>
+            <textarea id="custom-greeting-text" class="form-input" rows="6" style="width:100%; padding:12px; font-family:inherit; font-size:0.85rem; line-height:1.5; resize:vertical; margin-bottom:14px; border-radius:12px;">${defaultGreetingText}</textarea>
+
+            ${formattedPhone ? `
+              <div style="background:rgba(37,211,102,0.1); border:1px solid rgba(37,211,102,0.3); color:#25D366; padding:10px 14px; border-radius:12px; font-size:0.8rem; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="message-circle" style="width:18px;height:18px;"></i>
+                <span>سيتم إرسال التهنئة إلى الواتساب الرقم: <strong>+${formattedPhone}</strong></span>
+              </div>
+            ` : `
+              <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--warning); padding:10px 14px; border-radius:12px; font-size:0.8rem; margin-bottom:20px;">
+                ⚠️ الطالب لم يسجل رقم هاتف، يمكنك تأكيد القبول مباشرة.
+              </div>
+            `}
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <button id="prev-acceptance-step" class="btn-secondary" style="padding:8px 16px; border-radius:30px; font-size:0.85rem;">⬅️ السابق</button>
+              
+              <div style="display:flex; gap:10px;">
+                <button id="confirm-acceptance-only-btn" class="btn-secondary" style="padding:10px 18px; border-radius:30px; font-size:0.85rem; font-weight:700;">
+                  تأكيد القبول فقط
+                </button>
+                <button id="confirm-acceptance-whatsapp-btn" class="btn-primary" style="padding:10px 22px; border-radius:30px; font-size:0.85rem; font-weight:800; background:linear-gradient(135deg, #059669, #10b981); border:none; box-shadow:0 6px 20px rgba(16,185,129,0.35); display:inline-flex; align-items:center; gap:6px;">
+                  💬 قبول + إرسال التهنئة عبر الواتساب
+                </button>
+              </div>
+            </div>
+          </div>
+        `}
       </div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
-    setTexts();
 
-    // Common
+    // Event Bindings
     document.getElementById("close-acceptance-modal-x")?.addEventListener("click", () => modalOverlay.remove());
     document.getElementById("cancel-acceptance-modal")?.addEventListener("click", () => modalOverlay.remove());
-    document.getElementById("prev-acceptance-step")?.addEventListener("click", () => { if (currentStep > 1) { currentStep--; renderModalContent(); } });
 
-    // Step 1
-    document.getElementById("next-acceptance-step")?.addEventListener("click", () => { currentStep = 2; renderModalContent(); });
-
-    // Step 2
-    document.getElementById("receipt-file-input")?.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const statusEl = document.getElementById("receipt-upload-status");
-      const zone = document.getElementById("receipt-upload-zone");
-      if (statusEl) statusEl.textContent = '\u23f3 \u062c\u0627\u0631\u064a \u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644...';
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error("Upload failed");
-        const uploadJson = await uploadRes.json();
-        receiptUploadPath = uploadJson.url || uploadJson.path || uploadJson.filename;
-        receiptPreviewUrl = receiptUploadPath;
-        if (zone) zone.innerHTML = `<img src="${receiptPreviewUrl}" style="max-height:100px;max-width:100%;border-radius:10px;margin-bottom:6px;object-fit:contain;" onerror="this.style.display='none'"><div style="font-size:0.78rem;color:#10b981;font-weight:700;" id="receipt-upload-status">\u2705 \u062a\u0645 \u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0628\u0646\u062c\u0627\u062d</div>`;
-      } catch (err) {
-        if (statusEl) statusEl.textContent = '\u274c \u0641\u0634\u0644 \u0631\u0641\u0639 \u0627\u0644\u0645\u0644\u0641';
-        console.error("Receipt upload error:", err);
-      }
+    document.getElementById("next-acceptance-step")?.addEventListener("click", () => {
+      currentStep = 2;
+      renderModalContent();
     });
 
-    document.getElementById("skip-payment-step")?.addEventListener("click", () => {
-      paymentData = null; currentStep = 3; renderModalContent();
-    });
-    document.getElementById("next-payment-step")?.addEventListener("click", () => {
-      const data = getStep2Data();
-      paymentData = (data.amount || data.providerTransactionId || data.receiptUrl || data.notes) ? data : null;
-      currentStep = 3; renderModalContent();
+    document.getElementById("prev-acceptance-step")?.addEventListener("click", () => {
+      currentStep = 1;
+      renderModalContent();
     });
 
-    // Step 3
     document.getElementById("confirm-acceptance-only-btn")?.addEventListener("click", async () => {
       modalOverlay.remove();
-      if (onAccept) await onAccept(null, false, paymentData);
+      if (onAccept) await onAccept(null, false);
     });
+
     document.getElementById("confirm-acceptance-whatsapp-btn")?.addEventListener("click", async () => {
       const customMsg = document.getElementById("custom-greeting-text")?.value || defaultGreetingText;
       modalOverlay.remove();
-      if (onAccept) await onAccept(customMsg, true, paymentData);
+      if (onAccept) await onAccept(customMsg, true);
     });
   }
 

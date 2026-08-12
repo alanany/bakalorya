@@ -13,7 +13,7 @@ export default class LandingView {
       <div style="background:var(--bg-app); min-height:100vh;">
 
         <!-- TOP UTILITY BAR -->
-        <div style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.82rem; color:var(--text-muted);">
+        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.82rem; color:var(--text-muted);">
           <div style="max-width:1280px; margin:0 auto; display:flex; gap:24px; align-items:center; font-weight:700;">
             <span style="color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:4px; cursor:pointer;">للطلاب والمتفوقين (For Students)</span>
             <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمعلمين والأساتذة (For Teachers)</span>
@@ -23,9 +23,9 @@ export default class LandingView {
 
         <!-- SCREENSHOT 1: SECTION 1 (DUAL HERO CAROUSEL) -->
         <section style="max-width:1280px; margin:0 auto; padding:32px 24px 16px 24px;">
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px; align-items:stretch;">
+          <div class="hero-section-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px; align-items:stretch;">
             
-            <div class="glass-card" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
+            <div class="glass-card hero-card-main" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
               <div style="max-width:320px; z-index:2;">
                 <h1 style="font-size:2.1rem; font-weight:900; line-height:1.25; margin-bottom:14px; color:#ffffff;">
                   ابدأ، طوّر، وحقق أفضل درجات البكالوريا 🎓
@@ -38,13 +38,13 @@ export default class LandingView {
                 </a>
               </div>
 
-              <div style="position:relative; width:160px; height:200px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+              <div class="hero-card-image-wrapper" style="position:relative; width:160px; height:200px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
                 <div style="position:absolute; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.15); top:10px; right:-20px;"></div>
                 <img src="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&auto=format&fit=crop&q=80" alt="Education & Learning" style="width:140px; height:180px; object-fit:cover; border-radius:24px; position:relative; z-index:2; border:3px solid rgba(255,255,255,0.3); box-shadow:0 12px 30px rgba(0,0,0,0.25);">
               </div>
             </div>
 
-            <div class="glass-card" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px;">
+            <div class="glass-card hero-card-secondary" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px;">
               <div style="max-width:320px; z-index:2;">
                 <h2 style="font-size:1.8rem; font-weight:900; line-height:1.3; margin-bottom:14px; color:var(--text-color);">
                   ارتقِ بمستوى طلابك وانضم لطاقم معلّمي بكالوريا 👨‍🏫
@@ -57,11 +57,11 @@ export default class LandingView {
                 </a>
               </div>
 
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; flex-shrink:0; width:140px;">
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:var(--primary);">📐 رياضيات</div>
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#f59e0b;">⚡ فيزياء</div>
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#10b981;">🧪 كيمياء</div>
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#ec4899;">📖 لغات</div>
+              <div id="hero-categories-container" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; flex-shrink:0; width:180px;">
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:10px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:var(--primary);">📐 رياضيات</div>
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:10px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#f59e0b;">⚡ فيزياء</div>
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:10px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#10b981;">🧪 كيمياء</div>
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:10px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:#ec4899;">📖 لغات</div>
               </div>
             </div>
 
@@ -130,17 +130,17 @@ export default class LandingView {
         <section style="max-width:1280px; margin:0 auto; padding:20px 24px 32px 24px;">
           <div style="background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border-radius:24px; padding:36px; color:#ffffff; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,86,210,0.25);">
             
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
+            <div class="gradient-banner-inner" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
               <div style="max-width:440px;">
                 <h2 style="font-size:1.8rem; font-weight:900; margin-bottom:6px; color:#ffffff;">استعد لاجتياز امتحانات البكالوريا بامتياز</h2>
                 <p style="font-size:0.92rem; opacity:0.9; margin:0;">اختر مسارك المفضل وابدأ في مراجعة أقوى الدورات والشهادات التدريبية.</p>
               </div>
 
-              <div style="display:flex; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.15); padding:6px; border-radius:30px; backdrop-filter:blur(10px);">
-                <button class="gradient-pill-btn active" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:#000000; color:#ffffff; border:none; cursor:pointer;">📐 الرياضيات</button>
-                <button class="gradient-pill-btn" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">⚡ الفيزياء</button>
-                <button class="gradient-pill-btn" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">🧪 الكيمياء</button>
-                <button class="gradient-pill-btn" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">📖 العلوم واللغات</button>
+              <div id="featured-category-pills" style="display:flex; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.15); padding:6px; border-radius:30px; backdrop-filter:blur(10px);">
+                <button class="gradient-pill-btn active" data-cat="all" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:#000000; color:#ffffff; border:none; cursor:pointer;">📐 الرياضيات</button>
+                <button class="gradient-pill-btn" data-cat="فيزياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">⚡ الفيزياء</button>
+                <button class="gradient-pill-btn" data-cat="كيمياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">🧪 الكيمياء</button>
+                <button class="gradient-pill-btn" data-cat="علوم" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">📖 العلوم واللغات</button>
               </div>
             </div>
 
@@ -155,8 +155,8 @@ export default class LandingView {
 
         <!-- SCREENSHOT 2: SECTION 2 (DUAL SUBSCRIPTION BANNERS) -->
         <section style="max-width:1280px; margin:0 auto; padding:0 24px 40px 24px;">
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px;">
-            <div class="glass-card" style="background:linear-gradient(135deg, #0056D2 0%, #2563eb 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,86,210,0.2);">
+          <div class="subscription-banners-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px;">
+            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #0056D2 0%, #2563eb 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,86,210,0.2);">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
                   bakalorya <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
@@ -171,7 +171,7 @@ export default class LandingView {
               <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=300&auto=format&fit=crop&q=80" alt="Education Books" style="width:120px; height:150px; object-fit:cover; border-radius:20px; border:2px solid rgba(255,255,255,0.3); flex-shrink:0;">
             </div>
 
-            <div class="glass-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
+            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; color:#93c5fd; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
                   bakalorya <span style="color:#ffffff; font-weight:500;">for teachers & schools</span>
@@ -194,9 +194,9 @@ export default class LandingView {
           <h2 style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
             ماذا تريد أن تتعلم؟
           </h2>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+          <div class="learn-paths-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
             <!-- Courses Path -->
-            <div class="glass-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
+            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div style="width:80px; height:80px; background:rgba(37,99,235,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#2563eb;">
                 <i data-lucide="book-open" style="width:40px; height:40px;"></i>
               </div>
@@ -208,7 +208,7 @@ export default class LandingView {
             </div>
 
             <!-- Private Lessons Path -->
-            <div class="glass-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
+            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
               <div style="width:80px; height:80px; background:rgba(16,185,129,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#10b981;">
                 <i data-lucide="users" style="width:40px; height:40px;"></i>
               </div>
@@ -234,7 +234,7 @@ export default class LandingView {
             <a href="#courses" style="color:var(--primary); font-weight:800; text-decoration:none; font-size:0.9rem;">عرض جميع المسارات ➔</a>
           </div>
 
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:20px;">
+          <div class="degrees-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:20px;">
             <!-- Secondary -->
             <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.06); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div>
@@ -300,7 +300,7 @@ export default class LandingView {
 
         <!-- SCREENSHOT 3: SECTION 3 (91% CIRCULAR OUTCOMES BANNER) -->
         <section style="max-width:1280px; margin:0 auto; padding:0 24px 60px 24px;">
-          <div class="glass-card" style="background:#001e50; color:#ffffff; border-radius:24px; padding:48px 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:32px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,30,80,0.35);">
+          <div class="glass-card outcome-banner-inner" style="background:#001e50; color:#ffffff; border-radius:24px; padding:48px 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:32px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,30,80,0.35);">
             <div style="max-width:540px; z-index:2;">
               <h2 style="font-size:2.2rem; font-weight:900; line-height:1.25; margin-bottom:16px; color:#ffffff;">
                 91% من طلاب منصة بكالوريا حققوا ميزة التفوق والنجاح
@@ -337,7 +337,7 @@ export default class LandingView {
             <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">أهم المزايا والركائز الأساسية التي تضمن تفوق الطلاب وتمكين المعلمين بالمنصة</p>
           </div>
 
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
+          <div class="why-choose-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
             <!-- Feature 1 -->
             <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
               <div>
@@ -455,7 +455,7 @@ export default class LandingView {
 
         <!-- BAKALORYA CORE: METRICS TICKER STRIP -->
         <section style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:36px 24px;">
-          <div style="max-width:1280px; margin:0 auto; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px; text-align:center;">
+          <div class="metrics-strip-grid" style="max-width:1280px; margin:0 auto; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px; text-align:center;">
             <div>
               <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">+15,000</div>
               <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">طالب مسجل بالمنصة</div>
@@ -520,7 +520,7 @@ export default class LandingView {
 
 
         <!-- CALL TO ACTION BANNER -->
-        <section style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:70px 24px; text-align:center;">
+        <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:70px 24px; text-align:center;">
           <div style="max-width:800px; margin:0 auto;">
             <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في البكالوريا؟</h2>
             <p style="font-size:1.1rem; opacity:0.9; margin-bottom:32px; line-height:1.6;">انضم اليوم إلى آلاف الطلاب واستفد من أحدث الدورات التفاعلية والدروس المباشرة مع نخبة المعلمين.</p>
@@ -540,7 +540,7 @@ export default class LandingView {
         <footer style="background:var(--bg-card); border-top:1px solid var(--border-color); padding:70px 24px 30px 24px; color:var(--text-muted); font-size:0.9rem;">
           <div style="max-width:1280px; margin:0 auto;">
             
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:40px; margin-bottom:50px;">
+            <div class="footer-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:40px; margin-bottom:50px;">
               <div>
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
                   <div style="width:36px; height:36px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.2rem;">B</div>
@@ -598,7 +598,7 @@ export default class LandingView {
               </div>
             </div>
 
-            <div style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
+            <div class="footer-bottom" style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
               <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة بكالوريا التعليمية (Bakalorya Platform)</div>
               
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -627,16 +627,18 @@ export default class LandingView {
 
   async loadCoursesAsync() {
     try {
-      const [coursesRes, sessionsRes, teachersRes, blogsRes] = await Promise.allSettled([
+      const [coursesRes, sessionsRes, teachersRes, blogsRes, categoriesRes] = await Promise.allSettled([
         apiFetch("/courses"),
         apiFetch("/sessions"),
         apiFetch("/teachers"),
-        apiFetch("/blogs")
+        apiFetch("/blogs"),
+        apiFetch("/categories")
       ]);
       this.courses = coursesRes.status === "fulfilled" && Array.isArray(coursesRes.value) ? coursesRes.value : [];
       this.sessions = sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value) ? sessionsRes.value : [];
       this.teachers = teachersRes.status === "fulfilled" && Array.isArray(teachersRes.value) ? teachersRes.value : [];
       this.blogs = blogsRes.status === "fulfilled" && Array.isArray(blogsRes.value) ? blogsRes.value : [];
+      this.categories = categoriesRes.status === "fulfilled" && Array.isArray(categoriesRes.value) ? categoriesRes.value : [];
 
       this.renderDynamicLandingSections();
       this.renderFilteredCourses();
@@ -646,6 +648,65 @@ export default class LandingView {
   }
 
   renderDynamicLandingSections() {
+    // Calculate course count per category from real DB courses
+    const categoryCounts = {};
+    (this.courses || []).forEach(c => {
+      if (c.category) {
+        const catName = c.category.trim();
+        categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
+      }
+    });
+
+    // Sort categories by course count descending
+    let sortedCategories = [];
+    if (this.categories && this.categories.length > 0) {
+      sortedCategories = [...this.categories].sort((a, b) => {
+        const countA = categoryCounts[a.name] || 0;
+        const countB = categoryCounts[b.name] || 0;
+        return countB - countA;
+      });
+    } else {
+      const catNames = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a]);
+      sortedCategories = catNames.map(name => ({ name, icon: "book-open" }));
+    }
+
+    // Top 3 Categories with the most courses
+    const top3Categories = sortedCategories.slice(0, 3);
+
+    // 0. Render Top 3 Dynamic Categories in Hero Grid
+    const heroCategoriesContainer = this.container.querySelector("#hero-categories-container");
+    if (heroCategoriesContainer && top3Categories.length > 0) {
+      const colors = ["var(--primary)", "#f59e0b", "#10b981", "#ec4899", "#a855f7"];
+      heroCategoriesContainer.innerHTML = top3Categories.map((cat, idx) => `
+        <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:10px 8px; text-align:center; font-weight:800; font-size:0.75rem; color:${colors[idx % colors.length]}; display:flex; align-items:center; justify-content:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${cat.name}">
+          <i data-lucide="${cat.icon || 'layers'}" style="width:14px; height:14px; flex-shrink:0;"></i>
+          <span style="overflow:hidden; text-overflow:ellipsis;">${cat.name}</span>
+        </div>
+      `).join("");
+    }
+
+    // 0.5 Render Top 3 Category Pills (Plus "All") in Featured Section
+    const featuredPillsContainer = this.container.querySelector("#featured-category-pills");
+    if (featuredPillsContainer) {
+      const displayCats = [{ name: "الكل", icon: "sparkles", value: "all" }, ...top3Categories.map(c => ({ name: c.name, icon: c.icon || "layers", value: c.name }))];
+      featuredPillsContainer.innerHTML = displayCats.map(cat => {
+        const isActive = this.activeCategory === cat.value || (cat.value === "all" && this.activeCategory === "all");
+        return `
+          <button class="gradient-pill-btn ${isActive ? 'active' : ''}" data-cat="${cat.value}" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:${isActive ? '#000000' : 'rgba(255,255,255,0.85)'}; color:${isActive ? '#ffffff' : '#0056D2'}; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="${cat.icon}" style="width:14px; height:14px;"></i>
+            ${cat.name}
+          </button>
+        `;
+      }).join("");
+
+      featuredPillsContainer.querySelectorAll(".gradient-pill-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.activeCategory = btn.getAttribute("data-cat");
+          this.renderDynamicLandingSections();
+          this.renderFilteredCourses();
+        });
+      });
+    }
     // 1. Render Most Popular (Top 3 Courses from DB)
     const mostPopularContainer = this.container.querySelector("#most-popular-container");
     if (mostPopularContainer) {

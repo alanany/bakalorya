@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./User";
 import { Course } from "./Course";
+import { Payment } from "./Payment";
 
 @Entity()
 export class Enrollment {
@@ -21,6 +22,10 @@ export class Enrollment {
 
   @Column("simple-json", { nullable: true })
   completedLessons: string[]; // List of completed lesson IDs
+
+  @OneToOne(() => Payment, { nullable: true, eager: false, onDelete: "SET NULL" })
+  @JoinColumn()
+  payment: Payment; // Linked payment/receipt for this enrollment
 
   @CreateDateColumn()
   createdAt: Date;

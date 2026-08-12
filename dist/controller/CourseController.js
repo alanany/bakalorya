@@ -6,6 +6,7 @@ const Course_1 = require("../entity/Course");
 const Lesson_1 = require("../entity/Lesson");
 const User_1 = require("../entity/User");
 const Enrollment_1 = require("../entity/Enrollment");
+const Payment_1 = require("../entity/Payment");
 const NotificationController_1 = require("./NotificationController");
 const whatsapp_1 = require("../utils/whatsapp");
 class CourseController {
@@ -378,7 +379,7 @@ class CourseController {
     }
     static async updateEnrollmentRequest(req, res) {
         const { id } = req.params;
-        const { status } = req.body; // 'active' or 'rejected'
+        const { status, paymentData } = req.body; // 'active' or 'rejected'; paymentData is optional
         if (!status || !["active", "rejected"].includes(status)) {
             return res.status(400).json({ error: "Invalid status." });
         }
@@ -392,6 +393,29 @@ class CourseController {
                 return res.status(404).json({ error: "Enrollment not found." });
             }
             enrollment.status = status;
+            // Create Payment record if accepting and paymentData provided
+            if (status === "active" && paymentData) {
+                try {
+                    const paymentRepository = data_source_1.AppDataSource.getRepository(Payment_1.Payment);
+                    const payment = new Payment_1.Payment();
+                    payment.student = enrollment.student;
+                    payment.amount = parseFloat(paymentData.amount) || 0;
+                    payment.currency = paymentData.currency || "EGP";
+                    payment.type = "COURSE_ENROLLMENT";
+                    payment.courseEnrollment = enrollment;
+                    payment.provider = paymentData.provider || "manual";
+                    payment.providerTransactionId = paymentData.providerTransactionId || null;
+                    payment.receiptUrl = paymentData.receiptUrl || null;
+                    payment.notes = paymentData.notes || null;
+                    payment.status = "SUCCESS";
+                    const savedPayment = await paymentRepository.save(payment);
+                    enrollment.payment = savedPayment;
+                }
+                catch (payErr) {
+                    console.error("Error creating payment record:", payErr);
+                    // Non-fatal: enrollment acceptance continues even if payment record fails
+                }
+            }
             await enrollmentRepository.save(enrollment);
             // Create internal notification for student
             if (enrollment.student) {

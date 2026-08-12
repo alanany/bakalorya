@@ -1643,3 +1643,473 @@ body.light-theme .form-select {
   background: var(--success);
   margin-right: 6px;
 }
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE DESIGN SYSTEM (320px to 900px)
+   ========================================================================== */
+
+/* --- TABLETS & SMALL LAPTOPS (max-width: 900px) --- */
+@media screen and (max-width: 900px) {
+  .header-container {
+    padding: 12px 16px;
+  }
+
+  .nav-menu {
+    display: none;
+  }
+
+  .dashboard-stats-grid,
+  .courses-grid,
+  .teacher-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+    gap: 16px !important;
+  }
+
+  .teacher-layout {
+    padding: 24px 16px;
+  }
+
+  .admin-topbar {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+}
+
+/* --- MOBILE PHONES (max-width: 768px) --- */
+@media screen and (max-width: 768px) {
+  /* Body & General Container Reset */
+  body {
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+
+  /* Header Improvements */
+  .app-header {
+    position: sticky;
+    top: 0;
+  }
+
+  .header-container {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .logo-link span {
+    font-size: 1.1rem;
+  }
+
+  #header-logo {
+    height: 52px !important;
+    padding: 4px 10px !important;
+  }
+
+  #header-search-wrapper {
+    display: none !important;
+  }
+
+  /* Hide the teachers link in header on mobile — it clutters the nav */
+  .header-teachers-link {
+    display: none !important;
+  }
+
+  .auth-buttons {
+    gap: 6px;
+  }
+
+  .auth-buttons .btn-primary,
+  .auth-buttons .btn-secondary {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+
+  /* Prevent Mobile Input Auto-Zoom on iOS Safari */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Grid Layouts Stacked on Mobile */
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .courses-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* ── LANDING PAGE SECTIONS ── */
+
+  /* Top utility bar horizontal scroll */
+  section {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* Landing top utility bar: horizontal scroll on mobile */
+  .landing-utility-bar > div {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    gap: 16px !important;
+    font-size: 0.75rem !important;
+    padding: 6px 14px !important;
+  }
+
+  /* Hero Dual Card Section: stack vertically */
+  .hero-section-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Hero left card: reduce font size, stack content */
+  .hero-card-main {
+    padding: 28px 20px !important;
+    min-height: auto !important;
+    flex-direction: column !important;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .hero-card-main h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .hero-card-main p {
+    font-size: 0.88rem !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Hero card image: hide on very small screens to save space */
+  .hero-card-image-wrapper {
+    display: none !important;
+  }
+
+  /* Hero right card: stack */
+  .hero-card-secondary {
+    padding: 24px 20px !important;
+    min-height: auto !important;
+    flex-direction: column !important;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .hero-card-secondary h2 {
+    font-size: 1.3rem !important;
+  }
+
+  /* Hero categories mini grid: full width 2-cols */
+  #hero-categories-container {
+    width: 100% !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    margin-top: 16px;
+  }
+
+  /* Hero banner flex direction for generic banners */
+  .hero-banner-content,
+  .featured-banner-flex {
+    flex-direction: column !important;
+    text-align: center;
+  }
+
+  /* Featured Category Pills: horizontal scroll */
+  #featured-category-pills {
+    width: 100%;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 6px 10px;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  #featured-category-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gradient-pill-btn {
+    flex-shrink: 0;
+    font-size: 0.8rem !important;
+    padding: 5px 14px !important;
+    white-space: nowrap;
+  }
+
+  /* Gradient featured section: banner title & pills stack */
+  .gradient-banner-inner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .gradient-banner-inner h2 {
+    font-size: 1.4rem !important;
+  }
+
+  /* Gradient featured courses grid: 1 col */
+  #gradient-featured-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Subscription Banners: Stack */
+  .subscription-banners-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Subscription banner card: smaller padding, hide image */
+  .subscription-banner-card {
+    padding: 24px 20px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px;
+  }
+
+  .subscription-banner-card img {
+    display: none !important;
+  }
+
+  .subscription-banner-card h3 {
+    font-size: 1.2rem !important;
+  }
+
+  /* "What do you want to learn" paths grid: 1 col */
+  .learn-paths-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .learn-path-card {
+    padding: 28px 20px !important;
+  }
+
+  /* Explore degrees grid */
+  .degrees-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  /* Outcome banner: stack */
+  .outcome-banner-inner {
+    flex-direction: column !important;
+    text-align: center;
+    align-items: center !important;
+    gap: 24px;
+  }
+
+  .outcome-banner-inner h2 {
+    font-size: 1.5rem !important;
+  }
+
+  /* Why choose bakalorya: 1 col on mobile */
+  .why-choose-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Metrics strip: 2x2 grid on mobile */
+  .metrics-strip-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 20px !important;
+    text-align: center;
+  }
+
+  .metrics-strip-grid > div > div:first-child {
+    font-size: 1.8rem !important;
+  }
+
+  /* Top instructors grid: 1 col */
+  #top-teachers-container {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Blog grid: 1 col */
+  #landing-blogs-container {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* CTA section */
+  .cta-section h2 {
+    font-size: 1.7rem !important;
+  }
+
+  .cta-section p {
+    font-size: 0.95rem !important;
+  }
+
+  .cta-section > div > div {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch;
+  }
+
+  .cta-section .btn-primary,
+  .cta-section .btn-secondary {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 14px 24px !important;
+    font-size: 1rem !important;
+  }
+
+  /* Footer: stack columns */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  .footer-bottom {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center;
+  }
+
+  /* Mobile Modals */
+  .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 10px auto;
+    border-radius: 18px !important;
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px 14px;
+    max-height: 75vh;
+  }
+
+  .modal-footer {
+    padding: 12px 14px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+
+  /* Tables Touch Scroll Container */
+  .table-responsive,
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Sidebar Drawer on Mobile */
+  .app-sidebar {
+    width: 290px !important;
+    max-width: 85vw !important;
+  }
+
+  /* Course Player View Mobile Layout */
+  .classroom-layout,
+  .course-player-layout {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  .classroom-video-area,
+  .classroom-chat-sidebar {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .video-container {
+    height: 240px !important;
+  }
+
+  /* Toast Notification positioning on Mobile */
+  #toast-container {
+    bottom: 16px !important;
+    right: 16px !important;
+    left: 16px !important;
+    max-width: none !important;
+  }
+
+  /* 3-column sections fallback to 1 column */
+  [style*="repeat(auto-fit, minmax(320px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [style*="repeat(auto-fit, minmax(300px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [style*="repeat(auto-fit, minmax(340px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Most popular/new releases/sessions 3-column section */
+  #most-popular-container,
+  #new-releases-container,
+  #trending-sessions-container {
+    gap: 10px !important;
+  }
+}
+
+/* --- SMALL MOBILE PHONES (max-width: 480px) --- */
+@media screen and (max-width: 480px) {
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .logo-link span {
+    font-size: 1rem;
+  }
+
+  .stat-box {
+    padding: 14px 16px !important;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    font-size: 0.85rem !important;
+    padding: 10px 18px !important;
+  }
+
+  .admin-main {
+    padding: 14px 10px !important;
+  }
+
+  /* Degrees grid on very small: 1 col */
+  .degrees-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Metrics: 1 col */
+  .metrics-strip-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Hero h1 even smaller */
+  .hero-card-main h1 {
+    font-size: 1.3rem !important;
+  }
+
+  /* Banner section padding */
+  section {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  #header-logo {
+    height: 44px !important;
+    padding: 3px 8px !important;
+  }
+}
