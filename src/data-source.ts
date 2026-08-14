@@ -68,11 +68,12 @@ export let AppDataSource = new DataSource(createOptions(dbType));
 export async function initAppDataSource(): Promise<DataSource> {
   try {
     await AppDataSource.initialize();
-    console.log(`Data Source (${dbType}) has been initialized!`);
+    console.log(`✅ Data Source (${dbType.toUpperCase()}) connected successfully to database "${process.env.DB_NAME || "bakalorya_platform_db"}" on ${process.env.DB_HOST || "localhost"}!`);
     return AppDataSource;
   } catch (err: any) {
-    if (dbType !== "sqlite") {
-      console.warn(`Failed to connect to ${dbType} (${err.message || err}). Falling back to SQLite...`);
+    console.error(`❌ DB CONNECTION ERROR: Failed to connect to ${dbType.toUpperCase()} (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
+    if (dbType !== "sqlite" && process.env.NODE_ENV !== "production") {
+      console.warn(`⚠️ Local dev fallback: Falling back to SQLite temporary database...`);
       AppDataSource = new DataSource(createOptions("sqlite"));
       await AppDataSource.initialize();
       console.log("Fallback SQLite Data Source initialized successfully!");
