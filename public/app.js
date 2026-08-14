@@ -414,34 +414,24 @@ export function switchLanguage(lang) {
   loadTranslations(lang).then(() => router());
 }
 
-// ─── Initialize App ────────────────────────────────────────────────────────────
-
-// Safety net: if app.js crashes, clear the spinner after 5s
-setTimeout(() => {
-  const vp = document.getElementById("app-viewport");
-  if (vp && vp.querySelector(".app-loader")) {
-    vp.innerHTML = '<div style="text-align:center;padding:100px 24px;"><h2>فشل تحميل الصفحة</h2><p style="color:#6b7280;margin-bottom:24px;">يرجى تحديث الصفحة.</p><a href="/" class="btn-primary">تحديث</a></div>';
-  }
-}, 5000);
-
 async function initApp() {
   try {
     applyTheme(state.theme);
-    await loadTranslations(state.language).catch(() => { });
     document.documentElement.lang = state.language;
     document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
 
     setupEventListeners();
     window.addEventListener("hashchange", router);
-    await checkAuth().catch(() => { });
-    await router();
+
+    // Call router immediately to render view without network delay
+    router();
+
+    // Load translations and check auth in background
+    loadTranslations(state.language).catch(() => {});
+    checkAuth().then(() => updateHeader()).catch(() => {});
   } catch (err) {
     console.error("initApp failed:", err);
-    // Guarantee the router still runs to clear the spinner
-    try { await router(); } catch (e) {
-      const vp = document.getElementById("app-viewport");
-      if (vp) vp.innerHTML = '<div style="text-align:center;padding:100px 24px;"><h2>فشل تحميل الصفحة</h2><p style="color:#6b7280;">يرجى تحديث الصفحة أو المحاولة لاحقاً.</p></div>';
-    }
+    try { await router(); } catch (e) {}
   }
 }
 
@@ -477,10 +467,12 @@ function setupEventListeners() {
   const openSidebar = () => {
     sidebar?.classList.add("active");
     overlay?.classList.add("active");
+    document.body.classList.add("sidebar-open");
   };
   const closeSidebar = () => {
     sidebar?.classList.remove("active");
     overlay?.classList.remove("active");
+    document.body.classList.remove("sidebar-open");
   };
 
   toggleBtn?.addEventListener("click", openSidebar);
@@ -563,7 +555,7 @@ export function updateHeader() {
   }
 
   if (sidebarToggleBtn) {
-    sidebarToggleBtn.style.display = isAdmin ? "none" : "flex";
+    sidebarToggleBtn.style.display = "flex";
   }
 
   navMenu.innerHTML = "";
@@ -639,6 +631,7 @@ export function updateHeader() {
   const closeSidebar = () => {
     sidebar?.classList.remove("active");
     overlay?.classList.remove("active");
+    document.body.classList.remove("sidebar-open");
   };
 
   if (sidebarList) {

@@ -77,6 +77,9 @@ router.get("/subscriptions/my", authMiddleware, SubscriptionController.getMySubs
 router.get("/subscriptions/teacher-assigned", authMiddleware, requireRole(["teacher"]), SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", authMiddleware, requireRole(["admin"]), SubscriptionController.getAllSubscriptions);
 router.patch("/admin/subscriptions/:id/assign-teacher", authMiddleware, requireRole(["admin"]), SubscriptionController.assignTeacher);
+router.patch("/admin/subscriptions/:id/approve", authMiddleware, requireRole(["admin"]), SubscriptionController.approveSubscription);
+router.patch("/admin/subscriptions/:id/reject", authMiddleware, requireRole(["admin"]), SubscriptionController.rejectSubscription);
+router.patch("/admin/subscriptions/:id/renew", authMiddleware, requireRole(["admin"]), SubscriptionController.renewSubscription);
 router.delete("/subscription-plans/:id", authMiddleware, requireRole(["admin"]), SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", authMiddleware, requireRole(["admin"]), TeacherEarningController.markAsPaid);
 

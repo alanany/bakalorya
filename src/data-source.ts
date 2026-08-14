@@ -29,7 +29,7 @@ import { TeacherEarning } from "./entity/TeacherEarning";
 import { Payment } from "./entity/Payment";
 import { AuditLog } from "./entity/AuditLog";
 
-const allEntities = [
+export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
   Assignment, AssignmentSubmission, Resource, Test,
   TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
@@ -40,28 +40,45 @@ const allEntities = [
 
 const dbType = (process.env.DB_TYPE || "sqlite").toLowerCase() as "mysql" | "sqlite" | "postgres";
 
-let options: DataSourceOptions;
-
-if (dbType === "mysql" || dbType === "postgres") {
-  options = {
-    type: dbType,
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || (dbType === "postgres" ? "5432" : "3306"), 10),
-    username: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "bakalorya_db",
-    synchronize: true,
-    logging: false,
-    entities: allEntities,
-  };
-} else {
-  options = {
+function createOptions(type: "mysql" | "sqlite" | "postgres"): DataSourceOptions {
+  if (type === "mysql" || type === "postgres") {
+    return {
+      type: type,
+      host: process.env.DB_HOST || "localhost",
+      port: parseInt(process.env.DB_PORT || (type === "postgres" ? "5432" : "3306"), 10),
+      username: process.env.DB_USER || "root",
+      password: process.env.DB_PASSWORD || "",
+      database: process.env.DB_NAME || "bakalorya_platform_db",
+      synchronize: true,
+      logging: false,
+      entities: allEntities,
+    };
+  }
+  return {
     type: "sqlite",
-    database: process.env.DB_NAME || "database.sqlite",
+    database: process.env.DB_NAME && process.env.DB_NAME.endsWith(".sqlite") ? process.env.DB_NAME : "bakalorya_db",
     synchronize: true,
     logging: false,
     entities: allEntities,
   };
 }
 
-export const AppDataSource = new DataSource(options);
+export let AppDataSource = new DataSource(createOptions(dbType));
+
+export async function initAppDataSource(): Promise<DataSource> {
+  try {
+    await AppDataSource.initialize();
+    console.log(`Data Source (${dbType}) has been initialized!`);
+    return AppDataSource;
+  } catch (err: any) {
+    if (dbType !== "sqlite") {
+      console.warn(`Failed to connect to ${dbType} (${err.message || err}). Falling back to SQLite...`);
+      AppDataSource = new DataSource(createOptions("sqlite"));
+      await AppDataSource.initialize();
+      console.log("Fallback SQLite Data Source initialized successfully!");
+      return AppDataSource;
+    }
+    throw err;
+  }
+}
+

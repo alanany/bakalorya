@@ -95,8 +95,14 @@ export default class AuthView {
             <input type="password" id="reg-password" class="form-input" placeholder="${t("form.passwordPlaceholder") || "••••••••"}" required>
           </div>
           <div class="form-group" style="margin:0;">
-            <label for="reg-phone" style="font-weight:600; font-size:0.85rem; margin-bottom:6px; display:block;">رقم الهاتف والواتساب (Phone & WhatsApp)</label>
+            <label for="reg-phone" style="font-weight:600; font-size:0.85rem; margin-bottom:6px; display:block;">رقم هاتف الطالب والواتساب (Student Phone)</label>
             ${renderPhoneInputGroup({ selectId: "reg-phone-code", inputId: "reg-phone", defaultCode: "+20", placeholder: "01012345678" })}
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label for="reg-parent-phone" style="font-weight:600; font-size:0.85rem; margin-bottom:6px; display:block;">
+              رقم هاتف ولي الأمر (Parent Phone) <span style="color:var(--error);">*</span>
+            </label>
+            ${renderPhoneInputGroup({ selectId: "reg-parent-phone-code", inputId: "reg-parent-phone", defaultCode: "+20", placeholder: "01012345678", required: true })}
           </div>
           <div class="form-group" style="margin:0;">
             <label for="reg-location" style="font-weight:600; font-size:0.85rem; margin-bottom:6px; display:block;">الولاية / المدينة (Location)</label>
@@ -207,13 +213,18 @@ export default class AuthView {
         const password = document.getElementById("reg-password").value;
         const phoneCode = document.getElementById("reg-phone-code")?.value || "+20";
         const phoneNumber = document.getElementById("reg-phone")?.value || "";
-        const phone = `${phoneCode} ${phoneNumber}`.trim();
+        const phone = phoneNumber ? `${phoneCode} ${phoneNumber}`.trim() : "";
+
+        const parentPhoneCode = document.getElementById("reg-parent-phone-code")?.value || "+20";
+        const parentPhoneNumber = document.getElementById("reg-parent-phone")?.value || "";
+        const parentPhone = `${parentPhoneCode} ${parentPhoneNumber}`.trim();
+
         const location = document.getElementById("reg-location").value;
         const education = document.getElementById("reg-education").value;
         try {
           const data = await apiFetch("/auth/register", {
             method: "POST",
-            body: JSON.stringify({ name, email, password, phone, location, education, role: "student" })
+            body: JSON.stringify({ name, email, password, phone, parentPhone, location, education, role: "student" })
           });
           if (data && data.token && data.user) {
             setAuth(data.token, data.user);

@@ -206,6 +206,9 @@ export default class StudentsView {
     const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
     const cleanPhoneWa = getCleanWhatsAppNumber(rawPhone);
 
+    const rawParentPhone = student.parentPhone || '';
+    const cleanParentPhoneWa = getCleanWhatsAppNumber(rawParentPhone);
+
     // Render course badges and toggle ban
     let coursesContent = '<span style="color:var(--text-muted); font-size:0.8rem;">غير مسجل بدورات</span>';
     if (student.enrollments && student.enrollments.length > 0) {
@@ -243,6 +246,11 @@ export default class StudentsView {
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:4px;">
                 <i data-lucide="mail" style="width:12px; height:12px; color:var(--primary);"></i> ${student.email}
               </div>
+              ${rawParentPhone ? `
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:2px; display:flex; align-items:center; gap:4px;">
+                  👨‍👩‍👦 ولي الأمر: ${rawParentPhone}
+                </div>
+              ` : ''}
             </div>
           </div>
         </td>
@@ -272,16 +280,24 @@ export default class StudentsView {
 
         <!-- Contact Actions (WhatsApp & Call) -->
         <td style="padding:14px 16px; vertical-align:middle; text-align:center;">
-          ${rawPhone ? `
-            <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
-              <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="واتساب المباشر">
-                <i data-lucide="message-circle" style="width:13px; height:13px;"></i> واتساب
-              </a>
-              <a href="tel:${cleanPhone}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; border-color:var(--primary); color:var(--primary); border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="اتصال هاتفي">
-                <i data-lucide="phone-call" style="width:13px; height:13px;"></i> اتصال
-              </a>
-            </div>
-          ` : '<span style="color:var(--text-muted); font-size:0.78rem;">لا يوجد هاتف</span>'}
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+            ${rawPhone ? `
+              <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
+                <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">الطالب:</span>
+                <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب الطالب">
+                  <i data-lucide="message-circle" style="width:12px; height:12px;"></i> واتساب
+                </a>
+              </div>
+            ` : ''}
+            ${rawParentPhone ? `
+              <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
+                <span style="font-size:0.75rem; font-weight:700; color:var(--primary);">ولي الأمر:</span>
+                <a href="https://wa.me/${cleanParentPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب ولي الأمر">
+                  💬 واتساب
+                </a>
+              </div>
+            ` : (!rawPhone ? '<span style="color:var(--text-muted); font-size:0.78rem;">لا يوجد هاتف</span>' : '')}
+          </div>
         </td>
 
         <!-- Actions -->
@@ -393,28 +409,36 @@ export default class StudentsView {
                 <input type="password" id="new-student-password" class="form-input" placeholder="افتراضي: student123" style="padding:10px 14px; font-size:0.88rem; border-radius:12px;">
               </div>
               <div class="form-group" style="margin:0;">
-                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">رقم الهاتف والواتساب</label>
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">رقم هاتف الطالب والواتساب</label>
                 ${renderPhoneInputGroup({ selectId: "new-student-phone-code", inputId: "new-student-phone-num", defaultCode: "+20", placeholder: "01012345678", required: false })}
               </div>
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px;">
               <div class="form-group" style="margin:0;">
-                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">الولاية / المدينة</label>
-                <input type="text" id="new-student-location" class="form-input" placeholder="مثال: الجزائر العاصمة" style="padding:10px 14px; font-size:0.88rem; border-radius:12px;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">
+                  رقم هاتف ولي الأمر (Parent Phone) <span style="color:var(--error);">*</span>
+                </label>
+                ${renderPhoneInputGroup({ selectId: "new-student-parent-phone-code", inputId: "new-student-parent-phone-num", defaultCode: "+20", placeholder: "01012345678", required: true })}
               </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">الولاية / المدينة</label>
+                <input type="text" id="new-student-location" class="form-input" placeholder="مثال: القاهرة" style="padding:10px 14px; font-size:0.88rem; border-radius:12px;">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px;">
               <div class="form-group" style="margin:0;">
                 <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">المستوى الدراسي <span style="color:var(--error);">*</span></label>
                 ${renderEducationSelectHTML({ id: "new-student-education", selectedValue: "Bakalorya 3", required: true, style: "padding:10px 14px; font-size:0.88rem; border-radius:12px;" })}
               </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom:20px;">
-              <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">تسجيله في دورة تعليمية <span style="color:var(--error);">*</span></label>
-              <select id="new-student-course" class="form-input" style="padding:10px 14px; font-size:0.88rem; border-radius:12px;" required>
-                ${teacherCourses.length === 0 ? `<option value="">-- لا يوجد دورات متاحة --</option>` : ''}
-                ${teacherCourses.map((c, idx) => `<option value="${c.id}" ${idx === 0 ? 'selected' : ''}>${c.title} (${c.category || 'عام'})</option>`).join("")}
-              </select>
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">تسجيله في دورة تعليمية <span style="color:var(--error);">*</span></label>
+                <select id="new-student-course" class="form-input" style="padding:10px 14px; font-size:0.88rem; border-radius:12px;" required>
+                  ${teacherCourses.length === 0 ? `<option value="">-- لا يوجد دورات متاحة --</option>` : ''}
+                  ${teacherCourses.map((c, idx) => `<option value="${c.id}" ${idx === 0 ? 'selected' : ''}>${c.title} (${c.category || 'عام'})</option>`).join("")}
+                </select>
+              </div>
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-color); padding-top:16px;">
@@ -443,9 +467,14 @@ export default class StudentsView {
       const name = modalWrapper.querySelector("#new-student-name").value.trim();
       const email = modalWrapper.querySelector("#new-student-email").value.trim();
       const password = modalWrapper.querySelector("#new-student-password").value;
-      const phoneCode = modalWrapper.querySelector("#new-student-phone-code")?.value || "+213";
+      const phoneCode = modalWrapper.querySelector("#new-student-phone-code")?.value || "+20";
       const phoneNum = modalWrapper.querySelector("#new-student-phone-num")?.value.trim() || "";
       const phone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
+
+      const parentPhoneCode = modalWrapper.querySelector("#new-student-parent-phone-code")?.value || "+20";
+      const parentPhoneNum = modalWrapper.querySelector("#new-student-parent-phone-num")?.value.trim() || "";
+      const parentPhone = `${parentPhoneCode} ${parentPhoneNum}`.trim();
+
       const location = modalWrapper.querySelector("#new-student-location").value.trim();
       const education = modalWrapper.querySelector("#new-student-education").value.trim();
       const courseId = modalWrapper.querySelector("#new-student-course").value;
@@ -453,7 +482,7 @@ export default class StudentsView {
       try {
         const res = await apiFetch("/teacher/students", {
           method: "POST",
-          body: JSON.stringify({ name, email, password, phone, location, education, courseId })
+          body: JSON.stringify({ name, email, password, phone, parentPhone, location, education, courseId })
         });
         showToast(res.message || "تمت إضافة الطالب بنجاح!", "success");
         handleWhatsAppResponse(res);

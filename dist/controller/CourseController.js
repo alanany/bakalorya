@@ -321,7 +321,7 @@ class CourseController {
           SELECT 
             e.id, e.status, e.createdAt,
             u.id as studentId, u.name as studentName, u.email as studentEmail,
-            u.phone as studentPhone, u.avatar as studentAvatar,
+            u.phone as studentPhone, u.parentPhone as studentParentPhone, u.avatar as studentAvatar,
             u.location as studentLocation, u.education as studentEducation,
             c.id as courseId, c.title as courseTitle,
             t.id as teacherId, t.name as teacherName
@@ -338,7 +338,7 @@ class CourseController {
           SELECT 
             e.id, e.status, e.createdAt,
             u.id as studentId, u.name as studentName, u.email as studentEmail,
-            u.phone as studentPhone, u.avatar as studentAvatar,
+            u.phone as studentPhone, u.parentPhone as studentParentPhone, u.avatar as studentAvatar,
             u.location as studentLocation, u.education as studentEducation,
             c.id as courseId, c.title as courseTitle,
             t.id as teacherId, t.name as teacherName
@@ -360,6 +360,7 @@ class CourseController {
                     name: row.studentName,
                     email: row.studentEmail,
                     phone: row.studentPhone,
+                    parentPhone: row.studentParentPhone,
                     avatar: row.studentAvatar,
                     location: row.studentLocation,
                     education: row.studentEducation

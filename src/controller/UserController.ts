@@ -181,6 +181,7 @@ export class UserController {
 
       if (name) user.name = name;
       if (phone !== undefined) user.phone = phone;
+      if (req.body.parentPhone !== undefined) user.parentPhone = req.body.parentPhone;
       if (education !== undefined) user.education = education;
       if (location !== undefined) user.location = location;
       if (meetingLink !== undefined) user.meetingLink = meetingLink;
@@ -204,10 +205,10 @@ export class UserController {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const { name, email, password, phone, location, education, courseId } = req.body;
+      const { name, email, password, phone, parentPhone, location, education, courseId } = req.body;
 
-      if (!name || !email || !education) {
-        return res.status(400).json({ error: "الرجاء اختيار المستوى الدراسي وتعبئة الاسم والبريد الإلكتروني." });
+      if (!name || !email || !education || !parentPhone) {
+        return res.status(400).json({ error: "الرجاء اختيار المستوى الدراسي وتعبئة الاسم والبريد الإلكتروني ورقم هاتف ولي الأمر." });
       }
 
       const userRepo = AppDataSource.getRepository(User);
@@ -234,6 +235,7 @@ export class UserController {
           password: hashedPassword,
           role: "student",
           phone: phone || null,
+          parentPhone: parentPhone || null,
           location: location || null,
           education: education || null,
           avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
@@ -243,6 +245,7 @@ export class UserController {
         // Update existing student details if provided
         if (name) student.name = name;
         if (phone) student.phone = phone;
+        if (parentPhone) student.parentPhone = parentPhone;
         if (location) student.location = location;
         if (education) student.education = education;
         await userRepo.save(student);

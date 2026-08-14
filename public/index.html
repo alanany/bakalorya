@@ -210,8 +210,31 @@
 
   <!-- Viewport -->
   <main id="app-viewport">
-    <!-- Current view gets dynamically injected here -->
+    <div style="min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-color);">
+      <div class="spinner" style="width: 44px; height: 44px; border-width: 4px; margin-bottom: 16px;"></div>
+      <p style="font-size: 0.95rem; font-weight: 700; opacity: 0.8;">جاري تحميل منصة بكالوريا...</p>
+    </div>
   </main>
+
+  <!-- Protocol Check Fallback -->
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', () => {
+        const vp = document.getElementById('app-viewport');
+        if (vp) {
+          vp.innerHTML = `
+            <div style="max-width:540px; margin:80px auto; padding:36px; text-align:center; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:20px; color:#ef4444;" class="glass-card">
+              <h2 style="font-size:1.4rem; font-weight:900; margin-bottom:12px;">⚠️ يرجى فتح الموقع عبر الرابط التالي:</h2>
+              <p style="color:var(--text-main); font-size:0.92rem; line-height:1.6; margin-bottom:20px;">
+                لقد قمت بفتح الملف مباشرة من المجلد (file://) والمتصفح يمنع تشغيل السكريبتات برمجياً. يرجى كتابة هذا العنوان في المتصفح:
+              </p>
+              <a href="http://localhost:3000" style="display:inline-block; background:#0056D2; color:#fff; padding:12px 28px; border-radius:30px; font-weight:800; text-decoration:none;">http://localhost:3000 🌐</a>
+            </div>
+          `;
+        }
+      });
+    }
+  </script>
 
   <!-- Global Toast Notification -->
   <div id="toast-container" class="toast-container"></div>

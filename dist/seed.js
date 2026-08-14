@@ -15,7 +15,7 @@ const SessionCreditLedger_1 = require("./entity/SessionCreditLedger");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 async function seed() {
     try {
-        await data_source_1.AppDataSource.initialize();
+        await (0, data_source_1.initAppDataSource)();
         console.log("Database initialized for seeding...");
         const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
         const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
@@ -99,6 +99,8 @@ async function seed() {
             email: "student@bakalorya.com",
             password: passwordHash,
             role: "student",
+            phone: "+20 01012345678",
+            parentPhone: "+20 01099887766",
             avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Student"
         });
         await userRepository.save(student);

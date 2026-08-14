@@ -53,17 +53,27 @@ export default class SettingsView {
               ${state.user.role === 'student' ? `
               <div class="form-group" style="margin-top:16px;">
                 <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
+                  💬 رقم هاتف ولي الأمر والرمز الدولي (Parent Phone Number) <span style="color:var(--error);">*</span>
+                </label>
+                ${renderPhoneInputGroup({
+                  selectId: "settings-parent-phone-code",
+                  inputId: "settings-parent-phone-number",
+                  defaultCode: "+20",
+                  value: state.user.parentPhone || "",
+                  placeholder: "01012345678",
+                  required: true
+                })}
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">رقم هاتف ولي الأمر إجباري للتواصل والتنبيهات المباشرة.</small>
+              </div>
+
+              <div class="form-group" style="margin-top:16px;">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
                   <i data-lucide="graduation-cap" style="width:16px;height:16px;color:var(--primary);"></i>
                   المستوى والتخصص الدراسي (Education Level / Stream)
                 </label>
-                ${renderEducationSelectHTML ? renderEducationSelectHTML("settings-education", state.user.education || "3ème AS - Sciences Expérimentales (علوم تجريبية)") : `
+                ${renderEducationSelectHTML ? renderEducationSelectHTML({ id: "settings-education", selectedValue: state.user.education || "Bakalorya 3" }) : `
                   <select id="settings-education" class="form-select">
-                    <option value="3ème AS - Sciences Expérimentales (علوم تجريبية)" ${state.user.education?.includes("Sciences") ? "selected" : ""}>3ème AS - Sciences Expérimentales (علوم تجريبية)</option>
-                    <option value="3ème AS - Mathématiques (رياضيات)" ${state.user.education?.includes("Mathématiques") ? "selected" : ""}>3ème AS - Mathématiques (رياضيات)</option>
-                    <option value="3ème AS - Technique Math (تقني رياضي)" ${state.user.education?.includes("Technique") ? "selected" : ""}>3ème AS - Technique Math (تقني رياضي)</option>
-                    <option value="3ème AS - Gestion et Économie (تسيير واقتصاد)" ${state.user.education?.includes("Gestion") ? "selected" : ""}>3ème AS - Gestion et Économie (تسيير واقتصاد)</option>
-                    <option value="3ème AS - Lettres et Philosophie (آداب وفلسفة)" ${state.user.education?.includes("Lettres") ? "selected" : ""}>3ème AS - Lettres et Philosophie (آداب وفلسفة)</option>
-                    <option value="3ème AS - Langues Étrangères (لغات أجنبية)" ${state.user.education?.includes("Langues") ? "selected" : ""}>3ème AS - Langues Étrangères (لغات أجنبية)</option>
+                    <option value="Bakalorya 3" ${state.user.education?.includes("Bakalorya 3") ? "selected" : ""}>Bakalorya 3</option>
                   </select>
                 `}
               </div>
@@ -127,17 +137,27 @@ export default class SettingsView {
       e.preventDefault();
       const newName = document.getElementById("settings-name").value;
       const meetingLinkInput = document.getElementById("settings-meeting-link");
-      const customCatInput = document.getElementById("settings-custom-categories");
-      const phoneCode = document.getElementById("settings-phone-code")?.value || "+213";
+      const phoneCode = document.getElementById("settings-phone-code")?.value || "+20";
       const phoneNum = document.getElementById("settings-phone-number")?.value.trim() || "";
+      const parentPhoneCode = document.getElementById("settings-parent-phone-code")?.value || "+20";
+      const parentPhoneNum = document.getElementById("settings-parent-phone-number")?.value.trim() || "";
       const educationInput = document.getElementById("settings-education");
       
       const fullPhone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
+      const fullParentPhone = parentPhoneNum ? `${parentPhoneCode} ${parentPhoneNum}`.trim() : "";
 
       const payload = { 
         name: newName,
         phone: fullPhone
       };
+
+      if (state.user.role === "student") {
+        if (!fullParentPhone) {
+          showToast("رقم هاتف ولي الأمر مطلوب عند تحديث البيانات.", "error");
+          return;
+        }
+        payload.parentPhone = fullParentPhone;
+      }
 
       if (educationInput) {
         payload.education = educationInput.value;

@@ -1,4 +1,4 @@
-import { AppDataSource } from "./data-source";
+import { AppDataSource, initAppDataSource } from "./data-source";
 import { User } from "./entity/User";
 import { Course } from "./entity/Course";
 import { Lesson } from "./entity/Lesson";
@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 
 async function seed() {
   try {
-    await AppDataSource.initialize();
+    await initAppDataSource();
     console.log("Database initialized for seeding...");
 
     const userRepository     = AppDataSource.getRepository(User);
@@ -106,6 +106,8 @@ async function seed() {
       email:    "student@bakalorya.com",
       password: passwordHash,
       role:     "student",
+      phone:    "+20 01012345678",
+      parentPhone: "+20 01099887766",
       avatar:   "https://api.dicebear.com/7.x/adventurer/svg?seed=Student"
     });
     await userRepository.save(student);

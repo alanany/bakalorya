@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
-import { AppDataSource } from "./data-source";
+import { AppDataSource, initAppDataSource } from "./data-source";
 import router from "./routes";
 
 const PORT = process.env.PORT || 3000;
@@ -16,8 +16,8 @@ async function startServer() {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Initialize TypeORM DataSource
-    await AppDataSource.initialize();
+    // Initialize TypeORM DataSource (with SQLite fallback)
+    await initAppDataSource();
     console.log("Data Source has been initialized!");
 
     const app = express();

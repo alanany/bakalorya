@@ -8,10 +8,15 @@ import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } fr
 
 export class AuthController {
   static async register(req: Request, res: Response) {
-    const { name, email, password, role, location, education, phone } = req.body;
+    const { name, email, password, role, location, education, phone, parentPhone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Missing name, email, or password." });
+    }
+
+    const userRole = role === "teacher" || role === "admin" ? role : "student";
+    if (userRole === "student" && !parentPhone) {
+      return res.status(400).json({ error: "رقم هاتف ولي الأمر مطلوب عند تسجيل الطالب." });
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -34,10 +39,11 @@ export class AuthController {
       user.name = name;
       user.email = email;
       user.password = hashedPassword;
-      user.role = role === "teacher" || role === "admin" ? role : "student";
+      user.role = userRole;
       if (location) user.location = location;
       if (education) user.education = education;
       if (phone) user.phone = phone;
+      if (parentPhone) user.parentPhone = parentPhone;
       user.avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
 
       await userRepository.save(user);
@@ -54,7 +60,7 @@ export class AuthController {
 
       return res.status(201).json({
         token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, location: user.location, education: user.education, phone: user.phone },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, location: user.location, education: user.education, phone: user.phone, parentPhone: user.parentPhone },
         whatsappNotification
       });
     } catch (err) {
@@ -88,7 +94,7 @@ export class AuthController {
 
       return res.status(200).json({
         token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education },
       });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -108,7 +114,7 @@ export class AuthController {
       }
 
       return res.status(200).json({
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink },
       });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });

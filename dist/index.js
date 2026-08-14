@@ -18,8 +18,8 @@ async function startServer() {
         if (!fs_1.default.existsSync(uploadsDir)) {
             fs_1.default.mkdirSync(uploadsDir, { recursive: true });
         }
-        // Initialize TypeORM DataSource
-        await data_source_1.AppDataSource.initialize();
+        // Initialize TypeORM DataSource (with SQLite fallback)
+        await (0, data_source_1.initAppDataSource)();
         console.log("Data Source has been initialized!");
         const app = (0, express_1.default)();
         // Configure Middlewares

@@ -622,7 +622,7 @@ export default class LandingView {
 
     if (window.lucide) window.lucide.createIcons();
     this.bindEvents();
-    await this.loadCoursesAsync();
+    this.loadCoursesAsync();
   }
 
   async loadCoursesAsync() {
@@ -642,6 +642,7 @@ export default class LandingView {
 
       this.renderDynamicLandingSections();
       this.renderFilteredCourses();
+      if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.error("Failed to load data for landing page", e);
     }

@@ -71,6 +71,9 @@ router.get("/subscriptions/my", auth_1.authMiddleware, SubscriptionController_1.
 router.get("/subscriptions/teacher-assigned", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), SubscriptionController_1.SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.getAllSubscriptions);
 router.patch("/admin/subscriptions/:id/assign-teacher", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.assignTeacher);
+router.patch("/admin/subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.approveSubscription);
+router.patch("/admin/subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.rejectSubscription);
+router.patch("/admin/subscriptions/:id/renew", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.renewSubscription);
 router.delete("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.markAsPaid);
 // Teacher Availability (Session Teacher capability enforced)

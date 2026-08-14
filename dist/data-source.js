@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppDataSource = void 0;
+exports.AppDataSource = exports.allEntities = void 0;
+exports.initAppDataSource = initAppDataSource;
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -33,7 +34,7 @@ const SessionAttendance_1 = require("./entity/SessionAttendance");
 const TeacherEarning_1 = require("./entity/TeacherEarning");
 const Payment_1 = require("./entity/Payment");
 const AuditLog_1 = require("./entity/AuditLog");
-const allEntities = [
+exports.allEntities = [
     User_1.User, Course_1.Course, Lesson_1.Lesson, Enrollment_1.Enrollment, Session_1.Session,
     Assignment_1.Assignment, AssignmentSubmission_1.AssignmentSubmission, Resource_1.Resource, Test_1.Test,
     TestQuestion_1.TestQuestion, TestAttempt_1.TestAttempt, Blog_1.Blog, Category_1.Category, TeacherApplication_1.TeacherApplication,
@@ -42,27 +43,43 @@ const allEntities = [
     TeacherEarning_1.TeacherEarning, Payment_1.Payment, AuditLog_1.AuditLog
 ];
 const dbType = (process.env.DB_TYPE || "sqlite").toLowerCase();
-let options;
-if (dbType === "mysql" || dbType === "postgres") {
-    options = {
-        type: dbType,
-        host: process.env.DB_HOST || "localhost",
-        port: parseInt(process.env.DB_PORT || (dbType === "postgres" ? "5432" : "3306"), 10),
-        username: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "",
-        database: process.env.DB_NAME || "bakalorya_db",
-        synchronize: true,
-        logging: false,
-        entities: allEntities,
-    };
-}
-else {
-    options = {
+function createOptions(type) {
+    if (type === "mysql" || type === "postgres") {
+        return {
+            type: type,
+            host: process.env.DB_HOST || "localhost",
+            port: parseInt(process.env.DB_PORT || (type === "postgres" ? "5432" : "3306"), 10),
+            username: process.env.DB_USER || "root",
+            password: process.env.DB_PASSWORD || "",
+            database: process.env.DB_NAME || "bakalorya_platform_db",
+            synchronize: true,
+            logging: false,
+            entities: exports.allEntities,
+        };
+    }
+    return {
         type: "sqlite",
-        database: process.env.DB_NAME || "database.sqlite",
+        database: process.env.DB_NAME && process.env.DB_NAME.endsWith(".sqlite") ? process.env.DB_NAME : "bakalorya_db",
         synchronize: true,
         logging: false,
-        entities: allEntities,
+        entities: exports.allEntities,
     };
 }
-exports.AppDataSource = new typeorm_1.DataSource(options);
+exports.AppDataSource = new typeorm_1.DataSource(createOptions(dbType));
+async function initAppDataSource() {
+    try {
+        await exports.AppDataSource.initialize();
+        console.log(`Data Source (${dbType}) has been initialized!`);
+        return exports.AppDataSource;
+    }
+    catch (err) {
+        if (dbType !== "sqlite") {
+            console.warn(`Failed to connect to ${dbType} (${err.message || err}). Falling back to SQLite...`);
+            exports.AppDataSource = new typeorm_1.DataSource(createOptions("sqlite"));
+            await exports.AppDataSource.initialize();
+            console.log("Fallback SQLite Data Source initialized successfully!");
+            return exports.AppDataSource;
+        }
+        throw err;
+    }
+}

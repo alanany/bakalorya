@@ -30,6 +30,7 @@ let User = class User {
     location;
     education;
     phone;
+    parentPhone;
     createdAt;
     updatedAt;
 };
@@ -106,6 +107,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "parentPhone", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

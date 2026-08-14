@@ -32,10 +32,10 @@ export default class CourseManageView {
       }
 
       this.container.innerHTML = `
-        <div class="course-manage-container" style="display:flex; min-height: calc(100vh - 64px); background:var(--bg-app);">
+        <div class="course-manage-container">
           
           <!-- Sidebar Nav (Right Side for RTL) -->
-          <div class="manage-sidebar" style="width:280px; flex-shrink:0; border-inline-end:1px solid var(--border-color); background:var(--bg-card); padding:24px 16px; display:flex; flex-direction:column; gap:20px;">
+          <div class="manage-sidebar">
             <div>
               <a href="#teacher-portal" class="btn-secondary" style="font-size:0.85rem; padding:8px 14px; margin-bottom:16px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; width:100%; justify-content:center;">
                 <i data-lucide="arrow-right"></i> ${t("nav.teacherPortal") || "بوابة المعلم"}
@@ -58,7 +58,7 @@ export default class CourseManageView {
           </div>
 
           <!-- Main Content Pane -->
-          <div class="manage-content" style="flex:1; padding:36px; overflow-y:auto;">
+          <div class="manage-content">
             ${
               this.activeTab === 'curriculum' ? this.renderCurriculum() :
               this.activeTab === 'resources' ? this.renderResourcesTab() :

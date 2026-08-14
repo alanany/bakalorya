@@ -617,15 +617,20 @@ body.light-theme .form-select {
 }
 
 /* --- SIDEBAR MENU --- */
+body.sidebar-open {
+  overflow: hidden !important;
+}
+
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  z-index: 990;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9980;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.25s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .sidebar-overlay.active {
@@ -637,20 +642,34 @@ body.light-theme .form-select {
   position: fixed;
   top: 0;
   bottom: 0;
-  right: -300px;
-  width: 280px;
+  right: 0;
+  width: 300px;
+  max-width: calc(100vw - 48px);
   background: var(--bg-card);
-  border-left: 1px solid var(--border-color);
-  z-index: 995;
+  border-inline-start: 1px solid var(--border-color);
+  z-index: 9990;
   display: flex;
   flex-direction: column;
-  box-shadow: -5px 10px 40px rgba(0,0,0,0.3);
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s ease;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+[dir="ltr"] .app-sidebar {
+  right: auto;
+  left: 0;
+  transform: translateX(-100%);
+  border-inline-start: none;
+  border-inline-end: 1px solid var(--border-color);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
 }
 
 .app-sidebar.active {
-  right: 0;
+  transform: translateX(0);
+  visibility: visible;
 }
 
 .sidebar-header {
@@ -1641,7 +1660,57 @@ body.light-theme .form-select {
   height: 8px;
   border-radius: var(--radius-round);
   background: var(--success);
-  margin-right: 6px;
+/* --- COURSE MANAGE LAYOUT --- */
+.course-manage-container {
+  display: flex;
+  min-height: calc(100vh - 64px);
+  background: var(--bg-app);
+}
+
+.manage-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  border-inline-end: 1px solid var(--border-color);
+  background: var(--bg-card);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.manage-content {
+  flex: 1;
+  padding: 36px;
+  overflow-y: auto;
+}
+
+.manage-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: start;
+  transition: var(--transition-fast);
+}
+
+.manage-nav-btn:hover {
+  background: var(--bg-app);
+  color: var(--text-main);
+}
+
+.manage-nav-btn.active {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: var(--border-focus);
+  font-weight: 700;
 }
 
 /* ==========================================================================
@@ -2012,19 +2081,33 @@ body.light-theme .form-select {
 
   /* Sidebar Drawer on Mobile */
   .app-sidebar {
-    width: 290px !important;
-    max-width: 85vw !important;
+    width: 290px;
+    max-width: min(300px, 85vw) !important;
   }
 
-  /* Course Player View Mobile Layout */
+  /* Multi-column Layout Stacking on Mobile */
+  .course-manage-container,
+  .admin-shell,
+  .teacher-layout,
   .classroom-layout,
   .course-player-layout {
     flex-direction: column !important;
     height: auto !important;
+    min-height: auto !important;
   }
 
-  .classroom-video-area,
-  .classroom-chat-sidebar {
+  .manage-sidebar,
+  .classroom-chat-sidebar,
+  .sidebar-curriculum {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-inline-end: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 16px !important;
+    flex-shrink: 1 !important;
+  }
+
+  .classroom-video-area {
     width: 100% !important;
     height: auto !important;
   }
@@ -2041,16 +2124,15 @@ body.light-theme .form-select {
     max-width: none !important;
   }
 
-  /* 3-column sections fallback to 1 column */
-  [style*="repeat(auto-fit, minmax(320px"] {
-    grid-template-columns: 1fr !important;
+  /* Responsive Grid Safety Wrappers for inline minmax grids */
+  [style*="repeat(auto-fit,"],
+  [style*="repeat(auto-fill,"] {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  [style*="repeat(auto-fit, minmax(300px"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  [style*="repeat(auto-fit, minmax(340px"] {
+  /* 2-column inline grid overrides on mobile */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
 
@@ -2058,7 +2140,7 @@ body.light-theme .form-select {
   #most-popular-container,
   #new-releases-container,
   #trending-sessions-container {
-    gap: 10px !important;
+    gap: 12px !important;
   }
 }
 

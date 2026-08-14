@@ -48,7 +48,7 @@ export class AdminController {
       const users = await userRepo.find({
         where,
         order: { createdAt: "DESC" },
-        select: ["id", "name", "email", "role", "avatar", "phone", "location", "education", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "createdAt"]
       });
 
       return res.json(users);
@@ -59,7 +59,7 @@ export class AdminController {
 
   // POST /admin/users — Create any member (Student, Teacher, Admin)
   static async createUser(req: AuthRequest, res: Response) {
-    const { name, email, password, role, phone, education } = req.body;
+    const { name, email, password, role, phone, parentPhone, education } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "Missing required fields (name, email, password, role)." });
@@ -67,6 +67,10 @@ export class AdminController {
 
     if (!["student", "teacher", "admin"].includes(role)) {
       return res.status(400).json({ error: "Invalid role. Must be student, teacher, or admin." });
+    }
+
+    if (role === "student" && !parentPhone) {
+      return res.status(400).json({ error: "رقم هاتف ولي الأمر مطلوب عند إضافة طالب." });
     }
 
     try {
@@ -83,6 +87,7 @@ export class AdminController {
         password: hashedPassword,
         role,
         phone: phone || null,
+        parentPhone: parentPhone || null,
         education: education || null,
         teacherCapabilities: role === "teacher" 
           ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]) 
@@ -100,7 +105,7 @@ export class AdminController {
 
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, education: user.education, avatar: user.avatar, createdAt: user.createdAt },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, avatar: user.avatar, createdAt: user.createdAt },
         whatsappNotification
       });
     } catch (err) {
@@ -111,7 +116,7 @@ export class AdminController {
   // PUT /admin/users/:id — Edit any user's profile, role, or password
   static async updateUser(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, role, password, phone, education } = req.body;
+    const { name, email, role, password, phone, parentPhone, education } = req.body;
 
     try {
       const userRepo = AppDataSource.getRepository(User);
@@ -120,6 +125,7 @@ export class AdminController {
 
       if (name) user.name = name;
       if (phone !== undefined) user.phone = phone;
+      if (parentPhone !== undefined) user.parentPhone = parentPhone;
       if (education !== undefined) user.education = education;
       if (email) {
         const existing = await userRepo.findOneBy({ email });

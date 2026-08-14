@@ -13,6 +13,8 @@ export default class AdminView {
     this.teacherApplications = [];
     this.subscriptions = [];
     this.adminEarnings = null;
+    this.allPlans = [];
+    this.subFilter = "all";
   }
 
   async render() {
@@ -271,8 +273,44 @@ export default class AdminView {
           .admin-sidebar { width: 220px; min-width: 220px; }
           .admin-main { padding: 20px 16px; }
         }
-        @media (max-width: 700px) {
-          .admin-sidebar { display: none; }
+        @media (max-width: 768px) {
+          .admin-shell {
+            height: auto;
+            min-height: calc(100vh - 64px);
+          }
+          .admin-sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 290px;
+            max-width: calc(100vw - 48px);
+            z-index: 9995;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+            display: flex;
+          }
+          [dir="ltr"] .admin-sidebar {
+            right: auto;
+            left: 0;
+            transform: translateX(-100%);
+            box-shadow: 8px 0 32px rgba(0,0,0,0.4);
+          }
+          .admin-sidebar.active {
+            transform: translateX(0) !important;
+          }
+          .admin-mobile-toggle-btn {
+            display: inline-flex !important;
+          }
+          .admin-topbar {
+            padding: 12px 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .admin-main {
+            padding: 16px 12px;
+          }
         }
       </style>
 
@@ -311,6 +349,11 @@ export default class AdminView {
               <i data-lucide="calendar-heart"></i>
               إدارة الاشتراكات
               <span class="admin-nav-badge" id="admin-badge-subscriptions">0</span>
+            </button>
+            <button class="admin-nav-btn ${this.activeTab === "plans" || this.activeTab === "settings" ? "active" : ""}" data-tab="plans">
+              <i data-lucide="settings"></i>
+              ⚙️ الإعدادات وخطط الباقات
+              <span class="admin-nav-badge" id="admin-badge-plans">0</span>
             </button>
             <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
               <i data-lucide="dollar-sign"></i>
@@ -358,6 +401,10 @@ export default class AdminView {
               <p id="admin-topbar-sub">نظرة شاملة على مؤشرات أداء المنصة</p>
             </div>
             <div class="admin-topbar-actions">
+              <button class="btn-secondary admin-mobile-toggle-btn" id="admin-mobile-toggle-btn" style="display:none; align-items:center; gap:6px; font-size:0.8rem; padding:8px 14px;">
+                <i data-lucide="menu" style="width:16px;height:16px;"></i>
+                قائمة المشرف
+              </button>
               <button class="btn-primary" id="admin-refresh-btn" style="font-size:0.8rem; padding:8px 16px; gap:8px; display:flex; align-items:center;">
                 <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
                 تحديث البيانات
@@ -397,6 +444,7 @@ export default class AdminView {
     el("admin-badge-categories", (this.categories || []).length);
     el("admin-badge-applications", pendingApps.length);
     el("admin-badge-subscriptions", (this.subscriptions || []).length);
+    el("admin-badge-plans", (this.allPlans || []).length);
   }
 
   async loadAllData() {
@@ -429,11 +477,28 @@ export default class AdminView {
   }
 
   bindTabEvents() {
+    const sidebar = this.container.querySelector(".admin-sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    const closeSidebar = () => {
+      sidebar?.classList.remove("active");
+      overlay?.classList.remove("active");
+      document.body.classList.remove("sidebar-open");
+    };
+
+    this.container.querySelector("#admin-mobile-toggle-btn")?.addEventListener("click", () => {
+      sidebar?.classList.toggle("active");
+      overlay?.classList.toggle("active");
+      document.body.classList.toggle("sidebar-open");
+    });
+
+    overlay?.addEventListener("click", closeSidebar);
+
     this.container.querySelectorAll(".admin-nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         this.activeTab = btn.getAttribute("data-tab");
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
+        closeSidebar();
         this.renderTab(this.activeTab);
       });
     });
@@ -461,7 +526,8 @@ export default class AdminView {
     members:             { heading: "🛡️ جميع الأعضاء",             sub: "عرض وإدارة جميع مستخدمي المنصة" },
     subscriptions:       { heading: "📅 إدارة الاشتراكات",         sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings:            { heading: "💰 المدفوعات والمستحقات",    sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
-    plans:               { heading: "✨ خطط الاشتراكات الشهرية",   sub: "إدارة وتعديل خطط الحصص الخاصة المتاحة للطلاب" },
+    plans:               { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)",   sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
+    settings:            { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)",   sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
   };
 
   renderTab(tab, args = null) {
@@ -486,7 +552,7 @@ export default class AdminView {
     else if (tab === "reports")         content.innerHTML = this.renderReportsTab();
     else if (tab === "subscriptions")   content.innerHTML = this.renderSubscriptionsTab();
     else if (tab === "earnings")        content.innerHTML = this.renderEarningsTab();
-    else if (tab === "plans")           content.innerHTML = this.renderPlansTab();
+    else if (tab === "plans" || tab === "settings") content.innerHTML = this.renderPlansTab();
 
     // Always keep sidebar badges fresh
     this.updateBadges();
@@ -1155,15 +1221,89 @@ export default class AdminView {
     `;
   }
   // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
-    renderSubscriptionsTab() {
+  renderSubscriptionsTab() {
+    const allSubs = this.subscriptions || [];
+    const allSessions = this.allSessions || [];
+
+    // Map metrics for all subscriptions
+    const subsWithMetrics = allSubs.map(s => {
+      const totalSessions = s.totalSessions || s.plan?.sessionsCount || 0;
+      const subSessions = allSessions.filter(sess => sess.subscription?.id === s.id);
+      const completedSessions = subSessions.filter(sess => sess.status === 'COMPLETED' || sess.status === 'completed').length;
+      const scheduledSessions = subSessions.filter(sess => sess.status === 'SCHEDULED' || sess.status === 'scheduled' || sess.status === 'RESCHEDULED').length;
+      const totalBooked = completedSessions + scheduledSessions;
+      const remainingToBook = Math.max(0, totalSessions - totalBooked);
+      const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
+      const isLowBalance = (s.status === 'ACTIVE' || s.status === 'TEACHER_ASSIGNMENT_PENDING') && remainingSessionsInPackage < 3;
+
+      return {
+        ...s,
+        totalSessions,
+        completedSessions,
+        scheduledSessions,
+        totalBooked,
+        remainingToBook,
+        remainingSessionsInPackage,
+        isLowBalance
+      };
+    });
+
+    const lowBalanceCount = subsWithMetrics.filter(s => s.isLowBalance).length;
+    const pendingCount = subsWithMetrics.filter(s => s.status === 'PENDING_PAYMENT').length;
+
+    // Apply Filter
+    const filter = this.subFilter || "all";
+    const filteredSubs = subsWithMetrics.filter(s => {
+      if (filter === "low_sessions") return s.isLowBalance;
+      if (filter === "pending") return s.status === "PENDING_PAYMENT";
+      if (filter === "active") return s.status === "ACTIVE";
+      if (filter === "cancelled") return s.status === "CANCELLED";
+      return true;
+    });
+
     return `
+      ${lowBalanceCount > 0 ? `
+      <div class="glass-card" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:16px 20px; border-radius:14px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <i data-lucide="alert-triangle" style="width:24px;height:24px;flex-shrink:0;"></i>
+          <div>
+            <strong style="font-size:0.95rem;">تنبيه رصيد الحصص ⚠️:</strong>
+            <span style="font-size:0.88rem; color:var(--text-main); margin-inline-start:6px;">يوجد <strong>${lowBalanceCount}</strong> اشتراك متبقي به أقل من 3 حصص ويحتاج إلى التجديد!</span>
+          </div>
+        </div>
+        <button class="btn-primary admin-sub-filter-btn" data-filter="low_sessions" style="background:#ef4444; border-color:#ef4444; font-size:0.75rem; padding:6px 14px;">
+          عرض الاشتراكات المنخفضة (${lowBalanceCount})
+        </button>
+      </div>
+      ` : ''}
+
       <div class="glass-card" style="padding:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
           <h3 style="font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px;">
             <i data-lucide="calendar-heart" style="color:var(--primary);width:20px;height:20px;"></i>
             قائمة الاشتراكات
           </h3>
+          
+          <!-- Filters -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.8rem; ${filter === 'all' ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}">
+              الكل (${subsWithMetrics.length})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'low_sessions' ? 'active' : ''}" data-filter="low_sessions" style="padding:6px 12px; font-size:0.8rem; ${filter === 'low_sessions' ? 'background:#ef4444;color:#fff;border-color:#ef4444;' : ''}">
+              ⚠️ رصيد منخفض (${lowBalanceCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'pending' ? 'active' : ''}" data-filter="pending" style="padding:6px 12px; font-size:0.8rem; ${filter === 'pending' ? 'background:#f59e0b;color:#fff;border-color:#f59e0b;' : ''}">
+              ⏳ في انتظار الدفع (${pendingCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'active' ? 'active' : ''}" data-filter="active" style="padding:6px 12px; font-size:0.8rem; ${filter === 'active' ? 'background:#10b981;color:#fff;border-color:#10b981;' : ''}">
+              ✅ نشط
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'cancelled' ? 'active' : ''}" data-filter="cancelled" style="padding:6px 12px; font-size:0.8rem; ${filter === 'cancelled' ? 'background:var(--border-color);' : ''}">
+              ❌ ملغى
+            </button>
+          </div>
         </div>
+
         <div style="overflow-x:auto;">
           <table class="table" style="width:100%;text-align:start;border-collapse:collapse;">
             <thead>
@@ -1172,42 +1312,78 @@ export default class AdminView {
                 <th style="padding:12px;font-weight:700;">الطالب</th>
                 <th style="padding:12px;font-weight:700;">الخطة / الحصص</th>
                 <th style="padding:12px;font-weight:700;">المعلم المعين</th>
-                <th style="padding:12px;font-weight:700;">الحالة</th>
+                <th style="padding:12px;font-weight:700;">الحالة والتنبيهات</th>
                 <th style="padding:12px;font-weight:700;">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              ${(this.subscriptions || []).map(s => {
-                const totalSessions = s.totalSessions || s.plan?.sessionsCount || 0;
-                
-                // Calculate metrics based on loaded sessions if available
-                const allSessions = this.allSessions || [];
-                const subSessions = allSessions.filter(sess => sess.subscription?.id === s.id);
-                const completedSessions = subSessions.filter(sess => sess.status === 'COMPLETED' || sess.status === 'completed').length;
-                const scheduledSessions = subSessions.filter(sess => sess.status === 'SCHEDULED' || sess.status === 'scheduled' || sess.status === 'RESCHEDULED').length;
-                const totalBooked = completedSessions + scheduledSessions;
-                const remainingToBook = Math.max(0, totalSessions - totalBooked);
-                
+              ${filteredSubs.map(s => {
+                let statusBadgeBg = 'rgba(16,185,129,0.1)';
+                let statusBadgeColor = '#10b981';
+                let statusText = s.status;
+
+                if (s.status === 'PENDING_PAYMENT') {
+                  statusBadgeBg = 'rgba(245,158,11,0.15)';
+                  statusBadgeColor = '#f59e0b';
+                  statusText = 'في انتظار تأكيد الدفع ⏳';
+                } else if (s.status === 'TEACHER_ASSIGNMENT_PENDING') {
+                  statusBadgeBg = 'rgba(59,130,246,0.15)';
+                  statusBadgeColor = '#3b82f6';
+                  statusText = 'في انتظار تعيين المعلم ⏳';
+                } else if (s.status === 'ACTIVE') {
+                  statusBadgeBg = 'rgba(16,185,129,0.15)';
+                  statusBadgeColor = '#10b981';
+                  statusText = 'نشط ✅';
+                } else if (s.status === 'CANCELLED') {
+                  statusBadgeBg = 'rgba(239,68,68,0.15)';
+                  statusBadgeColor = '#ef4444';
+                  statusText = 'ملغى ❌';
+                }
+
+                const rowBg = s.isLowBalance ? 'background:rgba(239,68,68,0.03);' : '';
+
                 return `
-                <tr style="border-bottom:1px solid var(--border-color);font-size:0.85rem;">
+                <tr style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}">
                   <td style="padding:12px;color:var(--text-muted);">#${s.id.substring(0,8)}</td>
                   <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
                   <td style="padding:12px;">
                     ${s.plan?.name || '-'} 
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                      ${totalSessions} حصص الإجمالي
+                      ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
                     </div>
                   </td>
                   <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
                   <td style="padding:12px;">
-                    <span class="badge" style="background:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'};color:${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? '#f59e0b' : '#10b981' };">
-                      ${s.status}
-                    </span>
+                    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                      <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:600;">
+                        ${statusText}
+                      </span>
+                      ${s.isLowBalance ? `
+                        <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
+                          <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
+                        </span>
+                      ` : ''}
+                    </div>
                   </td>
                   <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        ${s.status === 'PENDING_PAYMENT' ? `
+                        <button class="btn-primary admin-approve-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
+                          <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول + رفع إيصال
+                        </button>
+                        <button class="btn-secondary admin-reject-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;">
+                          <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض
+                        </button>
+                        ` : ''}
+
+                        ${(s.status === 'ACTIVE' || s.isLowBalance) ? `
+                        <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
+                          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> تجديد + رفع إيصال 💳
+                        </button>
+                        ` : ''}
+
                         <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
-                        <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
+                          <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
                         </button>
                         ${s.status === 'ACTIVE' ? `
                         <button class="btn-primary admin-package-wizard-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;">
@@ -1222,16 +1398,17 @@ export default class AdminView {
                         ` : ''}
                     </div>
                     ${s.status === 'ACTIVE' ? `
-                    <div style="font-size:0.75rem; display:flex; gap:12px; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
-                        <span style="color:#10b981;font-weight:600;">مكتملة: ${completedSessions}</span>
-                        <span style="color:var(--primary);font-weight:600;">مجدولة: ${scheduledSessions}</span>
-                        <span style="color:#ef4444;font-weight:600;">متبقية: ${remainingToBook}</span>
+                    <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
+                        <span style="color:#10b981;font-weight:600;">مكتملة: ${s.completedSessions}</span>
+                        <span style="color:var(--primary);font-weight:600;">مجدولة: ${s.scheduledSessions}</span>
+                        <span style="color:#8b5cf6;font-weight:600;">غير مجدولة: ${s.remainingToBook}</span>
+                        <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي بالباقة: ${s.remainingSessionsInPackage}</span>
                     </div>
                     ` : ''}
                   </td>
                 </tr>
               `;
-              }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات حتى الآن.</td></tr>`}
+              }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1303,6 +1480,48 @@ export default class AdminView {
 
   // ── Event Binds ───────────────────────────────────────────────────────────────
   bindActionEvents() {
+    // Subscription Filters
+    this.container.querySelectorAll(".admin-sub-filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const filter = btn.getAttribute("data-filter");
+        this.subFilter = filter;
+        this.renderTab("subscriptions");
+      });
+    });
+
+    // Admin Renew Subscription
+    this.container.querySelectorAll(".admin-renew-sub-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-id");
+        this.renderRenewSubscriptionModal(subId);
+      });
+    });
+
+    // Admin Approve Subscription (with receipt upload modal)
+    this.container.querySelectorAll(".admin-approve-sub-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-id");
+        this.renderApproveSubscriptionModal(subId);
+      });
+    });
+
+    // Admin Reject Subscription
+    this.container.querySelectorAll(".admin-reject-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const subId = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog("هل أنت تأكد من رفض هذا طلب الاشتراك؟");
+        if (!confirmed) return;
+        try {
+          const res = await apiFetch(`/admin/subscriptions/${subId}/reject`, { method: "PATCH" });
+          showToast(res.message || "تم رفض الاشتراك", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل رفض الاشتراك", "error");
+        }
+      });
+    });
+
     // Admin Assign Teacher to Subscription
     this.container.querySelectorAll(".admin-assign-teacher-sub-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1696,12 +1915,22 @@ export default class AdminView {
 
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                 <div class="form-group" style="margin:0;">
-                  <label for="member-phone" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">رقم الهاتف والواتساب</label>
-                  ${renderPhoneInputGroup({ selectId: "member-phone-code", inputId: "member-phone-num", defaultCode: "+20", placeholder: "01012345678", required: false })}
+                  <label for="member-phone" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">رقم هاتف المستخدم والواتساب</label>
+                  ${renderPhoneInputGroup({ selectId: "member-phone-code", inputId: "member-phone-num", defaultCode: "+20", value: isEdit ? (user.phone || "") : "", placeholder: "01012345678", required: false })}
                 </div>
                 <div class="form-group" style="margin:0;">
                   <label for="member-education" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">المستوى الدراسي</label>
                   ${renderEducationSelectHTML({ id: "member-education", selectedValue: isEdit ? (user.education || "Bakalorya 3") : "Bakalorya 3", style: "padding:8px 12px; font-size:0.88rem;" })}
+                </div>
+              </div>
+
+              <!-- Parent Phone (Required for Students) -->
+              <div id="parent-phone-group" style="display:${initialRole === 'student' ? 'block' : 'none'}; margin-top:2px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="member-parent-phone" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">
+                    رقم هاتف ولي الأمر (Parent Phone) <span style="color:var(--error);">*</span>
+                  </label>
+                  ${renderPhoneInputGroup({ selectId: "member-parent-phone-code", inputId: "member-parent-phone-num", defaultCode: "+20", value: isEdit ? (user.parentPhone || "") : "", placeholder: "01012345678", required: initialRole === "student" })}
                 </div>
               </div>
 
@@ -1739,6 +1968,8 @@ export default class AdminView {
     document.getElementById("member-role")?.addEventListener("change", (e) => {
       const capGroup = document.getElementById("teacher-capabilities-group");
       if (capGroup) capGroup.style.display = e.target.value === "teacher" ? "block" : "none";
+      const parentPhoneGroup = document.getElementById("parent-phone-group");
+      if (parentPhoneGroup) parentPhoneGroup.style.display = e.target.value === "student" ? "block" : "none";
     });
 
     document.getElementById("member-form")?.addEventListener("submit", async (e) => {
@@ -1747,9 +1978,14 @@ export default class AdminView {
       const email = document.getElementById("member-email").value;
       const role = document.getElementById("member-role").value;
       const password = document.getElementById("member-password").value;
-      const phoneCode = document.getElementById("member-phone-code")?.value || "+213";
+      const phoneCode = document.getElementById("member-phone-code")?.value || "+20";
       const phoneNum = document.getElementById("member-phone-num")?.value.trim() || "";
       const phone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
+
+      const parentPhoneCode = document.getElementById("member-parent-phone-code")?.value || "+20";
+      const parentPhoneNum = document.getElementById("member-parent-phone-num")?.value.trim() || "";
+      const parentPhone = parentPhoneNum ? `${parentPhoneCode} ${parentPhoneNum}`.trim() : "";
+
       const education = document.getElementById("member-education")?.value || "";
 
       const teacherCapabilities = [];
@@ -1762,13 +1998,13 @@ export default class AdminView {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, education, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, teacherCapabilities })
           });
           showToast(t("admin.toast.userUpdated"), "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, education, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, teacherCapabilities })
           });
           showToast(t("admin.toast.userCreated"), "success");
           handleWhatsAppResponse(res);
@@ -1882,6 +2118,351 @@ export default class AdminView {
         this.renderTab("sessions");
       } catch (err) {
         showToast(err.message || "فشل التعيين", "error");
+      }
+    });
+  }
+
+  renderApproveSubscriptionModal(subId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const sub = (this.subscriptions || []).find(s => s.id === subId);
+    if (!sub) return;
+
+    const defaultAmount = sub.plan?.price || 0;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="approve-sub-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:520px;">
+          <div class="modal-header">
+            <h3 class="modal-title">قبول طلب الاشتراك وتأكيد الدفع 💳</h3>
+            <span class="modal-close-btn" id="close-approve-sub-modal">&times;</span>
+          </div>
+          <form id="approve-sub-form">
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+              <div style="background:var(--card-bg-light, rgba(255,255,255,0.05));padding:12px;border-radius:8px;font-size:0.85rem;">
+                <div><strong>الطالب:</strong> ${sub.student?.name || '-'}</div>
+                <div><strong>الخطة:</strong> ${sub.plan?.name || '-'} (${sub.plan?.sessionsCount || 0} حصص)</div>
+                <div><strong>السعر المستحق:</strong> ${defaultAmount} ج.م</div>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">صورة إيصال التحويل / الدفع 🖼️:</label>
+                <input type="file" id="approve-sub-receipt-file" class="form-input" accept="image/*" style="width:100%;padding:8px;">
+                <div id="receipt-preview-container" style="margin-top:8px;display:none;">
+                  <img id="receipt-preview" src="" style="max-height:150px;border-radius:8px;border:1px solid var(--border-color);max-width:100%;">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">المبلغ المدفوع (ج.م):</label>
+                <input type="number" id="approve-sub-amount" class="form-input" value="${defaultAmount}" required style="width:100%;padding:10px;">
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">وسيلة الدفع / المزود:</label>
+                <input type="text" id="approve-sub-provider" class="form-input" value="تحويل بنكي / فودافون كاش" style="width:100%;padding:10px;">
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">ملاحظات العملية (اختياري):</label>
+                <textarea id="approve-sub-notes" class="form-input" rows="2" style="width:100%;padding:10px;" placeholder="رقم المعاملة أو ملاحظات الأدمن..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="cancel-approve-sub-btn">إلغاء</button>
+              <button type="submit" class="btn-primary" id="submit-approve-sub-btn" style="background:#10b981;border-color:#10b981;">تأكيد الدفع وتفعيل الاشتراك ✅</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-approve-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-approve-sub-btn")?.addEventListener("click", closeModal);
+
+    const fileInput = document.getElementById("approve-sub-receipt-file");
+    const previewContainer = document.getElementById("receipt-preview-container");
+    const previewImg = document.getElementById("receipt-preview");
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewContainer.style.display = "none";
+      }
+    });
+
+    document.getElementById("approve-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-approve-sub-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "جاري التفعيل...";
+
+      try {
+        let receiptUrl = null;
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+            },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          } else {
+            showToast("فشل رفع صورة الإيصال", "error");
+            submitBtn.disabled = false;
+            submitBtn.innerText = "تأكيد الدفع وتفعيل الاشتراك ✅";
+            return;
+          }
+        }
+
+        const amount = document.getElementById("approve-sub-amount").value;
+        const provider = document.getElementById("approve-sub-provider").value;
+        const notes = document.getElementById("approve-sub-notes").value;
+
+        const res = await apiFetch(`/admin/subscriptions/${subId}/approve`, {
+          method: "PATCH",
+          body: JSON.stringify({ receiptUrl, amount, provider, notes })
+        });
+
+        showToast("تم تأكيد الدفع وتفعيل الاشتراك بنجاح 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "حدث خطأ أثناء تفعيل الاشتراك", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "تأكيد الدفع وتفعيل الاشتراك ✅";
+      }
+    });
+  }
+
+  renderRenewSubscriptionModal(subId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const sub = (this.subscriptions || []).find(s => s.id === subId);
+    if (!sub) return;
+
+    const plans = this.allPlans || [];
+    const currentPlanId = sub.plan?.id || (plans[0]?.id || "");
+    const defaultAmount = sub.plan?.price || 0;
+    const defaultSessions = sub.plan?.sessionsCount || 8;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="renew-sub-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:520px;">
+          <div class="modal-header">
+            <h3 class="modal-title">تجديد الاشتراك وإضافة حصص 🔄💳</h3>
+            <span class="modal-close-btn" id="close-renew-sub-modal">&times;</span>
+          </div>
+          <form id="renew-sub-form">
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+              <div style="background:var(--card-bg-light, rgba(255,255,255,0.05));padding:12px;border-radius:8px;font-size:0.85rem;">
+                <div><strong>الطالب:</strong> ${sub.student?.name || '-'}</div>
+                <div><strong>الخطة الحالية:</strong> ${sub.plan?.name || '-'}</div>
+                <div><strong>إجمالي الحصص المسجلة حالياً:</strong> ${sub.totalSessions || 0} حصة</div>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">اختر باقة التجديد:</label>
+                <select id="renew-sub-plan-select" class="form-input" style="width:100%;padding:10px;">
+                  ${plans.map(p => `<option value="${p.id}" data-price="${p.price}" data-sessions="${p.sessionsCount}" ${p.id === currentPlanId ? 'selected' : ''}>${p.name} (${p.sessionsCount} حصة - ${p.price} ج.م)</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">عدد الحصص المضافة للرصيد:</label>
+                <input type="number" id="renew-sub-sessions" class="form-input" value="${defaultSessions}" required min="1" style="width:100%;padding:10px;">
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">صورة إيصال التحويل / الدفع 🖼️:</label>
+                <input type="file" id="renew-sub-receipt-file" class="form-input" accept="image/*" style="width:100%;padding:8px;">
+                <div id="renew-receipt-preview-container" style="margin-top:8px;display:none;">
+                  <img id="renew-receipt-preview" src="" style="max-height:150px;border-radius:8px;border:1px solid var(--border-color);max-width:100%;">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">المبلغ المدفوع للتجديد (ج.م):</label>
+                <input type="number" id="renew-sub-amount" class="form-input" value="${defaultAmount}" required style="width:100%;padding:10px;">
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">وسيلة الدفع / المزود:</label>
+                <input type="text" id="renew-sub-provider" class="form-input" value="تحويل بنكي / فودافون كاش" style="width:100%;padding:10px;">
+              </div>
+
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">ملاحظات عملية التجديد (اختياري):</label>
+                <textarea id="renew-sub-notes" class="form-input" rows="2" style="width:100%;padding:10px;" placeholder="رقم عملية التحويل أو أي ملاحظات..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="cancel-renew-sub-btn">إلغاء</button>
+              <button type="submit" class="btn-primary" id="submit-renew-sub-btn" style="background:#8b5cf6;border-color:#8b5cf6;">حفظ التجديد وإضافة الرصيد ✅</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-renew-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-renew-sub-btn")?.addEventListener("click", closeModal);
+
+    const planSelect = document.getElementById("renew-sub-plan-select");
+    const sessionsInput = document.getElementById("renew-sub-sessions");
+    const amountInput = document.getElementById("renew-sub-amount");
+    const fileInput = document.getElementById("renew-sub-receipt-file");
+    const previewContainer = document.getElementById("renew-receipt-preview-container");
+    const previewImg = document.getElementById("renew-receipt-preview");
+
+    planSelect?.addEventListener("change", () => {
+      const selectedOpt = planSelect.options[planSelect.selectedIndex];
+      if (selectedOpt) {
+        if (selectedOpt.getAttribute("data-sessions")) {
+          sessionsInput.value = selectedOpt.getAttribute("data-sessions");
+        }
+        if (selectedOpt.getAttribute("data-price")) {
+          amountInput.value = selectedOpt.getAttribute("data-price");
+        }
+      }
+    });
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewContainer.style.display = "none";
+      }
+    });
+
+    document.getElementById("renew-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-renew-sub-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "جاري الحفظ والتحميل...";
+
+      try {
+        let receiptUrl = null;
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+            },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          } else {
+            showToast("فشل رفع صورة الإيصال", "error");
+            submitBtn.disabled = false;
+            submitBtn.innerText = "حفظ التجديد وإضافة الرصيد ✅";
+            return;
+          }
+        }
+
+        const planId = planSelect.value;
+        const sessionsCount = sessionsInput.value;
+        const amount = amountInput.value;
+        const provider = document.getElementById("renew-sub-provider").value;
+        const notes = document.getElementById("renew-sub-notes").value;
+
+        const res = await apiFetch(`/admin/subscriptions/${subId}/renew`, {
+          method: "PATCH",
+          body: JSON.stringify({ planId, sessionsCount, amount, provider, notes, receiptUrl })
+        });
+
+        showToast(res.message || "تم تجديد الاشتراك وإضافة الرصيد بنجاح 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "حدث خطأ أثناء تجديد الاشتراك", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "حفظ التجديد وإضافة الرصيد ✅";
+      }
+    });
+  }
+
+  renderAssignTeacherToSubscriptionModal(subId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const sub = (this.subscriptions || []).find(s => s.id === subId);
+    if (!sub) return;
+
+    const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="assign-teacher-sub-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:480px;">
+          <div class="modal-header">
+            <h3 class="modal-title">تعيين / تغيير المعلم للاشتراك</h3>
+            <span class="modal-close-btn" id="close-assign-sub-modal">&times;</span>
+          </div>
+          <form id="assign-teacher-sub-form">
+            <div class="modal-body">
+              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">اختر المعلم الذي سيتولى تقديم الجلسات لهذا الاشتراك الخاص.</p>
+              <div class="form-group">
+                <label for="assign-teacher-sub-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">اختر المعلم:</label>
+                <select id="assign-teacher-sub-select" class="form-input" style="width:100%; padding:10px;">
+                  ${teachers.map(t => `<option value="${t.id}" ${sub.teacher?.id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="cancel-assign-sub-btn">إلغاء</button>
+              <button type="submit" class="btn-primary">حفظ المعلم</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-assign-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-assign-sub-btn")?.addEventListener("click", closeModal);
+
+    document.getElementById("assign-teacher-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const teacherId = document.getElementById("assign-teacher-sub-select").value;
+      try {
+        const res = await apiFetch(`/admin/subscriptions/${subId}/assign-teacher`, {
+          method: "PATCH",
+          body: JSON.stringify({ teacherId })
+        });
+        showToast(res.message || "تم تعيين المعلم بنجاح", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل تعيين المعلم", "error");
       }
     });
   }
