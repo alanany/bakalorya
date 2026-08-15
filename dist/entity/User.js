@@ -19,6 +19,7 @@ let User = class User {
     role;
     status;
     teacherCapabilities; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]
+    hourlyRate;
     invitationToken;
     invitationExpiresAt;
     country;
@@ -63,6 +64,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
     __metadata("design:type", Array)
 ], User.prototype, "teacherCapabilities", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "float", default: 150 }),
+    __metadata("design:type", Number)
+], User.prototype, "hourlyRate", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

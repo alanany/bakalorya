@@ -48,7 +48,7 @@ export class AdminController {
       const users = await userRepo.find({
         where,
         order: { createdAt: "DESC" },
-        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "createdAt"]
       });
 
       return res.json(users);
@@ -59,7 +59,7 @@ export class AdminController {
 
   // POST /admin/users — Create any member (Student, Teacher, Admin)
   static async createUser(req: AuthRequest, res: Response) {
-    const { name, email, password, role, phone, parentPhone, education } = req.body;
+    const { name, email, password, role, phone, parentPhone, education, hourlyRate } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "Missing required fields (name, email, password, role)." });
@@ -89,6 +89,7 @@ export class AdminController {
         phone: phone || null,
         parentPhone: parentPhone || null,
         education: education || null,
+        hourlyRate: hourlyRate !== undefined ? parseFloat(hourlyRate) : 150,
         teacherCapabilities: role === "teacher" 
           ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]) 
           : undefined,
@@ -105,7 +106,7 @@ export class AdminController {
 
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, avatar: user.avatar, createdAt: user.createdAt },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, avatar: user.avatar, createdAt: user.createdAt },
         whatsappNotification
       });
     } catch (err) {
@@ -116,7 +117,7 @@ export class AdminController {
   // PUT /admin/users/:id — Edit any user's profile, role, or password
   static async updateUser(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, role, password, phone, parentPhone, education } = req.body;
+    const { name, email, role, password, phone, parentPhone, education, hourlyRate } = req.body;
 
     try {
       const userRepo = AppDataSource.getRepository(User);
@@ -127,6 +128,7 @@ export class AdminController {
       if (phone !== undefined) user.phone = phone;
       if (parentPhone !== undefined) user.parentPhone = parentPhone;
       if (education !== undefined) user.education = education;
+      if (hourlyRate !== undefined) user.hourlyRate = parseFloat(hourlyRate) || 0;
       if (email) {
         const existing = await userRepo.findOneBy({ email });
         if (existing && existing.id !== id) {
@@ -153,7 +155,7 @@ export class AdminController {
       await userRepo.save(user);
       return res.json({
         message: "User updated successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, avatar: user.avatar }
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to update user." });

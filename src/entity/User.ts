@@ -23,6 +23,9 @@ export class User {
   @Column({ type: "simple-array", nullable: true })
   teacherCapabilities: string[]; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]
 
+  @Column({ type: "float", default: 150 })
+  hourlyRate: number;
+
   @Column({ nullable: true })
   invitationToken?: string;
 

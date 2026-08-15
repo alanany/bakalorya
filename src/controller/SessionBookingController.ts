@@ -186,12 +186,18 @@ export class SessionBookingController {
         await attendanceRepository.save(attendance);
       }
 
-      // Generate Teacher Earning record (100 EGP per completed private session)
+      // Generate Teacher Earning record based on teacher hourly rate and session duration
+      const durationHours = (session.duration || 60) / 60;
+      const hourlyRate = (session.teacher && session.teacher.hourlyRate && session.teacher.hourlyRate > 0)
+        ? session.teacher.hourlyRate
+        : 150;
+      const calculatedEarning = Math.round(durationHours * hourlyRate);
+
       const earning = new TeacherEarning();
       earning.teacher = session.teacher;
       earning.sourceType = "SESSION_COMPLETED";
       earning.sourceId = session.id;
-      earning.amount = 100; // Fixed rate per 1-on-1 private session
+      earning.amount = calculatedEarning;
       earning.currency = "EGP";
       earning.status = "pending";
       await earningRepository.save(earning);

@@ -709,34 +709,124 @@ export default class AdminView {
     `;
   }
 
-  // ── 2. Dedicated Teachers Tab (Add Teacher & Edit Teacher & View Transcript) ─────
+  // ── 2. Dedicated Teachers Tab (Add Teacher & Salary Calculation) ─────
   renderTeachersTab() {
     const teachers = this.allMembers.filter(u => u.role === "teacher");
+    const allSessions = this.allSessions || [];
+
+    const teacherData = teachers.map(t => {
+      const completedSessions = allSessions.filter(s => 
+        (s.teacher?.id === t.id || s.teacherId === t.id) && 
+        (s.status === 'COMPLETED' || s.status === 'completed')
+      );
+      const totalMinutes = completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0);
+      const completedHours = Math.round((totalMinutes / 60) * 10) / 10;
+      const rate = t.hourlyRate !== undefined ? t.hourlyRate : 150;
+      const totalSalary = Math.round(completedHours * rate);
+
+      return {
+        teacher: t,
+        completedCount: completedSessions.length,
+        completedHours,
+        rate,
+        totalSalary
+      };
+    });
+
+    const grandTotalSalary = teacherData.reduce((sum, d) => sum + d.totalSalary, 0);
+    const grandTotalHours = teacherData.reduce((sum, d) => sum + d.completedHours, 0);
 
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
-        <h3 style="font-weight:700;">${t("admin.tab.teachers")} (${teachers.length})</h3>
+        <div>
+          <h3 style="font-weight:700;margin-bottom:4px;">${t("admin.tab.teachers")} (${teachers.length})</h3>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin:0;">إدارة بيانات المعلمين، تحديد أجر الساعة، واحتساب الراتب المستحق عن الحصص المنفذة</p>
+        </div>
         <button class="btn-primary" id="open-create-teacher-btn" style="font-size:0.85rem;padding:10px 18px;">
           <i data-lucide="user-plus"></i> ${t("admin.addTeacher")}
         </button>
       </div>
 
+      <!-- Salary Summary Strip -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid var(--primary);">
+          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">إجمالي الرواتب المستحقة</div>
+          <div style="font-size:1.5rem; font-weight:800; color:var(--primary); margin-top:4px;">${grandTotalSalary.toLocaleString()} ج.م</div>
+        </div>
+        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid var(--success);">
+          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">إجمالي ساعات الحصص المكتملة</div>
+          <div style="font-size:1.5rem; font-weight:800; color:var(--success); margin-top:4px;">${grandTotalHours} ساعة</div>
+        </div>
+        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid #f59e0b;">
+          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">عدد المعلمين المسجلين</div>
+          <div style="font-size:1.5rem; font-weight:800; color:#f59e0b; margin-top:4px;">${teachers.length} معلم</div>
+        </div>
+      </div>
+
       ${teachers.length === 0
         ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noTeachers")}</div>`
         : `<div class="glass-card" style="overflow:hidden;padding:0;">
-            <table style="width:100%;border-collapse:collapse;">
-              <thead>
-                <tr style="background:var(--bg-card);border-bottom:1px solid var(--border-color);">
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.name")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.email")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.joined")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${teachers.map(u => this.memberTableRow(u)).join("")}
-              </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;text-align:start;font-size:0.88rem;">
+                <thead>
+                  <tr style="background:var(--bg-card);border-bottom:1px solid var(--border-color);">
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">المعلم</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">سعر الساعة</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الحصص المنفذة</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الراتب المستحق</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${teacherData.map(item => {
+                    const u = item.teacher;
+                    const joinDate = new Date(u.createdAt).toLocaleDateString();
+                    return `
+                      <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:14px 20px;">
+                          <div style="display:flex;align-items:center;gap:12px;">
+                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+                            <div>
+                              <div style="font-weight:700;font-size:0.9rem;">${u.name}</div>
+                              <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
+                          <div>${u.email}</div>
+                          ${u.phone ? `<div style="font-size:0.75rem;color:var(--text-main);margin-top:2px;">📱 ${u.phone}</div>` : ''}
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <span style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.82rem; display:inline-flex; align-items:center; gap:4px;">
+                            💵 ${item.rate} ج.م / ساعة
+                          </span>
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <div style="font-weight:700;">${item.completedCount} حصص</div>
+                          <div style="font-size:0.75rem;color:var(--text-muted);">${item.completedHours} ساعة عمل</div>
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <span style="background:rgba(16,185,129,0.15); color:var(--success); font-weight:900; padding:6px 14px; border-radius:14px; font-size:0.9rem; display:inline-flex; align-items:center; gap:4px;">
+                            💰 ${item.totalSalary.toLocaleString()} ج.م
+                          </span>
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--primary);color:var(--primary);">
+                              <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل الأجر والبيانات
+                            </button>
+                            <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--info);color:var(--info);">
+                              <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
           </div>`
       }
     `;
@@ -1934,8 +2024,19 @@ export default class AdminView {
                 </div>
               </div>
 
-              <!-- Teacher Capabilities Section -->
-              <div id="teacher-capabilities-group" style="display:${initialRole === 'teacher' ? 'block' : 'none'}; background:rgba(99,102,241,0.06); padding:12px 14px; border-radius:12px; border:1px solid var(--border-focus); margin-top:4px;">
+              <!-- Teacher Capabilities & Hourly Rate Section -->
+              <div id="teacher-capabilities-group" style="display:${initialRole === 'teacher' ? 'block' : 'none'}; background:rgba(99,102,241,0.06); padding:14px; border-radius:14px; border:1px solid var(--border-focus); margin-top:4px;">
+                
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label for="member-hourly-rate" style="font-size:0.85rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:block;">
+                    💵 أجر الساعة للمعلم (Hourly Rate):
+                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" id="member-hourly-rate" class="form-input" min="0" step="5" value="${isEdit ? (user.hourlyRate !== undefined ? user.hourlyRate : 150) : 150}" placeholder="150" style="padding:8px 12px; font-size:0.88rem; flex:1;">
+                    <span style="font-size:0.85rem; font-weight:700; color:var(--text-muted);">ج.م / ساعة</span>
+                  </div>
+                </div>
+
                 <label style="font-size:0.85rem; font-weight:800; color:var(--primary); margin-bottom:8px; display:block;">
                   🎯 صلاحيات وقدرات المعلم (Teacher Capabilities):
                 </label>
@@ -1987,6 +2088,7 @@ export default class AdminView {
       const parentPhone = parentPhoneNum ? `${parentPhoneCode} ${parentPhoneNum}`.trim() : "";
 
       const education = document.getElementById("member-education")?.value || "";
+      const hourlyRate = parseFloat(document.getElementById("member-hourly-rate")?.value) || 150;
 
       const teacherCapabilities = [];
       if (role === "teacher") {
@@ -1998,13 +2100,13 @@ export default class AdminView {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, teacherCapabilities })
           });
           showToast(t("admin.toast.userUpdated"), "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, teacherCapabilities })
           });
           showToast(t("admin.toast.userCreated"), "success");
           handleWhatsAppResponse(res);
