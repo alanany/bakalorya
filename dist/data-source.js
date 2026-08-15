@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppDataSource = exports.allEntities = void 0;
+exports.getDataSourceOptions = getDataSourceOptions;
 exports.initAppDataSource = initAppDataSource;
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
@@ -42,8 +43,11 @@ exports.allEntities = [
     SessionCreditLedger_1.SessionCreditLedger, TeacherAvailability_1.TeacherAvailability, SessionAttendance_1.SessionAttendance,
     TeacherEarning_1.TeacherEarning, Payment_1.Payment, AuditLog_1.AuditLog
 ];
-const dbType = (process.env.DB_TYPE || "sqlite").toLowerCase();
-function createOptions(type) {
+function getDataSourceOptions() {
+    dotenv_1.default.config();
+    const rawType = (process.env.DB_TYPE || "").trim().toLowerCase();
+    // Default to mysql if DB_USER is configured or DB_TYPE is mysql
+    const type = (rawType === "mysql" || rawType === "postgres") ? rawType : (rawType === "sqlite" ? "sqlite" : "mysql");
     if (type === "mysql" || type === "postgres") {
         return {
             type: type,
@@ -65,18 +69,33 @@ function createOptions(type) {
         entities: exports.allEntities,
     };
 }
-exports.AppDataSource = new typeorm_1.DataSource(createOptions(dbType));
+exports.AppDataSource = new typeorm_1.DataSource(getDataSourceOptions());
 async function initAppDataSource() {
+    dotenv_1.default.config();
+    const options = getDataSourceOptions();
+    exports.AppDataSource = new typeorm_1.DataSource(options);
     try {
         await exports.AppDataSource.initialize();
-        console.log(`✅ Data Source (${dbType.toUpperCase()}) connected successfully to database "${process.env.DB_NAME || "bakalorya_platform_db"}" on ${process.env.DB_HOST || "localhost"}!`);
+        const activeType = options.type.toUpperCase();
+        if (activeType === "SQLITE") {
+            console.warn(`⚠️ WARNING: Connected to SQLITE (local file "bakalorya_db")! Data will NOT save to Hostinger MySQL. To fix, ensure DB_TYPE=mysql is set in .env on the server.`);
+        }
+        else {
+            console.log(`✅ Data Source (${activeType}) connected successfully to MySQL database "${process.env.DB_NAME}" on ${process.env.DB_HOST}!`);
+        }
         return exports.AppDataSource;
     }
     catch (err) {
-        console.error(`❌ DB CONNECTION ERROR: Failed to connect to ${dbType.toUpperCase()} (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
-        if (dbType !== "sqlite" && process.env.NODE_ENV !== "production") {
-            console.warn(`⚠️ Local dev fallback: Falling back to SQLite temporary database...`);
-            exports.AppDataSource = new typeorm_1.DataSource(createOptions("sqlite"));
+        console.error(`❌ MYSQL CONNECTION FAILURE: Failed to connect to MySQL (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
+        if (process.env.NODE_ENV !== "production") {
+            console.warn(`⚠️ Local Dev Fallback: Falling back to SQLite temporary database...`);
+            exports.AppDataSource = new typeorm_1.DataSource({
+                type: "sqlite",
+                database: "bakalorya_db",
+                synchronize: true,
+                logging: false,
+                entities: exports.allEntities,
+            });
             await exports.AppDataSource.initialize();
             console.log("Fallback SQLite Data Source initialized successfully!");
             return exports.AppDataSource;
