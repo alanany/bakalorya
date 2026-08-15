@@ -241,26 +241,36 @@ export class SessionBookingController {
       const nowTime = Date.now();
       const hoursDiff = (scheduledTime - nowTime) / (1000 * 60 * 60);
 
-      if (isStudent && hoursDiff < 12) {
+      if (isStudent) {
         session.status = "CANCELLED_BY_STUDENT";
         await sessionRepository.save(session);
 
-        // Deduct penalty credit from ledger because cancellation was less than 12h
-        if (session.subscription) {
-          const ledger = new SessionCreditLedger();
-          ledger.subscription = session.subscription;
-          ledger.session = session;
-          ledger.amount = -1;
-          ledger.type = "SESSION_COMPLETED";
-          ledger.reason = `إلغاء الحصة من الطالب قبل الموعد بأقل من 12 ساعة (سياسة الإلغاء)`;
-          ledger.createdBy = { id: req.user!.id } as User;
-          await ledgerRepository.save(ledger);
-        }
+        if (hoursDiff < 2) {
+          // Late cancellation (< 2 hours): deduct 1 credit from subscription balance
+          if (session.subscription) {
+            const ledger = new SessionCreditLedger();
+            ledger.subscription = session.subscription;
+            ledger.session = session;
+            ledger.amount = -1;
+            ledger.type = "SESSION_COMPLETED";
+            ledger.reason = `إلغاء الحصة من الطالب قبل الموعد بأقل من ساعتين (سياسة الإلغاء المتأخر)`;
+            ledger.createdBy = { id: req.user!.id } as User;
+            await ledgerRepository.save(ledger);
+          }
 
-        return res.status(200).json({
-          message: "تم إلغاء الحصة. نظراً للإلغاء قبل الموعد بأقل من 12 ساعة تم تطبيق سياسة الإلغاء.",
-          session
-        });
+          return res.status(200).json({
+            message: "تم إلغاء الحصة. نظراً للإلغاء المتأخر (قبل أقل من ساعتين)، تم خصم رصيد الحصة وفق سياسة المنصة تعويضاً عن وقت المعلم.",
+            session,
+            isLate: true
+          });
+        } else {
+          // Early cancellation (>= 2 hours): refund/keep credit
+          return res.status(200).json({
+            message: "تم إلغاء الحصة بنجاح وحفظ رصيد الحصة في اشتراكك لإعادة جدولتها في أي وقت مجاناً.",
+            session,
+            isLate: false
+          });
+        }
       }
 
       if (isTeacher) {

@@ -50,6 +50,9 @@ export default class TeacherView {
       const pendingEarnings = earnings?.stats?.pendingAmount || 0;
       const completedPrivate = this.privateSessions.filter(s => s.status === "COMPLETED").length;
 
+      const caps = state.user?.teacherCapabilities;
+      const canAddCourse = state.user?.role === 'admin' || (Array.isArray(caps) ? caps.includes('COURSE_INSTRUCTOR') : (typeof caps === 'string' ? caps.includes('COURSE_INSTRUCTOR') : false));
+
       this.container.innerHTML = `
         <div class="teacher-layout">
           <div class="teacher-header-row">
@@ -58,7 +61,11 @@ export default class TeacherView {
               <p style="color:var(--text-muted)">${t("teacher.portalSubtitle").replace("{name}", state.user.name)}</p>
             </div>
             <div class="teacher-actions-top">
-              <button class="btn-primary" id="open-course-modal-btn"><i data-lucide="plus-circle"></i> ${t("teacher.createCourse")}</button>
+              ${canAddCourse ? `
+                <button class="btn-primary" id="open-course-modal-btn" style="font-weight:800; gap:6px; background:var(--primary); padding:9px 18px; border-radius:10px; display:inline-flex; align-items:center;">
+                  <i data-lucide="plus-circle" style="width:16px; height:16px;"></i> إضافة دورة جديدة (طلب مراجعة) ➕
+                </button>
+              ` : ''}
               <button class="btn-secondary" id="open-session-modal-btn" style="border-color:var(--primary); color:var(--primary);"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>
               <a href="#students" class="btn-primary" style="background:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-weight:800;"><i data-lucide="user-plus"></i> إضافة / إدارة الطلاب</a>
               <a href="#teacher-blogs" class="btn-secondary" style="border-color:#ec4899; color:#ec4899; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px;"><i data-lucide="newspaper"></i> مقالات المدونة</a>

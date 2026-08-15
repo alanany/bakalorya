@@ -89,14 +89,17 @@ export default class StudentPrivateSessionsView {
                 <span>ينتهي: ${new Date(sub.endDate).toLocaleDateString("ar")}</span>
               </div>
 
-              ${sub.status === "TEACHER_ASSIGNMENT_PENDING"
-          ? `<div style="background:rgba(245,158,11,0.15); color:#f59e0b; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">⏳ قيد مراجعة وتعيين المعلم المناسب من الإدارة</div>`
-          : `<div style="background:rgba(99,102,241,0.1); color:var(--primary); padding:1px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center; margin-bottom:1px;">      </div>
-                   <div style="display:flex; gap:8px;">
-                    <a href="#subscription-sessions?id=${sub.id}" class="btn-secondary" style="flex:1; justify-content:center; gap:8px; text-decoration:none;">
-                      <i data-lucide="list" style="width:16px;height:16px;"></i> عرض سجل الحصص
-                    </a>
-                  </div>`
+              ${sub.status === "PENDING_PAYMENT"
+          ? `<div style="background:rgba(245,158,11,0.15); color:#f59e0b; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">⏳ 1️⃣ في انتظار تأكيد الدفع ورفع الإيصال</div>`
+          : sub.status === "TEACHER_ASSIGNMENT_PENDING"
+          ? `<div style="background:rgba(59,130,246,0.15); color:#3b82f6; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">⏳ 2️⃣ تم تأكيد الدفع - قيد تعيين المعلم المناسب</div>`
+          : sub.status === "SCHEDULE_PENDING"
+          ? `<div style="background:rgba(139,92,246,0.15); color:#8b5cf6; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">🗓️ 3️⃣ تم تعيين المعلم - قيد جدولة الباقة من الإدارة</div>`
+          : `<div style="display:flex; gap:8px;">
+               <a href="#subscription-sessions?id=${sub.id}" class="btn-secondary" style="flex:1; justify-content:center; gap:8px; text-decoration:none;">
+                 <i data-lucide="list" style="width:16px;height:16px;"></i> عرض سجل الحصص
+               </a>
+             </div>`
         }
             </div>
           `;

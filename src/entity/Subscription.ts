@@ -32,7 +32,7 @@ export class Subscription {
   endDate: Date;
 
   @Column({ default: "PENDING_PAYMENT" })
-  status: "PENDING_PAYMENT" | "ACTIVE" | "PAUSED" | "EXPIRED" | "CANCELLED" | "PAST_DUE" | "TEACHER_ASSIGNMENT_PENDING";
+  status: "PENDING_PAYMENT" | "ACTIVE" | "PAUSED" | "EXPIRED" | "CANCELLED" | "PAST_DUE" | "TEACHER_ASSIGNMENT_PENDING" | "SCHEDULE_PENDING";
 
   @CreateDateColumn()
   createdAt: Date;

@@ -60,7 +60,7 @@ export class AuthController {
 
       return res.status(201).json({
         token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, location: user.location, education: user.education, phone: user.phone, parentPhone: user.parentPhone },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, location: user.location, education: user.education, phone: user.phone, parentPhone: user.parentPhone, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [] },
         whatsappNotification
       });
     } catch (err) {
@@ -94,7 +94,7 @@ export class AuthController {
 
       return res.status(200).json({
         token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [] },
       });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -114,7 +114,7 @@ export class AuthController {
       }
 
       return res.status(200).json({
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [] },
       });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });

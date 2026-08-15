@@ -5,6 +5,7 @@ import { User } from "../entity/User";
 import { Course } from "../entity/Course";
 import { Session } from "../entity/Session";
 import { Enrollment } from "../entity/Enrollment";
+import { Payment } from "../entity/Payment";
 import { Lesson } from "../entity/Lesson";
 import { AuthRequest } from "../middleware/auth";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
@@ -48,7 +49,7 @@ export class AdminController {
       const users = await userRepo.find({
         where,
         order: { createdAt: "DESC" },
-        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "meetingLink", "teacherCapabilities", "createdAt"]
       });
 
       return res.json(users);
@@ -89,9 +90,10 @@ export class AdminController {
         phone: phone || null,
         parentPhone: parentPhone || null,
         education: education || null,
+        meetingLink: req.body.meetingLink || null,
         hourlyRate: hourlyRate !== undefined ? parseFloat(hourlyRate) : 150,
         teacherCapabilities: role === "teacher"
-          ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
+          ? (Array.isArray(req.body.teacherCapabilities) ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
           : undefined,
         avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
       });
@@ -106,7 +108,7 @@ export class AdminController {
 
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, avatar: user.avatar, createdAt: user.createdAt },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, createdAt: user.createdAt },
         whatsappNotification
       });
     } catch (err) {
@@ -117,7 +119,7 @@ export class AdminController {
   // PUT /admin/users/:id — Edit any user's profile, role, or password
   static async updateUser(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, role, password, phone, parentPhone, education, hourlyRate } = req.body;
+    const { name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink } = req.body;
 
     try {
       const userRepo = AppDataSource.getRepository(User);
@@ -128,6 +130,7 @@ export class AdminController {
       if (phone !== undefined) user.phone = phone;
       if (parentPhone !== undefined) user.parentPhone = parentPhone;
       if (education !== undefined) user.education = education;
+      if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (hourlyRate !== undefined) user.hourlyRate = parseFloat(hourlyRate) || 0;
       if (email) {
         const existing = await userRepo.findOneBy({ email });
@@ -155,7 +158,7 @@ export class AdminController {
       await userRepo.save(user);
       return res.json({
         message: "User updated successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, avatar: user.avatar }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar }
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to update user." });
@@ -223,8 +226,12 @@ export class AdminController {
         category: c.category,
         image: c.image,
         description: c.description,
+        degree: c.degree,
+        meetingLink: c.meetingLink,
+        status: c.status,
         createdAt: c.createdAt,
-        teacher: c.teacher ? { id: c.teacher.id, name: c.teacher.name, avatar: c.teacher.avatar } : null,
+        teacher: c.teacher ? { id: c.teacher.id, name: c.teacher.name, avatar: c.teacher.avatar, education: c.teacher.education } : null,
+        lessons: c.lessons?.map(l => ({ id: l.id, title: l.title, duration: l.duration, videoUrl: l.videoUrl })) || [],
         lessonsCount: c.lessons?.length || 0,
         enrollmentsCount: c.enrollments?.length || 0
       }));
@@ -344,6 +351,126 @@ export class AdminController {
     } catch (err) {
       console.error("Failed to generate report:", err);
       return res.status(500).json({ error: "Failed to generate system report." });
+    }
+  }
+
+  // POST /admin/courses — Create a new course directly as Admin
+  static async createCourse(req: AuthRequest, res: Response) {
+    const { title, description, category, degree, image, meetingLink, teacherId } = req.body;
+
+    if (!title || !category || !degree) {
+      return res.status(400).json({ error: "عنوان الدورة، المادة، والصف الدراسي عناصر مطلوبة." });
+    }
+
+    try {
+      const courseRepo = AppDataSource.getRepository(Course);
+      const userRepo = AppDataSource.getRepository(User);
+
+      let teacher: User | null = null;
+      if (teacherId && teacherId.trim().length > 0) {
+        teacher = await userRepo.findOneBy({ id: teacherId });
+      }
+
+      const course = new Course();
+      course.title = title;
+      course.description = description || "";
+      course.category = category;
+      course.degree = degree;
+      course.image = image || "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600";
+      course.meetingLink = meetingLink || null;
+      course.teacher = teacher;
+      course.status = "PUBLISHED";
+
+      await courseRepo.save(course);
+      return res.status(201).json({ message: "تم إنشاء وتفعيل الدورة بنجاح! 🎉", course });
+    } catch (err) {
+      console.error("Admin createCourse error:", err);
+      return res.status(500).json({ error: "فشل إنشاء الدورة." });
+    }
+  }
+
+  // GET /admin/enrollments — All student course enrollments
+  static async getEnrollments(req: AuthRequest, res: Response) {
+    try {
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const enrollments = await enrollmentRepo.find({
+        relations: ["student", "course", "course.teacher", "payment"],
+        order: { createdAt: "DESC" }
+      });
+
+      return res.json(enrollments);
+    } catch (err) {
+      console.error("Admin getEnrollments error:", err);
+      return res.status(500).json({ error: "Failed to fetch enrollments." });
+    }
+  }
+
+  // POST /admin/enrollments/:id/approve — Admin approves course enrollment
+  static async approveEnrollment(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { amount, receiptUrl, notes } = req.body;
+
+    try {
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["student", "course", "payment"]
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "طلب التسجيل غير موجود." });
+      }
+
+      enrollment.status = "active";
+
+      // Create or update Payment record
+      let payment = enrollment.payment;
+      if (!payment) {
+        payment = new Payment();
+        payment.student = enrollment.student;
+        payment.type = "COURSE_ENROLLMENT";
+        payment.courseEnrollment = enrollment;
+      }
+
+      payment.amount = amount !== undefined ? Number(amount) : (payment.amount || 0);
+      payment.currency = "EGP";
+      payment.status = "SUCCESS";
+      payment.provider = "manual";
+      if (receiptUrl) payment.receiptUrl = receiptUrl;
+      if (notes) payment.notes = notes;
+
+      const savedPayment = await paymentRepo.save(payment);
+      enrollment.payment = savedPayment;
+      await enrollmentRepo.save(enrollment);
+
+      return res.json({ message: "تم قبول واعتماد تسجيل الطالب في الدورة بنجاح! ✅", enrollment });
+    } catch (err) {
+      console.error("Admin approveEnrollment error:", err);
+      return res.status(500).json({ error: "فشل اعتماد التسجيل." });
+    }
+  }
+
+  // POST /admin/enrollments/:id/reject — Admin rejects course enrollment
+  static async rejectEnrollment(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+
+    try {
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepo.findOneBy({ id });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "طلب التسجيل غير موجود." });
+      }
+
+      enrollment.status = "rejected";
+      await enrollmentRepo.save(enrollment);
+
+      return res.json({ message: "تم رفض طلب التسجيل.", enrollment });
+    } catch (err) {
+      console.error("Admin rejectEnrollment error:", err);
+      return res.status(500).json({ error: "فشل رفض التسجيل." });
     }
   }
 }

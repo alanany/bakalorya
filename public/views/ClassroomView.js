@@ -50,17 +50,107 @@ export default class ClassroomView {
 
   async render() {
     try {
-      // Fetch session info
-      const sessions = await apiFetch("/sessions");
-      this.session = sessions.find(s => s.id === this.sessionId);
+      // Fetch session info (both course live sessions and private subscription 1-on-1 sessions)
+      const [sessions, myPrivateSessions] = await Promise.all([
+        apiFetch("/sessions").catch(() => []),
+        apiFetch("/sessions/my-private").catch(() => [])
+      ]);
+      const allSessions = [...(sessions || []), ...(myPrivateSessions || [])];
+      this.session = allSessions.find(s => String(s.id) === String(this.sessionId));
 
       if (!this.session) {
         this.container.innerHTML = `
           <div style="text-align:center; padding:100px 24px;">
-            <h2>Session not found</h2>
-            <a href="#student-dashboard" class="btn-primary" style="margin-top:20px;">Back to Dashboard</a>
+            <h2>الحصة غير موجودة</h2>
+            <a href="#student-private-sessions" class="btn-primary" style="margin-top:20px;">العودة للوحة التحكم</a>
           </div>
         `;
+        return;
+      }
+
+      const now = new Date();
+      const sessionDate = this.session.scheduledAt ? new Date(this.session.scheduledAt) : null;
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1;
+
+      const sessionTime = sessionDate ? sessionDate.getTime() : 0;
+      const isPastDay = sessionTime > 0 && sessionTime < todayStart;
+      const isCompleted = this.session.status === 'COMPLETED' || this.session.status === 'completed';
+      const isCancelled = this.session.status?.includes('CANCELLED');
+      const isLive = this.session.status === 'live' || this.session.status === 'LIVE';
+
+      // Join window check: Within 30 minutes before scheduled start time to end of session duration
+      const durationMs = (this.session.duration || 60) * 60 * 1000;
+      const windowStart = sessionTime - (30 * 60 * 1000); // 30 mins before
+      const windowEnd = sessionTime + durationMs + (30 * 60 * 1000); // 30 mins after end
+      const isWithinWindow = now.getTime() >= windowStart && now.getTime() <= windowEnd;
+
+      const isStudent = state.user?.role === 'student';
+
+      // 1. Past Day Session Guard
+      if (isStudent && isPastDay) {
+        showToast("عذراً، هذه الحصة من يوم سابق وانتهى موعدها.", "warning");
+        this.container.innerHTML = `
+          <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
+            <div style="width:72px; height:72px; border-radius:50%; background:rgba(239,68,68,0.12); color:#ef4444; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i data-lucide="clock" style="width:36px; height:36px;"></i>
+            </div>
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">انتهى موعد هذه الحصة (يوم سابق)</h2>
+            <p style="color:var(--text-muted); max-width:480px; margin:0 auto 24px auto;">عذراً، هذه الحصة خاصة بيوم سابق ولا يمكن دخول القاعة بعد انتهاء موعدها وفق سياسة المنصة.</p>
+            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
+              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لجدول الحصص
+            </a>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      // 2. Completed / Cancelled Session Guard
+      if (isStudent && (isCompleted || isCancelled)) {
+        showToast("عذراً، هذه الحصة مكتملة أو ملغاة ولا يمكن دخولها.", "warning");
+        this.container.innerHTML = `
+          <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
+            <div style="width:72px; height:72px; border-radius:50%; background:rgba(245,158,11,0.12); color:#f59e0b; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i data-lucide="check-circle" style="width:36px; height:36px;"></i>
+            </div>
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">الحصة مكتملة أو ملغاة</h2>
+            <p style="color:var(--text-muted); max-width:480px; margin:0 auto 24px auto;">هذه الحصة تم إكمالها أو إلغاؤها سابقاً ولا يمكن إعادة دخولها.</p>
+            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
+              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لجدول الحصص
+            </a>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      // 3. Future Session Guard (More than 30 mins before session time & teacher hasn't started live)
+      if (isStudent && !isLive && !isWithinWindow && now.getTime() < windowStart) {
+        const formattedTime = sessionDate 
+          ? sessionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : "";
+        const formattedDate = sessionDate 
+          ? sessionDate.toLocaleDateString('ar', { weekday: 'long', month: 'short', day: 'numeric' })
+          : "";
+
+        showToast("موعد الحصة قادم، تفتح القاعة قبل الموعد بـ 30 دقيقة.", "info");
+        this.container.innerHTML = `
+          <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
+            <div style="width:72px; height:72px; border-radius:50%; background:rgba(99,102,241,0.12); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i data-lucide="calendar-clock" style="width:36px; height:36px;"></i>
+            </div>
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">موعد الحصة قادم</h2>
+            <p style="color:var(--text-main); font-weight:700; font-size:1.05rem; margin-bottom:4px;">${formattedDate} • ${formattedTime}</p>
+            <p style="color:var(--text-muted); max-width:500px; margin:0 auto 24px auto; font-size:0.9rem; line-height:1.6;">
+              ينشط رابط دخول القاعة الافتراضية للطلاب <strong>قبل الموعد بـ 30 دقيقة</strong> (أو فور دخول المعلم وبدء البث المباشر).
+            </p>
+            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
+              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> العودة لجدول الحصص
+            </a>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
         return;
       }
 
@@ -78,12 +168,56 @@ export default class ClassroomView {
             </div>
 
             <div class="classroom-viewport">
-              <!-- Teacher Video Stream Simulator -->
-              <div id="classroom-stream-area" style="width:100%; height:100%; display: ${this.activeTab === "stream" ? "block" : "none"};">
-                <div class="video-placeholder" style="background:#09090b; height:100%;">
-                  <i data-lucide="user-round" style="width:72px; height:72px; color:var(--text-muted); opacity:0.3; animation: pulse-border 2s infinite;"></i>
-                  <p style="font-weight:600; color:var(--text-main); margin-top:16px;">${this.session.teacher?.name} is lecturing...</p>
-                  <p style="font-size:0.8rem; color:var(--text-muted);">Audio Connection Secure. Screen Share Active.</p>
+              <!-- Embedded Meeting Viewport & Stream Frame -->
+              <div id="classroom-stream-area" style="width:100%; height:100%; display: ${this.activeTab === "stream" ? "flex" : "none"}; flex-direction:column;">
+                <div id="classroom-embedded-container" style="width:100%; height:100%; display:flex; flex-direction:column; background:#09090b; border-radius:16px; overflow:hidden; border:1px solid var(--border-color); position:relative; transition: all 0.3s ease;">
+                  
+                  <!-- Viewport Toolbar (Maximize / Minimize Controls) -->
+                  <div class="embedded-meeting-toolbar" style="padding:10px 16px; background:linear-gradient(90deg, #18181b, #09090b); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="width:10px; height:10px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 8px #10b981;"></span>
+                      <span style="font-weight:700; font-size:0.85rem; color:#f4f4f5;">
+                        🎥 البث المباشر - الأستاذ: ${this.session.teacher?.name || 'المعلم'}
+                      </span>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      ${(this.session.teacher?.meetingLink || this.session.course?.meetingLink) ? `
+                        <a href="${this.session.teacher?.meetingLink || this.session.course?.meetingLink}" target="_blank" class="btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#a1a1aa; border-color:rgba(255,255,255,0.15); text-decoration:none;" title="فتح في نافذة جديدة خارج المنصة">
+                          <i data-lucide="external-link" style="width:12px;height:12px;margin-inline-end:4px;"></i> نافذة خارجية ↗️
+                        </a>
+                      ` : ''}
+                      
+                      <button type="button" class="btn-secondary" id="toggle-maximize-btn" style="font-size:0.78rem; padding:5px 12px; background:rgba(99,102,241,0.15); color:var(--primary); border-color:var(--primary); font-weight:700; cursor:pointer;" title="تكبير الشاشة ملء المتصفح">
+                        <i data-lucide="maximize-2" style="width:14px;height:14px;vertical-align:middle;margin-inline-end:4px;"></i> تكبير ⤢
+                      </button>
+                      <button type="button" class="btn-secondary" id="toggle-minimize-btn" style="display:none; font-size:0.78rem; padding:5px 12px; background:rgba(239,68,68,0.15); color:#ef4444; border-color:#ef4444; font-weight:700; cursor:pointer;" title="تصغير وتأطير للنمط العادي">
+                        <i data-lucide="minimize-2" style="width:14px;height:14px;vertical-align:middle;margin-inline-end:4px;"></i> تصغير ⤤
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- IFrame Body -->
+                  <div style="flex:1; width:100%; position:relative; background:#000;">
+                    ${(this.session.teacher?.meetingLink || this.session.course?.meetingLink) ? `
+                      <iframe id="embedded-meeting-iframe" src="${this.session.teacher?.meetingLink || this.session.course?.meetingLink}" allow="camera; microphone; fullscreen; display-capture; autoplay" style="width:100%; height:100%; border:none;" title="Google Meet / Zoom Virtual Classroom"></iframe>
+                    ` : `
+                      <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;">
+                        <i data-lucide="video-off" style="width:56px; height:56px; color:var(--text-muted); opacity:0.4; margin-bottom:12px;"></i>
+                        <p style="font-weight:700; color:var(--text-main); margin-bottom:6px;">لم يقم المعلم بإضافة رابط الاجتماع الثابت بعد.</p>
+                        <p style="font-size:0.8rem; color:var(--text-muted);">يرجى التواصل مع الإدارة أو المعلم لتأطير البث المباشر.</p>
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- Bottom Helper Bar -->
+                  ${(this.session.teacher?.meetingLink || this.session.course?.meetingLink) ? `
+                    <div style="padding:6px 14px; background:#121215; border-top:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#a1a1aa;">
+                      <span>💡 إذا حجب المتصفح الكاميرا داخل الإطار، يمكنك الاستعانة بزر "نافذة خارجية ↗️".</span>
+                      <span>الرابط: <a href="${this.session.teacher?.meetingLink || this.session.course?.meetingLink}" target="_blank" style="color:var(--primary); font-weight:600;">${this.session.teacher?.meetingLink || this.session.course?.meetingLink}</a></span>
+                    </div>
+                  ` : ''}
+
                 </div>
               </div>
 
@@ -306,6 +440,41 @@ export default class ClassroomView {
       showToast("Disconnected from live virtual session.", "info");
     });
 
+    // Maximize / Minimize Viewport Controls
+    const embeddedContainer = document.getElementById("classroom-embedded-container");
+    const maxBtn = document.getElementById("toggle-maximize-btn");
+    const minBtn = document.getElementById("toggle-minimize-btn");
+
+    if (embeddedContainer && maxBtn && minBtn) {
+      maxBtn.addEventListener("click", () => {
+        embeddedContainer.style.position = "fixed";
+        embeddedContainer.style.top = "0";
+        embeddedContainer.style.left = "0";
+        embeddedContainer.style.width = "100vw";
+        embeddedContainer.style.height = "100vh";
+        embeddedContainer.style.zIndex = "99999";
+        embeddedContainer.style.borderRadius = "0";
+
+        maxBtn.style.display = "none";
+        minBtn.style.display = "inline-flex";
+        showToast("تم تكبير بث القاعة ملء الشاشة ⤢", "info");
+      });
+
+      minBtn.addEventListener("click", () => {
+        embeddedContainer.style.position = "relative";
+        embeddedContainer.style.top = "auto";
+        embeddedContainer.style.left = "auto";
+        embeddedContainer.style.width = "100%";
+        embeddedContainer.style.height = "100%";
+        embeddedContainer.style.zIndex = "auto";
+        embeddedContainer.style.borderRadius = "16px";
+
+        minBtn.style.display = "none";
+        maxBtn.style.display = "inline-flex";
+        showToast("تم تصغير البث للنمط العادي ⤤", "info");
+      });
+    }
+
     // Tab Switcher
     const tabs = this.container.querySelectorAll(".classroom-tab");
     tabs.forEach(tab => {
@@ -320,7 +489,7 @@ export default class ClassroomView {
         const board = document.getElementById("classroom-whiteboard-area");
 
         if (target === "stream") {
-          stream.style.display = "block";
+          stream.style.display = "flex";
           board.classList.remove("active");
         } else {
           stream.style.display = "none";

@@ -26,7 +26,10 @@ export class CourseController {
       const courseRepository = AppDataSource.getRepository(Course);
       const lessonRepository = AppDataSource.getRepository(Lesson);
 
-      const course = await courseRepository.findOneBy({ id });
+      const course = await courseRepository.findOne({
+        where: { id },
+        relations: ["teacher"]
+      });
       if (!course) {
         return res.status(404).json({ error: "Course not found." });
       }
@@ -66,7 +69,7 @@ export class CourseController {
       course.meetingLink = meetingLink || null;
       course.image = image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60";
       course.teacher = teacher;
-      course.status = req.user!.role === "admin" ? "PUBLISHED" : "DRAFT";
+      course.status = req.user!.role === "admin" ? "PUBLISHED" : "PENDING_REVIEW";
 
       await courseRepository.save(course);
       return res.status(201).json(course);
@@ -88,7 +91,7 @@ export class CourseController {
 
       if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
 
-      if (course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (course.teacher && course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "غير مصرح لك بتحديث هذه الدورة." });
       }
 
@@ -162,8 +165,12 @@ export class CourseController {
     const { courseId } = req.params;
     const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions } = req.body;
 
-    if (!title || !videoUrl) {
-      return res.status(400).json({ error: "Missing title or videoUrl." });
+    if (!title) {
+      return res.status(400).json({ error: "عنوان الدرس مطلوب." });
+    }
+
+    if (!videoUrl && !photo) {
+      return res.status(400).json({ error: "يجب تقديم إما رابط الفيديو أو صورة الدرس كبانر للغلاف." });
     }
 
     try {
@@ -179,14 +186,14 @@ export class CourseController {
         return res.status(404).json({ error: "Course not found." });
       }
 
-      if (course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (course.teacher && course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "Forbidden. You are not the teacher of this course." });
       }
 
       const lesson = new Lesson();
       lesson.title = title;
       lesson.description = description || null;
-      lesson.videoUrl = videoUrl;
+      lesson.videoUrl = videoUrl || null;
       lesson.duration = duration || "0:00";
       lesson.chapter = chapter || "General";
       lesson.order = typeof order === "number" ? order : 0;
@@ -220,7 +227,7 @@ export class CourseController {
         return res.status(404).json({ error: "Course not found." });
       }
 
-      if (course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (course.teacher && course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "Forbidden. You are not the teacher of this course." });
       }
 
@@ -254,17 +261,17 @@ export class CourseController {
         return res.status(404).json({ error: "Lesson not found." });
       }
 
-      if (lesson.course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (lesson.course?.teacher && lesson.course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "Forbidden. You are not the teacher of this course." });
       }
 
       if (title) lesson.title = title;
       if (description !== undefined) lesson.description = description;
-      if (videoUrl) lesson.videoUrl = videoUrl;
+      if (videoUrl !== undefined) lesson.videoUrl = videoUrl || null;
       if (duration) lesson.duration = duration;
       if (chapter) lesson.chapter = chapter;
       if (typeof order === "number") lesson.order = order;
-      if (photo !== undefined) lesson.photo = photo;
+      if (photo !== undefined) lesson.photo = photo || null;
       if (notes !== undefined) lesson.notes = notes;
       if (resourceUrl !== undefined) lesson.resourceUrl = resourceUrl;
       if (resourceTitle !== undefined) lesson.resourceTitle = resourceTitle;
@@ -292,7 +299,7 @@ export class CourseController {
         return res.status(404).json({ error: "Lesson not found." });
       }
 
-      if (lesson.course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (lesson.course?.teacher && lesson.course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "Forbidden. You are not the teacher of this course." });
       }
 
@@ -316,7 +323,7 @@ export class CourseController {
         return res.status(404).json({ error: "Course not found." });
       }
 
-      if (course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      if (course.teacher && course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
         return res.status(403).json({ error: "Forbidden." });
       }
 
@@ -341,6 +348,14 @@ export class CourseController {
   static async getEnrollmentRequests(req: AuthRequest, res: Response) {
     try {
       let requests: any[] = [];
+
+      if (req.user?.role === "teacher") {
+        const userRepo = AppDataSource.getRepository(User);
+        const teacher = await userRepo.findOneBy({ id: req.user.id });
+        if (teacher && teacher.teacherCapabilities && Array.isArray(teacher.teacherCapabilities) && !teacher.teacherCapabilities.includes("COURSE_INSTRUCTOR")) {
+          return res.status(200).json([]);
+        }
+      }
 
       if (req.user?.role === "admin") {
         // Admin sees all enrollment requests from all courses
@@ -412,6 +427,14 @@ export class CourseController {
 
     if (!status || !["active", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Invalid status." });
+    }
+
+    if (req.user?.role === "teacher") {
+      const userRepo = AppDataSource.getRepository(User);
+      const teacher = await userRepo.findOneBy({ id: req.user.id });
+      if (teacher && teacher.teacherCapabilities && Array.isArray(teacher.teacherCapabilities) && !teacher.teacherCapabilities.includes("COURSE_INSTRUCTOR")) {
+        return res.status(403).json({ error: "عفواً، لا تملك صلاحية قبول وإدارة طلبات التسجيل بالدورات (COURSE_INSTRUCTOR)." });
+      }
     }
 
     try {

@@ -5,27 +5,40 @@ import { Subscription } from "../entity/Subscription";
 import { SessionCreditLedger } from "../entity/SessionCreditLedger";
 import { Payment } from "../entity/Payment";
 import { User } from "../entity/User";
+import { Course } from "../entity/Course";
 import { AuditLog } from "../entity/AuditLog";
 import { AuthRequest } from "../middleware/auth";
 
 export class SubscriptionController {
-  // Get active plans
+  // Get active plans (with optional courseId filtering)
   static async getPlans(req: Request, res: Response) {
     try {
       const planRepository = AppDataSource.getRepository(SubscriptionPlan);
-      const plans = await planRepository.find({
-        where: { isActive: true },
-        order: { price: "ASC" }
-      });
+      const { courseId, includeInactive } = req.query;
+
+      const qb = planRepository.createQueryBuilder("plan")
+        .leftJoinAndSelect("plan.course", "course")
+        .orderBy("plan.price", "ASC");
+
+      if (includeInactive !== "true") {
+        qb.andWhere("plan.isActive = :isActive", { isActive: true });
+      }
+
+      if (courseId) {
+        qb.andWhere("(plan.courseId = :courseId OR plan.courseId IS NULL)", { courseId });
+      }
+
+      const plans = await qb.getMany();
       return res.status(200).json(plans);
     } catch (err) {
+      console.error("getPlans error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
 
   // Admin create plan
   static async createPlan(req: AuthRequest, res: Response) {
-    const { name, description, sessionsCount, price, currency, durationDays, sessionDurationMins } = req.body;
+    const { name, description, sessionsCount, price, currency, durationDays, sessionDurationMins, courseId } = req.body;
 
     if (!name || !sessionsCount || !price) {
       return res.status(400).json({ error: "الرجاء تحديد اسم الخطة، عدد الحصص، والسعر." });
@@ -43,9 +56,19 @@ export class SubscriptionController {
       plan.sessionDurationMins = Number(sessionDurationMins) || 60;
       plan.isActive = true;
 
+      if (courseId) {
+        const courseRepo = AppDataSource.getRepository(Course);
+        const course = await courseRepo.findOneBy({ id: courseId });
+        if (course) {
+          plan.course = course;
+          plan.courseId = course.id;
+        }
+      }
+
       await planRepository.save(plan);
       return res.status(201).json(plan);
     } catch (err) {
+      console.error("createPlan error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -53,11 +76,14 @@ export class SubscriptionController {
   // Admin update plan
   static async updatePlan(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, description, sessionsCount, price, currency, durationDays, sessionDurationMins, isActive } = req.body;
+    const { name, description, sessionsCount, price, currency, durationDays, sessionDurationMins, isActive, courseId } = req.body;
 
     try {
       const planRepository = AppDataSource.getRepository(SubscriptionPlan);
-      const plan = await planRepository.findOneBy({ id });
+      const plan = await planRepository.findOne({
+        where: { id },
+        relations: ["course"]
+      });
       if (!plan) return res.status(404).json({ error: "الخطة غير موجودة." });
 
       if (name) plan.name = name;
@@ -69,9 +95,22 @@ export class SubscriptionController {
       if (sessionDurationMins !== undefined) plan.sessionDurationMins = Number(sessionDurationMins);
       if (isActive !== undefined) plan.isActive = Boolean(isActive);
 
+      if (courseId !== undefined) {
+        if (courseId) {
+          const courseRepo = AppDataSource.getRepository(Course);
+          const course = await courseRepo.findOneBy({ id: courseId });
+          plan.course = course || (null as any);
+          plan.courseId = course ? course.id : (null as any);
+        } else {
+          plan.course = null as any;
+          plan.courseId = null as any;
+        }
+      }
+
       await planRepository.save(plan);
       return res.status(200).json(plan);
     } catch (err) {
+      console.error("updatePlan error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -232,8 +271,8 @@ export class SubscriptionController {
 
       const oldTeacherName = subscription.teacher?.name || "بدون معلم";
       subscription.teacher = newTeacher;
-      if (subscription.status === "TEACHER_ASSIGNMENT_PENDING") {
-        subscription.status = "ACTIVE";
+      if (subscription.status === "TEACHER_ASSIGNMENT_PENDING" || subscription.status === "PENDING_PAYMENT") {
+        subscription.status = "SCHEDULE_PENDING";
       }
 
       await subscriptionRepository.save(subscription);
@@ -274,8 +313,8 @@ export class SubscriptionController {
         return res.status(400).json({ error: "الاشتراك ليس في حالة انتظار الدفع." });
       }
 
-      // Activate subscription
-      subscription.status = "ACTIVE";
+      // Set status to SCHEDULE_PENDING if teacher assigned, or TEACHER_ASSIGNMENT_PENDING if teacher not assigned yet
+      subscription.status = subscription.teacher ? "SCHEDULE_PENDING" : "TEACHER_ASSIGNMENT_PENDING";
       await subscriptionRepository.save(subscription);
 
       // Create Payment record with receipt
@@ -394,7 +433,7 @@ export class SubscriptionController {
         ? new Date(subscription.endDate)
         : new Date();
       subscription.endDate = new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
-      subscription.status = "ACTIVE";
+      subscription.status = subscription.teacher ? "SCHEDULE_PENDING" : "TEACHER_ASSIGNMENT_PENDING";
 
       await subscriptionRepository.save(subscription);
 

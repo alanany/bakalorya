@@ -174,10 +174,17 @@ export default class ScheduleView {
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
 
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const isPastDay = date.getTime() < todayStart;
+
     let statusTag = `<span class="session-tag">${t("session.scheduled") || "Scheduled"}</span>`;
     let sessionAction = "";
 
-    if (isLive) {
+    if (isPastDay && !isTeacher) {
+      statusTag = `<span class="session-tag" style="background:rgba(0,0,0,0.06); color:var(--text-muted); border-color:transparent;">انتهى الموعد</span>`;
+      sessionAction = `<button class="btn-secondary session-action" style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.6; width:100%; justify-content:center;" disabled>⌛ انتهى موعد الحصة (لا يمكن الدخول)</button>`;
+    } else if (isLive) {
       statusTag = `<span class="session-tag live">${t("session.liveNow") || "LIVE NOW"}</span>`;
       if (isTeacher) {
         sessionAction = `
@@ -309,29 +316,57 @@ export default class ScheduleView {
     const isLive = session.status === "live";
     const isCompleted = session.status === "completed";
     const date = new Date(session.scheduledAt);
-    const isSoon = !isLive && !isCompleted && (date.getTime() - Date.now() < 3 * 60 * 60 * 1000) && (date.getTime() - Date.now() > 0);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1;
+    const sessionTime = date.getTime();
+
+    const isPastDay = sessionTime < todayStart;
+    const isFutureDay = sessionTime > todayEnd;
+    const isToday = sessionTime >= todayStart && sessionTime <= todayEnd;
+
+    const isSoon = !isLive && !isCompleted && !isPastDay && (date.getTime() - Date.now() < 3 * 60 * 60 * 1000) && (date.getTime() - Date.now() > 0);
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     let statusStyle = "";
     let statusIcon = "";
-    if (isLive) {
+
+    if (isPastDay) {
+      statusStyle = "opacity:0.65; background:var(--bg-app); border: 1px solid var(--border-color);";
+      statusIcon = `<span style="color:var(--text-muted); font-size:0.7rem; font-weight:700; display:block; margin-bottom:2px;">⌛ انتهت</span>`;
+    } else if (isLive) {
       statusStyle = "border-inline-start: 4px solid var(--success); background: var(--bg-card);";
       statusIcon = `<span style="color:var(--success); font-size:0.75rem; font-weight:700; display:block; margin-bottom:4px;">LIVE NOW</span>`;
     } else if (isCompleted) {
       statusStyle = "opacity:0.6; background:var(--bg-card);";
+      statusIcon = `<span style="color:var(--text-muted); font-size:0.7rem; font-weight:700; display:block; margin-bottom:2px;">مكتملة ✅</span>`;
     } else if (isSoon) {
       statusStyle = "border-inline-start: 4px solid var(--info); background:var(--info-glow);";
+      statusIcon = `<span style="color:var(--info); font-size:0.7rem; font-weight:700; display:block; margin-bottom:2px;">قريباً ⏰</span>`;
     } else {
       statusStyle = "background:var(--bg-card); border: 1px solid var(--border-color);";
     }
 
+    // Join Window check for student: active if teacher is live OR within 30 mins before scheduled start
+    const diffMins = (sessionTime - now.getTime()) / (1000 * 60);
+    const durationMins = session.duration || 60;
+    const isWithinJoinWindow = diffMins <= 30 && (diffMins + durationMins) >= -15;
+
     let actionBtn = "";
-    if (isLive && !isTeacher) {
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Join</a>`;
+    if (isPastDay && !isTeacher) {
+      actionBtn = `<button disabled class="btn-secondary" style="padding:4px; font-size:0.7rem; width:100%; justify-content:center; margin-top:6px; opacity:0.6; cursor:not-allowed; border-color:var(--border-color);">غير متاحة للدخول</button>`;
+    } else if (isLive && !isTeacher) {
+      actionBtn = `<a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border-color:#10b981; text-decoration:none;">دخول 🎥</a>`;
     } else if (isLive && isTeacher) {
-      actionBtn = `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Enter</a>`;
+      actionBtn = `<a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; text-decoration:none;">Enter</a>`;
     } else if (isSoon && isTeacher) {
-      actionBtn = `<button class="btn-primary start-session-btn" data-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:8px;">Start</button>`;
+      actionBtn = `<button class="btn-primary start-session-btn" data-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px;">Start</button>`;
+    } else if (!isPastDay && !isTeacher) {
+      if (isWithinJoinWindow) {
+        actionBtn = `<a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border-color:#10b981; text-decoration:none;">دخول 🎥</a>`;
+      } else {
+        actionBtn = `<button disabled class="btn-secondary" style="padding:4px; font-size:0.7rem; width:100%; justify-content:center; margin-top:6px; opacity:0.8; cursor:not-allowed; color:var(--primary);" title="ينشط زر الدخول قبل موعد الحصة بـ 30 دقيقة">⏰ ${formattedTime} (ينشط قبل 30د)</button>`;
+      }
     }
 
     return `

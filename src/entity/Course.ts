@@ -38,8 +38,8 @@ export class Course {
   @Column({ type: "text", nullable: true })
   rejectionReason: string;
 
-  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
-  teacher: User;
+  @ManyToOne(() => User, { nullable: true, eager: true, onDelete: "SET NULL" })
+  teacher: User | null;
 
   @OneToMany(() => Lesson, lesson => lesson.course, { cascade: true })
   lessons: Lesson[];

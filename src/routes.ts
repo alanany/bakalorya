@@ -151,6 +151,7 @@ router.post("/teacher/students", authMiddleware, requireRole(["teacher", "admin"
 router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["teacher", "admin"]), UserController.deleteStudent);
 router.get("/teacher/enrollment-requests", authMiddleware, requireRole(["teacher", "admin"]), CourseController.getEnrollmentRequests);
 router.patch("/teacher/enrollment-requests/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseController.updateEnrollmentRequest);
+router.put("/teacher/enrollment-requests/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseController.updateEnrollmentRequest);
 
 // Q&A
 router.get("/courses/:courseId/qa", QAController.getByCourse);
@@ -177,7 +178,11 @@ router.put("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminCont
 router.patch("/admin/users/:id/role", authMiddleware, requireRole(["admin"]), AdminController.updateUserRole);
 router.delete("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteUser);
 router.get("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.getCourses);
+router.post("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.createCourse);
 router.delete("/admin/courses/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteCourse);
+router.get("/admin/enrollments", authMiddleware, requireRole(["admin"]), AdminController.getEnrollments);
+router.post("/admin/enrollments/:id/approve", authMiddleware, requireRole(["admin"]), AdminController.approveEnrollment);
+router.post("/admin/enrollments/:id/reject", authMiddleware, requireRole(["admin"]), AdminController.rejectEnrollment);
 router.get("/admin/reports", authMiddleware, requireRole(["admin"]), AdminController.getReports);
 router.get("/admin/teacher-applications", authMiddleware, requireRole(["admin"]), TeacherApplicationController.getApplications);
 router.patch("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);

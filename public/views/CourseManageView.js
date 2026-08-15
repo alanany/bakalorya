@@ -18,43 +18,81 @@ export default class CourseManageView {
       }
 
       const [course, allResources] = await Promise.all([
-        apiFetch(`/courses/${this.courseId}`),
-        apiFetch("/resources")
+        apiFetch(`/courses/${this.courseId}`).catch(err => ({ error: err.message || "فشل تحميل الدورة" })),
+        apiFetch("/resources").catch(() => [])
       ]);
+
+      if (!course || course.error) {
+        showToast(course?.error || "تعذر تحميل بيانات الدورة التعليمية. قد تكون حُذفت أو غير موجودة.", "error");
+        window.location.hash = state.user.role === "admin" ? "#admin" : "#teacher-portal";
+        return;
+      }
 
       this.course = course;
       this.courseResources = (allResources || []).filter(r => r.course && String(r.course.id) === String(this.courseId));
 
-      if (course.teacher?.id !== state.user.id && state.user.role !== "admin") {
+      const teacherId = course.teacher?.id || course.teacherId;
+      if (teacherId && teacherId !== state.user.id && state.user.role !== "admin") {
         showToast("غير مسموح لك بتعديل هذه الدورة.", "error");
-        window.location.hash = "#teacher-portal";
+        window.location.hash = state.user.role === "admin" ? "#admin" : "#teacher-portal";
         return;
       }
 
-      this.container.innerHTML = `
-        <div class="course-manage-container">
-          
-          <!-- Sidebar Nav (Right Side for RTL) -->
-          <div class="manage-sidebar">
-            <div>
-              <a href="#teacher-portal" class="btn-secondary" style="font-size:0.85rem; padding:8px 14px; margin-bottom:16px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; width:100%; justify-content:center;">
-                <i data-lucide="arrow-right"></i> ${t("nav.teacherPortal") || "بوابة المعلم"}
-              </a>
-              <h2 style="font-size:1.15rem; font-weight:800; color:var(--text-color); margin-bottom:4px; line-height:1.4;">${this.course.title}</h2>
-              <div style="font-size:0.8rem; color:var(--primary); font-weight:700;">إدارة محتوى الدورة التعليمية</div>
-            </div>
+      const statusMap = {
+        'PUBLISHED': { label: '🟢 منشورة (متاحة للطلاب)', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+        'PENDING_REVIEW': { label: '🟡 قيد المراجعة والاعتماد', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+        'REJECTED': { label: '🔴 تحتاج لتعديل', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+        'DRAFT': { label: '⚪ مسودة', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' }
+      };
+      const st = statusMap[this.course.status] || { label: this.course.status || 'نشطة', color: '#10b981', bg: 'rgba(16,185,129,0.15)' };
 
-            <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
-              <button class="manage-nav-btn ${this.activeTab === 'curriculum' ? 'active' : ''}" data-tab="curriculum">
-                <i data-lucide="list-tree"></i> المنهج والدروس
-              </button>
-              <button class="manage-nav-btn ${this.activeTab === 'resources' ? 'active' : ''}" data-tab="resources">
-                <i data-lucide="folder-open"></i> الموارد والملفات (${this.courseResources.length})
-              </button>
-              <button class="manage-nav-btn ${this.activeTab === 'settings' ? 'active' : ''}" data-tab="settings">
-                <i data-lucide="settings"></i> إعدادات الدورة
-              </button>
+      this.container.innerHTML = `
+        <div style="max-width:1400px; margin:0 auto; padding:32px 20px; font-family:'Cairo', sans-serif;">
+          
+          <!-- Hero Course Header Banner -->
+          <div class="course-manage-hero" style="background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(16,185,129,0.08)); border-radius:24px; padding:28px; border:1px solid var(--border-color); backdrop-filter:blur(10px); margin-bottom:28px; box-shadow:0 10px 30px rgba(0,0,0,0.04);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+              <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+                <div style="width:100px; height:100px; border-radius:20px; overflow:hidden; border:2px solid var(--primary-glow); background:var(--bg-app); flex-shrink:0; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+                  <img src="${this.course.image || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}" style="width:100%; height:100%; object-fit:cover;" />
+                </div>
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                    <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-weight:800; font-size:0.78rem;">${this.course.category || 'عام'}</span>
+                    <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.78rem;">${this.course.degree || 'جميع الصفوف'}</span>
+                    <span style="font-size:0.78rem; font-weight:800; padding:4px 12px; border-radius:20px; background:${st.bg}; color:${st.color};">${st.label}</span>
+                  </div>
+                  <h1 style="font-size:1.6rem; font-weight:900; margin:0 0 6px 0; color:var(--text-main); line-height:1.3;">${this.course.title}</h1>
+                  <div style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                    <span><i data-lucide="user" style="width:14px;height:14px;vertical-align:middle;margin-inline-end:4px;"></i> الأستاذ: ${this.course.teacher?.name || 'المعلم'}</span>
+                    <span><i data-lucide="book-open" style="width:14px;height:14px;vertical-align:middle;margin-inline-end:4px;"></i> ${(this.course.lessons || []).length} دروس</span>
+                    <span><i data-lucide="folder-open" style="width:14px;height:14px;vertical-align:middle;margin-inline-end:4px;"></i> ${this.courseResources.length} ملفات</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <a href="${state.user.role === 'admin' ? '#admin' : '#teacher-portal'}" class="btn-secondary" style="padding:10px 18px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="arrow-right"></i> ${state.user.role === 'admin' ? 'لوحة التحكم' : 'بوابة المعلم'}
+                </a>
+                <a href="#course/${this.course.id}" target="_blank" class="btn-primary" style="padding:10px 20px; font-weight:800; text-decoration:none; background:var(--primary); display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="eye"></i> معاينة الدورة كطالب 👁️
+                </a>
+              </div>
             </div>
+          </div>
+
+          <!-- Segmented Navigation Tabs Bar -->
+          <div style="display:flex; gap:12px; margin-bottom:28px; border-bottom:1px solid var(--border-color); padding-bottom:14px; flex-wrap:wrap;">
+            <button class="manage-tab-btn ${this.activeTab === 'curriculum' ? 'active' : ''}" data-tab="curriculum" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
+              <i data-lucide="list-tree" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 📚 المنهج والدروس
+            </button>
+            <button class="manage-tab-btn ${this.activeTab === 'resources' ? 'active' : ''}" data-tab="resources" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
+              <i data-lucide="folder-open" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 📂 الموارد والملفات (${this.courseResources.length})
+            </button>
+            <button class="manage-tab-btn ${this.activeTab === 'settings' ? 'active' : ''}" data-tab="settings" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
+              <i data-lucide="settings" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> ⚙️ إعدادات الدورة والاجتماع
+            </button>
           </div>
 
           <!-- Main Content Pane -->
@@ -68,45 +106,36 @@ export default class CourseManageView {
         </div>
 
         <style>
-          .manage-nav-btn {
-            display: flex; align-items: center; gap: 10px;
-            padding: 12px 16px; border: 1px solid transparent; background: transparent;
-            color: var(--text-muted); font-size: 0.95rem; font-weight: 700;
-            border-radius: var(--radius-sm); cursor: pointer; text-align: start;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 100%;
+          .manage-tab-btn:hover {
+            background: rgba(99, 102, 241, 0.08) !important; color: var(--primary) !important; border-color: var(--primary-glow) !important;
           }
-          .manage-nav-btn:hover {
-            background: rgba(99, 102, 241, 0.08); color: var(--primary);
-          }
-          .manage-nav-btn.active {
-            background: rgba(99, 102, 241, 0.12); color: var(--primary);
-            border-color: var(--primary-glow);
+          .manage-tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--accent)) !important; color: #ffffff !important; border-color: var(--primary) !important; box-shadow: 0 4px 15px var(--primary-glow) !important;
           }
           .chapter-box {
             background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 14px; margin-bottom: 24px;
+            border-radius: 18px; margin-bottom: 24px;
             overflow: hidden;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
           }
           .chapter-header {
             background: var(--bg-app); border-bottom: 1px solid var(--border-color);
-            padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;
             font-weight: 800; font-size: 1.05rem; color: var(--text-color);
           }
           .lesson-item {
-            padding: 14px 20px; border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px; border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
-            transition: background 0.2s;
+            transition: background 0.2s ease;
           }
-          .lesson-item:hover { background: rgba(99, 102, 241, 0.03); }
+          .lesson-item:hover { background: rgba(99, 102, 241, 0.04); }
           .lesson-item:last-child { border-bottom: none; }
           .lesson-actions button {
-            background: transparent; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-muted);
-            padding: 6px 10px; border-radius: 8px; transition: 0.2s;
-            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--bg-app); border: 1px solid var(--border-color); cursor: pointer; color: var(--text-muted);
+            padding: 7px 12px; border-radius: 10px; transition: all 0.2s ease;
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-weight: 700; font-size: 0.8rem;
           }
-          .lesson-actions button:hover { background: var(--bg-app); color: var(--text-main); border-color: var(--primary); }
+          .lesson-actions button:hover { background: var(--primary-glow); color: var(--primary); border-color: var(--primary); }
         </style>
 
         <!-- Modals -->
@@ -398,8 +427,8 @@ export default class CourseManageView {
                 </div>
 
                 <div class="form-group">
-                  <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (YouTube / Vimeo / MP4) <span style="color:var(--error);">*</span></label>
-                  <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=..." required style="padding:10px 14px;">
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (اختياري / Optional)</label>
+                  <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=... (يمكن تركه فارغاً والاعتماد على صورة الدرس)" style="padding:10px 14px;">
                 </div>
 
                 <div class="form-group">
@@ -408,7 +437,7 @@ export default class CourseManageView {
                 </div>
 
                 <div class="form-group">
-                  <label style="font-weight:700; margin-bottom:6px; display:block;">صورة أو ملخص الدرس المرفق (Photo / Summary Image)</label>
+                  <label style="font-weight:700; margin-bottom:6px; display:block;">صورة / غلاف الدرس (مطلوب كبانر عند عدم وجود فيديو 🖼️) <span style="color:var(--error);">*</span></label>
                   <input type="text" id="lesson-photo-url" class="form-input" placeholder="رابط صورة الملخص (https://...)" style="padding:8px 12px; margin-bottom:6px; font-size:0.88rem;">
                   <input type="file" id="lesson-photo-file" class="form-input" accept="image/*" style="padding:8px 12px; font-size:0.85rem;">
                 </div>
@@ -480,7 +509,7 @@ export default class CourseManageView {
 
   bindEvents() {
     // Navigation Tabs
-    this.container.querySelectorAll(".manage-nav-btn").forEach(btn => {
+    this.container.querySelectorAll(".manage-tab-btn, .manage-nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         this.activeTab = btn.getAttribute("data-tab");
         this.render();
@@ -685,8 +714,14 @@ export default class CourseManageView {
           selectedChapter = customChapterInput?.value.trim() || "الوحدة العامة";
         }
 
+        const videoUrlVal = document.getElementById("lesson-video")?.value.trim() || "";
         let photoUrl = document.getElementById("lesson-photo-url")?.value.trim() || "";
         const photoFileInput = document.getElementById("lesson-photo-file");
+
+        if (!videoUrlVal && !photoUrl && (!photoFileInput || !photoFileInput.files.length)) {
+          showToast("رابط الفيديو اختياري، ولكن عند عدم إضافة فيديو يجب تقديم صورة/غلاف للدرس كبانر للطلاب 🖼️", "error");
+          return;
+        }
 
         if (photoFileInput && photoFileInput.files.length > 0) {
           const formData = new FormData();

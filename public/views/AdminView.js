@@ -15,6 +15,7 @@ export default class AdminView {
     this.adminEarnings = null;
     this.allPlans = [];
     this.subFilter = "all";
+    this.expandedStudents = new Set();
   }
 
   async render() {
@@ -340,6 +341,11 @@ export default class AdminView {
               إدارة الدورات
               <span class="admin-nav-badge" id="admin-badge-courses">0</span>
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "enrollments" ? "active" : ""}" data-tab="enrollments">
+              <i data-lucide="award"></i>
+              تسجيلات الكورسات
+              <span class="admin-nav-badge" id="admin-badge-enrollments">0</span>
+            </button>
             <button class="admin-nav-btn ${this.activeTab === "sessions" ? "active" : ""}" data-tab="sessions">
               <i data-lucide="video"></i>
               إدارة الحصص والجلسات
@@ -422,7 +428,9 @@ export default class AdminView {
       </div>
 
       <!-- Modals Container -->
-      <div id="admin-modal-container"></div>
+      <div id="admin-modal-container">
+        ${this.renderAddCourseModal()}
+      </div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
@@ -440,6 +448,7 @@ export default class AdminView {
     el("admin-badge-teachers", teachers.length);
     el("admin-badge-students", students.length);
     el("admin-badge-courses", (this.courses || []).length);
+    el("admin-badge-enrollments", (this.enrollments || []).length);
     el("admin-badge-sessions", (this.allSessions || []).length);
     el("admin-badge-categories", (this.categories || []).length);
     el("admin-badge-applications", pendingApps.length);
@@ -449,7 +458,7 @@ export default class AdminView {
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -459,7 +468,8 @@ export default class AdminView {
         apiFetch("/sessions").catch(() => []),
         apiFetch("/admin/subscriptions").catch(() => []),
         apiFetch("/admin/earnings").catch(() => null),
-        apiFetch("/subscription-plans").catch(() => [])
+        apiFetch("/subscription-plans").catch(() => []),
+        apiFetch("/admin/enrollments").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -471,6 +481,7 @@ export default class AdminView {
       this.allSessions = sessions || [];
       this.subscriptions = subscriptions || [];
       this.adminEarnings = earnings || null;
+      this.enrollments = enrollments || [];
     } catch (err) {
       console.error("loadAllData error:", err);
     }
@@ -519,6 +530,7 @@ export default class AdminView {
     reports:             { heading: "📈 التقارير والسجلات",         sub: "تقارير مفصلة عن النشاط والأداء" },
     categories:          { heading: "🗂️ إدارة التصنيفات",          sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
     courses:             { heading: "📚 إدارة الدورات",             sub: "مراجعة والإشراف على جميع دورات المنصة" },
+    enrollments:         { heading: "🎓 طلبات وتسجيلات الكورسات", sub: "مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات" },
     sessions:            { heading: "📹 إدارة الحصص والجلسات",      sub: "متابعة وإلغاء وإعادة جدولة حصص البث المباشر والحصص الخاصة 1-على-1" },
     teachers:            { heading: "👨‍🏫 إدارة المعلمين",           sub: "إضافة وتعديل وإدارة حسابات المعلمين" },
     students:            { heading: "🎓 إدارة الطلاب",             sub: "إضافة وتعديل وإدارة حسابات الطلاب" },
@@ -548,6 +560,7 @@ export default class AdminView {
     else if (tab === "teacherApplications") content.innerHTML = this.renderTeacherApplicationsTab();
     else if (tab === "members")         content.innerHTML = this.renderMembersTab();
     else if (tab === "courses")         content.innerHTML = this.renderCoursesTab();
+    else if (tab === "enrollments")     content.innerHTML = this.renderEnrollmentsTab();
     else if (tab === "sessions")        content.innerHTML = this.renderSessionsTab(args);
     else if (tab === "reports")         content.innerHTML = this.renderReportsTab();
     else if (tab === "subscriptions")   content.innerHTML = this.renderSubscriptionsTab();
@@ -796,6 +809,11 @@ export default class AdminView {
                         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
                           <div>${u.email}</div>
                           ${u.phone ? `<div style="font-size:0.75rem;color:var(--text-main);margin-top:2px;">📱 ${u.phone}</div>` : ''}
+                          ${u.meetingLink ? `<div style="font-size:0.72rem;color:var(--primary);margin-top:2px;font-weight:700;"><a href="${u.meetingLink}" target="_blank" style="color:var(--primary);text-decoration:underline;">🔗 رابط الاجتماع الثابت</a></div>` : ''}
+                          <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                            ${(!u.teacherCapabilities || u.teacherCapabilities.includes("COURSE_INSTRUCTOR")) ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.65rem; font-weight:800;">📚 إنشاء دورات</span>` : ''}
+                            ${(!u.teacherCapabilities || u.teacherCapabilities.includes("SESSION_TEACHER")) ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.65rem; font-weight:800;">⏱️ حصص خاصة</span>` : ''}
+                          </div>
                         </td>
                         <td style="padding:14px 20px;">
                           <span style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.82rem; display:inline-flex; align-items:center; gap:4px;">
@@ -1056,44 +1074,399 @@ export default class AdminView {
   // ── 5. Courses Management Tab ────────────────────────────────────────────────
   renderCoursesTab() {
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <h3 style="font-weight:700;">${t("admin.tab.courses")} (${this.courses.length})</h3>
+        <button class="btn-primary" id="open-admin-add-course-modal-btn" style="padding:10px 18px; font-weight:800; gap:8px;">
+          <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة تعليمية جديدة ➕
+        </button>
       </div>
 
       ${this.courses.length === 0
         ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noCourses")}</div>`
         : `<div style="display:flex;flex-direction:column;gap:16px;">
-            ${this.courses.map(course => `
-              <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px;">
+            ${this.courses.map(course => {
+              const coursePlansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
+              const isPending = course.status === "PENDING_REVIEW";
+              const isPublished = course.status === "PUBLISHED" || !course.status;
+
+              return `
+              <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px; ${isPending ? 'border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.03);' : ''}">
                 <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}"
                   style="width:72px;height:72px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;">
                 <div style="flex:1;min-width:0;">
-                  <div style="font-size:0.7rem;font-weight:700;color:var(--primary);text-transform:uppercase;margin-bottom:4px;">${course.category}</div>
+                  <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--primary);text-transform:uppercase;">${course.category}</span>
+                    <span class="badge" style="background:rgba(139,92,246,0.12); color:#8b5cf6; font-size:0.7rem; font-weight:800;">${coursePlansCount} خطط اشتراك مخصصة</span>
+                    ${isPending ? `
+                      <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.72rem; font-weight:800;">🟡 قيد المراجعة والاعتماد (PENDING_REVIEW) ⏳</span>
+                    ` : isPublished ? `
+                      <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.72rem; font-weight:800;">منشورة ومتاحة ✅</span>
+                    ` : `
+                      <span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; font-size:0.72rem; font-weight:800;">مرفوضة / مسودة ❌</span>
+                    `}
+                  </div>
                   <h4 style="font-weight:700;font-size:1rem;margin-bottom:6px;">${course.title}</h4>
-                  <div style="display:flex;gap:20px;font-size:0.8rem;color:var(--text-muted);">
-                    <span><i data-lucide="user" style="width:12px;height:12px;"></i> ${course.teacher?.name || t("admin.unknown")}</span>
-                    <span><i data-lucide="book" style="width:12px;height:12px;"></i> ${course.lessonsCount} ${t("admin.lessons")}</span>
-                    <span><i data-lucide="users" style="width:12px;height:12px;"></i> ${course.enrollmentsCount} ${t("admin.enrolled")}</span>
+                  <div style="display:flex;gap:20px;font-size:0.8rem;color:var(--text-muted);flex-wrap:wrap;">
+                    <span><i data-lucide="user" style="width:12px;height:12px;"></i> ${course.teacher?.name || "منصة باكالوريا التعليمية 🏛️"}</span>
+                    <span><i data-lucide="book" style="width:12px;height:12px;"></i> ${course.lessonsCount || 0} ${t("admin.lessons")}</span>
+                    <span><i data-lucide="users" style="width:12px;height:12px;"></i> ${course.enrollmentsCount || 0} ${t("admin.enrolled")}</span>
                   </div>
                 </div>
-                <button class="btn-secondary delete-course-btn" data-id="${course.id}" data-title="${course.title}"
-                  style="font-size:0.8rem;padding:8px 14px;border-color:var(--error, #ef4444);color:var(--error, #ef4444);flex-shrink:0;">
-                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i> ${t("common.delete")}
-                </button>
+                <div style="display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap;">
+                  ${isPending ? `
+                    <button class="btn-primary admin-approve-course-btn" data-id="${course.id}"
+                      style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800;">
+                      <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد النشر 🎉
+                    </button>
+                    <button class="btn-secondary admin-reject-course-btn" data-id="${course.id}"
+                      style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#ef4444; border-color:#ef4444; font-weight:700;">
+                      <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض ❌
+                    </button>
+                  ` : ''}
+                  <a href="#manage-course/${course.id}" class="btn-primary"
+                    style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; font-weight:800;">
+                    <i data-lucide="book-open" style="width:14px;height:14px;"></i> إضافة وإدارة الدروس والوحدات 📚
+                  </a>
+                  <button class="btn-primary admin-view-course-details-btn" data-id="${course.id}"
+                    style="font-size:0.8rem; padding:8px 14px; gap:6px;">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i> تفاصيل الكورس والاشتراكات 🔍
+                  </button>
+                  <button class="btn-secondary delete-course-btn" data-id="${course.id}" data-title="${course.title}"
+                    style="font-size:0.8rem; padding:8px 14px; border-color:var(--error, #ef4444); color:var(--error, #ef4444);">
+                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i> ${t("common.delete")}
+                  </button>
+                </div>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>`
       }
     `;
   }
 
+  renderEnrollmentsTab() {
+    const enrollments = this.enrollments || [];
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h3 style="font-weight:800; font-size:1.3rem;">🎓 طلبات وتسجيلات الكورسات (${enrollments.length})</h3>
+          <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات</p>
+        </div>
+      </div>
+
+      ${enrollments.length === 0 ? `
+        <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">لا توجد طلبات تسجيل في الكورسات حالياً.</div>
+      ` : `
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; text-align:start;">
+            <thead>
+              <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); font-size:0.82rem; color:var(--text-muted);">
+                <th style="padding:14px 16px;">الطالب</th>
+                <th style="padding:14px 16px;">الدورة التعليمية</th>
+                <th style="padding:14px 16px;">إيصال التحويل والدفع</th>
+                <th style="padding:14px 16px;">الحالة</th>
+                <th style="padding:14px 16px;">تاريخ الطلب</th>
+                <th style="padding:14px 16px;">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${enrollments.map(e => {
+                const stMap = {
+                  'active': { label: 'مقبول ونشط ✅', bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
+                  'rejected': { label: 'مرفوض ❌', bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
+                  'PENDING': { label: 'في انتظار الاعتماد ⏳', bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
+                };
+                const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
+                const receiptUrl = e.payment?.receiptUrl;
+
+                return `
+                  <tr style="border-bottom:1px solid var(--border-color); font-size:0.88rem;">
+                    <td style="padding:14px 16px;">
+                      <div style="font-weight:700; color:var(--text-main);">${e.student?.name || 'طالب'}</div>
+                      <div style="font-size:0.78rem; color:var(--text-muted);">${e.student?.email || ''}</div>
+                    </td>
+                    <td style="padding:14px 16px;">
+                      <div style="font-weight:700;">${e.course?.title || 'دورة'}</div>
+                      <div style="font-size:0.78rem; color:var(--primary);">${e.course?.category || ''}</div>
+                    </td>
+                    <td style="padding:14px 16px;">
+                      ${receiptUrl ? `
+                        <a href="${receiptUrl}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary);">
+                          <i data-lucide="file-text" style="width:12px;height:12px;"></i> عرض إيصال التحويل 📄
+                        </a>
+                      ` : `
+                        <span style="font-size:0.78rem; color:var(--text-muted);">لا يوجد إيصال مرفق</span>
+                      `}
+                    </td>
+                    <td style="padding:14px 16px;">
+                      <span style="font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:14px; background:${st.bg}; color:${st.color};">
+                        ${st.label}
+                      </span>
+                    </td>
+                    <td style="padding:14px 16px; font-size:0.8rem; color:var(--text-muted);">
+                      ${new Date(e.createdAt).toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td style="padding:14px 16px;">
+                      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        ${e.status !== 'active' ? `
+                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" style="padding:6px 12px; font-size:0.78rem; background:#10b981; border-color:#10b981; font-weight:800;">
+                            <i data-lucide="check" style="width:14px;height:14px;"></i> قبول واعتماد ✅
+                          </button>
+                        ` : ''}
+                        ${e.status !== 'rejected' ? `
+                          <button class="btn-secondary admin-reject-enrollment-btn" data-id="${e.id}" style="padding:6px 12px; font-size:0.78rem; color:#ef4444; border-color:#ef4444; font-weight:700;">
+                            <i data-lucide="x" style="width:14px;height:14px;"></i> رفض ❌
+                          </button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    `;
+  }
+
+  renderAddCourseModal() {
+    const categories = this.categories || [];
+    return `
+      <div class="modal-overlay" id="admin-course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+        <div class="modal-content" style="max-width:650px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+          <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:46px; height:46px; border-radius:14px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="book-plus" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.2rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">إضافة دورة تعليمية جديدة للمنصة ➕</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، القسم المعني، السنة الدراسية والمعلم المسؤول</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-admin-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="admin-course-form">
+            <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px;">
+              
+              <!-- Course Title -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-course-title" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="heading" style="width:14px; height:14px; color:var(--primary);"></i>
+                  عنوان الدورة التعليمية <span style="color:var(--error);">*</span>
+                </label>
+                <input type="text" id="admin-course-title" class="form-input" placeholder="مثال: الدورة الشاملة في الرياضيات - ثانوية عامة" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
+              </div>
+
+              <!-- Category & Degree Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <!-- Category Select -->
+                <div class="form-group" style="margin:0;">
+                  <label for="admin-course-category-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="layers" style="width:14px; height:14px; color:#a855f7;"></i>
+                    التخصص / المادة <span style="color:var(--error);">*</span>
+                  </label>
+                  <select id="admin-course-category-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                    <option value="">-- اختر التخصص / المادة الدراسية --</option>
+                    <optgroup label="📚 المواد والدراسات الأساسية">
+                      <option value="الرياضيات">الرياضيات (Mathematics)</option>
+                      <option value="الفيزياء">الفيزياء (Physics)</option>
+                      <option value="الكيمياء">الكيمياء (Chemistry)</option>
+                      <option value="الأحياء">الأحياء (Biology)</option>
+                      <option value="العلوم العامة">العلوم العامة (Science)</option>
+                      <option value="اللغة العربية">اللغة العربية (Arabic)</option>
+                      <option value="اللغة الإنجليزية">اللغة الإنجليزية (English)</option>
+                      <option value="اللغة الفرنسية">اللغة الفرنسية (French)</option>
+                      <option value="التاريخ">التاريخ (History)</option>
+                      <option value="الجغرافيا">الجغرافيا (Geography)</option>
+                      <option value="الفلسفة والمنطق">الفلسفة والمنطق (Philosophy)</option>
+                      <option value="الحاسب الآلي والبرمجة">الحاسب الآلي وتكنولوجيا المعلومات (IT)</option>
+                      <option value="الاقتصاد والإحصاء">الاقتصاد والإحصاء (Economics)</option>
+                    </optgroup>
+                    ${categories.length > 0 ? `
+                      <optgroup label="🗂️ التصنيفات المعتمدة بالمنصة">
+                        ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                      </optgroup>
+                    ` : ''}
+                    <optgroup label="✏️ إضافة تخصيص">
+                      <option value="__custom__">+ كتابة تخصص / مادة جديدة مخصصة</option>
+                    </optgroup>
+                  </select>
+                  <div id="admin-course-category-custom-wrapper" style="display:none; margin-top:10px;">
+                    <input type="text" id="admin-course-category-custom" class="form-input" placeholder="أدخل اسم التخصص أو المادة الجديدة..." style="border-radius:12px; padding:10px 14px; font-size:0.88rem; width:100%; border:1px solid var(--primary);">
+                  </div>
+                </div>
+
+                <!-- Degree Select -->
+                <div class="form-group" style="margin:0;">
+                  <label for="admin-course-degree" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#10b981;"></i>
+                    السنة الدراسية / المستوى <span style="color:var(--error);">*</span>
+                  </label>
+                  <select id="admin-course-degree" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;" required>
+                    <option value="">-- اختر المستوى --</option>
+                    <optgroup label="🌱 المرحلة الابتدائية (Primary)">
+                      <option value="الابتدائية - الصف الأول">الصف الأول الابتدائي (Primary 1)</option>
+                      <option value="الابتدائية - الصف الثاني">الصف الثاني الابتدائي (Primary 2)</option>
+                      <option value="الابتدائية - الصف الثالث">الصف الثالث الابتدائي (Primary 3)</option>
+                      <option value="الابتدائية - الصف الرابع">الصف الرابع الابتدائي (Primary 4)</option>
+                      <option value="الابتدائية - الصف الخامس">الصف الخامس الابتدائي (Primary 5)</option>
+                      <option value="الابتدائية - الصف السادس">الصف السادس الابتدائي (Primary 6)</option>
+                    </optgroup>
+                    <optgroup label="📘 المرحلة الإعدادية (Prep)">
+                      <option value="الإعدادية - الصف الأول">الصف الأول الإعدادي (Prep 1)</option>
+                      <option value="الإعدادية - الصف الثاني">الصف الثاني الإعدادي (Prep 2)</option>
+                      <option value="الإعدادية - الصف الثالث">الصف الثالث الإعدادي - الشهادة الإعدادية (Prep 3)</option>
+                    </optgroup>
+                    <optgroup label="🎓 المرحلة الثانوية (Secondary)">
+                      <option value="الثانوية - الصف الأول">الصف الأول الثانوي (1st Secondary)</option>
+                      <option value="الثانوية - الصف الثاني (علمي)">الصف الثاني الثانوي - علمي</option>
+                      <option value="الثانوية - الصف الثاني (أدبي)">الصف الثاني الثانوي - أدبي</option>
+                      <option value="الثانوية - الصف الثالث (علمي علوم)">الصف الثالث الثانوي - علمي علوم</option>
+                      <option value="الثانوية - الصف الثالث (علمي رياضة)">الصف الثالث الثانوي - علمي رياضة</option>
+                      <option value="الثانوية - الصف الثالث (أدبي)">الصف الثالث الثانوي - أدبي</option>
+                      <option value="الثانوية الأزهرية">الثانوية الأزهرية</option>
+                    </optgroup>
+                    <optgroup label="🌟 عام وتأسيس (General)">
+                      <option value="جميع المراحل والصفوف">جميع المراحل والصفوف (All Grades)</option>
+                      <option value="تأسيس ودورات عامة">تأسيس ودورات تدريبية عامة (Foundation)</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Teacher Selection -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-course-teacher-id" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="user-check" style="width:14px; height:14px; color:var(--primary);"></i>
+                  المعلم المسؤول عن الدورة (اختياري للدورات العامة)
+                </label>
+                <select id="admin-course-teacher-id" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
+                  <option value="">🏛️ دورة عامة على المنصة (بدون معلم خاص)</option>
+                  ${(this.allMembers || []).filter(m => m.role === 'teacher').map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Course Description -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-course-desc" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="file-text" style="width:14px; height:14px; color:var(--text-muted);"></i>
+                  وصف ومحتويات الدورة
+                </label>
+                <textarea id="admin-course-desc" class="form-input" style="height:90px; resize:none; border-radius:14px; padding:12px 16px; font-size:0.88rem; line-height:1.5;" placeholder="أدخل تفاصيل ومحاور المنهج التعليمي والدورة..." required></textarea>
+              </div>
+
+              <!-- Course Image Upload -->
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                  <span style="display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="image" style="width:14px; height:14px; color:#f59e0b;"></i>
+                    غلاف / صورة الدورة
+                  </span>
+                  <button type="button" id="admin-toggle-url-input-btn" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.75rem; cursor:pointer;">
+                    أو أدخل رابط صورة مباشرة 🔗
+                  </button>
+                </label>
+
+                <div id="admin-course-dropzone" style="border:2px dashed var(--border-color); border-radius:16px; padding:18px; text-align:center; background:var(--bg-app); cursor:pointer; transition:all 0.2s ease;">
+                  <input type="file" id="admin-course-image-file" accept="image/*" style="display:none;">
+
+                  <div id="admin-image-upload-idle">
+                    <button type="button" class="btn-secondary" id="admin-btn-trigger-upload" style="padding:8px 20px; border-radius:30px; font-size:0.85rem; margin:0 auto; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="upload-cloud" style="width:16px; height:16px;"></i> اختيار صورة غلاف الدورة
+                    </button>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصغار المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
+                  </div>
+
+                  <div id="admin-image-upload-loading" style="display:none; padding:10px; color:var(--primary); font-weight:700; font-size:0.88rem;">
+                    <i data-lucide="loader" class="spinner" style="width:20px; height:20px; display:inline-block; vertical-align:middle; margin-inline-end:6px;"></i> جاري رفع الصورة...
+                  </div>
+
+                  <div id="admin-image-preview-wrapper" style="display:none; text-align:center;">
+                    <div style="position:relative; display:inline-block;">
+                      <img id="admin-course-preview-img" src="" style="max-height:130px; border-radius:12px; object-fit:cover; border:2px solid var(--primary); box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                      <button type="button" id="admin-remove-course-image-btn" title="حذف الصورة" style="position:absolute; top:-8px; right:-8px; background:var(--error,#ef4444); color:#fff; border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.3);">✕</button>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--success,#10b981); font-weight:800; margin:6px 0 0 0;">✓ تم اختيار ورفع غلاف الدورة بنجاح</p>
+                  </div>
+                </div>
+
+                <div id="admin-url-input-wrapper" style="display:none; margin-top:10px;">
+                  <input type="url" id="admin-course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                </div>
+
+                <input type="hidden" id="admin-course-image">
+              </div>
+
+              <!-- Static Meeting Link -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-course-meeting-link" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="video" style="width:14px; height:14px; color:#06b6d4;"></i>
+                  🔗 رابط البث المباشر الثابت (Zoom / Meet / Webex)
+                </label>
+                <input type="url" id="admin-course-meeting-link" class="form-input" placeholder="https://meet.google.com/abc-defg-hij" style="border-radius:14px; padding:11px 16px; font-size:0.88rem;">
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 28px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
+              <button type="button" class="btn-secondary" id="cancel-admin-course-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
+              <button type="submit" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#0056D2,#a855f7); border:none;">
+                <i data-lucide="check-circle-2" style="width:16px; height:16px; vertical-align:middle;"></i> إنشاء ونشر الدورة للمنصة 🎉
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
   // ── 5. Sessions Management Tab ────────────────────────────────────────────────
   renderSessionsTab(filterSubId = null) {
-    let sessions = this.allSessions || [];
+    let allSessions = this.allSessions || [];
     if (filterSubId) {
-      sessions = sessions.filter(s => String(s.subscription?.id) === String(filterSubId));
+      allSessions = allSessions.filter(s => String(s.subscription?.id) === String(filterSubId));
     }
 
+    this.sessionTimeFilter = this.sessionTimeFilter || 'all';
+    this.sessionViewMode = this.sessionViewMode || 'list';
+    this.sessionCustomDate = this.sessionCustomDate || '';
+
+    const now = new Date();
+    const todayYMD = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+    const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toDateString();
+
+    // Calculate Week Range (Sunday to Saturday)
+    const currentDay = now.getDay();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay);
+    startOfWeek.setHours(0,0,0,0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    endOfWeek.setHours(23,59,59,999);
+
+    // Calculate Month Range
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // Apply Time Filter
+    const filteredSessions = allSessions.filter(s => {
+      if (!s.scheduledAt) return this.sessionTimeFilter === 'all';
+      const sDate = new Date(s.scheduledAt);
+
+      if (this.sessionTimeFilter === 'today') {
+        return new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate()).toDateString() === todayStr;
+      } else if (this.sessionTimeFilter === 'week') {
+        return sDate >= startOfWeek && sDate <= endOfWeek;
+      } else if (this.sessionTimeFilter === 'month') {
+        return sDate >= startOfMonth && sDate <= endOfMonth;
+      } else if (this.sessionTimeFilter === 'custom' && this.sessionCustomDate) {
+        const sYMD = sDate.toISOString().slice(0, 10);
+        return sYMD === this.sessionCustomDate;
+      }
+      return true;
+    });
 
     const getStatusBadge = (status) => {
       const s = (status || "").toLowerCase();
@@ -1103,86 +1476,195 @@ export default class AdminView {
       return `<span style="background:rgba(99,102,241,0.12); color:#6366f1; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px;">📅 مجدولة</span>`;
     };
 
+    const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
     return `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
-        <div>
-          <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
-            ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0,8)} (${sessions.length})` : `إدارة الحصص والجلسات المباشرة (${sessions.length})`}
-          </h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">يمكن للأدمن متابعة كافة الحصص الخاصة والجماعية وإلغائها أو تعديل حالتها عند الحاجة.</p>
+      <div style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+          <div>
+            <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
+              ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0,8)} (${filteredSessions.length})` : `📹 إدارة الحصص والجلسات المباشرة (${filteredSessions.length})`}
+            </h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
+          </div>
+          ${filterSubId ? `<button class="btn-secondary admin-view-all-sessions-btn" style="padding:8px 16px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لكل الحصص</button>` : ''}
         </div>
-        ${filterSubId ? `<button class="btn-secondary admin-view-all-sessions-btn" style="padding:8px 16px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لكل الحصص</button>` : ''}
-      </div>
-      </div>
 
-      <div class="glass-card" style="padding:0; border-radius:18px; overflow:hidden; border:1px solid var(--border-color);">
-        ${sessions.length === 0 ? `
-          <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
-            <i data-lucide="video" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
-            <h4 style="font-weight:700; margin-bottom:6px;">لا توجد حصص مجدولة بالمنصة حتى الآن</h4>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">سيتم عرض جميع الحصص المحجوزة والبث المباشر هنا تلقائياً.</p>
+        <!-- Filter Bar & View Switcher -->
+        <div class="glass-card" style="padding:14px 20px; border-radius:16px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+          
+          <!-- Time Filters -->
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin-inline-end:4px;">⏱️ فلترة المواعيد:</span>
+            
+            <button class="btn-secondary admin-session-time-filter-btn" data-filter="all" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'all' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+              الكل (${allSessions.length})
+            </button>
+            <button class="btn-secondary admin-session-time-filter-btn" data-filter="today" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'today' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+              ☀️ اليوم
+            </button>
+            <button class="btn-secondary admin-session-time-filter-btn" data-filter="week" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'week' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+              📅 هذا الأسبوع
+            </button>
+            <button class="btn-secondary admin-session-time-filter-btn" data-filter="month" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'month' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+              🗓️ هذا الشهر
+            </button>
+
+            <div style="display:inline-flex; align-items:center; gap:6px; margin-inline-start:4px;">
+              <input type="date" id="admin-session-date-picker" class="form-input" style="padding:4px 10px; font-size:0.8rem; border-radius:8px;" value="${this.sessionCustomDate || todayYMD}">
+            </div>
           </div>
-        ` : `
-          <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
-              <thead>
-                <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
-                  <th style="padding:14px 20px; font-weight:800; text-align:start;">عنوان الحصة / الدرس</th>
-                  <th style="padding:14px 16px; font-weight:800; text-align:start;">المعلم والمنظم</th>
-                  <th style="padding:14px 16px; font-weight:800; text-align:start;">الطالب (إن وجد)</th>
-                  <th style="padding:14px 16px; font-weight:800; text-align:start;">الموعد والمدة</th>
-                  <th style="padding:14px 16px; font-weight:800; text-align:start;">الحالة</th>
-                  <th style="padding:14px 20px; font-weight:800; text-align:end;">إجراءات التحكم</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${sessions.map(sess => {
-                  const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
-                  const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
-                  const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
 
-                  return `
-                    <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
-                      <td style="padding:14px 20px; vertical-align:middle;">
-                        <strong style="font-size:0.92rem; color:var(--text-main); display:block;">${sess.title || "حصة خاصة"}</strong>
-                        <span style="font-size:0.75rem; color:var(--text-muted);">${sess.course ? '📖 ' + sess.course.title : '🔒 حصة من اشتراك شهر'}</span>
-                      </td>
-                      <td style="padding:14px 16px; vertical-align:middle;">
-                        <div style="font-size:0.85rem; font-weight:700; color:var(--text-main);">${teacherName}</div>
-                      </td>
-                      <td style="padding:14px 16px; vertical-align:middle;">
-                        <div style="font-size:0.85rem; color:var(--text-main);">${studentName}</div>
-                      </td>
-                      <td style="padding:14px 16px; vertical-align:middle;">
-                        <div style="font-size:0.82rem; font-weight:700; color:var(--primary);">${dateStr}</div>
-                        <span style="font-size:0.75rem; color:var(--text-muted);">${sess.duration || 60} دقيقة</span>
-                      </td>
-                      <td style="padding:14px 16px; vertical-align:middle;">
-                        ${getStatusBadge(sess.status)}
-                      </td>
-                      <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
-                        <div style="display:inline-flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
-                          ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
-                            <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--primary); color:var(--primary); font-weight:700;">
-                              <i data-lucide="user-check" style="width:12px;height:12px;"></i> تغيير المعلم
-                            </button>
-                            <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--error); color:var(--error); font-weight:700;">
-                              <i data-lucide="x-circle" style="width:12px;height:12px;"></i> إلغاء الحصة
-                            </button>
-                          ` : ''}
-                          <a href="#classroom/${sess.id}" class="btn-primary" style="font-size:0.75rem; padding:5px 10px; text-decoration:none;">
-                            <i data-lucide="video" style="width:12px;height:12px;"></i> دخول
-                          </a>
+          <!-- View Mode Toggle -->
+          <div style="display:flex; align-items:center; gap:6px; background:var(--bg-app); padding:4px; border-radius:12px; border:1px solid var(--border-color);">
+            <button class="btn-secondary admin-session-view-btn" data-mode="list" style="padding:6px 12px; font-size:0.78rem; font-weight:700; border:none; ${this.sessionViewMode === 'list' ? 'background:var(--bg-card); color:var(--primary); box-shadow:0 2px 6px rgba(0,0,0,0.1);' : 'color:var(--text-muted); background:transparent;'}">
+              <i data-lucide="list" style="width:14px;height:14px;"></i> قائمة
+            </button>
+            <button class="btn-secondary admin-session-view-btn" data-mode="timetable" style="padding:6px 12px; font-size:0.78rem; font-weight:700; border:none; ${this.sessionViewMode === 'timetable' ? 'background:var(--bg-card); color:var(--primary); box-shadow:0 2px 6px rgba(0,0,0,0.1);' : 'color:var(--text-muted); background:transparent;'}">
+              <i data-lucide="calendar-days" style="width:14px;height:14px;"></i> جدول الحصص (Timetable)
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      ${this.sessionViewMode === 'timetable' ? `
+        <!-- Timetable View -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+          ${[0, 1, 2, 3, 4, 5, 6].map(dayIdx => {
+            const dayDate = new Date(startOfWeek);
+            dayDate.setDate(dayDate.getDate() + dayIdx);
+            const isTodayDay = dayDate.toDateString() === todayStr;
+
+            const daySessions = filteredSessions.filter(s => {
+              if (!s.scheduledAt) return false;
+              const d = new Date(s.scheduledAt);
+              return d.getDay() === dayIdx;
+            }).sort((a,b) => new Date(a.scheduledAt || 0) - new Date(b.scheduledAt || 0));
+
+            return `
+              <div class="glass-card" style="padding:16px; border-radius:18px; border:${isTodayDay ? '2px solid var(--primary)' : '1px solid var(--border-color)'}; background:${isTodayDay ? 'rgba(99,102,241,0.03)' : 'var(--bg-card)'}; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--border-color);">
+                  <div>
+                    <h4 style="font-weight:800; margin:0; font-size:0.95rem; color:${isTodayDay ? 'var(--primary)' : 'var(--text-main)'};">
+                      ${dayNames[dayIdx]} ${isTodayDay ? '⭐ (اليوم)' : ''}
+                    </h4>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">${dayDate.toLocaleDateString('ar', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <span class="badge" style="background:${daySessions.length > 0 ? 'var(--primary-glow)' : 'rgba(0,0,0,0.05)'}; color:${daySessions.length > 0 ? 'var(--primary)' : 'var(--text-muted)'}; font-weight:800; font-size:0.75rem;">
+                    ${daySessions.length} حصص
+                  </span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px; flex:1;">
+                  ${daySessions.length === 0 ? `
+                    <div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:0.8rem; font-style:italic;">
+                      لا توجد حصص مجدولة
+                    </div>
+                  ` : daySessions.map(sess => {
+                    const timeStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+                    const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
+                    const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
+
+                    return `
+                      <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <span style="font-size:0.75rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:6px;">
+                            ⏰ ${timeStr}
+                          </span>
+                          ${getStatusBadge(sess.status)}
                         </div>
-                      </td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-        `}
-      </div>
+                        <strong style="font-size:0.88rem; color:var(--text-main);">${sess.title || "حصة خاصة"}</strong>
+                        <div style="font-size:0.78rem; color:var(--text-muted);">
+                          <div>👨‍🏫 ${teacherName}</div>
+                          <div>👤 ${studentName}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; margin-top:4px; justify-content:flex-end;">
+                          ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
+                            <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px;">تغيير المعلم</button>
+                            <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:var(--error);">إلغاء</button>
+                          ` : ''}
+                          <a href="#classroom/${sess.id}" class="btn-primary" style="font-size:0.72rem; padding:4px 8px; text-decoration:none;">دخول</a>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : `
+        <!-- Table View -->
+        <div class="glass-card" style="padding:0; border-radius:18px; overflow:hidden; border:1px solid var(--border-color);">
+          ${filteredSessions.length === 0 ? `
+            <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+              <i data-lucide="video" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
+              <h4 style="font-weight:700; margin-bottom:6px;">لا توجد حصص تطابق التصفية المحددة</h4>
+              <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">اختر فترة زمنية أخرى أو تصفية "الكل" لعرض كافة الحصص.</p>
+            </div>
+          ` : `
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                <thead>
+                  <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
+                    <th style="padding:14px 20px; font-weight:800; text-align:start;">عنوان الحصة / الدرس</th>
+                    <th style="padding:14px 16px; font-weight:800; text-align:start;">المعلم والمنظم</th>
+                    <th style="padding:14px 16px; font-weight:800; text-align:start;">الطالب (إن وجد)</th>
+                    <th style="padding:14px 16px; font-weight:800; text-align:start;">الموعد والمدة</th>
+                    <th style="padding:14px 16px; font-weight:800; text-align:start;">الحالة</th>
+                    <th style="padding:14px 20px; font-weight:800; text-align:end;">إجراءات التحكم</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filteredSessions.map(sess => {
+                    const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
+                    const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
+                    const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
+
+                    return `
+                      <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding:14px 20px; vertical-align:middle;">
+                          <strong style="font-size:0.92rem; color:var(--text-main); display:block;">${sess.title || "حصة خاصة"}</strong>
+                          <span style="font-size:0.75rem; color:var(--text-muted);">${sess.course ? '📖 ' + sess.course.title : '🔒 حصة من اشتراك شهر'}</span>
+                        </td>
+                        <td style="padding:14px 16px; vertical-align:middle;">
+                          <div style="font-size:0.85rem; font-weight:700; color:var(--text-main);">${teacherName}</div>
+                        </td>
+                        <td style="padding:14px 16px; vertical-align:middle;">
+                          <div style="font-size:0.85rem; color:var(--text-main);">${studentName}</div>
+                        </td>
+                        <td style="padding:14px 16px; vertical-align:middle;">
+                          <div style="font-size:0.82rem; font-weight:700; color:var(--primary);">${dateStr}</div>
+                          <span style="font-size:0.75rem; color:var(--text-muted);">${sess.duration || 60} دقيقة</span>
+                        </td>
+                        <td style="padding:14px 16px; vertical-align:middle;">
+                          ${getStatusBadge(sess.status)}
+                        </td>
+                        <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
+                          <div style="display:inline-flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
+                            ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
+                              <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--primary); color:var(--primary); font-weight:700;">
+                                <i data-lucide="user-check" style="width:12px;height:12px;"></i> تغيير المعلم
+                              </button>
+                              <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--error); color:var(--error); font-weight:700;">
+                                <i data-lucide="x-circle" style="width:12px;height:12px;"></i> إلغاء الحصة
+                              </button>
+                            ` : ''}
+                            <a href="#classroom/${sess.id}" class="btn-primary" style="font-size:0.75rem; padding:5px 10px; text-decoration:none;">
+                              <i data-lucide="video" style="width:12px;height:12px;"></i> دخول
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `}
     `;
   }
 
@@ -1311,6 +1793,124 @@ export default class AdminView {
     `;
   }
   // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
+  renderSingleSubRow(s, isChild = false, isHidden = false) {
+    let statusBadgeBg = 'rgba(16,185,129,0.1)';
+    let statusBadgeColor = '#10b981';
+    let statusText = s.status;
+
+    if (s.status === 'PENDING_PAYMENT') {
+      statusBadgeBg = 'rgba(245,158,11,0.15)';
+      statusBadgeColor = '#f59e0b';
+      statusText = '1️⃣ في انتظار تأكيد الدفع ورفع الإيصال ⏳';
+    } else if (s.status === 'TEACHER_ASSIGNMENT_PENDING') {
+      statusBadgeBg = 'rgba(59,130,246,0.15)';
+      statusBadgeColor = '#3b82f6';
+      statusText = '2️⃣ تم الدفع - في انتظار تعيين المعلم ⏳';
+    } else if (s.status === 'SCHEDULE_PENDING') {
+      statusBadgeBg = 'rgba(139,92,246,0.15)';
+      statusBadgeColor = '#8b5cf6';
+      statusText = '3️⃣ تم تعيين المعلم - في انتظار جدولة الباقة 🗓️';
+    } else if (s.status === 'ACTIVE') {
+      statusBadgeBg = 'rgba(16,185,129,0.15)';
+      statusBadgeColor = '#10b981';
+      statusText = 'نشط ✅';
+    } else if (s.status === 'CANCELLED') {
+      statusBadgeBg = 'rgba(239,68,68,0.15)';
+      statusBadgeColor = '#ef4444';
+      statusText = 'ملغى ❌';
+    }
+
+    const rowBg = s.isLowBalance 
+      ? 'background:rgba(239,68,68,0.03);' 
+      : (isChild ? 'background:rgba(0,0,0,0.015);' : '');
+
+    const displayStyle = isHidden ? 'display:none;' : '';
+    const childBorder = isChild ? 'border-inline-start:4px solid var(--primary);' : '';
+    const studentIdAttr = s.studentId || s.student?.id || '';
+
+    return `
+    <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
+      <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
+        ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0,8)}
+      </td>
+      <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
+      <td style="padding:12px;">
+        ${s.plan?.name || '-'} 
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
+        </div>
+      </td>
+      <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
+      <td style="padding:12px;">
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+          <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:600;">
+            ${statusText}
+          </span>
+          ${s.isLowBalance ? `
+            <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
+              <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
+            </span>
+          ` : ''}
+        </div>
+      </td>
+      <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${s.status === 'PENDING_PAYMENT' ? `
+            <button class="btn-primary admin-approve-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
+              <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
+            </button>
+            <button class="btn-secondary admin-reject-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;">
+              <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض
+            </button>
+            ` : ''}
+
+            ${s.status === 'TEACHER_ASSIGNMENT_PENDING' ? `
+            <button class="btn-primary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#3b82f6;border-color:#3b82f6;color:#fff;gap:4px;">
+              <i data-lucide="user-plus" style="width:14px;height:14px;"></i> 2️⃣ تعيين المعلم
+            </button>
+            ` : ''}
+
+            ${s.status === 'SCHEDULE_PENDING' ? `
+            <button class="btn-primary admin-package-wizard-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
+              <i data-lucide="calendar-range" style="width:14px;height:14px;"></i> 3️⃣ جدولة الباقة 🗓️
+            </button>
+            <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
+              <i data-lucide="user-plus" style="width:14px;height:14px;"></i> تغيير المعلم
+            </button>
+            ` : ''}
+
+            ${(s.status === 'ACTIVE' || s.isLowBalance) ? `
+            <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
+              <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> تجديد + رفع إيصال 💳
+            </button>
+            ` : ''}
+
+            ${s.status === 'ACTIVE' ? `
+            <button class="btn-secondary admin-edit-schedule-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;border-color:var(--primary);color:var(--primary);font-weight:700;">
+              <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل الجدولة ✏️
+            </button>
+            <button class="btn-secondary admin-view-sub-sessions-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;gap:4px;">
+              <i data-lucide="list" style="width:14px;height:14px;"></i> عرض الحصص 🔍
+            </button>
+            <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
+              <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
+            </button>
+            ` : ''}
+        </div>
+        ${s.status === 'ACTIVE' ? `
+        <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
+            <span style="color:#10b981;font-weight:600;">مكتملة: ${s.completedSessions}</span>
+            <span style="color:var(--primary);font-weight:600;">مجدولة: ${s.scheduledSessions}</span>
+            <span style="color:#8b5cf6;font-weight:600;">غير مجدولة: ${s.remainingToBook}</span>
+            <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي بالباقة: ${s.remainingSessionsInPackage}</span>
+        </div>
+        ` : ''}
+      </td>
+    </tr>
+  `;
+  }
+
+  // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
   renderSubscriptionsTab() {
     const allSubs = this.subscriptions || [];
     const allSessions = this.allSessions || [];
@@ -1350,6 +1950,124 @@ export default class AdminView {
       if (filter === "cancelled") return s.status === "CANCELLED";
       return true;
     });
+
+    // Group filtered subscriptions by student
+    const studentGroups = {};
+    const groupedSubsList = [];
+    filteredSubs.forEach(s => {
+      const studentKey = String(s.studentId || s.student?.id || s.student?.email || s.student?.name || 'unknown');
+      if (!studentGroups[studentKey]) {
+        studentGroups[studentKey] = {
+          studentId: studentKey,
+          studentName: s.student?.name || 'طالب غير محدد',
+          subs: []
+        };
+        groupedSubsList.push(studentGroups[studentKey]);
+      }
+      studentGroups[studentKey].subs.push(s);
+    });
+
+    const renderedRowsHtml = groupedSubsList.map(group => {
+      if (group.subs.length === 1) {
+        return this.renderSingleSubRow(group.subs[0]);
+      }
+
+      // Aggregate metrics for multiple subscriptions of the same student
+      const totalSessionsSum = group.subs.reduce((sum, item) => sum + (item.totalSessions || 0), 0);
+      const completedSessionsSum = group.subs.reduce((sum, item) => sum + (item.completedSessions || 0), 0);
+      const scheduledSessionsSum = group.subs.reduce((sum, item) => sum + (item.scheduledSessions || 0), 0);
+      const remainingToBookSum = group.subs.reduce((sum, item) => sum + (item.remainingToBook || 0), 0);
+      const remainingSessionsInPackageSum = group.subs.reduce((sum, item) => sum + (item.remainingSessionsInPackage || 0), 0);
+      const totalPriceSum = group.subs.reduce((sum, item) => sum + (item.plan?.price || 0), 0);
+      const isLowBalanceAny = group.subs.some(item => item.isLowBalance);
+      const pendingCountGroup = group.subs.filter(item => item.status === 'PENDING_PAYMENT').length;
+      const activeCountGroup = group.subs.filter(item => item.status === 'ACTIVE').length;
+      const teachersList = [...new Set(group.subs.map(item => item.teacher?.name).filter(Boolean))].join('، ') || 'في الانتظار';
+      const isExpanded = this.expandedStudents ? this.expandedStudents.has(group.studentId) : false;
+
+      const latestSub = group.subs[0];
+      let primaryActionBtnHtml = '';
+
+      if (latestSub.status === 'PENDING_PAYMENT') {
+        primaryActionBtnHtml = `
+          <button class="btn-primary admin-approve-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
+            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
+          </button>
+        `;
+      } else if (latestSub.status === 'TEACHER_ASSIGNMENT_PENDING') {
+        primaryActionBtnHtml = `
+          <button class="btn-primary admin-assign-teacher-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#3b82f6;border-color:#3b82f6;color:#fff;gap:4px;">
+            <i data-lucide="user-plus" style="width:14px;height:14px;"></i> 2️⃣ تعيين المعلم
+          </button>
+        `;
+      } else if (latestSub.status === 'SCHEDULE_PENDING') {
+        primaryActionBtnHtml = `
+          <button class="btn-primary admin-package-wizard-btn" data-id="${latestSub.id}" data-teacher="${latestSub.teacher?.id || ''}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
+            <i data-lucide="calendar-range" style="width:14px;height:14px;"></i> 3️⃣ جدولة الباقة 🗓️
+          </button>
+        `;
+      } else if (latestSub.status === 'ACTIVE' || latestSub.isLowBalance) {
+        primaryActionBtnHtml = `
+          <button class="btn-primary admin-renew-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 💳 تجديد + رفع إيصال
+          </button>
+        `;
+      }
+
+      const summaryRow = `
+        <tr class="admin-student-summary-row" data-student-id="${group.studentId}" style="border-bottom:1px solid var(--border-color); font-size:0.85rem; background:rgba(99,102,241,0.06); cursor:pointer;">
+          <td style="padding:12px; color:var(--primary); font-weight:800;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-left'}" style="width:16px;height:16px;"></i>
+              <span>مجمّع (${group.subs.length})</span>
+            </div>
+          </td>
+          <td style="padding:12px; font-weight:700;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.95rem;">${group.studentName}</span>
+              <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-weight:800; font-size:0.72rem;">${group.subs.length} اشتراكات</span>
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <strong style="color:var(--text-main); font-size:0.9rem;">إجمالي ${totalSessionsSum} حصص</strong>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+              إجمالي التكلفة: ${totalPriceSum} ج.م
+            </div>
+          </td>
+          <td style="padding:12px; font-weight:600; font-size:0.82rem;">${teachersList}</td>
+          <td style="padding:12px;">
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+              <span class="badge" style="background:rgba(59,130,246,0.15); color:#3b82f6; font-weight:700;">
+                مجموع ${group.subs.length} اشتراكات (${activeCountGroup} نشط${pendingCountGroup > 0 ? `، ${pendingCountGroup} انتظار` : ''})
+              </span>
+              ${isLowBalanceAny ? `
+                <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
+                  <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> يوجد اشتراك برصيد منخفض
+                </span>
+              ` : ''}
+            </div>
+          </td>
+          <td style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              ${primaryActionBtnHtml}
+              <button class="btn-primary toggle-student-subs-btn" data-student-id="${group.studentId}" style="padding:6px 12px; font-size:0.78rem; gap:6px; background:var(--primary); font-weight:700; border-radius:8px;">
+                <i data-lucide="${isExpanded ? 'chevron-up' : 'chevron-down'}" style="width:14px;height:14px;"></i>
+                ${isExpanded ? 'إخفاء الاشتراكات' : `عرض جميع الاشتراكات (${group.subs.length})`}
+              </button>
+            </div>
+            <div style="font-size:0.75rem; display:flex; gap:8px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.03); padding:6px 8px; border-radius:6px;">
+              <span style="color:#10b981;font-weight:700;">مكتملة: ${completedSessionsSum}</span>
+              <span style="color:var(--primary);font-weight:700;">مجدولة: ${scheduledSessionsSum}</span>
+              <span style="color:#8b5cf6;font-weight:700;">غير مجدولة: ${remainingToBookSum}</span>
+              <span style="color:${remainingSessionsInPackageSum < 3 ? '#ef4444' : '#10b981'};font-weight:800;">المتبقي بالباقة: ${remainingSessionsInPackageSum}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+
+      const childRows = group.subs.map(s => this.renderSingleSubRow(s, true, !isExpanded)).join('');
+      return summaryRow + childRows;
+    }).join('');
 
     return `
       ${lowBalanceCount > 0 ? `
@@ -1407,98 +2125,7 @@ export default class AdminView {
               </tr>
             </thead>
             <tbody>
-              ${filteredSubs.map(s => {
-                let statusBadgeBg = 'rgba(16,185,129,0.1)';
-                let statusBadgeColor = '#10b981';
-                let statusText = s.status;
-
-                if (s.status === 'PENDING_PAYMENT') {
-                  statusBadgeBg = 'rgba(245,158,11,0.15)';
-                  statusBadgeColor = '#f59e0b';
-                  statusText = 'في انتظار تأكيد الدفع ⏳';
-                } else if (s.status === 'TEACHER_ASSIGNMENT_PENDING') {
-                  statusBadgeBg = 'rgba(59,130,246,0.15)';
-                  statusBadgeColor = '#3b82f6';
-                  statusText = 'في انتظار تعيين المعلم ⏳';
-                } else if (s.status === 'ACTIVE') {
-                  statusBadgeBg = 'rgba(16,185,129,0.15)';
-                  statusBadgeColor = '#10b981';
-                  statusText = 'نشط ✅';
-                } else if (s.status === 'CANCELLED') {
-                  statusBadgeBg = 'rgba(239,68,68,0.15)';
-                  statusBadgeColor = '#ef4444';
-                  statusText = 'ملغى ❌';
-                }
-
-                const rowBg = s.isLowBalance ? 'background:rgba(239,68,68,0.03);' : '';
-
-                return `
-                <tr style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}">
-                  <td style="padding:12px;color:var(--text-muted);">#${s.id.substring(0,8)}</td>
-                  <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
-                  <td style="padding:12px;">
-                    ${s.plan?.name || '-'} 
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                      ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
-                    </div>
-                  </td>
-                  <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
-                  <td style="padding:12px;">
-                    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
-                      <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:600;">
-                        ${statusText}
-                      </span>
-                      ${s.isLowBalance ? `
-                        <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
-                          <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
-                        </span>
-                      ` : ''}
-                    </div>
-                  </td>
-                  <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        ${s.status === 'PENDING_PAYMENT' ? `
-                        <button class="btn-primary admin-approve-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
-                          <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول + رفع إيصال
-                        </button>
-                        <button class="btn-secondary admin-reject-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;">
-                          <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض
-                        </button>
-                        ` : ''}
-
-                        ${(s.status === 'ACTIVE' || s.isLowBalance) ? `
-                        <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
-                          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> تجديد + رفع إيصال 💳
-                        </button>
-                        ` : ''}
-
-                        <button class="btn-secondary admin-assign-teacher-sub-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;">
-                          <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
-                        </button>
-                        ${s.status === 'ACTIVE' ? `
-                        <button class="btn-primary admin-package-wizard-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;">
-                        <i data-lucide="calendar-range" style="width:14px;height:14px;"></i> جدولة الباقة 🗓️
-                        </button>
-                        <button class="btn-secondary admin-edit-schedule-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;border-color:var(--primary);color:var(--primary);font-weight:700;">
-                        <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل الجدولة ✏️
-                        </button>
-                        <button class="btn-secondary admin-view-sub-sessions-btn" data-id="${s.id}" style="padding:6px;font-size:0.75rem;gap:4px;">
-                        <i data-lucide="list" style="width:14px;height:14px;"></i> عرض الحصص 🔍
-                        </button>
-                        ` : ''}
-                    </div>
-                    ${s.status === 'ACTIVE' ? `
-                    <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
-                        <span style="color:#10b981;font-weight:600;">مكتملة: ${s.completedSessions}</span>
-                        <span style="color:var(--primary);font-weight:600;">مجدولة: ${s.scheduledSessions}</span>
-                        <span style="color:#8b5cf6;font-weight:600;">غير مجدولة: ${s.remainingToBook}</span>
-                        <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي بالباقة: ${s.remainingSessionsInPackage}</span>
-                    </div>
-                    ` : ''}
-                  </td>
-                </tr>
-              `;
-              }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
+              ${renderedRowsHtml || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1568,13 +2195,227 @@ export default class AdminView {
     `;
   }
 
-  // ── Event Binds ───────────────────────────────────────────────────────────────
   bindActionEvents() {
+    // Admin Add Course Modal Open & Close
+    this.container.querySelector("#open-admin-add-course-modal-btn")?.addEventListener("click", () => {
+      const modal = document.getElementById("admin-course-modal");
+      if (modal) modal.style.display = "flex";
+    });
+
+    document.getElementById("close-admin-course-modal")?.addEventListener("click", () => {
+      const modal = document.getElementById("admin-course-modal");
+      if (modal) modal.style.display = "none";
+    });
+
+    document.getElementById("cancel-admin-course-modal")?.addEventListener("click", () => {
+      const modal = document.getElementById("admin-course-modal");
+      if (modal) modal.style.display = "none";
+    });
+
+    // Toggle custom category in admin course modal
+    document.getElementById("admin-course-category-select")?.addEventListener("change", (e) => {
+      const customWrapper = document.getElementById("admin-course-category-custom-wrapper");
+      if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
+    });
+
+    // Toggle direct URL input in admin course modal
+    document.getElementById("admin-toggle-url-input-btn")?.addEventListener("click", () => {
+      const urlWrapper = document.getElementById("admin-url-input-wrapper");
+      if (urlWrapper) urlWrapper.style.display = urlWrapper.style.display === "none" ? "block" : "none";
+    });
+
+    // File input trigger
+    document.getElementById("admin-btn-trigger-upload")?.addEventListener("click", () => {
+      document.getElementById("admin-course-image-file")?.click();
+    });
+
+    // Handle Image Upload
+    document.getElementById("admin-course-image-file")?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const idleBox = document.getElementById("admin-image-upload-idle");
+      const loadingBox = document.getElementById("admin-image-upload-loading");
+      const previewWrapper = document.getElementById("admin-image-preview-wrapper");
+      const previewImg = document.getElementById("admin-course-preview-img");
+
+      if (idleBox) idleBox.style.display = "none";
+      if (loadingBox) loadingBox.style.display = "block";
+
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const token = localStorage.getItem("token");
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.url) {
+          document.getElementById("admin-course-image").value = uploadData.url;
+          if (previewImg) previewImg.src = uploadData.url;
+          if (loadingBox) loadingBox.style.display = "none";
+          if (previewWrapper) previewWrapper.style.display = "block";
+          showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
+        } else {
+          throw new Error("فشل رفع الصورة");
+        }
+      } catch (err) {
+        if (loadingBox) loadingBox.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+        showToast(err.message || "فشل رفع صورة الغلاف", "error");
+      }
+    });
+
+    // Remove cover image
+    document.getElementById("admin-remove-course-image-btn")?.addEventListener("click", () => {
+      document.getElementById("admin-course-image").value = "";
+      document.getElementById("admin-course-image-file").value = "";
+      const previewWrapper = document.getElementById("admin-image-preview-wrapper");
+      const idleBox = document.getElementById("admin-image-upload-idle");
+      if (previewWrapper) previewWrapper.style.display = "none";
+      if (idleBox) idleBox.style.display = "block";
+    });
+
+    // Submit Admin Course Form
+    const adminCourseForm = document.getElementById("admin-course-form");
+    if (adminCourseForm) {
+      const freshForm = adminCourseForm.cloneNode(true);
+      adminCourseForm.parentNode.replaceChild(freshForm, adminCourseForm);
+      let isSubmitting = false;
+
+      freshForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (isSubmitting) return;
+        isSubmitting = true;
+        const submitBtn = freshForm.querySelector("button[type='submit']");
+        if (submitBtn) submitBtn.disabled = true;
+
+        const title = document.getElementById("admin-course-title").value.trim();
+        const catSelectEl = document.getElementById("admin-course-category-select");
+        const catCustomEl = document.getElementById("admin-course-category-custom");
+        const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
+        if (!category) { 
+          showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error"); 
+          isSubmitting = false;
+          if (submitBtn) submitBtn.disabled = false;
+          return; 
+        }
+        const degree = document.getElementById("admin-course-degree").value;
+        const teacherId = document.getElementById("admin-course-teacher-id").value;
+        const description = document.getElementById("admin-course-desc").value.trim();
+        let image = document.getElementById("admin-course-image").value;
+        const directUrl = document.getElementById("admin-course-image-url-direct")?.value.trim();
+        if (directUrl) image = directUrl;
+        const meetingLink = document.getElementById("admin-course-meeting-link").value.trim();
+
+        const payload = { title, category, degree, teacherId, image, meetingLink, description };
+
+        try {
+          await apiFetch("/admin/courses", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          showToast("تم إنشاء ونشر الدورة بنجاح! 🎉", "success");
+          const modal = document.getElementById("admin-course-modal");
+          if (modal) modal.style.display = "none";
+          await this.loadAllData();
+          this.renderTab("courses");
+        } catch (err) {
+          showToast(err.message || "فشل إنشاء الدورة", "error");
+        } finally {
+          isSubmitting = false;
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    // Admin Approve Teacher Course Submission
+    this.container.querySelectorAll(".admin-approve-course-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          const res = await apiFetch(`/admin/courses/${id}/approve`, { method: "POST" });
+          showToast(res.message || "تمت الموافقة على نشر الدورة بنجاح! 🎉", "success");
+          await this.loadAllData();
+          this.renderTab("courses");
+        } catch (err) {
+          showToast(err.message || "فشل واعتماد نشر الدورة", "error");
+        }
+      });
+    });
+
+    // Admin Reject Teacher Course Submission
+    this.container.querySelectorAll(".admin-reject-course-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog("هل أنت تأكد من رفض هذه الدورة؟");
+        if (!confirmed) return;
+        try {
+          const res = await apiFetch(`/admin/courses/${id}/reject`, { method: "POST" });
+          showToast(res.message || "تم رفض الدورة", "info");
+          await this.loadAllData();
+          this.renderTab("courses");
+        } catch (err) {
+          showToast(err.message || "فشل رفض الدورة", "error");
+        }
+      });
+    });
+
+    // Admin Approve Course Enrollment
+    this.container.querySelectorAll(".admin-approve-enrollment-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          const res = await apiFetch(`/admin/enrollments/${id}/approve`, { method: "POST" });
+          showToast(res.message || "تم اعتماد تسجيل الطالب بنجاح! ✅", "success");
+          await this.loadAllData();
+          this.renderTab("enrollments");
+        } catch (err) {
+          showToast(err.message || "فشل اعتماد التسجيل", "error");
+        }
+      });
+    });
+
+    // Admin Reject Course Enrollment
+    this.container.querySelectorAll(".admin-reject-enrollment-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog("هل أنت تأكد من رفض طلب التسجيل هذا؟");
+        if (!confirmed) return;
+        try {
+          const res = await apiFetch(`/admin/enrollments/${id}/reject`, { method: "POST" });
+          showToast(res.message || "تم رفض طلب التسجيل", "info");
+          await this.loadAllData();
+          this.renderTab("enrollments");
+        } catch (err) {
+          showToast(err.message || "فشل رفض التسجيل", "error");
+        }
+      });
+    });
+
     // Subscription Filters
     this.container.querySelectorAll(".admin-sub-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const filter = btn.getAttribute("data-filter");
         this.subFilter = filter;
+        this.renderTab("subscriptions");
+      });
+    });
+
+    // Toggle student subscription group expansion
+    this.container.querySelectorAll(".toggle-student-subs-btn, .admin-student-summary-row").forEach(el => {
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("button") && !e.target.closest(".toggle-student-subs-btn")) return;
+        const studentId = el.getAttribute("data-student-id");
+        if (!studentId) return;
+
+        if (this.expandedStudents.has(studentId)) {
+          this.expandedStudents.delete(studentId);
+        } else {
+          this.expandedStudents.add(studentId);
+        }
         this.renderTab("subscriptions");
       });
     });
@@ -1707,6 +2548,34 @@ export default class AdminView {
           await this.loadAllData();
           this.renderTab("sessions");
         } catch (err) { btn.disabled = false; }
+      });
+    });
+
+    // Session Time Filter Buttons (Day, Week, Month, All)
+    this.container.querySelectorAll(".admin-session-time-filter-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const filter = e.currentTarget.getAttribute("data-filter");
+        this.sessionTimeFilter = filter;
+        this.renderTab("sessions");
+      });
+    });
+
+    // Session Custom Date Picker
+    const sessionDatePicker = this.container.querySelector("#admin-session-date-picker");
+    if (sessionDatePicker) {
+      sessionDatePicker.addEventListener("change", (e) => {
+        this.sessionCustomDate = e.target.value;
+        this.sessionTimeFilter = "custom";
+        this.renderTab("sessions");
+      });
+    }
+
+    // Session View Mode Switcher (List vs Timetable)
+    this.container.querySelectorAll(".admin-session-view-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const mode = e.currentTarget.getAttribute("data-mode");
+        this.sessionViewMode = mode;
+        this.renderTab("sessions");
       });
     });
 
@@ -1853,6 +2722,15 @@ export default class AdminView {
           await this.loadAllData();
           this.renderTab("courses");
         } catch (err) { btn.disabled = false; }
+      });
+    });
+
+    // View Course Details & Subscription Plans Modal
+    this.container.querySelectorAll(".admin-view-course-details-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const course = (this.courses || []).find(c => String(c.id) === String(id));
+        if (course) this.renderCourseDetailsModal(course);
       });
     });
 
@@ -2014,19 +2892,26 @@ export default class AdminView {
                 </div>
               </div>
 
-              <!-- Parent Phone (Required for Students) -->
+              <!-- Parent Phone (Required for New Students) -->
               <div id="parent-phone-group" style="display:${initialRole === 'student' ? 'block' : 'none'}; margin-top:2px;">
                 <div class="form-group" style="margin:0;">
                   <label for="member-parent-phone" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">
-                    رقم هاتف ولي الأمر (Parent Phone) <span style="color:var(--error);">*</span>
+                    رقم هاتف ولي الأمر (Parent Phone)
                   </label>
-                  ${renderPhoneInputGroup({ selectId: "member-parent-phone-code", inputId: "member-parent-phone-num", defaultCode: "+20", value: isEdit ? (user.parentPhone || "") : "", placeholder: "01012345678", required: initialRole === "student" })}
+                  ${renderPhoneInputGroup({ selectId: "member-parent-phone-code", inputId: "member-parent-phone-num", defaultCode: "+20", value: isEdit ? (user.parentPhone || "") : "", placeholder: "01012345678", required: false })}
                 </div>
               </div>
 
               <!-- Teacher Capabilities & Hourly Rate Section -->
               <div id="teacher-capabilities-group" style="display:${initialRole === 'teacher' ? 'block' : 'none'}; background:rgba(99,102,241,0.06); padding:14px; border-radius:14px; border:1px solid var(--border-focus); margin-top:4px;">
                 
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label for="member-meeting-link" style="font-size:0.85rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:block;">
+                    🔗 رابط اجتماع المعلم الثابت (Google Meet / Zoom Static Link):
+                  </label>
+                  <input type="url" id="member-meeting-link" class="form-input" value="${isEdit ? (user.meetingLink || '') : ''}" placeholder="https://meet.google.com/abc-defg-hij" style="padding:8px 12px; font-size:0.88rem; width:100%;">
+                </div>
+
                 <div class="form-group" style="margin-bottom:12px;">
                   <label for="member-hourly-rate" style="font-size:0.85rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:block;">
                     💵 أجر الساعة للمعلم (Hourly Rate):
@@ -2089,6 +2974,7 @@ export default class AdminView {
 
       const education = document.getElementById("member-education")?.value || "";
       const hourlyRate = parseFloat(document.getElementById("member-hourly-rate")?.value) || 150;
+      const meetingLink = document.getElementById("member-meeting-link")?.value.trim() || "";
 
       const teacherCapabilities = [];
       if (role === "teacher") {
@@ -2100,21 +2986,24 @@ export default class AdminView {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities })
           });
-          showToast(t("admin.toast.userUpdated"), "success");
+          showToast(t("admin.toast.userUpdated") || "تم تحديث بيانات العضو بنجاح! ✅", "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities })
           });
-          showToast(t("admin.toast.userCreated"), "success");
+          showToast(t("admin.toast.userCreated") || "تم إنشاء حساب العضو بنجاح! 🎉", "success");
           handleWhatsAppResponse(res);
         }
         closeModal();
         await this.loadAllData();
         this.renderTab(this.activeTab);
-      } catch (err) {}
+      } catch (err) {
+        console.error("Member save error:", err);
+        showToast(err.message || "فشل حفظ بيانات العضو", "error");
+      }
     });
   }
 
@@ -2700,7 +3589,7 @@ export default class AdminView {
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
                 <div class="form-group">
                   <label for="wiz-start-date" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">تاريخ بداية الباقة (الحصة الأولى):</label>
-                  <input type="date" id="wiz-start-date" class="form-input" value="${defaultStartDateStr}" style="padding:10px; font-size:0.9rem; width:100%;" />
+                  <input type="date" id="wiz-start-date" class="form-input" value="${defaultStartDateStr}" min="${defaultStartDateStr}" style="padding:10px; font-size:0.9rem; width:100%;" />
                 </div>
                 <div class="form-group">
                   <label for="wiz-time-of-day" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">وقت الموعد اليومي:</label>
@@ -2941,6 +3830,186 @@ export default class AdminView {
   }
   
 
+  renderCourseDetailsModal(course) {
+    const modalId = 'course-details-modal-overlay';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const coursePlans = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.style.display = 'flex';
+    overlay.style.backdropFilter = 'blur(8px)';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:850px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:22px 28px; background:linear-gradient(135deg, rgba(0,86,210,0.1), rgba(168,85,247,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}" style="width:56px; height:56px; border-radius:14px; object-fit:cover; border:2px solid var(--primary);">
+            <div>
+              <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
+                <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-size:0.75rem; font-weight:800;">${course.category || 'عام'}</span>
+                ${course.degree ? `<span class="badge" style="background:rgba(139,92,246,0.15); color:#8b5cf6; font-size:0.75rem; font-weight:800;">${course.degree}</span>` : ''}
+              </div>
+              <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">${course.title}</h3>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <a href="#manage-course/${course.id}" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; background:#8b5cf6; border-color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:800; border-radius:12px;">
+              <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة وإدارة دروس المنهج 📚
+            </a>
+            <span id="close-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px; background:var(--bg-app); max-height:75vh; overflow-y:auto; font-size:0.9rem;">
+          
+          <!-- Quick Stats Grid -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px;">
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👨‍🏫 المعلم المسؤول</div>
+              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:2px;">${course.teacher?.name || 'غير محدد'}</div>
+            </div>
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">📖 عدد الدروس</div>
+              <div style="font-size:0.95rem; font-weight:800; color:var(--primary); margin-top:2px;">${course.lessonsCount || 0} درس</div>
+            </div>
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👥 الطلاب المسجلين</div>
+              <div style="font-size:0.95rem; font-weight:800; color:#10b981; margin-top:2px;">${course.enrollmentsCount || 0} طالب</div>
+            </div>
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">💎 خطط الاشتراكات</div>
+              <div style="font-size:0.95rem; font-weight:800; color:#8b5cf6; margin-top:2px;">${coursePlans.length} خطة شهرية</div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div style="background:var(--bg-card); padding:18px; border-radius:16px; border:1px solid var(--border-color); margin-bottom:24px;">
+            <h4 style="font-weight:800; margin:0 0 8px 0; color:var(--text-main); font-size:0.95rem;">📝 وصف الدورة التدريبية:</h4>
+            <p style="color:var(--text-muted); margin:0; line-height:1.6; font-size:0.88rem;">${course.description || 'لا يوجد وصف مضاف حتى الآن.'}</p>
+            ${course.meetingLink ? `
+              <div style="margin-top:12px; font-size:0.82rem; font-weight:700;">
+                <span>🔗 رابط القاعة المباشرة:</span>
+                <a href="${course.meetingLink}" target="_blank" style="color:var(--primary); font-weight:700; text-decoration:none; margin-inline-start:6px;">${course.meetingLink}</a>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Section: Subscription Plans -->
+          <div style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <h4 style="font-weight:800; margin:0; color:var(--text-main); font-size:1rem; display:flex; align-items:center; gap:6px;">
+                ✨ خطط الاشتراكات الشهرية المخصصة لهذا الكورس (${coursePlans.length})
+              </h4>
+              <button id="modal-add-course-plan-btn" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius:10px; gap:6px;">
+                <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> إضافة خطة جديدة للكورس 🚀
+              </button>
+            </div>
+
+            ${coursePlans.length === 0 ? `
+              <div style="background:var(--bg-card); text-align:center; padding:30px; border-radius:16px; border:1px dashed var(--border-color); color:var(--text-muted);">
+                <i data-lucide="sparkles" style="width:32px; height:32px; opacity:0.3; margin-bottom:8px;"></i>
+                <p style="margin:0 0 10px 0; font-size:0.85rem;">لا توجد خطط اشتراكات شهرية مخصصة لهذا الكورس حتى الآن.</p>
+                <button id="modal-add-course-plan-btn-2" class="btn-secondary" style="font-size:0.8rem; padding:6px 12px; border-color:var(--primary); color:var(--primary); font-weight:700;">
+                  أنشئ أول خطة مخصصة للكورس الآن
+                </button>
+              </div>
+            ` : `
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:14px;">
+                ${coursePlans.map(p => `
+                  <div style="background:var(--bg-card); padding:16px; border-radius:14px; border:2px solid ${p.isActive ? 'var(--primary)' : 'var(--border-color)'};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                      <h5 style="font-weight:800; margin:0; font-size:0.95rem;">${p.name}</h5>
+                      <span style="font-size:1.1rem; font-weight:900; color:var(--primary);">${p.price} ${p.currency}</span>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; min-height:28px;">${p.description || ''}</p>
+                    <div style="font-size:0.75rem; color:var(--text-main); font-weight:700; margin-bottom:12px; display:flex; gap:10px;">
+                      <span>📅 ${p.sessionsCount} حصة</span>
+                      <span>⏱️ ${p.durationDays} يوم</span>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                      <button class="btn-secondary modal-edit-plan-btn" data-id="${p.id}" style="flex:1; padding:4px; font-size:0.75rem; border-color:var(--primary); color:var(--primary);">تعديل</button>
+                      <button class="btn-secondary modal-toggle-plan-btn" data-id="${p.id}" data-active="${p.isActive}" style="flex:1; padding:4px; font-size:0.75rem;">${p.isActive ? 'إلغاء' : 'تفعيل'}</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Lessons List -->
+          ${course.lessons && course.lessons.length > 0 ? `
+            <div>
+              <h4 style="font-weight:800; margin:0 0 12px 0; color:var(--text-main); font-size:1rem;">📚 دروس الدورة المتاحة (${course.lessons.length}):</h4>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${course.lessons.map((lesson, i) => `
+                  <div style="background:var(--bg-card); padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-weight:800; font-size:0.8rem; color:var(--primary); width:20px;">#${i + 1}</span>
+                      <span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${lesson.title}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:var(--text-muted);">
+                      ${lesson.duration ? `<span>⏱️ ${lesson.duration} دقيقة</span>` : ''}
+                      ${lesson.isFree ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; font-weight:800;">مجاني</span>` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    document.getElementById('close-course-modal')?.addEventListener('click', () => overlay.remove());
+
+    const openAddPlanForCourse = () => {
+      overlay.remove();
+      this.renderPlanModal({ courseId: course.id, course: course });
+    };
+
+    document.getElementById('modal-add-course-plan-btn')?.addEventListener('click', openAddPlanForCourse);
+    document.getElementById('modal-add-course-plan-btn-2')?.addEventListener('click', openAddPlanForCourse);
+
+    overlay.querySelectorAll('.modal-edit-plan-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        const plan = (this.allPlans || []).find(p => p.id === id);
+        overlay.remove();
+        if (plan) this.renderPlanModal(plan);
+      });
+    });
+
+    overlay.querySelectorAll('.modal-toggle-plan-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        const active = e.currentTarget.getAttribute('data-active') === 'true';
+        try {
+          await apiFetch(`/subscription-plans/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ isActive: !active })
+          });
+          showToast('تم تحديث حالة الخطة! ✅', 'success');
+          overlay.remove();
+          await this.loadAllData();
+          this.renderTab('courses');
+        } catch (err) {
+          showToast(err.message || 'فشل تحديث الخطة.', 'error');
+        }
+      });
+    });
+  }
+
   // ── 12. Subscription Plans Tab ────────────────────────────────────────────────
   renderPlansTab() {
     const plans = this.allPlans || [];
@@ -2948,8 +4017,8 @@ export default class AdminView {
     return `
       <div style="margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>
-          <h3 style="font-size:1.2rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">✨ إدارة خطط الاشتراكات الشهرية</h3>
-          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">الخطط المتاحة للشراء من صفحة الاشتراكات. يمكنك إضافة خطط جديدة، تعديل الأسعار، أو إخفاء الخطط غير المفعلة.</p>
+          <h3 style="font-size:1.2rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">✨ إدارة خطط الاشتراكات الشهرية لكافة الكورسات</h3>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة خطط الاشتراكات الشهرية المخصصة لكل كورس على حدة أو الخطط العامة.</p>
         </div>
         <button id="add-plan-btn" class="btn-primary" style="gap:8px; white-space:nowrap; padding:10px 20px; border-radius:12px;">
           <i data-lucide="plus-circle" style="width:18px;height:18px;"></i> إضافة خطة جديدة
@@ -2967,9 +4036,14 @@ export default class AdminView {
             ${p.isActive ? '' : '<span style="position:absolute;top:14px;left:14px;background:var(--error,#ef4444);color:#fff;font-size:0.72rem;font-weight:800;padding:3px 10px;border-radius:10px;">غير نشطة</span>'}
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
               <div>
-                <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:12px; background:var(--primary-glow); color:var(--primary); display:inline-block; margin-bottom:8px;">
-                  ${p.sessionsCount} حصة / ${p.durationDays} يوم
-                </span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+                  <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:12px; background:var(--primary-glow); color:var(--primary); display:inline-block;">
+                    ${p.sessionsCount} حصة / ${p.durationDays} يوم
+                  </span>
+                  <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:inline-block;">
+                    ${p.course?.title ? `📚 كورس: ${p.course.title}` : '🌐 عام (جميع الكورسات)'}
+                  </span>
+                </div>
                 <h3 style="font-weight:800; font-size:1.15rem; margin:0; color:var(--text-main);">${p.name}</h3>
               </div>
               <div style="text-align:end;">
@@ -3028,7 +4102,7 @@ export default class AdminView {
             </div>
             <div>
               <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main);">${isEdit ? 'تعديل خطة الاشتراك' : 'إضافة خطة اشتراك جديدة'}</h3>
-              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">ستظهر هذه الخطة لجميع الطلاب على صفحة الاشتراكات</p>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">تخصيص الخطة لكورس معين أو لجميع الكورسات على المنصة</p>
             </div>
           </div>
           <span id="close-plan-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
@@ -3038,7 +4112,18 @@ export default class AdminView {
             <input type="hidden" id="plan-id" value="${plan?.id || ''}">
             <div>
               <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">اسم الخطة <span style="color:var(--error,#ef4444);">*</span></label>
-              <input type="text" id="plan-name" class="form-input" required style="width:100%; padding:10px;" placeholder="مثال: الخطة الأساسية (4 حصص)" value="${plan?.name || ''}">
+              <input type="text" id="plan-name" class="form-input" required style="width:100%; padding:10px;" placeholder="مثال: اشتراك كورس الفيزياء الشهري" value="${plan?.name || ''}">
+            </div>
+            <div>
+              <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">الكورس المخصص لخطة الاشتراك (اختياري)</label>
+              <select id="plan-course-id" class="form-input" style="width:100%; padding:10px;">
+                <option value="">-- 🌐 عام (تنطبق على جميع الكورسات) --</option>
+                ${(this.courses || []).map(c => `
+                  <option value="${c.id}" ${(plan?.course?.id === c.id || plan?.courseId === c.id) ? 'selected' : ''}>
+                    📚 ${c.title} (${c.category || 'عام'})
+                  </option>
+                `).join('')}
+              </select>
             </div>
             <div>
               <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:6px;">الوصف</label>
@@ -3095,6 +4180,7 @@ export default class AdminView {
       const id = document.getElementById('plan-id').value;
       const payload = {
         name: document.getElementById('plan-name').value.trim(),
+        courseId: document.getElementById('plan-course-id').value || null,
         description: document.getElementById('plan-desc').value.trim(),
         sessionsCount: parseInt(document.getElementById('plan-sessions').value),
         durationDays: parseInt(document.getElementById('plan-duration').value),

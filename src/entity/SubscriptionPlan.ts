@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Course } from "./Course";
 
 @Entity()
 export class SubscriptionPlan {
@@ -10,6 +11,12 @@ export class SubscriptionPlan {
 
   @Column({ type: "text", nullable: true })
   description: string;
+
+  @ManyToOne(() => Course, { nullable: true, eager: true, onDelete: "SET NULL" })
+  course: Course;
+
+  @Column({ nullable: true })
+  courseId: string;
 
   @Column({ type: "int" })
   sessionsCount: number; // e.g., 4, 8, 12

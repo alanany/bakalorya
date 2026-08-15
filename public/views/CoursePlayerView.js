@@ -587,19 +587,45 @@ export default class CoursePlayerView {
 
   renderVideoPlayer() {
     if (!this.currentLesson) return "";
-    const isMp4 = this.currentLesson.videoUrl.endsWith(".mp4");
-    if (isMp4) {
-      return `
-        <video id="course-video-element" controls autoplay style="width:100%;height:100%;">
-          <source src="${this.currentLesson.videoUrl}" type="video/mp4">
-          ${t("course.videoNotSupported")}
-        </video>
-      `;
-    } else {
-      return `
-        <iframe src="${this.currentLesson.videoUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      `;
+    
+    // Video Player Mode (if videoUrl is present)
+    if (this.currentLesson.videoUrl && this.currentLesson.videoUrl.trim().length > 0) {
+      const isMp4 = this.currentLesson.videoUrl.endsWith(".mp4");
+      if (isMp4) {
+        return `
+          <video id="course-video-element" controls autoplay style="width:100%;height:100%;">
+            <source src="${this.currentLesson.videoUrl}" type="video/mp4">
+            ${t("course.videoNotSupported") || "الفيديو غير مدعوم في متصفحك"}
+          </video>
+        `;
+      } else {
+        return `
+          <iframe src="${this.currentLesson.videoUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>
+        `;
+      }
     }
+
+    // Photo Banner Mode (if videoUrl is absent)
+    const bannerPhoto = this.currentLesson.photo || this.course?.image || "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=1200";
+
+    return `
+      <div class="lesson-banner-viewport" style="width:100%; height:100%; position:relative; overflow:hidden; background:#09090b; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;">
+        <img src="${bannerPhoto}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.3; filter:blur(6px); transform:scale(1.05);" />
+        <div style="position:relative; z-index:2; max-width:720px; width:92%; background:rgba(18,18,24,0.88); border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(14px); border-radius:20px; padding:28px; box-shadow:0 15px 35px rgba(0,0,0,0.5);">
+          <div style="width:56px; height:56px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px;">
+            <i data-lucide="image" style="width:28px; height:28px;"></i>
+          </div>
+          <span style="font-size:0.78rem; font-weight:800; background:var(--primary-glow); color:var(--primary); padding:4px 12px; border-radius:20px; display:inline-block; margin-bottom:10px;">
+            🖼️ غلاف الدرس المصوّر (Banner Mode)
+          </span>
+          <h2 style="font-size:1.35rem; font-weight:900; color:#ffffff; margin:0 0 8px 0;">${this.currentLesson.title}</h2>
+          <p style="color:#a1a1aa; font-size:0.88rem; margin-bottom:18px; line-height:1.5;">${this.currentLesson.description || 'تصفح صورة ملخص الدرس أدناه وباقي الملاحظات والموارد المرفقة.'}</p>
+          <div style="border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.12); max-height:360px; background:#000;">
+            <img src="${bannerPhoto}" style="width:100%; max-height:360px; object-fit:contain;" />
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   bindEvents() {

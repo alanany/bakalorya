@@ -233,7 +233,6 @@ export default class CoursesView {
         let html = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="folder-git-2"></i> ${t("teacher.coursesDir")}</h3>
-            <button class="btn-primary" id="open-course-modal-btn"><i data-lucide="plus-circle"></i> ${t("teacher.createCourse")}</button>
           </div>
           
           ${myCourses.length === 0
