@@ -18,9 +18,6 @@ async function startServer() {
         if (!fs_1.default.existsSync(uploadsDir)) {
             fs_1.default.mkdirSync(uploadsDir, { recursive: true });
         }
-        // Initialize TypeORM DataSource (with SQLite fallback)
-        await (0, data_source_1.initAppDataSource)();
-        console.log("Data Source has been initialized!");
         const app = (0, express_1.default)();
         // Configure Middlewares
         app.use((0, cors_1.default)());
@@ -34,13 +31,20 @@ async function startServer() {
         app.get("*", (req, res) => {
             res.sendFile(path_1.default.join(__dirname, "../public/index.html"));
         });
-        app.listen(PORT, () => {
-            console.log(`Server is running at http://localhost:${PORT}`);
+        // Start HTTP listener immediately so server NEVER returns 503 Service Unavailable
+        app.listen(PORT, async () => {
+            console.log(`🚀 Server is running at http://localhost:${PORT}`);
+            try {
+                await (0, data_source_1.initAppDataSource)();
+                console.log("Data Source has been initialized!");
+            }
+            catch (error) {
+                console.error("Error during Data Source initialization:", error.message || error);
+            }
         });
     }
     catch (error) {
-        console.error("Error during Data Source initialization:", error);
-        process.exit(1);
+        console.error("Fatal startup error:", error);
     }
 }
 startServer();

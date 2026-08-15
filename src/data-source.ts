@@ -41,18 +41,18 @@ export const allEntities = [
 export function getDataSourceOptions(): DataSourceOptions {
   dotenv.config();
   const rawType = (process.env.DB_TYPE || "").trim().toLowerCase();
-  
-  // Default to mysql if DB_USER is configured or DB_TYPE is mysql
   const type: "mysql" | "sqlite" | "postgres" = (rawType === "mysql" || rawType === "postgres") ? rawType : (rawType === "sqlite" ? "sqlite" : "mysql");
+
+  const clean = (val?: string) => (val || "").trim().replace(/^["']|["']$/g, "");
 
   if (type === "mysql" || type === "postgres") {
     return {
       type: type,
-      host: process.env.DB_HOST || "localhost",
-      port: parseInt(process.env.DB_PORT || (type === "postgres" ? "5432" : "3306"), 10),
-      username: process.env.DB_USER || "root",
-      password: process.env.DB_PASSWORD || "",
-      database: process.env.DB_NAME || "bakalorya_platform_db",
+      host: clean(process.env.DB_HOST) || "localhost",
+      port: parseInt(clean(process.env.DB_PORT) || (type === "postgres" ? "5432" : "3306"), 10),
+      username: clean(process.env.DB_USER) || "root",
+      password: clean(process.env.DB_PASSWORD) || "",
+      database: clean(process.env.DB_NAME) || "bakalorya_platform_db",
       synchronize: true,
       logging: false,
       entities: allEntities,
@@ -78,15 +78,15 @@ export async function initAppDataSource(): Promise<DataSource> {
     await AppDataSource.initialize();
     const activeType = options.type.toUpperCase();
     if (activeType === "SQLITE") {
-      console.warn(`⚠️ WARNING: Connected to SQLITE (local file "bakalorya_db")! Data will NOT save to Hostinger MySQL. To fix, ensure DB_TYPE=mysql is set in .env on the server.`);
+      console.warn(`⚠️ WARNING: Connected to SQLITE (local file "bakalorya_db"). Data is saved locally, not to Hostinger MySQL. Ensure DB_TYPE=mysql and MySQL credentials are correct in .env.`);
     } else {
       console.log(`✅ Data Source (${activeType}) connected successfully to MySQL database "${process.env.DB_NAME}" on ${process.env.DB_HOST}!`);
     }
     return AppDataSource;
   } catch (err: any) {
     console.error(`❌ MYSQL CONNECTION FAILURE: Failed to connect to MySQL (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(`⚠️ Local Dev Fallback: Falling back to SQLite temporary database...`);
+    console.warn(`⚠️ Safe Fallback: Initializing SQLite temporary database to keep site ONLINE (503 Prevention)...`);
+    try {
       AppDataSource = new DataSource({
         type: "sqlite",
         database: "bakalorya_db",
@@ -95,10 +95,12 @@ export async function initAppDataSource(): Promise<DataSource> {
         entities: allEntities,
       });
       await AppDataSource.initialize();
-      console.log("Fallback SQLite Data Source initialized successfully!");
+      console.log("Fallback SQLite Data Source initialized successfully. Site remains online!");
       return AppDataSource;
+    } catch (fallbackErr: any) {
+      console.error("Critical: SQLite fallback also failed:", fallbackErr);
+      throw err;
     }
-    throw err;
   }
 }
 
