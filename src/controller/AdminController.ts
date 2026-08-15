@@ -90,8 +90,8 @@ export class AdminController {
         parentPhone: parentPhone || null,
         education: education || null,
         hourlyRate: hourlyRate !== undefined ? parseFloat(hourlyRate) : 150,
-        teacherCapabilities: role === "teacher" 
-          ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]) 
+        teacherCapabilities: role === "teacher"
+          ? (Array.isArray(req.body.teacherCapabilities) && req.body.teacherCapabilities.length > 0 ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
           : undefined,
         avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
       });
@@ -310,7 +310,7 @@ export class AdminController {
         }
       });
 
-      const avgProgress = enrollments.length > 0 
+      const avgProgress = enrollments.length > 0
         ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
         : 0;
 
