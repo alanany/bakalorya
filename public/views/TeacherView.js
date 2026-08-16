@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO } from "../app.js";
+import { apiFetch, state, showToast, t, confirmDialog, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO, formatSessionDateTime, getTimezoneBadgeHTML } from "../app.js";
 
 export default class TeacherView {
   constructor(container) {
@@ -42,6 +42,13 @@ export default class TeacherView {
       this.blogs = (allBlogs || []).filter(b => b.author?.id === state.user.id);
       this.assignedSubscriptions = assignedSubscriptions || [];
 
+      this.earningsData = earnings || { earnings: [], stats: {} };
+
+      if (this.currentViewMode === 'financial' || window.location.hash.includes("teacher-financial")) {
+        this.renderFinancialPage();
+        return;
+      }
+
       const totalCourses = this.courses.length;
       const upcomingSessions = this.sessions.filter(s => s.status === "scheduled").length;
       const activeStudentsCount = students ? students.length : 0;
@@ -66,6 +73,9 @@ export default class TeacherView {
                   <i data-lucide="plus-circle" style="width:16px; height:16px;"></i> إضافة دورة جديدة (طلب مراجعة) ➕
                 </button>
               ` : ''}
+              <button class="btn-secondary" id="open-financial-hub-btn" style="border-color:#f59e0b; color:#d97706; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:800;">
+                <i data-lucide="wallet" style="width:16px; height:16px;"></i> 💰 السجل المالي والمستحقات
+              </button>
               <button class="btn-secondary" id="open-session-modal-btn" style="border-color:var(--primary); color:var(--primary);"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>
               <a href="#students" class="btn-primary" style="background:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-weight:800;"><i data-lucide="user-plus"></i> إضافة / إدارة الطلاب</a>
               <a href="#teacher-blogs" class="btn-secondary" style="border-color:#ec4899; color:#ec4899; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px;"><i data-lucide="newspaper"></i> مقالات المدونة</a>
@@ -101,11 +111,11 @@ export default class TeacherView {
                 <div class="stat-box-lbl">حصص خاصة مكتملة</div>
               </div>
             </div>
-            <div class="glass-card stat-box">
-              <div class="stat-box-icon" style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i data-lucide="wallet"></i></div>
+            <div class="glass-card stat-box" id="stat-box-earnings" style="cursor:pointer; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.03);" title="انقر لعرض تفاصيل السجل المالي والمستحقات">
+              <div class="stat-box-icon" style="color:#f59e0b; background:rgba(245,158,11,0.15);"><i data-lucide="wallet"></i></div>
               <div>
-                <div class="stat-box-val">${pendingEarnings.toLocaleString()} ج.م</div>
-                <div class="stat-box-lbl">مستحقات معلقة</div>
+                <div class="stat-box-val" style="color:#b45309;">${pendingEarnings.toLocaleString()} ج.م</div>
+                <div class="stat-box-lbl" style="font-weight:800;">مستحقات معلقة (السجل المالي ↗)</div>
               </div>
             </div>
           </div>
@@ -563,9 +573,9 @@ export default class TeacherView {
   }
 
   renderPrivateSessionCard(session) {
-    const date = new Date(session.scheduledAt);
-    const timeStr = date.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = date.toLocaleDateString('ar', { weekday: 'short', month: 'short', day: 'numeric' });
+    const studentTz = session.student?.timezone || "Asia/Riyadh";
+    const formatted = formatSessionDateTime(session.scheduledAt, null, { secondaryTz: studentTz });
+
     const statusMap = {
       'SCHEDULED': { label: 'مجدولة', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
       'CONFIRMED': { label: 'مؤكدة', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
@@ -575,37 +585,50 @@ export default class TeacherView {
       'CANCELLED_BY_TEACHER': { label: 'ملغاة (معلم)', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
       'NO_SHOW_STUDENT': { label: 'غياب طالب', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
     };
-    const st = statusMap[session.status] || { label: session.status, color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
-    const isActive = ['SCHEDULED', 'CONFIRMED', 'scheduled'].includes(session.status);
+    let st = statusMap[session.status] || { label: session.status, color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
+    const isActive = ['SCHEDULED', 'CONFIRMED', 'scheduled', 'live', 'active'].includes(session.status);
+
+    const scheduledTime = session.scheduledAt ? new Date(session.scheduledAt).getTime() : 0;
+    const durationMins = session.duration || 60;
+    const isPastTime = scheduledTime > 0 && (scheduledTime + durationMins * 60 * 1000 < Date.now());
+
+    if (isPastTime && ['SCHEDULED', 'CONFIRMED', 'scheduled'].includes(session.status)) {
+      st = { label: '⏳ انقضى الوقت (في انتظار التوثيق والإنهاء)', color: '#b45309', bg: 'rgba(245,158,11,0.18)' };
+    }
 
     return `
-      <div class="glass-card" style="padding:20px; border-radius:18px; border:1px solid var(--border-color);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-          <span style="font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:20px; background:${st.bg}; color:${st.color};">${st.label}</span>
-          <span style="font-size:0.78rem; color:var(--text-muted);">${session.duration || 60} دقيقة</span>
+      <div class="glass-card" style="padding:20px; border-radius:18px; border:${isPastTime && isActive ? '1px solid rgba(245,158,11,0.4)' : '1px solid var(--border-color)'}; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:6px;">
+          <span style="font-size:0.75rem; font-weight:800; padding:4px 10px; border-radius:20px; background:${st.bg}; color:${st.color};">${st.label}</span>
+          ${formatted.badgeHTML}
         </div>
 
-        <h4 style="font-weight:800; font-size:0.95rem; margin:0 0 6px 0; color:var(--text-main);">${session.topic || session.title || 'حصة خاصة'}</h4>
-        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:6px;">
+        <h4 style="font-weight:800; font-size:0.95rem; margin:0; color:var(--text-main);">${session.topic || session.title || 'حصة خاصة'}</h4>
+        <div style="font-size:0.82rem; color:var(--text-muted);">
           <i data-lucide="user" style="width:13px;height:13px;"></i> ${session.student?.name || 'طالب'}
         </div>
-        <div style="font-size:0.82rem; color:var(--primary); font-weight:600;">
-          <i data-lucide="calendar" style="width:13px;height:13px;"></i> ${dateStr} • ${timeStr}
+        <div style="font-size:0.82rem; color:var(--primary); font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <i data-lucide="calendar" style="width:13px;height:13px;"></i> ${formatted.dateStr} • ${formatted.timeStr} ${formatted.secondaryTZHTML}
         </div>
 
         ${isActive ? `
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:14px;">
-          <button class="btn-primary complete-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; background:var(--success,#10b981); border-color:var(--success,#10b981);">
-            <i data-lucide="check" style="width:13px;height:13px;"></i> إكمال
-          </button>
-          <button class="btn-secondary noshow-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; color:#8b5cf6; border-color:#8b5cf6;">
-            <i data-lucide="user-x" style="width:13px;height:13px;"></i> غياب
-          </button>
-          <button class="btn-secondary cancel-private-btn" data-id="${session.id}" style="font-size:0.75rem; padding:7px 10px; justify-content:center; color:var(--error,#ef4444); border-color:var(--error,#ef4444);">
-            <i data-lucide="x" style="width:13px;height:13px;"></i> إلغاء
-          </button>
+        <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+          <a href="#classroom/${session.id}" class="btn-primary" style="padding:8px 12px; font-size:0.82rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); gap:6px; display:flex; align-items:center;">
+            <i data-lucide="video" style="width:15px; height:15px;"></i> دخول قاعة الحصة لبدء البث 🎥
+          </a>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+            <button class="btn-primary complete-private-btn" data-id="${session.id}" style="font-size:0.72rem; padding:6px 8px; justify-content:center; background:rgba(16,185,129,0.1); border-color:#10b981; color:#047857; font-weight:700;">
+              ✓ إكمال
+            </button>
+            <button class="btn-secondary noshow-private-btn" data-id="${session.id}" style="font-size:0.72rem; padding:6px 8px; justify-content:center; color:#8b5cf6; border-color:#8b5cf6; font-weight:700;">
+              ✕ غياب
+            </button>
+            <button class="btn-secondary cancel-private-btn" data-id="${session.id}" style="font-size:0.72rem; padding:6px 8px; justify-content:center; color:var(--error,#ef4444); border-color:var(--error,#ef4444); font-weight:700;">
+              🚫 إلغاء
+            </button>
+          </div>
         </div>` : session.status === 'COMPLETED' ? `
-        <div style="margin-top:12px; padding:10px; background:rgba(16,185,129,0.05); border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
+        <div style="margin-top:10px; padding:10px; background:rgba(16,185,129,0.05); border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
           ${session.topic ? `<div style="font-size:0.8rem;"><strong>الموضوع:</strong> ${session.topic}</div>` : ''}
           ${session.homework ? `<div style="font-size:0.8rem;"><strong>الواجب:</strong> ${session.homework}</div>` : ''}
         </div>` : ''}
@@ -618,8 +641,8 @@ export default class TeacherView {
   }
 
   renderTeacherSessionCard(session) {
-    const isLive = session.status === "live";
-    const isCompleted = session.status === "completed";
+    const isLive = session.status === "live" || session.status === "active";
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED";
     const date = new Date(session.scheduledAt);
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
@@ -630,9 +653,9 @@ export default class TeacherView {
     if (isLive) {
       statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
       sessionAction = `
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;">
-          <a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#'}" target="_blank" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:8px 12px; justify-content:center;"><i data-lucide="external-link"></i> Enter Meeting</a>
-          <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.8rem; padding:8px 12px; justify-content:center; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle"></i> ${t("session.end")}</button>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+          <a href="#classroom/${session.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; text-decoration:none; border-radius:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="door-open" style="width:16px;height:16px;"></i> دخول قاعة البث المباشر 🔴</a>
+          <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:6px 12px; justify-content:center; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle" style="width:14px;height:14px;"></i> إنهاء البث</button>
         </div>
       `;
     } else if (isCompleted) {
@@ -686,6 +709,19 @@ bindEvents() {
     document.getElementById("student-sessions-status-filter")?.addEventListener("change", (e) => {
         this.sessionsFilterStatus = e.target.value;
         this.render();
+    });
+
+    // Financial Hub Event Listeners
+    this.container.querySelector("#open-financial-hub-btn")?.addEventListener("click", () => {
+      this.currentViewMode = 'financial';
+      window.location.hash = "#teacher-financial";
+      this.render();
+    });
+
+    this.container.querySelector("#stat-box-earnings")?.addEventListener("click", () => {
+      this.currentViewMode = 'financial';
+      window.location.hash = "#teacher-financial";
+      this.render();
     });
 
     // Session Table Actions
@@ -1137,12 +1173,22 @@ bindEvents() {
     this.container.querySelectorAll('.noshow-private-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-id');
-        if (!confirm('تسجيل غياب الطالب؟ سيتم خصم حصة من رصيد الاشتراك وفق سياسة الأكاديمية.')) return;
+        const confirmed = await confirmDialog({
+          title: "تسجيل غياب طالب ⚠️",
+          message: "هل أنت تأكد من تسجيل غياب الطالب لهذه الحصة؟ سيتم خصم حصة من رصيد الاشتراك وفق سياسة الأكاديمية.",
+          confirmText: "تأكيد الغياب ⚠️",
+          cancelText: "تراجع",
+          danger: true
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
         try {
           await apiFetch(`/sessions/${id}/no-show`, { method: 'POST' });
-          showToast('تم تسجيل غياب الطالب وخصم حصة.', 'info');
+          showToast('تم تسجيل غياب الطالب وخصم حصة. ⚠️', 'info');
           await this.render();
         } catch (err) {
+          btn.disabled = false;
           showToast(err.message || 'تعذر تسجيل الغياب.', 'error');
         }
       });
@@ -1152,15 +1198,25 @@ bindEvents() {
     this.container.querySelectorAll('.cancel-private-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-id');
-        if (!confirm('إلغاء الحصة؟ سيتم استرداد حصة للطالب وتسجيل الإلغاء.')) return;
+        const confirmed = await confirmDialog({
+          title: "تأكيد إلغاء الحصة 🚫",
+          message: "هل أنت تأكد من إلغاء هذه الحصة؟ سيتم استرداد رصيد الحصة للطالب وتسجيل الإلغاء.",
+          confirmText: "تأكيد الإلغاء 🚫",
+          cancelText: "تراجع",
+          danger: true
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
         try {
           await apiFetch(`/sessions/${id}/cancel`, {
             method: 'POST',
             body: JSON.stringify({ reason: 'إلغاء من المعلم' })
           });
-          showToast('تم إلغاء الحصة واسترداد رصيد للطالب.', 'info');
+          showToast('تم إلغاء الحصة واسترداد رصيد للطالب. ✅', 'info');
           await this.render();
         } catch (err) {
+          btn.disabled = false;
           showToast(err.message || 'تعذر إلغاء الحصة.', 'error');
         }
       });
@@ -1434,6 +1490,268 @@ bindEvents() {
         if (idleBox) idleBox.style.display = "block";
         showToast("تعذر رفع الصورة، الرجاء إعادة المحاولة.", "error");
       }
+    });
+  }
+
+  // ── Render Teacher Financial & Earnings Single Page with Sidebar Tabs ─────────────
+  renderFinancialPage() {
+    const data = this.earningsData || { earnings: [], stats: {} };
+    const earningsList = data.earnings || [];
+    const stats = data.stats || {
+      totalEarned: 0,
+      pendingAmount: 0,
+      paidAmount: 0,
+      courseSalesEarnings: 0,
+      sessionEarnings: 0
+    };
+
+    const sourceTypeMap = {
+      'COURSE_SALE': { label: '📖 مبيعات دورة مسجلة', bg: 'rgba(99,102,241,0.1)', color: 'var(--primary)' },
+      'SESSION_COMPLETED': { label: '🎥 إكمال حصة مباشرة/خاصة', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+      'ADJUSTMENT': { label: '⚖️ تسوية تعديل إداري', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+      'BONUS': { label: '🎁 مكافأة تميز بالأكاديمية', bg: 'rgba(236,72,153,0.1)', color: '#ec4899' },
+      'REFUND': { label: '↩️ استرداد/خصم', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' }
+    };
+
+    const renderTableRows = (list) => {
+      if (list.length === 0) {
+        return `
+          <tr>
+            <td colspan="5" style="text-align:center; padding:50px 16px; color:var(--text-muted); font-size:0.9rem;">
+              <i data-lucide="wallet" style="width:40px; height:40px; opacity:0.3; margin-bottom:10px; display:block; margin-inline:auto;"></i>
+              لا توجد سجلات مالية في هذا التصنيف حالياً.
+            </td>
+          </tr>
+        `;
+      }
+      return list.map((item, idx) => {
+        const src = sourceTypeMap[item.sourceType] || { label: item.sourceType, bg: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)' };
+        const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ar', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        const isPaid = item.status === 'paid';
+
+        return `
+          <tr style="border-bottom:1px solid var(--border-color);" class="table-row-hover">
+            <td style="padding:14px 18px; font-weight:800; color:var(--primary);">#${idx + 1}</td>
+            <td style="padding:14px 18px;">
+              <span class="badge" style="background:${src.bg}; color:${src.color}; font-weight:800; font-size:0.8rem; padding:6px 12px; border-radius:12px;">
+                ${src.label}
+              </span>
+            </td>
+            <td style="padding:14px 18px; font-weight:900; font-size:1rem; color:#10b981;">
+              + ${(item.amount || 0).toLocaleString()} ${item.currency || 'EGP'}
+            </td>
+            <td style="padding:14px 18px;">
+              ${isPaid ? `
+                <span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-weight:800; font-size:0.8rem; padding:5px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="check-circle" style="width:14px; height:14px;"></i> تم الصرف والمقاصة
+                </span>
+              ` : `
+                <span class="badge" style="background:rgba(245,158,11,0.15); color:#b45309; font-weight:800; font-size:0.8rem; padding:5px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="clock" style="width:14px; height:14px;"></i> معلق في انتظار الصرف
+                </span>
+              `}
+            </td>
+            <td style="padding:14px 18px; font-size:0.83rem; color:var(--text-muted);">${dateStr}</td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    this.container.innerHTML = `
+      <div style="max-width:1440px; margin:0 auto; padding:32px 24px; display:flex; flex-direction:column; gap:24px;">
+        
+        <!-- Top Navigation & Header Row -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(99,102,241,0.08)); padding:22px 28px; border-radius:24px; border:1px solid var(--border-color);">
+          <div>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+              <button id="back-to-teacher-dash-btn" class="btn-secondary" style="font-weight:800; font-size:0.85rem; padding:7px 16px; border-radius:30px; display:inline-flex; align-items:center; gap:6px; border-color:var(--primary); color:var(--primary);">
+                <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> العودة للوحة الرئيسية
+              </button>
+            </div>
+            <h2 style="font-size:1.8rem; font-weight:900; margin:0; display:flex; align-items:center; gap:10px; color:var(--text-main);">
+              <i data-lucide="wallet" style="color:#f59e0b; width:28px; height:28px;"></i> السجل المالي والمستحقات (Financial Hub) 💰
+            </h2>
+            <p style="color:var(--text-muted); font-size:0.88rem; margin:6px 0 0 0;">متابعة تفصيلية وشاملة لكافة الأرباح، التسويات المالية، والمستحقات المعلقة والمدفوعة</p>
+          </div>
+
+          <!-- Quick Stats Cards Badge Row -->
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="background:var(--bg-card); border:1px solid rgba(16,185,129,0.3); border-radius:16px; padding:12px 20px; text-align:center; min-width:140px;">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:800;">إجمالي الأرباح</div>
+              <div style="font-size:1.3rem; font-weight:900; color:#10b981;">${(stats.totalEarned || 0).toLocaleString()} <span style="font-size:0.75rem;">ج.م</span></div>
+            </div>
+            <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:16px; padding:12px 20px; text-align:center; min-width:140px;">
+              <div style="font-size:0.75rem; color:#b45309; font-weight:800;">مستحقات معلقة</div>
+              <div style="font-size:1.3rem; font-weight:900; color:#f59e0b;">${(stats.pendingAmount || 0).toLocaleString()} <span style="font-size:0.75rem;">ج.م</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Layout Container -->
+        <div style="display:grid; grid-template-columns: minmax(260px, 280px) 1fr; gap:24px; align-items:start;" class="fin-layout-grid">
+          
+          <!-- Sidebar Navigation Tabs -->
+          <div class="glass-card" style="padding:18px; border-radius:22px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px; position:sticky; top:90px; background:var(--bg-card);">
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; padding:6px 12px; margin-bottom:4px;">
+              📋 التبويبات المالية
+            </div>
+
+            <button class="fin-sidebar-tab-btn active" data-tab="overview" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:none; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:var(--primary); color:#fff;">
+              <i data-lucide="layout-dashboard" style="width:18px; height:18px;"></i>
+              <span>📊 نظرة عامة شاملة</span>
+            </button>
+
+            <button class="fin-sidebar-tab-btn" data-tab="pending" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <i data-lucide="clock" style="width:18px; height:18px; color:#f59e0b;"></i>
+                <span>⏳ المستحقات المعلقة</span>
+              </div>
+              ${stats.pendingAmount > 0 ? `<span style="background:rgba(245,158,11,0.15); color:#b45309; font-size:0.72rem; padding:3px 8px; border-radius:10px; font-weight:900;">${stats.pendingAmount.toLocaleString()} ج.م</span>` : ''}
+            </button>
+
+            <button class="fin-sidebar-tab-btn" data-tab="paid" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
+              <i data-lucide="check-circle-2" style="width:18px; height:18px; color:#10b981;"></i>
+              <span>✅ المستحقات المدفوعة</span>
+            </button>
+
+            <button class="fin-sidebar-tab-btn" data-tab="courses" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
+              <i data-lucide="book-open" style="width:18px; height:18px; color:var(--primary);"></i>
+              <span>📖 مبيعات الكورسات</span>
+            </button>
+
+            <button class="fin-sidebar-tab-btn" data-tab="sessions" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
+              <i data-lucide="video" style="width:18px; height:18px; color:#ec4899;"></i>
+              <span>🎥 أرباح الحصص المباشرة</span>
+            </button>
+
+            <div style="margin-top:16px; padding:14px; border-radius:14px; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.15); font-size:0.78rem; color:var(--text-muted); line-height:1.5;">
+              <i data-lucide="info" style="width:16px; height:16px; color:var(--primary); margin-bottom:6px; display:block;"></i>
+              يتم صرف وتحديث المستحقات المالية المعلقة من قِبل إدارة الأكاديمية بانتظام.
+            </div>
+          </div>
+
+          <!-- Main Dynamic Content Panel -->
+          <div id="fin-tab-content-panel" style="display:flex; flex-direction:column; gap:20px;">
+            
+            <!-- Overview Cards -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;" id="fin-overview-cards-grid">
+              
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid var(--border-color);">
+                <div style="font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">💵 إجمالي الأرباح المكتسبة</div>
+                <div style="font-size:1.4rem; font-weight:900; color:#10b981;">${(stats.totalEarned || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
+              </div>
+
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.04);">
+                <div style="font-size:0.78rem; font-weight:800; color:#b45309; margin-bottom:6px;">⏳ مستحقات معلقة للصرف</div>
+                <div style="font-size:1.4rem; font-weight:900; color:#f59e0b;">${(stats.pendingAmount || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
+              </div>
+
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(16,185,129,0.3); background:rgba(16,185,129,0.04);">
+                <div style="font-size:0.78rem; font-weight:800; color:#047857; margin-bottom:6px;">✅ مدفوع ومحول للبطاقة</div>
+                <div style="font-size:1.4rem; font-weight:900; color:#10b981;">${(stats.paidAmount || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
+              </div>
+
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(99,102,241,0.3); background:rgba(99,102,241,0.04);">
+                <div style="font-size:0.78rem; font-weight:800; color:var(--primary); margin-bottom:6px;">📖 أرباح مبيعات الدورات</div>
+                <div style="font-size:1.4rem; font-weight:900; color:var(--primary);">${(stats.courseSalesEarnings || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
+              </div>
+
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(236,72,153,0.3); background:rgba(236,72,153,0.04);">
+                <div style="font-size:0.78rem; font-weight:800; color:#ec4899; margin-bottom:6px;">🎥 أرباح الحصص والاشتراكات</div>
+                <div style="font-size:1.4rem; font-weight:900; color:#ec4899;">${(stats.sessionEarnings || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
+              </div>
+
+            </div>
+
+            <!-- Table Card Container -->
+            <div class="glass-card" style="padding:22px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h3 id="fin-tab-title" style="font-weight:900; font-size:1.1rem; margin:0; color:var(--text-main);">📋 جدول المعاملات والمستحقات المالـية</h3>
+                  <p id="fin-tab-subtitle" style="color:var(--text-muted); font-size:0.82rem; margin:4px 0 0 0;">عرض كافة سجلات الأرباح والتسويات المسجلة باسمك</p>
+                </div>
+              </div>
+
+              <div style="overflow-x:auto; border:1px solid var(--border-color); border-radius:16px; background:var(--bg-app);">
+                <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:start;">
+                  <thead style="background:var(--bg-card); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-weight:800;">
+                    <tr>
+                      <th style="padding:14px 18px;">#</th>
+                      <th style="padding:14px 18px;">مصدر المعاملة / الدورة</th>
+                      <th style="padding:14px 18px;">المبلغ المستحق</th>
+                      <th style="padding:14px 18px;">حالة الصرف الإداري</th>
+                      <th style="padding:14px 18px;">تاريخ التسوية والإنشاء</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fin-page-tbody">
+                    ${renderTableRows(earningsList)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Event handler for Back Button
+    this.container.querySelector("#back-to-teacher-dash-btn")?.addEventListener("click", () => {
+      this.currentViewMode = 'dashboard';
+      window.location.hash = "#teacher-portal";
+      this.render();
+    });
+
+    // Event handlers for Sidebar Tab buttons
+    this.container.querySelectorAll(".fin-sidebar-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.container.querySelectorAll(".fin-sidebar-tab-btn").forEach(b => {
+          b.classList.remove("active");
+          b.style.background = "transparent";
+          b.style.color = "var(--text-main)";
+          b.style.borderColor = "transparent";
+        });
+
+        btn.classList.add("active");
+        btn.style.background = "var(--primary)";
+        btn.style.color = "#fff";
+
+        const tab = btn.getAttribute("data-tab");
+        const tbody = this.container.querySelector("#fin-page-tbody");
+        const titleEl = this.container.querySelector("#fin-tab-title");
+        const subTitleEl = this.container.querySelector("#fin-tab-subtitle");
+
+        let filteredList = earningsList;
+        if (tab === "pending") {
+          filteredList = earningsList.filter(e => e.status === "pending");
+          if (titleEl) titleEl.textContent = "⏳ المعاملات والمستحقات المعلقة للصرف";
+          if (subTitleEl) subTitleEl.textContent = "قائمة المبالغ المعلقة التي سيتم تحويلها وصرفها من إدارة الأكاديمية";
+        } else if (tab === "paid") {
+          filteredList = earningsList.filter(e => e.status === "paid");
+          if (titleEl) titleEl.textContent = "✅ المعاملات والمستحقات المدفوعة والمحولة";
+          if (subTitleEl) subTitleEl.textContent = "سجل المبالغ والمستحقات التي تم تسويتها وصرفها لك بنجاح";
+        } else if (tab === "courses") {
+          filteredList = earningsList.filter(e => e.sourceType === "COURSE_SALE");
+          if (titleEl) titleEl.textContent = "📖 أرباح ومبيعات الدورات المسجلة";
+          if (subTitleEl) subTitleEl.textContent = "تفاصيل الأرباح الناتجة عن مبيعات كورساتك المسجلة عبر المنصة";
+        } else if (tab === "sessions") {
+          filteredList = earningsList.filter(e => e.sourceType === "SESSION_COMPLETED");
+          if (titleEl) titleEl.textContent = "🎥 أرباح الحصص المباشرة والاشتراكات";
+          if (subTitleEl) subTitleEl.textContent = "تفاصيل المستحقات المستحقة لإكمال الحصص الخاصة والبث المباشر";
+        } else {
+          if (titleEl) titleEl.textContent = "📊 نظرة عامة وكافة المعاملات المالية";
+          if (subTitleEl) subTitleEl.textContent = "عرض كافة سجلات الأرباح والتسويات المسجلة باسمك";
+        }
+
+        if (tbody) {
+          tbody.innerHTML = renderTableRows(filteredList);
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
     });
   }
 

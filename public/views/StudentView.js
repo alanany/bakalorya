@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate } from "../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate, formatSessionDateTime, getTimezoneBadgeHTML } from "../app.js";
 
 export default class StudentView {
   constructor(container) {
@@ -117,21 +117,63 @@ export default class StudentView {
   }
 
   renderSessionCard(session) {
-    const isJoinable = canJoinSession(session);
-    const dateFormatted = new Date(session.scheduledAt).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
+    if (!session) return "";
+
+    const scheduledTime = session.scheduledAt ? new Date(session.scheduledAt).getTime() : 0;
+    const durationMins = session.duration || 60;
+    const now = Date.now();
+    const diffMs = scheduledTime - now;
+    const diffMins = Math.ceil(diffMs / (1000 * 60));
+    const isPastSession = diffMins < -durationMins;
+
+    // Joinable if starting within 30 mins, live/active, or if session time has passed today
+    const isLive = session.status === "live" || session.status === "active";
+    const isStartingSoon = diffMins <= 30 && !isPastSession;
+    const teacherTz = session.teacher?.timezone || "Africa/Cairo";
+    const formatted = formatSessionDateTime(session.scheduledAt, null, { secondaryTz: teacherTz });
+
+    let remainingText = "";
+    if (isPastSession && !isLive) {
+      remainingText = `انقضى موعد الحصة (في انتظار التوثيق)`;
+    } else if (diffMins > 30) {
+      if (diffMins >= 60) {
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        remainingText = `تبقي ${hours} ساعة ${mins > 0 ? `و ${mins}د` : ''}`;
+      } else {
+        remainingText = `تبقي ${diffMins} دقيقة`;
+      }
+    }
 
     return `
-      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.8rem; font-weight:700; color:var(--primary);">${session.title || 'حصة خاصة'}</span>
-          <span style="font-size:0.75rem; color:var(--text-muted);">${dateFormatted}</span>
+      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:10px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card); position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+          <span style="font-size:0.88rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="video" style="width:16px; height:16px;"></i>
+            ${session.title || 'حصة خاصة'}
+          </span>
+          ${formatted.badgeHTML}
         </div>
-        <p style="font-size:0.85rem; margin:0; color:var(--text-main); font-weight:600;">المعلم: ${session.teacher?.name || '-'}</p>
-        ${session.topic ? `<p style="font-size:0.78rem; color:var(--text-muted); margin:0;">الموضوع: ${session.topic}</p>` : ''}
-        ${isJoinable
-        ? `<a href="#course-player?session=${session.id}" class="btn-primary" style="padding:6px 12px; font-size:0.78rem; justify-content:center; text-decoration:none; margin-top:4px;">انضم للبث المباشر 🔴</a>`
-        : `<button class="btn-secondary restricted-join-btn" style="padding:6px 12px; font-size:0.78rem; justify-content:center; margin-top:4px; opacity:0.7;">الرابط غير متاح بعد 🔒</button>`
-      }
+
+        <div style="font-size:0.82rem; color:var(--text-main); display:flex; flex-direction:column; gap:4px;">
+          <div style="font-weight:700;">👨‍🏫 المعلم: ${session.teacher?.name || '-'}</div>
+          <div style="color:var(--primary); font-weight:600;">⏰ الموعد: ${formatted.dateStr} • ${formatted.timeStr} ${formatted.secondaryTZHTML}</div>
+          ${session.topic ? `<div style="color:var(--text-muted);">📖 الموضوع: ${session.topic}</div>` : ''}
+        </div>
+          ${session.topic ? `<div style="color:var(--text-muted);">📖 الموضوع: ${session.topic}</div>` : ''}
+        </div>
+
+        <div style="margin-top:4px;">
+          ${isLive || isStartingSoon ? `
+            <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; padding:9px 14px; font-size:0.85rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:12px; background:linear-gradient(135deg, #10b981, #059669); gap:8px; border:none; display:flex; align-items:center;">
+              <i data-lucide="video" style="width:16px; height:16px;"></i> دخول غرفة الحصة للبث المباشر 🔴
+            </a>
+          ` : `
+            <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; padding:9px 14px; font-size:0.85rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:12px; background:linear-gradient(135deg, var(--primary), #4f46e5); gap:8px; border:none; display:flex; align-items:center;">
+              <i data-lucide="door-open" style="width:16px; height:16px;"></i> دخول قاعة الحصة (${remainingText}) ⏳
+            </a>
+          `}
+        </div>
       </div>
     `;
   }

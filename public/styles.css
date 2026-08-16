@@ -25,8 +25,39 @@
   --radius-round: 50%;
 }
 
-/* Dark Theme (Default) */
-body, body.dark-theme {
+/* Light Theme (Default) */
+body, body.light-theme {
+  --bg-app: #f8fafc;
+  --bg-color: #f8fafc;
+  --bg-app-rgb: 248, 250, 252;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --bg-card-hover: rgba(255, 255, 255, 0.9);
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-focus: rgba(79, 70, 229, 0.4);
+  
+  --text-main: #0f172a;
+  --text-color: #0f172a;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+  
+  --primary: #4f46e5;
+  --primary-rgb: 79, 70, 229;
+  --primary-hover: #4338ca;
+  --primary-glow: rgba(79, 70, 229, 0.08);
+  
+  --secondary: #9333ea;
+  --secondary-rgb: 147, 51, 234;
+  
+  --accent: #d97706;
+  --accent-glow: rgba(217, 119, 6, 0.1);
+  
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+}
+
+/* Dark Theme */
+body.dark-theme {
   --bg-app: #09090b;
   --bg-color: #09090b;
   --bg-app-rgb: 9, 9, 11;
@@ -55,29 +86,6 @@ body, body.dark-theme {
   --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
   --glass-bg: rgba(15, 15, 20, 0.7);
 }
-
-/* Light Theme */
-body.light-theme {
-  --bg-app: #f8fafc;
-  --bg-color: #f8fafc;
-  --bg-app-rgb: 248, 250, 252;
-  --bg-card: rgba(255, 255, 255, 0.75);
-  --bg-card-hover: rgba(255, 255, 255, 0.9);
-  --card-bg: rgba(255, 255, 255, 0.75);
-  --border-color: rgba(15, 23, 42, 0.08);
-  --border-focus: rgba(79, 70, 229, 0.4);
-  
-  --text-main: #0f172a;
-  --text-color: #0f172a;
-  --text-muted: #64748b;
-  --text-inverse: #ffffff;
-  
-  --primary: #4f46e5;
-  --primary-rgb: 79, 70, 229;
-  --primary-hover: #4338ca;
-  --primary-glow: rgba(79, 70, 229, 0.08);
-  
-  --secondary: #9333ea;
   --secondary-rgb: 147, 51, 234;
   
   --accent: #d97706;

@@ -62,6 +62,9 @@ export class User {
   @Column({ nullable: true })
   parentPhone: string;
 
+  @Column({ nullable: true, default: "Africa/Cairo" })
+  timezone: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

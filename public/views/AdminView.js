@@ -1,4 +1,4 @@
-import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse } from "../app.js";
+import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from "../app.js";
 
 export default class AdminView {
   constructor(container) {
@@ -1487,7 +1487,12 @@ export default class AdminView {
             </h3>
             <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
           </div>
-          ${filterSubId ? `<button class="btn-secondary admin-view-all-sessions-btn" style="padding:8px 16px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لكل الحصص</button>` : ''}
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-primary" id="admin-open-group-session-btn" style="padding:10px 18px; font-size:0.88rem; font-weight:800; gap:8px; background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; border-radius:12px;">
+              <i data-lucide="users" style="width:16px; height:16px;"></i> 👥 جدولة حصة أونلاين لمجموعة طلاب
+            </button>
+            ${filterSubId ? `<button class="btn-secondary admin-view-all-sessions-btn" style="padding:8px 16px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لكل الحصص</button>` : ''}
+          </div>
         </div>
 
         <!-- Filter Bar & View Switcher -->
@@ -1562,19 +1567,26 @@ export default class AdminView {
                       لا توجد حصص مجدولة
                     </div>
                   ` : daySessions.map(sess => {
-                    const timeStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+                    const teacherTz = sess.teacher?.timezone || "Africa/Cairo";
+                    const formatted = formatSessionDateTime(sess.scheduledAt, "Asia/Riyadh", { secondaryTz: teacherTz });
                     const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
                     const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
+                    const sessTeacherId = sess.teacher?.id || sess.teacherId || sess.course?.teacher?.id;
+                    const sameTimeGroupCount = sess.scheduledAt && sessTeacherId ? allSessions.filter(s => {
+                      const tId = s.teacher?.id || s.teacherId || s.course?.teacher?.id;
+                      return String(tId) === String(sessTeacherId) && s.scheduledAt && new Date(s.scheduledAt).getTime() === new Date(sess.scheduledAt).getTime();
+                    }).length : 1;
 
                     return `
                       <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                          <span style="font-size:0.75rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:6px;">
-                            ⏰ ${timeStr}
-                          </span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                          ${formatted.badgeHTML}
                           ${getStatusBadge(sess.status)}
                         </div>
                         <strong style="font-size:0.88rem; color:var(--text-main);">${sess.title || "حصة خاصة"}</strong>
+                        <div style="font-size:0.78rem; color:var(--primary); font-weight:700;">
+                          ⏰ ${formatted.timeStr} ${formatted.secondaryTZHTML}
+                        </div>
                         <div style="font-size:0.78rem; color:var(--text-muted);">
                           <div>👨‍🏫 ${teacherName}</div>
                           <div>👤 ${studentName}</div>
@@ -2522,6 +2534,11 @@ export default class AdminView {
           btn.disabled = false;
         }
       });
+    });
+
+    // Admin Open Group Session Modal
+    this.container.querySelector("#admin-open-group-session-btn")?.addEventListener("click", () => {
+      this.renderGroupSessionModal();
     });
 
     // Admin Reassign Teacher to Session
@@ -4203,6 +4220,391 @@ export default class AdminView {
         this.renderTab('plans');
       } catch (err) {
         showToast(err.message || 'فشل حفظ الخطة.', 'error');
+      }
+    });
+  }
+
+  // ── Render Group Session Modal ─────────────────────────────────────────────
+  renderGroupSessionModal() {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
+    const students = (this.allMembers || []).filter(u => u.role === "student");
+
+    const now = new Date();
+    const nextSaturday = new Date();
+    nextSaturday.setDate(now.getDate() + ((6 - now.getDay() + 7) % 7 || 7));
+    const defaultStartDateStr = nextSaturday.toISOString().slice(0, 10);
+    const defaultTimeStr = "18:00";
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="group-session-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+        <div class="modal-content" style="max-width:780px; width:95%; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; background:var(--bg-card); box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
+          
+          <!-- Header -->
+          <div style="padding:20px 24px; background:linear-gradient(135deg, rgba(139,92,246,0.12), rgba(236,72,153,0.12)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:44px; height:44px; border-radius:14px; background:rgba(139,92,246,0.15); color:#8b5cf6; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="users" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">جدولة باقة حصص جماعية لمجموعة طلاب 👥</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:2px 0 0 0;">تحديد موعد موحد لعدة حصص لمجموعة طلاب مع معلم واحد (Multiple Group Sessions)</p>
+              </div>
+            </div>
+            <span id="close-group-session-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="group-session-form">
+            <div class="modal-body" style="padding:22px 24px; max-height:75vh; overflow-y:auto; display:flex; flex-direction:column; gap:18px;">
+              
+              <!-- Session Title -->
+              <div class="form-group" style="margin:0;">
+                <label for="group-session-title" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="heading" style="width:14px; height:14px; color:var(--primary);"></i>
+                  عنوان المجموعة والدورة <span style="color:var(--error);">*</span>
+                </label>
+                <input type="text" id="group-session-title" class="form-input" placeholder="مثال: حصص مراجعة جماعية - الفيزياء للثانوية العامة" required style="border-radius:14px; padding:11px 16px; font-size:0.88rem;">
+              </div>
+
+              <!-- Teacher & Sessions Count Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="group-session-teacher" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="user-check" style="width:14px; height:14px; color:#8b5cf6;"></i>
+                    المعلم المسؤول <span style="color:var(--error);">*</span>
+                  </label>
+                  <select id="group-session-teacher" class="form-select" required style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                    <option value="">-- اختر معلم المنصة --</option>
+                    ${teachers.map(t => `<option value="${t.id}" data-link="${t.meetingLink || ''}">${t.name} (${t.email})</option>`).join('')}
+                  </select>
+                </div>
+
+                <div class="form-group" style="margin:0;">
+                  <label for="group-sessions-count" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="layers" style="width:14px; height:14px; color:#10b981;"></i>
+                    عدد الحصص الجماعية المطلوبة <span style="color:var(--error);">*</span>
+                  </label>
+                  <input type="number" id="group-sessions-count" class="form-input" value="4" min="1" max="30" step="1" required style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                </div>
+              </div>
+
+              <!-- Pattern & Frequency -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="group-sessions-freq" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                    تكرار الجدولة
+                  </label>
+                  <select id="group-sessions-freq" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                    <option value="custom_days">أيام محددة في الأسبوع (موصى به)</option>
+                    <option value="weekly">أسبوعياً (حصة واحدة كل 7 أيام)</option>
+                    <option value="biweekly">حصتان أسبوعياً (توزيع منظم)</option>
+                    <option value="single">حصة واحدة فقط</option>
+                  </select>
+                </div>
+
+                <div class="form-group" style="margin:0;">
+                  <label for="group-session-duration" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                    مدة كل حصة (بالدقائق)
+                  </label>
+                  <input type="number" id="group-session-duration" class="form-input" value="60" min="15" max="240" step="15" required style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                </div>
+              </div>
+
+              <!-- Days of week checkboxes -->
+              <div id="group-days-box" style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:14px;">
+                <label style="font-size:0.85rem; font-weight:800; display:block; margin-bottom:8px; color:var(--text-main);">
+                  🗓️ اختر أيام الحصص الأسبوعية للمجموعة:
+                </label>
+                <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="6" checked /> السبت</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="0" /> الأحد</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="1" checked /> الاثنين</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="2" /> الثلاثاء</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="3" /> الأربعاء</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="4" /> الخميس</label>
+                  <label style="font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" name="groupDays" value="5" /> الجمعة</label>
+                </div>
+              </div>
+
+              <!-- Start Date & Daily Time -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="group-session-start-date" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                    تاريخ بداية الحصص (الحصة الأولى)
+                  </label>
+                  <input type="date" id="group-session-start-date" class="form-input" value="${defaultStartDateStr}" required style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                </div>
+
+                <div class="form-group" style="margin:0;">
+                  <label for="group-session-daily-time" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                    وقت الحصة الموحد
+                  </label>
+                  <input type="time" id="group-session-daily-time" class="form-input" value="${defaultTimeStr}" required style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                </div>
+              </div>
+
+              <!-- Meeting Link -->
+              <div class="form-group" style="margin:0;">
+                <label for="group-session-meeting-link" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                  🔗 رابط البث أونلاين (Google Meet / Zoom)
+                </label>
+                <input type="url" id="group-session-meeting-link" class="form-input" placeholder="https://meet.google.com/abc-defg-hij" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+              </div>
+
+              <!-- Students Selection Section -->
+              <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                  <label style="font-weight:800; font-size:0.9rem; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
+                    <i data-lucide="users" style="width:16px; height:16px; color:#ec4899;"></i>
+                    تحديد الطلاب المنضمين لهذه المجموعة <span style="color:var(--error);">*</span>
+                  </label>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="button" id="group-select-all-btn" class="btn-secondary" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">
+                      ✓ تظليل الكل
+                    </button>
+                    <button type="button" id="group-deselect-all-btn" class="btn-secondary" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">
+                      ✕ إلغاء التظليل
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Live Counter & Total Math Summary -->
+                <div id="group-student-counter-badge" style="background:linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1)); border:1px solid rgba(139,92,246,0.3); color:#8b5cf6; font-weight:800; padding:10px 16px; border-radius:14px; font-size:0.88rem; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    👥 عدد الطلاب: <strong id="group-count-num" style="font-size:1.05rem; color:var(--primary);">0</strong> طالب
+                    <span style="margin:0 8px; color:var(--text-muted);">|</span>
+                    🗓️ عدد الحصص: <strong id="group-count-sessions" style="font-size:1.05rem; color:#ec4899;">4</strong> حصص
+                  </div>
+                  <div>
+                    🎬 إجمالي سجلات الحصص التي سيتم إنشاؤها بالمنصة: <strong id="group-total-records" style="font-size:1.1rem; color:#10b981;">0</strong> سجل
+                  </div>
+                </div>
+
+                <!-- Students Search Input -->
+                <input type="text" id="group-students-search" class="form-input" placeholder="🔍 تصفية الطلاب باسم أو بريد الطالب..." style="border-radius:10px; padding:8px 12px; font-size:0.82rem; margin-bottom:10px; width:100%;">
+
+                <!-- Students Checkboxes Grid -->
+                <div id="group-students-checkboxes-container" style="max-height:160px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px; padding-inline-end:4px;">
+                  ${students.length === 0 ? `
+                    <div style="color:var(--text-muted); font-size:0.82rem; padding:12px; grid-column:1/-1; text-align:center;">
+                      لا يوجد طلاب مسجلون بالمنصة حالياً.
+                    </div>
+                  ` : students.map(st => `
+                    <label class="group-student-item" data-search="${st.name.toLowerCase()} ${st.email.toLowerCase()}" style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-color); cursor:pointer; font-size:0.82rem;">
+                      <input type="checkbox" name="groupStudentIds" value="${st.id}" class="group-student-checkbox" style="width:16px; height:16px; accent-color:#8b5cf6;">
+                      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <strong style="display:block; font-size:0.82rem;">${st.name}</strong>
+                        <span style="font-size:0.72rem; color:var(--text-muted);">${st.email}</span>
+                      </div>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Preview Table of Dates -->
+              <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <h4 style="font-weight:800; font-size:0.9rem; color:var(--text-main); margin:0;">
+                    🗓️ معاينة مواعيد الحصص المجدولة للمجموعة
+                  </h4>
+                  <button type="button" id="refresh-group-preview-btn" class="btn-secondary" style="font-size:0.75rem; padding:4px 12px; border-radius:8px;">
+                    🔄 تحديث المعاينة
+                  </button>
+                </div>
+                <div style="max-height:160px; overflow-y:auto; border:1px solid var(--border-color); border-radius:10px;">
+                  <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:start;">
+                    <thead style="position:sticky; top:0; background:var(--bg-app); color:var(--text-muted); font-weight:800;">
+                      <tr>
+                        <th style="padding:8px 12px;">#</th>
+                        <th style="padding:8px 12px;">تاريخ ووقت الحصة</th>
+                        <th style="padding:8px 12px;">اليوم</th>
+                      </tr>
+                    </thead>
+                    <tbody id="group-dates-preview-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
+              <button type="button" class="btn-secondary" id="cancel-group-session-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
+              <button type="submit" id="submit-group-session-btn" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none;">
+                <i data-lucide="sparkles" style="width:16px; height:16px; vertical-align:middle;"></i> تأكيد وجدولة كافة الحصص الجماعية 🚀
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-group-session-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-group-session-modal")?.addEventListener("click", closeModal);
+
+    // Populate default meeting link when teacher changes
+    const teacherSelect = document.getElementById("group-session-teacher");
+    const meetingInput = document.getElementById("group-session-meeting-link");
+    teacherSelect?.addEventListener("change", () => {
+      const opt = teacherSelect.options[teacherSelect.selectedIndex];
+      if (opt && opt.getAttribute("data-link")) {
+        meetingInput.value = opt.getAttribute("data-link");
+      }
+    });
+
+    // Helper: Generate Group Dates
+    const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    let generatedDatesList = [];
+
+    const updatePreviewTable = () => {
+      const startDateStr = document.getElementById("group-session-start-date")?.value;
+      const timeStr = document.getElementById("group-session-daily-time")?.value || "18:00";
+      const count = parseInt(document.getElementById("group-sessions-count")?.value) || 4;
+      const freq = document.getElementById("group-sessions-freq")?.value || "custom_days";
+
+      const selectedDays = Array.from(container.querySelectorAll("input[name='groupDays']:checked")).map(cb => parseInt(cb.value));
+
+      generatedDatesList = [];
+      if (!startDateStr || !timeStr) return;
+
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      let current = new Date(startDateStr);
+      current.setHours(hours, minutes, 0, 0);
+
+      if (freq === 'single') {
+        generatedDatesList.push(new Date(current));
+      } else if (freq === 'weekly') {
+        while (generatedDatesList.length < count) {
+          generatedDatesList.push(new Date(current));
+          current.setDate(current.getDate() + 7);
+        }
+      } else if (freq === 'biweekly') {
+        let step = 3;
+        while (generatedDatesList.length < count) {
+          generatedDatesList.push(new Date(current));
+          current.setDate(current.getDate() + step);
+          step = step === 3 ? 4 : 3;
+        }
+      } else {
+        // custom_days
+        const activeDays = selectedDays.length > 0 ? selectedDays : [6, 1];
+        while (generatedDatesList.length < count) {
+          if (activeDays.includes(current.getDay())) {
+            generatedDatesList.push(new Date(current));
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      }
+
+      // Render Preview Table HTML
+      const tbody = document.getElementById("group-dates-preview-tbody");
+      if (tbody) {
+        tbody.innerHTML = generatedDatesList.map((dt, idx) => `
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:6px 12px; font-weight:800; color:var(--primary);">#${idx + 1}</td>
+            <td style="padding:6px 12px; font-weight:700;">${dt.toLocaleString('ar', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+            <td style="padding:6px 12px; color:var(--text-muted);">${daysAr[dt.getDay()]}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Update counters summary
+      const countSessionsEl = document.getElementById("group-count-sessions");
+      if (countSessionsEl) countSessionsEl.innerText = String(generatedDatesList.length);
+
+      const checkedStudentsCount = container.querySelectorAll(".group-student-checkbox:checked").length;
+      const totalRecordsEl = document.getElementById("group-total-records");
+      if (totalRecordsEl) totalRecordsEl.innerText = String(checkedStudentsCount * generatedDatesList.length);
+    };
+
+    // Update group counter live
+    const updateGroupCounter = () => {
+      const checkedCount = container.querySelectorAll(".group-student-checkbox:checked").length;
+      const countEl = document.getElementById("group-count-num");
+      if (countEl) countEl.innerText = String(checkedCount);
+
+      const totalRecordsEl = document.getElementById("group-total-records");
+      if (totalRecordsEl) totalRecordsEl.innerText = String(checkedCount * generatedDatesList.length);
+    };
+
+    container.querySelectorAll(".group-student-checkbox").forEach(cb => {
+      cb.addEventListener("change", updateGroupCounter);
+    });
+
+    document.getElementById("group-sessions-count")?.addEventListener("input", updatePreviewTable);
+    document.getElementById("group-sessions-freq")?.addEventListener("change", updatePreviewTable);
+    document.getElementById("group-session-start-date")?.addEventListener("change", updatePreviewTable);
+    document.getElementById("group-session-daily-time")?.addEventListener("change", updatePreviewTable);
+    container.querySelectorAll("input[name='groupDays']").forEach(cb => cb.addEventListener("change", updatePreviewTable));
+    document.getElementById("refresh-group-preview-btn")?.addEventListener("click", updatePreviewTable);
+
+    // Initial preview render
+    updatePreviewTable();
+
+    // Select all / Deselect all
+    document.getElementById("group-select-all-btn")?.addEventListener("click", () => {
+      container.querySelectorAll(".group-student-checkbox").forEach(cb => { cb.checked = true; });
+      updateGroupCounter();
+    });
+
+    document.getElementById("group-deselect-all-btn")?.addEventListener("click", () => {
+      container.querySelectorAll(".group-student-checkbox").forEach(cb => { cb.checked = false; });
+      updateGroupCounter();
+    });
+
+    // Filter students by search
+    document.getElementById("group-students-search")?.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      container.querySelectorAll(".group-student-item").forEach(item => {
+        const text = item.getAttribute("data-search") || "";
+        item.style.display = text.includes(q) ? "flex" : "none";
+      });
+    });
+
+    // Form submission
+    document.getElementById("group-session-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("group-session-title").value.trim();
+      const teacherId = document.getElementById("group-session-teacher").value;
+      const duration = parseInt(document.getElementById("group-session-duration").value) || 60;
+      const meetingLink = document.getElementById("group-session-meeting-link").value.trim();
+
+      const selectedStudentCbs = container.querySelectorAll(".group-student-checkbox:checked");
+      const studentIds = Array.from(selectedStudentCbs).map(cb => cb.value);
+
+      if (studentIds.length === 0) {
+        showToast("الرجاء اختيار طالب واحد على الأقل لإضافته إلى الحصة الجماعية.", "error");
+        return;
+      }
+
+      if (generatedDatesList.length === 0) {
+        showToast("الرجاء تحديد مواعيد الحصص الجماعية بشكل صحيح.", "error");
+        return;
+      }
+
+      const scheduledDates = generatedDatesList.map(dt => dt.toISOString());
+      const submitBtn = document.getElementById("submit-group-session-btn");
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await apiFetch("/sessions/group-schedule", {
+          method: "POST",
+          body: JSON.stringify({ title, teacherId, studentIds, scheduledDates, duration, meetingLink })
+        });
+
+        showToast(res.message || `تم إدراج وجدولة ${scheduledDates.length} حصة جماعية لـ ${studentIds.length} طلاب بنجاح! 🚀`, "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("sessions");
+      } catch (err) {
+        if (submitBtn) submitBtn.disabled = false;
+        showToast(err.message || "فشلت جدولة الحصص الجماعية.", "error");
       }
     });
   }

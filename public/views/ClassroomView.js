@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast } from "../app.js";
+import { apiFetch, state, showToast, formatSessionDateTime } from "../app.js";
 
 export default class ClassroomView {
   constructor(container, sessionId) {
@@ -125,36 +125,20 @@ export default class ClassroomView {
         return;
       }
 
-      // 3. Future Session Guard (More than 30 mins before session time & teacher hasn't started live)
-      if (isStudent && !isLive && !isWithinWindow && now.getTime() < windowStart) {
-        const formattedTime = sessionDate 
-          ? sessionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : "";
-        const formattedDate = sessionDate 
-          ? sessionDate.toLocaleDateString('ar', { weekday: 'long', month: 'short', day: 'numeric' })
-          : "";
-
-        showToast("موعد الحصة قادم، تفتح القاعة قبل الموعد بـ 30 دقيقة.", "info");
-        this.container.innerHTML = `
-          <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
-            <div style="width:72px; height:72px; border-radius:50%; background:rgba(99,102,241,0.12); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
-              <i data-lucide="calendar-clock" style="width:36px; height:36px;"></i>
-            </div>
-            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">موعد الحصة قادم</h2>
-            <p style="color:var(--text-main); font-weight:700; font-size:1.05rem; margin-bottom:4px;">${formattedDate} • ${formattedTime}</p>
-            <p style="color:var(--text-muted); max-width:500px; margin:0 auto 24px auto; font-size:0.9rem; line-height:1.6;">
-              ينشط رابط دخول القاعة الافتراضية للطلاب <strong>قبل الموعد بـ 30 دقيقة</strong> (أو فور دخول المعلم وبدء البث المباشر).
-            </p>
-            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
-              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> العودة لجدول الحصص
-            </a>
-          </div>
-        `;
-        if (window.lucide) window.lucide.createIcons();
-        return;
-      }
+      // 3. Early Future Session Notice (Display notification banner inside classroom instead of blocking)
+      const isEarlyEntry = isStudent && !isLive && !isWithinWindow && now.getTime() < windowStart;
+      const formatted = formatSessionDateTime(session.scheduledAt);
 
       this.container.innerHTML = `
+        ${isEarlyEntry ? `
+          <div style="background:rgba(99,102,241,0.1); border:1px solid var(--primary); color:var(--primary); padding:10px 16px; border-radius:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:'Cairo', sans-serif;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="clock" style="width:18px; height:18px;"></i>
+              <span>أنت الآن داخل قاعة الحصة. الموعد الرسمي للبث هو: <strong>${formatted.fullStr}</strong>. يمكنك الانتظار هنا واستخدام التفاعلات.</span>
+            </div>
+            ${formatted.badgeHTML}
+          </div>
+        ` : ''}
         <div class="classroom-layout">
           <!-- Main Area (Video Stream or Whiteboard) -->
           <div class="classroom-main">

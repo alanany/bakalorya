@@ -383,7 +383,7 @@ export const state = {
   user: null,
   token: localStorage.getItem("token") || null,
   currentViewInstance: null,
-  theme: localStorage.getItem("theme") || "dark",
+  theme: localStorage.getItem("theme") || "light",
   language: localStorage.getItem("language") || "ar",
   translations: {}
 };
@@ -402,7 +402,10 @@ export async function loadTranslations(lang) {
 }
 
 export function t(key) {
-  return state.translations[key] || key;
+  if (state.translations && state.translations[key]) {
+    return state.translations[key];
+  }
+  return null;
 }
 
 export function switchLanguage(lang) {
@@ -423,12 +426,10 @@ async function initApp() {
     setupEventListeners();
     window.addEventListener("hashchange", router);
 
-    // Call router immediately to render view without network delay
-    router();
-
-    // Load translations and check auth in background
-    loadTranslations(state.language).catch(() => {});
+    // MUST await translations BEFORE running router to ensure 100% Arabic strings on first load
+    await loadTranslations(state.language);
     checkAuth().then(() => updateHeader()).catch(() => {});
+    await router();
   } catch (err) {
     console.error("initApp failed:", err);
     try { await router(); } catch (e) {}
@@ -1393,6 +1394,7 @@ export async function router() {
     case "#subscription-sessions": ViewClass = SubscriptionSessionsView; break;
     case "#course": ViewClass = CoursePlayerView; break;
     case "#teacher-portal": ViewClass = TeacherView; break;
+    case "#teacher-financial": ViewClass = TeacherView; break;
     case "#teacher-private-sessions": ViewClass = TeacherPrivateSessionsView; break;
     case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
@@ -1449,3 +1451,66 @@ document.addEventListener("click", (e) => {
     showToast("عفواً، لا يمكنك الانضمام للبث المباشر إلا قبل الموعد بـ 30 دقيقة فقط! ❌", "error");
   }
 });
+
+// ── Universal Multi-Timezone Utilities ─────────────────────────────────────────
+
+export const TIMEZONE_MAP = {
+  "Asia/Riyadh": { name: "توقيت السعودية", flag: "🇸🇦", utcOffset: "+3" },
+  "Africa/Cairo": { name: "توقيت مصر", flag: "🇪🇬", utcOffset: "+3" },
+  "Asia/Dubai": { name: "توقيت الإمارات", flag: "🇦🇪", utcOffset: "+4" },
+  "Asia/Kuwait": { name: "توقيت الكويت", flag: "🇰🇼", utcOffset: "+3" },
+  "Asia/Qatar": { name: "توقيت قطر", flag: "🇶🇦", utcOffset: "+3" },
+  "Asia/Amman": { name: "توقيت الأردن", flag: "🇯🇴", utcOffset: "+3" },
+  "Asia/Baghdad": { name: "توقيت العراق", flag: "🇮🇶", utcOffset: "+3" },
+  "Europe/London": { name: "توقيت غرينتش", flag: "🇬🇧", utcOffset: "+0" }
+};
+
+export function getUserTimezone() {
+  if (state.user && state.user.timezone) {
+    return state.user.timezone;
+  }
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Africa/Cairo";
+  } catch (e) {
+    return "Africa/Cairo";
+  }
+}
+
+export function getTimezoneBadgeHTML(tz = getUserTimezone()) {
+  const info = TIMEZONE_MAP[tz] || { name: "التوقيت المحلي", flag: "🌐" };
+  return `<span class="tz-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.12); color:var(--primary); padding:2px 8px; border-radius:8px;">${info.flag} ${info.name}</span>`;
+}
+
+export function formatSessionDateTime(dateInput, targetTz = null, options = {}) {
+  if (!dateInput) return { timeStr: "-", dateStr: "-", fullStr: "-", badgeHTML: "", secondaryTZHTML: "" };
+  
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return { timeStr: "-", dateStr: "-", fullStr: "-", badgeHTML: "", secondaryTZHTML: "" };
+
+  const tz = targetTz || getUserTimezone();
+  const tzInfo = TIMEZONE_MAP[tz] || { name: "التوقيت المحلي", flag: "🌐" };
+
+  let timeStr = "";
+  let dateStr = "";
+  try {
+    timeStr = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: tz });
+    dateStr = d.toLocaleDateString("ar-EG", { month: "short", day: "numeric", year: "numeric", timeZone: tz });
+  } catch (e) {
+    timeStr = d.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
+    dateStr = d.toLocaleDateString("ar", { month: "short", day: "numeric" });
+  }
+
+  const badgeHTML = `<span class="tz-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.12); color:var(--primary); padding:2px 8px; border-radius:8px;">${tzInfo.flag} ${tzInfo.name}</span>`;
+  const fullStr = `${dateStr} • ${timeStr} (${tzInfo.flag} ${tzInfo.name})`;
+
+  let secondaryTZHTML = "";
+  if (options.secondaryTz && options.secondaryTz !== tz) {
+    const secInfo = TIMEZONE_MAP[options.secondaryTz] || { name: options.secondaryTz, flag: "🌐" };
+    try {
+      const secTimeStr = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: options.secondaryTz });
+      secondaryTZHTML = `<span style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">(${secTimeStr} ${secInfo.flag} ${secInfo.name})</span>`;
+    } catch (e) {}
+  }
+
+  return { timeStr, dateStr, fullStr, badgeHTML, secondaryTZHTML };
+}

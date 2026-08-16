@@ -4,6 +4,8 @@ import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
 import { Enrollment } from "../entity/Enrollment";
 import { Course } from "../entity/Course";
+import { Session } from "../entity/Session";
+import { Subscription } from "../entity/Subscription";
 import { AuthRequest } from "../middleware/auth";
 import { 
   createWhatsAppNotificationPayload, 
@@ -55,6 +57,8 @@ export class UserController {
       const userRepo = AppDataSource.getRepository(User);
       const enrollRepo = AppDataSource.getRepository(Enrollment);
       const courseRepo = AppDataSource.getRepository(Course);
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const subRepo = AppDataSource.getRepository(Subscription);
 
       // Fetch all students registered in platform
       const allStudents = await userRepo.find({
@@ -69,11 +73,30 @@ export class UserController {
       });
 
       let teacherCourseIds: string[] = [];
+      let teacherSessionStudentIds: Set<string> = new Set();
+      let teacherSubStudentIds: Set<string> = new Set();
+
       if (req.user.role === "teacher") {
         const teacherCourses = await courseRepo.find({
           where: { teacher: { id: req.user.id } }
         });
         teacherCourseIds = teacherCourses.map(c => String(c.id));
+
+        const teacherSessions = await sessionRepo.find({
+          where: { teacher: { id: req.user.id } },
+          relations: ["student"]
+        });
+        teacherSessions.forEach(s => {
+          if (s.student?.id) teacherSessionStudentIds.add(String(s.student.id));
+        });
+
+        const teacherSubs = await subRepo.find({
+          where: { teacher: { id: req.user.id } },
+          relations: ["student", "plan"]
+        });
+        teacherSubs.forEach(sub => {
+          if (sub.student?.id) teacherSubStudentIds.add(String(sub.student.id));
+        });
       }
 
       let resultStudents = allStudents.map(s => {
@@ -89,6 +112,18 @@ export class UserController {
             course: e.course ? { id: e.course.id, title: e.course.title } : { id: "", title: "دورة تعليمية" }
           }));
 
+        const isSessionStudent = teacherSessionStudentIds.has(String(s.id));
+        const isSubStudent = teacherSubStudentIds.has(String(s.id));
+
+        // If student has a session or subscription with teacher, ensure they have at least 1 descriptor
+        if (req.user?.role === "teacher" && sEnrollments.length === 0 && (isSessionStudent || isSubStudent)) {
+          sEnrollments.push({
+            id: `sub-${s.id}`,
+            status: "active",
+            course: { id: "", title: "اشتراك حصص بث مباشر وتدريب خاص 🎯" }
+          });
+        }
+
         return {
           id: s.id,
           name: s.name,
@@ -99,13 +134,16 @@ export class UserController {
           location: s.location,
           education: s.education,
           createdAt: s.createdAt,
-          enrollments: sEnrollments
+          enrollments: sEnrollments,
+          hasSessionAssignment: isSessionStudent || isSubStudent
         };
       });
 
       if (req.user?.role === "teacher") {
-        // Only return students enrolled in this teacher's courses
-        resultStudents = resultStudents.filter(s => s.enrollments && s.enrollments.length > 0);
+        // Return students enrolled in teacher's courses OR assigned via sessions/subscriptions
+        resultStudents = resultStudents.filter(s =>
+          (s.enrollments && s.enrollments.length > 0) || s.hasSessionAssignment
+        );
       }
 
       return res.json(resultStudents);

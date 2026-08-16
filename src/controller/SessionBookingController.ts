@@ -979,4 +979,85 @@ export class SessionBookingController {
       return res.status(500).json({ error: "فشلت عملية حفظ جدول الحصص." });
     }
   }
+
+  // POST /sessions/group-schedule — Schedule multiple live sessions for a group of students with a teacher
+  static async scheduleGroupSession(req: AuthRequest, res: Response) {
+    const { title, teacherId, studentIds, scheduledAt, scheduledDates, duration, meetingLink } = req.body;
+
+    if (!title || !teacherId || !studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ error: "الرجاء توفير عنوان الحصة والمعلم وقائمة الطلاب." });
+    }
+
+    let datesToSchedule: Date[] = [];
+    if (Array.isArray(scheduledDates) && scheduledDates.length > 0) {
+      datesToSchedule = scheduledDates.map((d: string) => new Date(d)).filter((d: Date) => !isNaN(d.getTime()));
+    } else if (scheduledAt) {
+      const d = new Date(scheduledAt);
+      if (!isNaN(d.getTime())) datesToSchedule.push(d);
+    }
+
+    if (datesToSchedule.length === 0) {
+      return res.status(400).json({ error: "الرجاء توفير تواريخ وأوقات البث الجماعي." });
+    }
+
+    try {
+      const userRepository = AppDataSource.getRepository(User);
+      const sessionRepository = AppDataSource.getRepository(Session);
+
+      const teacher = await userRepository.findOneBy({ id: teacherId });
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم المحدد غير موجود." });
+      }
+
+      const students = await userRepository.find({
+        where: studentIds.map(id => ({ id }))
+      });
+
+      if (students.length === 0) {
+        return res.status(400).json({ error: "لم يتم العثور على أي طالب من القائمة المحددة." });
+      }
+
+      const sessionDuration = parseInt(duration) || 60;
+      const createdSessions: Session[] = [];
+
+      for (let i = 0; i < datesToSchedule.length; i++) {
+        const scheduledDate = datesToSchedule[i];
+        const sessionTitle = datesToSchedule.length > 1 ? `${title} - حصة (${i + 1}/${datesToSchedule.length})` : title;
+
+        for (const student of students) {
+          const session = new Session();
+          session.title = sessionTitle;
+          session.teacher = teacher;
+          session.student = student;
+          session.scheduledAt = scheduledDate;
+          session.duration = sessionDuration;
+          session.status = "SCHEDULED";
+          session.topic = sessionTitle;
+
+          const saved = await sessionRepository.save(session);
+          createdSessions.push(saved);
+
+          try {
+            await NotificationController.createNotification(
+              student.id,
+              "حصة بث مباشر جماعية جديدة! 🎥",
+              `تم إضافة حصة جماعية بعنوان "${sessionTitle}" معك ومع المعلم ${teacher.name} بتاريخ ${scheduledDate.toLocaleString("ar")}.`,
+              "info",
+              `#classroom/${saved.id}`
+            );
+          } catch (nErr) {}
+        }
+      }
+
+      return res.status(201).json({
+        message: `تم إدراج وجدولة ${datesToSchedule.length} حصة جماعية لـ ${students.length} طلاب بنجاح! 🚀 (إجمالي ${createdSessions.length} سجل حصص)`,
+        groupSize: students.length,
+        datesCount: datesToSchedule.length,
+        totalSessionsCreated: createdSessions.length
+      });
+    } catch (err) {
+      console.error("scheduleGroupSession error:", err);
+      return res.status(500).json({ error: "فشلت جدولة الحصص الجماعية." });
+    }
+  }
 }
