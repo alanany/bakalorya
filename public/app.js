@@ -599,9 +599,10 @@ export function updateHeader() {
 
         <div class="user-profile-trigger">
           <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Bakalorya"}" alt="Avatar" class="user-avatar">
-          <span style="font-weight:600;font-size:0.9rem;">${state.user.name}</span>
-          <button class="logout-btn" id="logout-button" title="${t("nav.logout")}">
-            <i data-lucide="log-out"></i>
+          <span class="user-profile-name" style="font-weight:700; font-size:0.88rem;">${state.user.name}</span>
+          <button class="logout-btn" id="logout-button" title="${t("nav.logout") || 'تسجيل الخروج'}">
+            <i data-lucide="log-out" style="width:15px; height:15px;"></i>
+            <span class="logout-text">${t("nav.logout") || "خروج"}</span>
           </button>
         </div>
       </div>
@@ -644,29 +645,35 @@ export function updateHeader() {
     if (state.user) {
       if (state.user.role === "admin") {
         links += `
-          <a href="#admin-dashboard" class="sidebar-nav-item" style="color:var(--primary); font-weight:700;">
+          <a href="#admin-dashboard/stats" class="sidebar-nav-item" style="color:var(--primary); font-weight:700;">
             <i data-lucide="shield"></i> لوحة تحكم المشرف
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/categories" class="sidebar-nav-item">
             <i data-lucide="layers"></i> إدارة التصنيفات
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/courses" class="sidebar-nav-item">
             <i data-lucide="book-open"></i> إدارة الدورات
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/teachers" class="sidebar-nav-item">
             <i data-lucide="graduation-cap"></i> إدارة المعلمين
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/students" class="sidebar-nav-item">
             <i data-lucide="users"></i> إدارة الطلاب
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/teacherApplications" class="sidebar-nav-item">
+            <i data-lucide="user-plus"></i> طلبات انضمام المعلمين
+          </a>
+          <a href="#admin-dashboard/members" class="sidebar-nav-item">
             <i data-lucide="shield-check"></i> جميع الأعضاء
           </a>
-          <a href="#admin-dashboard" class="sidebar-nav-item">
+          <a href="#admin-dashboard/reports" class="sidebar-nav-item">
             <i data-lucide="bar-chart-3"></i> التقارير والسجلات
           </a>
-          <a href="#settings" class="sidebar-nav-item">
-            <i data-lucide="settings"></i> ${t("nav.settings")}
+          <a href="#admin-dashboard/subscriptions" class="sidebar-nav-item">
+            <i data-lucide="calendar-heart"></i> إدارة الاشتراكات
+          </a>
+          <a href="#admin-dashboard/plans" class="sidebar-nav-item">
+            <i data-lucide="settings"></i> الإعدادات وخطط الباقات
           </a>
         `;
       } else if (state.user.role === "teacher") {

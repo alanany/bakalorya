@@ -1,9 +1,9 @@
 import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from "../app.js";
 
 export default class AdminView {
-  constructor(container) {
+  constructor(container, initialTab = "stats") {
     this.container = container;
-    this.activeTab = "stats";
+    this.activeTab = initialTab || "stats";
     this.stats = {};
     this.allMembers = [];
     this.courses = [];
@@ -505,11 +505,20 @@ export default class AdminView {
     overlay?.addEventListener("click", closeSidebar);
 
     this.container.querySelectorAll(".admin-nav-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this.activeTab = btn.getAttribute("data-tab");
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const tab = btn.getAttribute("data-tab");
+        if (!tab) return;
+        this.activeTab = tab;
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         closeSidebar();
+        try {
+          if (window.location.hash !== `#admin-dashboard/${tab}`) {
+            history.pushState(null, "", `#admin-dashboard/${tab}`);
+          }
+        } catch (err) {}
         this.renderTab(this.activeTab);
       });
     });

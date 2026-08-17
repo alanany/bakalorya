@@ -239,7 +239,7 @@ export default class CoursesView {
             ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
                   ${t("teacher.noCourses")}
                 </div>`
-            : `<div class="courses-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+            : `<div class="courses-grid">
                   ${myCourses.map(course => this.renderCourseCard(course, 0, true, true)).join("")}
                 </div>`
           }

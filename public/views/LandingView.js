@@ -884,7 +884,7 @@ export default class LandingView {
     }
 
     coursesContainer.innerHTML = `
-      <div class="courses-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:24px;">
+      <div class="courses-grid">
         ${filtered.map(course => renderCourseCard(course)).join("")}
       </div>
     `;

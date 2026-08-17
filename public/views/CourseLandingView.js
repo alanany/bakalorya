@@ -60,36 +60,36 @@ export default class CourseLandingView {
         <div style="background:var(--bg-color); min-height:100vh;">
           
           <!-- Top Cover (Slider / Hero) -->
-          <div style="position: relative; width: 100%; height: 50vh; min-height: 400px; background-image: url('${this.course.image}'); background-size: cover; background-position: center;">
-            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%); display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding: 20px;">
-              <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 16px; text-transform: uppercase;">
+          <div style="position: relative; width: 100%; min-height: 340px; background-image: url('${this.course.image}'); background-size: cover; background-position: center; padding: 40px 16px;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 100%); display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding: 24px 16px;">
+              <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 800; margin-bottom: 12px; text-transform: uppercase;">
                 ${this.course.category}
               </span>
-              <h1 style="font-size: 3.5rem; font-weight: 800; color: #ffffff; margin-bottom: 20px; max-width: 800px; line-height: 1.2; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+              <h1 style="font-size: clamp(1.5rem, 4.5vw, 2.8rem); font-weight: 800; color: #ffffff; margin-bottom: 16px; max-width: 800px; line-height: 1.3; text-shadow: 0 2px 10px rgba(0,0,0,0.6);">
                 ${this.course.title}
               </h1>
               
-              <div style="display:flex; gap:16px; align-items:center; margin-top: 24px; flex-wrap:wrap; justify-content:center;">
+              <div style="display:flex; gap:12px; align-items:center; margin-top: 16px; flex-wrap:wrap; justify-content:center; width:100%; max-width:500px;">
                 ${this.enrollmentStatus === 'active' ? `
-                  <a href="#course/${this.course.id}" class="btn-primary" style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    <i data-lucide="play-circle"></i> ${t("course.continueLearning") || "Go to Course"}
+                  <a href="#course/${this.course.id}" class="btn-primary" style="padding: 12px 28px; font-size: 0.95rem; font-weight: 800; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                    <i data-lucide="play-circle"></i> ${t("course.continueLearning") || "دخول الدورة"}
                   </a>
                 ` : this.enrollmentStatus === 'pending' ? `
-                  <button class="btn-primary" disabled style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; opacity:0.7; cursor:not-allowed;">
-                    <i data-lucide="clock"></i> تم إرسال طلب الحجز إلى المعلم، وهو الآن في انتظار الموافقة. 
+                  <button class="btn-primary" disabled style="padding: 12px 24px; font-size: 0.9rem; font-weight: 800; border-radius: 30px; opacity:0.8; cursor:not-allowed;">
+                    <i data-lucide="clock"></i> طلب الحجز قيد المراجعة والموافقة
                   </button>
                 ` : this.enrollmentStatus === 'rejected' ? `
-                  <button class="btn-primary" disabled style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; background:var(--error); border-color:var(--error); opacity:0.8;">
+                  <button class="btn-primary" disabled style="padding: 12px 24px; font-size: 0.9rem; font-weight: 800; border-radius: 30px; background:var(--error); border-color:var(--error); opacity:0.8;">
                     <i data-lucide="x-circle"></i> تم الرفض
                   </button>
                 ` : `
-                  <button id="enroll-hero-btn" class="btn-primary" style="padding: 16px 40px; font-size: 1.2rem; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    <i data-lucide="plus-circle"></i> ${t("course.enroll") || "Enroll Now"}
+                  <button id="enroll-hero-btn" class="btn-primary" style="padding: 12px 28px; font-size: 0.95rem; font-weight: 800; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                    <i data-lucide="plus-circle"></i> ${t("course.enroll") || "التسجيل في الدورة"}
                   </button>
                 `}
                 ${this.course.teacher && (!state.user || state.user.role === 'student' && this.enrollmentStatus === 'active') ? `
-                  <button id="book-private-session-hero-btn" class="btn-secondary" style="padding: 14px 28px; font-size: 1rem; border-radius: 30px; background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.5); color:#fff; backdrop-filter:blur(8px);">
-                    <i data-lucide="user-check"></i> احجز حصص  خاصة مع المعلم
+                  <button id="book-private-session-hero-btn" class="btn-secondary" style="padding: 12px 24px; font-size: 0.9rem; font-weight: 800; border-radius: 30px; background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.5); color:#fff; backdrop-filter:blur(8px); display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                    <i data-lucide="user-check"></i> احجز حصص خاصة مع المعلم
                   </button>
                 ` : ''}
               </div>
