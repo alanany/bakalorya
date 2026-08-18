@@ -29,6 +29,18 @@ export class Course {
   @Column({ default: "PUBLISHED" }) // Default for legacy courses; new submitted courses use PENDING_REVIEW
   status: "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "ARCHIVED";
 
+  @Column({ type: "float", default: 0 })
+  price: number;
+
+  @Column({ default: true })
+  isFree: boolean;
+
+  @Column({ nullable: true, default: "EGP" })
+  currency: string;
+
+  @Column({ type: "text", nullable: true })
+  paymentDetails: string;
+
   @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
   approvedBy: User;
 

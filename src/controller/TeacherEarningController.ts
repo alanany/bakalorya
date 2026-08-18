@@ -48,11 +48,12 @@ export class TeacherEarningController {
       });
 
       const payments = await paymentRepository.find({
-        where: { status: "SUCCESS" },
+        relations: ["student", "courseEnrollment", "courseEnrollment.course", "subscription", "subscription.plan"],
         order: { createdAt: "DESC" }
       });
 
-      const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+      const successfulPayments = payments.filter(p => p.status === "SUCCESS");
+      const totalRevenue = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
       const totalTeacherEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
       const platformNetRevenue = Math.max(0, totalRevenue - totalTeacherEarnings);
 

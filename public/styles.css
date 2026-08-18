@@ -840,8 +840,8 @@ body.sidebar-open {
 
 .courses-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
 }
 
 /* ─── Premium Bakalorya Course Card (Inspired by Screenshot) ──────────────── */
@@ -1810,415 +1810,127 @@ body.sidebar-open {
 }
 
 /* ==========================================================================
-   MOBILE & RESPONSIVE DESIGN SYSTEM (320px to 992px)
+   MOBILE & RESPONSIVE DESIGN SYSTEM
    ========================================================================== */
 
-/* --- TABLETS & MOBILE PHONES (max-width: 992px) --- */
-@media screen and (max-width: 992px) {
-  html,
-  body,
-  #app-viewport {
+/* --- TABLETS & SMALL DESKTOPS (max-width: 1024px) --- */
+@media screen and (max-width: 1024px) {
+  .hero-card-main h1 {
+    font-size: 1.75rem;
+  }
+  .hero-card-secondary h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* --- MOBILE PHONES & TABLETS (max-width: 768px) --- */
+@media screen and (max-width: 768px) {
+  html, body, #app-viewport {
     max-width: 100vw !important;
     overflow-x: hidden !important;
   }
 
-    .header-container {
-      padding: 8px 12px !important;
-      gap: 8px !important;
-      max-width: 100% !important;
-      justify-content: space-between !important;
-    }
-
-    .header-left-brand {
-      gap: 6px !important;
-    }
-
-    #header-logo {
-      height: 36px !important;
-      max-width: 100px !important;
-      object-fit: contain !important;
-      padding: 0 !important;
-    }
-
-    .header-search-container,
-    #header-search-wrapper,
-    .header-teachers-link,
-    .nav-menu {
-      display: none !important;
-    }
-
-    .sidebar-toggle-btn {
-      width: 34px !important;
-      height: 34px !important;
-      border-radius: 8px !important;
-    }
-
-    .header-actions {
-      gap: 6px !important;
-    }
-
-    .user-profile-name,
-    .logout-text {
-      display: none !important;
-    }
-
-    .user-profile-trigger {
-      gap: 6px !important;
-    }
-
-    .user-avatar {
-      width: 30px !important;
-      height: 30px !important;
-    }
-
-    .logout-btn {
-      padding: 6px !important;
-      border-radius: 8px !important;
-      font-size: 0.75rem !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    .header-actions .theme-toggle {
-      width: 32px !important;
-      height: 32px !important;
-      min-width: 32px !important;
-      font-size: 0.72rem !important;
-      padding: 0 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    #auth-action-container .btn-primary,
-    #auth-action-container .btn-secondary {
-      padding: 6px 10px !important;
-      font-size: 0.75rem !important;
-      border-radius: 8px !important;
-    }
-
-    /* Grid Layouts Stacked on Tablet/Mobile */
-    .student-dashboard-layout {
-      grid-template-columns: 1fr !important;
-      padding: 16px 12px !important;
-      gap: 20px !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-    }
-
-    .dashboard-stats-grid {
-      grid-template-columns: repeat(3, 1fr) !important;
-      gap: 8px !important;
-      width: 100% !important;
-    }
-
-    .stat-box {
-      padding: 12px 6px !important;
-      gap: 6px !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      text-align: center !important;
-      border-radius: 16px !important;
-    }
-
-    .stat-box-icon {
-      width: 34px !important;
-      height: 34px !important;
-    }
-
-    .stat-box-val {
-      font-size: 1rem !important;
-      font-weight: 800 !important;
-    }
-
-    .stat-box-lbl {
-      font-size: 0.68rem !important;
-      line-height: 1.2 !important;
-    }
-
-    /* FORCE ALL CARD LISTS & GRIDS TO 1 SINGLE COLUMN ON MOBILE (< 992px) */
-    .courses-grid,
-    .teacher-grid,
-    .subscription-plans-grid,
-    .subscription-banners-grid,
-    .learn-paths-grid,
-    .degrees-grid,
-    .why-choose-grid,
-    .hero-section-grid,
-    .metrics-strip-grid,
-    #gradient-featured-container,
-    #top-teachers-container,
-    #landing-blogs-container,
-    #blogs-grid,
-    #tests-content-area,
-    #assignments-content-area,
-    #student-schedule-container {
-      grid-template-columns: 1fr !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-      gap: 16px !important;
-    }
-
-    .teacher-layout {
-      padding: 16px 12px !important;
-    }
-
-    .admin-topbar {
-      padding: 12px 14px !important;
-      flex-wrap: wrap !important;
-    }
+  .header-container {
+    padding: 8px 14px !important;
+    justify-content: space-between !important;
   }
 
-  /* ── LANDING PAGE SECTIONS ── */
-
-  /* Top utility bar horizontal scroll */
-  section {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
+  #header-search-wrapper,
+  .header-teachers-link,
+  .nav-menu {
+    display: none !important;
   }
 
-  /* Landing top utility bar: horizontal scroll on mobile */
-  .landing-utility-bar>div {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    white-space: nowrap;
-    gap: 16px !important;
-    font-size: 0.75rem !important;
-    padding: 6px 14px !important;
+  .user-profile-name,
+  .logout-text {
+    display: none !important;
   }
 
-  /* Hero Dual Card Section: stack vertically */
-  .hero-section-grid {
+  /* Grid Layouts on Mobile Phones */
+  .student-dashboard-layout {
     grid-template-columns: 1fr !important;
-    gap: 14px !important;
+    padding: 16px 12px !important;
+    gap: 16px !important;
   }
 
-  /* Hero left card: reduce font size, stack content */
-  .hero-card-main {
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .hero-section-grid,
+  .subscription-banners-grid,
+  .learn-paths-grid,
+  .why-choose-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .degrees-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .hero-card-main,
+  .hero-card-secondary {
     padding: 28px 20px !important;
     min-height: auto !important;
     flex-direction: column !important;
     text-align: center;
-    gap: 20px;
   }
 
-  .hero-card-main h1 {
-    font-size: 1.5rem !important;
-    line-height: 1.3 !important;
-  }
-
-  .hero-card-main p {
-    font-size: 0.88rem !important;
-    margin-bottom: 16px !important;
-  }
-
-  /* Hero card image: hide on very small screens to save space */
-  .hero-card-image-wrapper {
+  .hero-card-image-wrapper,
+  .subscription-banner-card img {
     display: none !important;
   }
 
-  /* Hero right card: stack */
-  .hero-card-secondary {
-    padding: 24px 20px !important;
-    min-height: auto !important;
-    flex-direction: column !important;
-    text-align: center;
-    gap: 16px;
-  }
-
-  .hero-card-secondary h2 {
-    font-size: 1.3rem !important;
-  }
-
-  /* Hero categories mini grid: full width 2-cols */
   #hero-categories-container {
     width: 100% !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    margin-top: 16px;
+    margin-top: 14px;
   }
 
-  /* Hero banner flex direction for generic banners */
-  .hero-banner-content,
-  .featured-banner-flex {
-    flex-direction: column !important;
-    text-align: center;
-  }
-
-  /* Featured Category Pills: horizontal scroll */
-  #featured-category-pills {
-    width: 100%;
-    justify-content: flex-start !important;
-    overflow-x: auto;
-    white-space: nowrap;
-    padding: 6px 10px;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px !important;
-    flex-wrap: nowrap !important;
-  }
-
-  #featured-category-pills::-webkit-scrollbar {
-    display: none;
-  }
-
-  .gradient-pill-btn {
-    flex-shrink: 0;
-    font-size: 0.8rem !important;
-    padding: 5px 14px !important;
-    white-space: nowrap;
-  }
-
-  /* Gradient featured section: banner title & pills stack */
   .gradient-banner-inner {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 14px !important;
   }
 
-  .gradient-banner-inner h2 {
-    font-size: 1.4rem !important;
+  #featured-category-pills {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 6px;
+    flex-wrap: nowrap !important;
   }
 
-  /* Gradient featured courses grid: 1 col */
-  #gradient-featured-container {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Subscription Banners: Stack */
-  .subscription-banners-grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  /* Subscription banner card: smaller padding, hide image */
-  .subscription-banner-card {
-    padding: 24px 20px !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 16px;
-  }
-
-  .subscription-banner-card img {
-    display: none !important;
-  }
-
-  .subscription-banner-card h3 {
-    font-size: 1.2rem !important;
-  }
-
-  /* "What do you want to learn" paths grid: 1 col */
-  .learn-paths-grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  .learn-path-card {
-    padding: 28px 20px !important;
-  }
-
-  /* Explore degrees grid */
-  .degrees-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 14px !important;
-  }
-
-  /* Outcome banner: stack */
   .outcome-banner-inner {
     flex-direction: column !important;
     text-align: center;
     align-items: center !important;
-    gap: 24px;
+    gap: 20px;
+    padding: 32px 20px !important;
   }
 
-  .outcome-banner-inner h2 {
-    font-size: 1.5rem !important;
-  }
-
-  /* Why choose bakalorya: 1 col on mobile */
-  .why-choose-grid {
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-  }
-
-  /* Metrics strip: 2x2 grid on mobile */
-  .metrics-strip-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 20px !important;
-    text-align: center;
-  }
-
-  .metrics-strip-grid>div>div:first-child {
-    font-size: 1.8rem !important;
-  }
-
-  /* Top instructors grid: 1 col */
-  #top-teachers-container {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  /* Blog grid: 1 col */
-  #landing-blogs-container {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  /* CTA section */
-  .cta-section h2 {
-    font-size: 1.7rem !important;
-  }
-
-  .cta-section p {
-    font-size: 0.95rem !important;
-  }
-
-  .cta-section>div>div {
-    flex-direction: column !important;
-    gap: 12px !important;
-    align-items: stretch;
-  }
-
-  .cta-section .btn-primary,
-  .cta-section .btn-secondary {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-    padding: 14px 24px !important;
-    font-size: 1rem !important;
-  }
-
-  /* Footer: stack columns */
   .footer-grid {
     grid-template-columns: 1fr !important;
-    gap: 28px !important;
+    gap: 24px !important;
   }
 
   .footer-bottom {
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 10px !important;
     text-align: center;
   }
 
-  /* Mobile Modals */
   .modal-content {
-    width: 95vw !important;
-    max-width: 95vw !important;
+    width: 94vw !important;
+    max-width: 94vw !important;
     margin: 10px auto;
     border-radius: 18px !important;
-    max-height: 90vh;
-  }
-
-  .modal-header {
-    padding: 14px 16px;
-  }
-
-  .modal-body {
-    padding: 16px 14px;
-    max-height: 75vh;
   }
 
   .modal-footer {
-    padding: 12px 14px;
     flex-direction: column-reverse;
     gap: 8px;
   }
@@ -2227,24 +1939,15 @@ body.sidebar-open {
     width: 100%;
   }
 
-  /* Tables Touch Scroll Container */
-  .table-responsive,
-  table {
+  /* Table Touch Scroll */
+  .table-responsive, table {
     display: block;
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Sidebar Drawer on Mobile */
-  .app-sidebar {
-    width: 290px;
-    max-width: min(300px, 85vw) !important;
-  }
-
-  /* Multi-column Layout Stacking on Mobile */
   .course-manage-container,
-  .admin-shell,
   .teacher-layout,
   .classroom-layout,
   .course-player-layout {
@@ -2261,43 +1964,6 @@ body.sidebar-open {
     border-inline-end: none !important;
     border-bottom: 1px solid var(--border-color) !important;
     padding: 16px !important;
-    flex-shrink: 1 !important;
-  }
-
-  .classroom-video-area {
-    width: 100% !important;
-    height: auto !important;
-  }
-
-  .video-container {
-    height: 240px !important;
-  }
-
-  /* Toast Notification positioning on Mobile */
-  #toast-container {
-    bottom: 16px !important;
-    right: 16px !important;
-    left: 16px !important;
-    max-width: none !important;
-  }
-
-  /* Responsive Grid Safety Wrappers for inline minmax grids */
-  [style*="repeat(auto-fit,"],
-  [style*="repeat(auto-fill,"] {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  /* 2-column inline grid overrides on mobile */
-  [style*="grid-template-columns:1fr 1fr"],
-  [style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Most popular/new releases/sessions 3-column section */
-  #most-popular-container,
-  #new-releases-container,
-  #trending-sessions-container {
-    gap: 12px !important;
   }
 }
 
@@ -2351,4 +2017,115 @@ body.sidebar-open {
     height: 44px !important;
     padding: 3px 8px !important;
   }
+}
+
+/* ── Admin Sessions Filter Tabs & Pills ──────────────────────────────────────── */
+.admin-session-status-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-color);
+}
+
+.admin-session-status-filter-btn.inactive-pill {
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+
+.admin-session-status-filter-btn.inactive-pill:hover {
+  background: var(--bg-app);
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.admin-session-status-filter-btn.active-pill {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.admin-session-status-filter-btn.active-pill-danger {
+  background: linear-gradient(135deg, #ef4444, #f43f5e);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+
+.admin-session-status-filter-btn.active-pill-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.admin-session-status-filter-btn.active-pill-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.tab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.inactive-pill .tab-badge {
+  background: var(--bg-app);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.tab-badge-danger {
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.inactive-pill .tab-badge-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.tab-badge-success {
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.inactive-pill .tab-badge-success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.tab-badge-warning {
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.inactive-pill .tab-badge-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
 }
