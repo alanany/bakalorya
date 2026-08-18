@@ -356,7 +356,7 @@ export class AdminController {
 
   // POST /admin/courses — Create a new course directly as Admin
   static async createCourse(req: AuthRequest, res: Response) {
-    const { title, description, category, degree, image, meetingLink, teacherId } = req.body;
+    const { title, description, category, degree, image, meetingLink, teacherId, price, isFree, currency, paymentDetails } = req.body;
 
     if (!title || !category || !degree) {
       return res.status(400).json({ error: "عنوان الدورة، المادة، والصف الدراسي عناصر مطلوبة." });
@@ -371,6 +371,9 @@ export class AdminController {
         teacher = await userRepo.findOneBy({ id: teacherId });
       }
 
+      const numericPrice = parseFloat(price) || 0;
+      const courseIsFree = isFree === true || isFree === "true" || numericPrice === 0;
+
       const course = new Course();
       course.title = title;
       course.description = description || "";
@@ -379,6 +382,10 @@ export class AdminController {
       course.image = image || "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600";
       course.meetingLink = meetingLink || null;
       course.teacher = teacher;
+      course.price = courseIsFree ? 0 : numericPrice;
+      course.isFree = courseIsFree;
+      course.currency = currency || "EGP";
+      course.paymentDetails = paymentDetails || null;
       course.status = "PUBLISHED";
 
       await courseRepo.save(course);

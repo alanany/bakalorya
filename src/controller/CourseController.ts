@@ -46,7 +46,7 @@ export class CourseController {
   }
 
   static async create(req: AuthRequest, res: Response) {
-    const { title, description, category, degree, image, meetingLink } = req.body;
+    const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails } = req.body;
 
     if (!title || !description || !category) {
       return res.status(400).json({ error: "Missing title, description, or category." });
@@ -69,6 +69,14 @@ export class CourseController {
       course.meetingLink = meetingLink || null;
       course.image = image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60";
       course.teacher = teacher;
+
+      const numericPrice = parseFloat(price) || 0;
+      const courseIsFree = isFree === true || isFree === "true" || numericPrice === 0;
+
+      course.price = courseIsFree ? 0 : numericPrice;
+      course.isFree = courseIsFree;
+      course.currency = currency || "EGP";
+      course.paymentDetails = paymentDetails || null;
       course.status = req.user!.role === "admin" ? "PUBLISHED" : "PENDING_REVIEW";
 
       await courseRepository.save(course);
@@ -103,9 +111,10 @@ export class CourseController {
     }
   }
 
-  // Admin approves course
+  // Admin approves course (attaching payment details if paid)
   static async approveCourse(req: AuthRequest, res: Response) {
     const { id } = req.params;
+    const { paymentDetails, price, isFree, currency } = req.body || {};
 
     try {
       const courseRepository = AppDataSource.getRepository(Course);
@@ -113,13 +122,21 @@ export class CourseController {
 
       if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
 
+      if (paymentDetails !== undefined) course.paymentDetails = paymentDetails;
+      if (price !== undefined) {
+        const numericPrice = parseFloat(price) || 0;
+        course.price = numericPrice;
+        course.isFree = numericPrice === 0 || isFree === true || isFree === "true";
+      }
+      if (currency !== undefined) course.currency = currency;
+
       course.status = "PUBLISHED";
       course.approvedBy = { id: req.user!.id } as User;
       course.approvedAt = new Date();
       (course as any).rejectionReason = null;
 
       await courseRepository.save(course);
-      return res.status(200).json({ message: "تمت الموافقة على نشر الدورة بنجاح! 🎉", course });
+      return res.status(200).json({ message: "تمت الموافقة على نشر الدورة وإرفاق بيانات الدفع بنجاح! 🎉", course });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
     }
@@ -163,7 +180,7 @@ export class CourseController {
 
   static async addLesson(req: AuthRequest, res: Response) {
     const { courseId } = req.params;
-    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions, objectives } = req.body;
 
     if (!title) {
       return res.status(400).json({ error: "عنوان الدرس مطلوب." });
@@ -202,6 +219,7 @@ export class CourseController {
       lesson.resourceUrl = resourceUrl || null;
       lesson.resourceTitle = resourceTitle || null;
       lesson.questions = Array.isArray(questions) ? questions : [];
+      lesson.objectives = Array.isArray(objectives) ? objectives : [];
       lesson.course = course;
 
       await lessonRepository.save(lesson);
@@ -248,7 +266,7 @@ export class CourseController {
 
   static async updateLesson(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions } = req.body;
+    const { title, description, videoUrl, duration, chapter, order, photo, notes, resourceUrl, resourceTitle, questions, objectives } = req.body;
 
     try {
       const lessonRepository = AppDataSource.getRepository(Lesson);
@@ -276,6 +294,7 @@ export class CourseController {
       if (resourceUrl !== undefined) lesson.resourceUrl = resourceUrl;
       if (resourceTitle !== undefined) lesson.resourceTitle = resourceTitle;
       if (questions !== undefined) lesson.questions = Array.isArray(questions) ? questions : [];
+      if (objectives !== undefined) lesson.objectives = Array.isArray(objectives) ? objectives : [];
 
       await lessonRepository.save(lesson);
       return res.status(200).json(lesson);
@@ -512,6 +531,36 @@ export class CourseController {
       });
     } catch (err) {
       console.error("Error updating enrollment request:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  static async getCourseEnrollments(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const courseRepository = AppDataSource.getRepository(Course);
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+
+      const course = await courseRepository.findOne({
+        where: { id },
+        relations: ["teacher"]
+      });
+
+      if (!course) {
+        return res.status(404).json({ error: "Course not found." });
+      }
+
+      if (course.teacher && course.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden." });
+      }
+
+      const enrollments = await enrollmentRepository.find({
+        where: { course: { id } },
+        relations: ["student"]
+      });
+
+      return res.status(200).json(enrollments);
+    } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
     }
   }

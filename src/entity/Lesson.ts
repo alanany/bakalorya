@@ -39,6 +39,9 @@ export class Lesson {
   @Column("simple-json", { nullable: true })
   questions: any[];
 
+  @Column("simple-json", { nullable: true })
+  objectives: string[]; // Learning objectives for this specific lesson
+
   @ManyToOne(() => Course, { onDelete: "CASCADE" })
   course: Course;
 

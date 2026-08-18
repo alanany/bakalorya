@@ -77,6 +77,7 @@ export default class TeacherView {
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> 💰 السجل المالي والمستحقات
               </button>
               <button class="btn-secondary" id="open-session-modal-btn" style="border-color:var(--primary); color:var(--primary);"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>
+              <a href="#assignments" class="btn-secondary" style="border-color:#8b5cf6; color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:800;"><i data-lucide="clipboard-list"></i> 📝 الواجبات والأنشطة</a>
               <a href="#students" class="btn-primary" style="background:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-weight:800;"><i data-lucide="user-plus"></i> إضافة / إدارة الطلاب</a>
               <a href="#teacher-blogs" class="btn-secondary" style="border-color:#ec4899; color:#ec4899; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px;"><i data-lucide="newspaper"></i> مقالات المدونة</a>
             </div>

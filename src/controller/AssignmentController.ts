@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Assignment } from "../entity/Assignment";
 import { AssignmentSubmission } from "../entity/AssignmentSubmission";
 import { Course } from "../entity/Course";
+import { Lesson } from "../entity/Lesson";
 import { Enrollment } from "../entity/Enrollment";
 import { User } from "../entity/User";
 
@@ -10,19 +11,21 @@ export class AssignmentController {
     static getAssignments = async (req: Request, res: Response) => {
         try {
             const user = (req as any).user;
+            const userId = user.id || user.userId;
             const assignmentRepo = AppDataSource.getRepository(Assignment);
 
             if (user.role === 'student') {
                 const enrollmentRepo = AppDataSource.getRepository(Enrollment);
-                const enrollments = await enrollmentRepo.find({ where: { student: { id: user.userId } }, relations: ["course"] });
-                const courseIds = enrollments.map(e => e.course.id);
+                const enrollments = await enrollmentRepo.find({ where: { student: { id: userId } }, relations: ["course"] });
+                const courseIds = enrollments.map(e => e.course?.id).filter(Boolean);
                 
                 if (courseIds.length === 0) return res.json([]);
 
                 // Fetch assignments for enrolled courses with student's submissions
                 const assignments = await assignmentRepo.createQueryBuilder("assignment")
                     .leftJoinAndSelect("assignment.course", "course")
-                    .leftJoinAndSelect(AssignmentSubmission, "sub", "sub.assignmentId = assignment.id AND sub.studentId = :studentId", { studentId: user.userId })
+                    .leftJoinAndSelect("assignment.lesson", "lesson")
+                    .leftJoinAndSelect(AssignmentSubmission, "sub", "sub.assignmentId = assignment.id AND sub.studentId = :studentId", { studentId: userId })
                     .where("assignment.courseId IN (:...courseIds)", { courseIds })
                     .select([
                         "assignment.id AS id",
@@ -30,6 +33,8 @@ export class AssignmentController {
                         "assignment.description AS description",
                         "assignment.dueDate AS dueDate",
                         "course.title AS courseTitle",
+                        "lesson.id AS lessonId",
+                        "lesson.title AS lessonTitle",
                         "sub.id AS submissionId",
                         "sub.content AS submissionContent",
                         "sub.grade AS grade",
@@ -43,6 +48,7 @@ export class AssignmentController {
                     description: row.description,
                     dueDate: row.dueDate,
                     course: { title: row.courseTitle },
+                    lesson: row.lessonTitle ? { id: row.lessonId, title: row.lessonTitle } : null,
                     submission: row.submissionId ? {
                         id: row.submissionId,
                         content: row.submissionContent,
@@ -53,10 +59,11 @@ export class AssignmentController {
             } else {
                 // Teacher / Admin
                 let query = assignmentRepo.createQueryBuilder("assignment")
-                    .leftJoinAndSelect("assignment.course", "course");
+                    .leftJoinAndSelect("assignment.course", "course")
+                    .leftJoinAndSelect("assignment.lesson", "lesson");
                 
                 if (user.role === 'teacher') {
-                    query = query.where("course.teacherId = :teacherId", { teacherId: user.userId });
+                    query = query.leftJoin("course.teacher", "teacher").where("teacher.id = :teacherId", { teacherId: userId });
                 }
 
                 const assignments = await query.getMany();
@@ -70,7 +77,7 @@ export class AssignmentController {
 
     static createAssignment = async (req: Request, res: Response) => {
         try {
-            const { title, description, dueDate, courseId } = req.body;
+            const { title, description, dueDate, courseId, lessonId } = req.body;
             const courseRepo = AppDataSource.getRepository(Course);
             const course = await courseRepo.findOne({ where: { id: courseId } });
             
@@ -82,6 +89,14 @@ export class AssignmentController {
             assignment.dueDate = new Date(dueDate);
             assignment.course = course;
 
+            if (lessonId) {
+                const lessonRepo = AppDataSource.getRepository(Lesson);
+                const lesson = await lessonRepo.findOne({ where: { id: lessonId } });
+                if (lesson) {
+                    assignment.lesson = lesson;
+                }
+            }
+
             await AppDataSource.getRepository(Assignment).save(assignment);
             res.status(201).json(assignment);
         } catch (error) {
@@ -92,6 +107,7 @@ export class AssignmentController {
     static submitAssignment = async (req: Request, res: Response) => {
         try {
             const user = (req as any).user;
+            const userId = user.id || user.userId;
             const assignmentId = parseInt(req.params.id);
             const { content } = req.body;
 
@@ -100,12 +116,12 @@ export class AssignmentController {
             if (!assignment) return res.status(404).json({ error: "Assignment not found" });
 
             const subRepo = AppDataSource.getRepository(AssignmentSubmission);
-            let submission = await subRepo.findOne({ where: { assignment: { id: assignmentId }, student: { id: user.userId } } });
+            let submission = await subRepo.findOne({ where: { assignment: { id: assignmentId }, student: { id: userId } } });
 
             if (!submission) {
                 submission = new AssignmentSubmission();
                 submission.assignment = assignment;
-                submission.student = { id: user.userId } as User;
+                submission.student = { id: userId } as User;
             }
 
             submission.content = content;

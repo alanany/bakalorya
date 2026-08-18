@@ -152,8 +152,11 @@ export default class StudentView {
     });
   }
 
-  renderCourseCard(course, progress, showContinue = false, enrollmentStatus = "active") {
-    return renderCourseCard(course, progress, showContinue, enrollmentStatus);
+  renderCourseCard(course, progress = 0, showContinue = false, enrollmentStatus = "active") {
+    return renderCourseCard(course, {
+      progress: progress || 0,
+      enrollmentStatus: showContinue ? (enrollmentStatus || "active") : null
+    });
   }
 
   renderSessionCard(session) {

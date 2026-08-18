@@ -142,6 +142,155 @@ export class StudentController {
     }
   }
 
+  static async toggleObjective(req: AuthRequest, res: Response) {
+    const { courseId } = req.params;
+    const { objectiveIndex, completed } = req.body;
+
+    try {
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepository.findOne({
+        where: {
+          student: { id: req.user!.id },
+          course: { id: courseId }
+        }
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Student is not enrolled in this course." });
+      }
+
+      let completedObjs = enrollment.completedObjectives || [];
+      const objKey = String(objectiveIndex);
+
+      if (completed) {
+        if (!completedObjs.includes(objKey)) {
+          completedObjs.push(objKey);
+        }
+      } else {
+        completedObjs = completedObjs.filter(id => id !== objKey);
+      }
+
+      enrollment.completedObjectives = completedObjs;
+      await enrollmentRepository.save(enrollment);
+      return res.status(200).json(enrollment);
+    } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  static async toggleLessonObjective(req: AuthRequest, res: Response) {
+    const { courseId } = req.params;
+    const { lessonId, objectiveIndex, completed } = req.body;
+
+    if (!lessonId) {
+      return res.status(400).json({ error: "Missing lessonId." });
+    }
+
+    try {
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepository.findOne({
+        where: {
+          student: { id: req.user!.id },
+          course: { id: courseId }
+        }
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Student is not enrolled in this course." });
+      }
+
+      let map = enrollment.completedLessonObjectives || {};
+      let lessonObjs = Array.isArray(map[lessonId]) ? [...map[lessonId]] : [];
+      const objKey = String(objectiveIndex);
+
+      if (completed) {
+        if (!lessonObjs.includes(objKey)) {
+          lessonObjs.push(objKey);
+        }
+      } else {
+        lessonObjs = lessonObjs.filter(id => id !== objKey);
+      }
+
+      map[lessonId] = lessonObjs;
+      enrollment.completedLessonObjectives = map;
+      await enrollmentRepository.save(enrollment);
+      return res.status(200).json(enrollment);
+    } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  static async submitActivityFile(req: AuthRequest, res: Response) {
+    const { courseId } = req.params;
+    const { lessonId, fileName, fileUrl } = req.body;
+
+    if (!fileUrl) {
+      return res.status(400).json({ error: "Missing fileUrl." });
+    }
+
+    try {
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepository.findOne({
+        where: {
+          student: { id: req.user!.id },
+          course: { id: courseId }
+        }
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Student is not enrolled in this course." });
+      }
+
+      let submissionsMap = enrollment.activitySubmissions || {};
+      const key = lessonId || "general";
+      let list = Array.isArray(submissionsMap[key]) ? [...submissionsMap[key]] : [];
+
+      list.push({
+        id: Date.now().toString(),
+        fileName: fileName || "ملف النشاط",
+        fileUrl,
+        uploadedAt: new Date().toISOString()
+      });
+
+      submissionsMap[key] = list;
+      enrollment.activitySubmissions = submissionsMap;
+      await enrollmentRepository.save(enrollment);
+      return res.status(200).json(enrollment);
+    } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  static async deleteActivityFile(req: AuthRequest, res: Response) {
+    const { courseId } = req.params;
+    const { lessonId, submissionId } = req.body;
+
+    try {
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepository.findOne({
+        where: {
+          student: { id: req.user!.id },
+          course: { id: courseId }
+        }
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "Student is not enrolled in this course." });
+      }
+
+      let submissionsMap = enrollment.activitySubmissions || {};
+      const key = lessonId || "general";
+      let list = Array.isArray(submissionsMap[key]) ? [...submissionsMap[key]] : [];
+
+      submissionsMap[key] = list.filter(item => item.id !== submissionId);
+      enrollment.activitySubmissions = submissionsMap;
+      await enrollmentRepository.save(enrollment);
+      return res.status(200).json(enrollment);
+    } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
   static async getDashboardStats(req: AuthRequest, res: Response) {
     try {
       const enrollmentRepository = AppDataSource.getRepository(Enrollment);

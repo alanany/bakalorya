@@ -42,21 +42,27 @@ export default class AssignmentsView {
                   <input type="text" id="assignment-title" class="form-input" required>
                 </div>
                 <div class="form-group">
-                  <label>Course</label>
+                  <label>Course <span style="color:var(--error);">*</span></label>
                   <select id="assignment-course" class="form-select" required></select>
                 </div>
                 <div class="form-group">
-                  <label>Description (Tasks)</label>
+                  <label>Lesson (اختر الدرس الخاص بهذا الواجب / Optional)</label>
+                  <select id="assignment-lesson" class="form-select">
+                    <option value="">اختر الدورة أولاً لعرض الدروس...</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Description (Tasks & Instructions)</label>
                   <textarea id="assignment-desc" class="form-input" style="height:100px;"></textarea>
                 </div>
                 <div class="form-group">
-                  <label>Due Date</label>
+                  <label>Due Date <span style="color:var(--error);">*</span></label>
                   <input type="datetime-local" id="assignment-due" class="form-input" required>
                 </div>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="cancel-assignment-modal">Cancel</button>
-                <button type="submit" class="btn-primary">Publish</button>
+                <button type="submit" class="btn-primary">Publish Assignment 🚀</button>
               </div>
             </form>
           </div>
@@ -107,9 +113,31 @@ export default class AssignmentsView {
 
       if (state.user.role === 'teacher' || state.user.role === 'admin') {
         const courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id || state.user.role === 'admin'));
-        const select = document.getElementById("assignment-course");
-        if (select) {
-          select.innerHTML = `<option value="">Select Course</option>` + courses.map(c => `<option value="${c.id}">${c.title}</option>`).join("");
+        const courseSelect = document.getElementById("assignment-course");
+        const lessonSelect = document.getElementById("assignment-lesson");
+
+        if (courseSelect) {
+          courseSelect.innerHTML = `<option value="">Select Course...</option>` + courses.map(c => `<option value="${c.id}">${c.title}</option>`).join("");
+          
+          courseSelect.addEventListener("change", async () => {
+            const courseId = courseSelect.value;
+            if (!courseId) {
+              if (lessonSelect) lessonSelect.innerHTML = `<option value="">اختر الدورة أولاً لعرض الدروس...</option>`;
+              return;
+            }
+            if (lessonSelect) lessonSelect.innerHTML = `<option value="">جاري تحميل الدروس...</option>`;
+            try {
+              const courseDetails = await apiFetch(`/courses/${courseId}`);
+              const lessons = courseDetails.lessons || [];
+              if (lessons.length === 0) {
+                if (lessonSelect) lessonSelect.innerHTML = `<option value="">لا توجد دروس مضافة لهذه الدورة</option>`;
+              } else {
+                if (lessonSelect) lessonSelect.innerHTML = `<option value="">جميع دروس الدورة (عام)</option>` + lessons.map(l => `<option value="${l.id}">📌 ${l.title}</option>`).join("");
+              }
+            } catch (err) {
+              if (lessonSelect) lessonSelect.innerHTML = `<option value="">اختر الدرس (اختياري)</option>`;
+            }
+          });
         }
       }
 
@@ -145,8 +173,11 @@ export default class AssignmentsView {
 
     return `
       <div class="glass-card" style="padding:20px; display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
-          <span class="session-tag" style="background:var(--primary-glow); color:var(--primary);">${assignment.course?.title}</span>
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px; flex-wrap:wrap; gap:6px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+            <span class="session-tag" style="background:var(--primary-glow); color:var(--primary);">${assignment.course?.title}</span>
+            ${assignment.lesson ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem;">📌 ${assignment.lesson.title}</span>` : ''}
+          </div>
           <span style="font-size:0.8rem; color:${isOverdue ? 'var(--error)' : 'var(--text-muted)'}; font-weight:600;"><i data-lucide="clock" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i> Due: ${dueDate}</span>
         </div>
         <h4 style="font-size:1.1rem; margin-bottom:8px;">${assignment.title}</h4>
@@ -172,6 +203,7 @@ export default class AssignmentsView {
           body: JSON.stringify({
             title: document.getElementById("assignment-title").value,
             courseId: document.getElementById("assignment-course").value,
+            lessonId: document.getElementById("assignment-lesson")?.value || null,
             description: document.getElementById("assignment-desc").value,
             dueDate: document.getElementById("assignment-due").value,
           })

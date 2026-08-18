@@ -250,5 +250,5 @@ export default class AuthView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

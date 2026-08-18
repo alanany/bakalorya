@@ -56,6 +56,7 @@ router.post("/courses/:id/submit-for-review", authMiddleware, requireCapability(
 router.post("/courses/:courseId/lessons", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.addLesson);
 router.put("/lessons/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.updateLesson);
 router.delete("/lessons/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.deleteLesson);
+router.get("/courses/:id/enrollments", authMiddleware, requireRole(["teacher", "admin"]), CourseController.getCourseEnrollments);
 
 // Course Approvals (Admin)
 router.get("/admin/courses/pending-review", authMiddleware, requireRole(["admin"]), CourseController.getPendingCourses);
@@ -127,6 +128,9 @@ router.patch("/sessions/:id/status", authMiddleware, requireRole(["teacher", "ad
 router.get("/student/enrollments", authMiddleware, StudentController.getEnrollments);
 router.post("/student/enrollments", authMiddleware, StudentController.enroll);
 router.post("/student/enrollments/:courseId/lessons/complete", authMiddleware, StudentController.completeLesson);
+router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", authMiddleware, StudentController.toggleLessonObjective);
+router.post("/student/enrollments/:courseId/activity-submit", authMiddleware, StudentController.submitActivityFile);
+router.delete("/student/enrollments/:courseId/activity-submit", authMiddleware, StudentController.deleteActivityFile);
 router.get("/student/stats", authMiddleware, StudentController.getDashboardStats);
 
 // Notifications
@@ -170,6 +174,13 @@ router.get("/blogs/:id", BlogController.getOne);
 router.post("/blogs", authMiddleware, requireRole(["teacher", "admin"]), BlogController.create);
 router.put("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), BlogController.update);
 router.delete("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), BlogController.delete);
+
+// Assignments & Submissions
+router.get("/assignments", authMiddleware, AssignmentController.getAssignments);
+router.post("/assignments", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.createAssignment);
+router.post("/assignments/:id/submit", authMiddleware, AssignmentController.submitAssignment);
+router.get("/assignments/:id/submissions", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.getSubmissions);
+router.put("/submissions/:id/grade", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.gradeSubmission);
 
 // Admin Routes
 router.get("/admin/stats", authMiddleware, requireRole(["admin"]), AdminController.getStats);

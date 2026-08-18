@@ -23,6 +23,15 @@ export class Enrollment {
   @Column("simple-json", { nullable: true })
   completedLessons: string[]; // List of completed lesson IDs
 
+  @Column("simple-json", { nullable: true })
+  completedObjectives: string[]; // List of completed objective keys/indexes
+
+  @Column("simple-json", { nullable: true })
+  completedLessonObjectives: any; // { [lessonId: string]: string[] }
+
+  @Column("simple-json", { nullable: true })
+  activitySubmissions: any; // { [lessonId: string]: Array<{ id: string, fileName: string, fileUrl: string, uploadedAt: string }> }
+
   @OneToOne(() => Payment, { nullable: true, eager: false, onDelete: "SET NULL" })
   @JoinColumn()
   payment: Payment; // Linked payment/receipt for this enrollment

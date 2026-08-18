@@ -14,15 +14,17 @@ export default class CoursePlayerView {
 
   async render() {
     try {
-      const [course, enrollments, sessions, resources, qaList, reviewsRes] = await Promise.all([
+      const [course, enrollments, sessions, resources, qaList, reviewsRes, assignments] = await Promise.all([
         apiFetch(`/courses/${this.courseId}`).catch(() => null),
         apiFetch("/student/enrollments").catch(() => []),
         apiFetch("/sessions").catch(() => []),
         apiFetch("/resources").catch(() => []),
         apiFetch(`/courses/${this.courseId}/qa`).catch(() => []),
-        apiFetch(`/reviews/course/${this.courseId}`).catch(() => ({ reviews: [], totalReviews: 0, averageRating: 0 }))
+        apiFetch(`/reviews/course/${this.courseId}`).catch(() => ({ reviews: [], totalReviews: 0, averageRating: 0 })),
+        apiFetch("/assignments").catch(() => [])
       ]);
 
+      this.courseAssignments = (assignments || []).filter(a => a.course?.id === this.courseId || (a.course && String(a.course.id) === String(this.courseId)));
       this.course = course;
       if (!this.course) {
         this.container.innerHTML = `
@@ -39,7 +41,7 @@ export default class CoursePlayerView {
 
       this.enrollment = Array.isArray(enrollments) ? enrollments.find(e => e.course?.id === this.courseId) : null;
       this.completedLessons = (this.enrollment && Array.isArray(this.enrollment.completedLessons)) ? this.enrollment.completedLessons : [];
-      this.liveSessions = Array.isArray(sessions) ? sessions.filter(s => (s.course && s.course.id === this.courseId) || (!s.course && s.teacher?.id === this.course?.teacher?.id)) : [];
+      this.liveSessions = Array.isArray(sessions) ? sessions.filter(s => s.course && String(s.course.id) === String(this.courseId)) : [];
       this.courseResources = Array.isArray(resources) ? resources.filter(r => r.course && String(r.course.id) === String(this.courseId)) : [];
       this.qaList = Array.isArray(qaList) ? qaList : [];
       this.courseReviews = reviewsRes?.reviews || [];
@@ -203,8 +205,15 @@ export default class CoursePlayerView {
 
               <!-- Tabs -->
               <div class="tabs-header">
+               
                 <button class="tab-btn ${this.activeTab === "details" ? "active" : ""}" data-tab="details">
                   <i data-lucide="info"></i> ${t("course.tabDetails")}
+                </button>
+                <button class="tab-btn ${this.activeTab === "assignments" ? "active" : ""}" data-tab="assignments">
+                  <i data-lucide="clipboard-list"></i> 📝 الواجبات والأنشطة (${(this.courseAssignments || []).filter(a => !a.lesson || String(a.lesson.id) === String(this.currentLesson?.id)).length})
+                </button>
+                <button class="tab-btn ${this.activeTab === "activity" ? "active" : ""}" data-tab="activity">
+                  <i data-lucide="file-up"></i> 📁 الملفات والكراسات
                 </button>
                 <button class="tab-btn ${this.activeTab === "notes" ? "active" : ""}" data-tab="notes">
                   <i data-lucide="file-text"></i> ${t("course.tabNotes")}
@@ -224,6 +233,16 @@ export default class CoursePlayerView {
                 <button class="tab-btn ${this.activeTab === "reviews" ? "active" : ""}" data-tab="reviews">
                   <i data-lucide="star"></i> التقييمات والمراجعات ⭐ (${this.courseReviewsCount || 0})
                 </button>
+              </div>
+
+              <!-- Assignments Pane -->
+              <div class="tab-content-pane ${this.activeTab === "assignments" ? "active" : ""}" id="pane-assignments">
+                ${this.renderAssignmentsPane()}
+              </div>
+
+              <!-- Activity & Files Pane -->
+              <div class="tab-content-pane ${this.activeTab === "activity" ? "active" : ""}" id="pane-activity">
+                ${this.renderActivityPane()}
               </div>
 
               <!-- Details Pane -->
@@ -251,7 +270,6 @@ export default class CoursePlayerView {
                       <i data-lucide="paperclip" style="color:var(--primary); width:22px; height:22px; flex-shrink:0;"></i>
                       <div>
                         <strong style="font-size:0.95rem; color:var(--text-main); display:block;">${this.currentLesson.resourceTitle || 'الملف المرفق الخاص بالدرس'}</strong>
-                        <span style="font-size:0.8rem; color:var(--text-muted);">مورد تعليمي خاص بهذا الدرس (PDF / Google Drive)</span>
                       </div>
                     </div>
                     <a href="${this.currentLesson.resourceUrl}" target="_blank" rel="noopener" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; text-decoration:none;">
@@ -263,8 +281,6 @@ export default class CoursePlayerView {
                 <div style="font-size:1rem; line-height:1.7; color:var(--text-main); margin-bottom:20px; white-space:pre-wrap;">
                   ${this.currentLesson ? (this.currentLesson.description || t("course.noDescription")) : (this.course.description || t("course.noDescription"))}
                 </div>
-
-          
               </div>
 
               <!-- Notes Pane -->
@@ -491,9 +507,414 @@ export default class CoursePlayerView {
 
         <div>
           ${isJoinable
-            ? `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#classroom/' + session.id}" target="_blank" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:6px 14px;"><i data-lucide="door-open"></i> دخول البث المباشر 🎥</a>`
-            : `<button class="btn-secondary restricted-join-btn" style="font-size:0.8rem; padding:6px 14px; opacity:0.9; cursor:pointer;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> قبل الموعد بـ 30د 🔒</button>`
-          }
+        ? `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#classroom/' + session.id}" target="_blank" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:6px 14px;"><i data-lucide="door-open"></i> دخول البث المباشر 🎥</a>`
+        : `<button class="btn-secondary restricted-join-btn" style="font-size:0.8rem; padding:6px 14px; opacity:0.9; cursor:pointer;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> قبل الموعد بـ 30د 🔒</button>`
+      }
+        </div>
+      </div>
+    `;
+  }
+
+  renderAssignmentsPane() {
+    const lessonId = this.currentLesson?.id;
+    const lessonAssignments = (this.courseAssignments || []).filter(a => 
+      !a.lesson || String(a.lesson.id) === String(lessonId)
+    );
+
+    return `
+      <div class="glass-card" style="padding:28px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+          <div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main); margin:0 0 4px 0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="clipboard-list" style="color:var(--primary); width:22px; height:22px;"></i>
+              📝 واجبات وأنشطة الدرس (Lesson Assignments)
+            </h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">قائمة المهام والتمارين المنزلية المطلوب حلها وتسليمها للمعلم لهذا الدرس.</p>
+          </div>
+          <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-weight:800; font-size:0.85rem; padding:6px 14px;">
+            ${lessonAssignments.length} واجب
+          </span>
+        </div>
+
+        ${lessonAssignments.length === 0 ? `
+          <div style="text-align:center; padding:50px 20px; color:var(--text-muted); background:var(--bg-app); border-radius:14px; border:1px dashed var(--border-color);">
+            <i data-lucide="clipboard-check" style="width:48px; height:48px; opacity:0.35; margin-bottom:12px;"></i>
+            <h4 style="margin:0 0 6px 0; font-weight:800; color:var(--text-main);">لا توجد واجبات مطلوبة لهذا الدرس حالياً 🎉</h4>
+            <p style="margin:0; font-size:0.85rem;">تابع الشرح والموارد المرفقة بالدرس، وسيتم إخطارك عند إضافة معلم الكورس لواجبات جديدة.</p>
+          </div>
+        ` : `
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            ${lessonAssignments.map(asg => {
+              const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              const isOverdue = new Date() > new Date(asg.dueDate);
+              const isSubmitted = !!asg.submission;
+
+              return `
+                <div style="padding:20px; border-radius:16px; background:var(--bg-app); border:1px solid ${isSubmitted ? 'rgba(16,185,129,0.35)' : 'var(--border-color)'}; transition:all 0.2s ease;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <strong style="font-size:1.05rem; color:var(--text-main); font-weight:800;">${asg.title}</strong>
+                      ${asg.lesson ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem; font-weight:800;">📌 ${asg.lesson.title}</span>` : ''}
+                    </div>
+                    <span style="font-size:0.8rem; font-weight:700; color:${isOverdue ? 'var(--error)' : 'var(--text-muted)'}; background:rgba(0,0,0,0.03); padding:4px 10px; border-radius:8px;">
+                      <i data-lucide="clock" style="width:13px;height:13px;vertical-align:middle;margin-inline-end:4px;"></i> آخر موعد: ${dueDateStr}
+                    </span>
+                  </div>
+
+                  <p style="font-size:0.9rem; color:var(--text-muted); margin:0 0 16px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+
+                  ${isSubmitted ? `
+                    <div style="padding:14px 18px; border-radius:12px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="check-circle-2" style="color:#10b981; width:20px; height:20px;"></i>
+                        <div>
+                          <span style="font-size:0.9rem; font-weight:800; color:#10b981; display:block;">تم تسليم هذا الواجب بنجاح! 🎉</span>
+                          <span style="font-size:0.78rem; color:var(--text-muted);">تاريخ التسليم: ${new Date(asg.submission.submittedAt || Date.now()).toLocaleString('ar-EG')}</span>
+                        </div>
+                      </div>
+                      ${asg.submission.grade !== null && asg.submission.grade !== undefined ? `
+                        <span class="badge" style="background:#10b981; color:#fff; font-weight:800; font-size:0.88rem; padding:6px 14px; border-radius:10px;">الدرجة: ${asg.submission.grade}/100 ⭐</span>
+                      ` : '<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:800; font-size:0.8rem; padding:6px 12px;">قيد التقييم والتصحيح من المعلم</span>'}
+                    </div>
+                  ` : `
+                    <form class="student-assignment-submit-form" data-assignment-id="${asg.id}" style="display:flex; flex-direction:column; gap:12px; padding:16px; background:var(--bg-card); border-radius:14px; border:1px dashed var(--primary-glow);">
+                      <div style="font-size:0.85rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="upload-cloud" style="width:16px; height:16px; color:var(--primary);"></i>
+                        تقديم حل الواجب وترفق ملف الإجابة:
+                      </div>
+                      
+                      <textarea class="assignment-text-answer form-input" rows="2" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:10px 14px; font-size:0.88rem; font-family:inherit; resize:vertical;"></textarea>
+                      
+                      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input type="file" class="assignment-file-input form-input" style="flex:1; padding:8px 12px; font-size:0.82rem;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip">
+                        <button type="submit" class="btn-primary" style="padding:10px 20px; font-weight:800; font-size:0.85rem; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;">
+                          <i data-lucide="send" style="width:16px;height:16px;"></i> رفع وتسليم الإجابة 🚀
+                        </button>
+                      </div>
+                    </form>
+                  `}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  renderActivityPane() {
+    const lessonId = this.currentLesson?.id || "general";
+    const submissionsMap = this.enrollment?.activitySubmissions || {};
+    const submissions = submissionsMap[lessonId] || [];
+
+    const hasTeacherResource = !!this.currentLesson?.resourceUrl;
+    const hasTeacherPhoto = !!this.currentLesson?.photo;
+
+    // Filter assignments for this specific lesson or course-wide
+    const lessonAssignments = (this.courseAssignments || []).filter(a => 
+      !a.lesson || String(a.lesson.id) === String(lessonId)
+    );
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:24px;">
+        
+        <!-- Section 0: Course & Lesson Assignments -->
+        ${lessonAssignments.length > 0 ? `
+          <div class="glass-card" style="padding:24px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+              <div>
+                <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0 0 4px 0; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="clipboard-list" style="color:var(--primary); width:20px; height:20px;"></i>
+                  📝 الواجبات والأنشطة المطلوبة لهذا الدرس (${lessonAssignments.length})
+                </h3>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">المهام والتمارين المنزلية المطلوبة إنجازها وتسليمها للمعلم.</p>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              ${lessonAssignments.map(asg => {
+                const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const isOverdue = new Date() > new Date(asg.dueDate);
+                const isSubmitted = !!asg.submission;
+
+                return `
+                  <div style="padding:18px; border-radius:14px; background:var(--bg-app); border:1px solid ${isSubmitted ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong style="font-size:1rem; color:var(--text-main);">${asg.title}</strong>
+                        ${asg.lesson ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem;">📌 ${asg.lesson.title}</span>` : ''}
+                      </div>
+                      <span style="font-size:0.78rem; font-weight:700; color:${isOverdue ? 'var(--error)' : 'var(--text-muted)'};">
+                        <i data-lucide="clock" style="width:12px;height:12px;vertical-align:middle;margin-inline-end:4px;"></i> آخر موعد: ${dueDateStr}
+                      </span>
+                    </div>
+
+                    <p style="font-size:0.88rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+
+                    ${isSubmitted ? `
+                      <div style="padding:12px; border-radius:10px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:0.85rem; font-weight:800; color:#10b981; display:flex; align-items:center; gap:6px;">
+                          <i data-lucide="check-circle" style="width:16px;height:16px;"></i> تم تسليم هذا الواجب بنجاح!
+                        </span>
+                        ${asg.submission.grade !== null && asg.submission.grade !== undefined ? `
+                          <span class="badge" style="background:var(--success); color:#fff; font-weight:800;">الدرجة: ${asg.submission.grade}/100 ⭐</span>
+                        ` : '<span style="font-size:0.8rem; color:var(--text-muted);">بانتظار التقييم والتصحيح من المعلم</span>'}
+                      </div>
+                    ` : `
+                      <form class="student-assignment-submit-form" data-assignment-id="${asg.id}" style="display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--primary-glow);">
+                        <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">تسليم حل الواجب:</div>
+                        <input type="text" class="assignment-text-answer form-input" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:8px 12px; font-size:0.85rem;">
+                        
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                          <input type="file" class="assignment-file-input form-input" style="flex:1; padding:6px 10px; font-size:0.8rem;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip">
+                          <button type="submit" class="btn-primary" style="padding:8px 16px; font-weight:800; font-size:0.82rem; flex-shrink:0;">
+                            <i data-lucide="upload"></i> رفع وتسليم الإجابة 🚀
+                          </button>
+                        </div>
+                      </form>
+                    `}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Section 1: Teacher Downloadable Activity / Resource Files -->
+        <div class="glass-card" style="padding:24px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0 0 8px 0; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="download-cloud" style="color:var(--primary); width:20px; height:20px;"></i>
+            📥 ملفات وكراس الأنشطة المرفقة بالدرس (تنزيل الملفات)
+          </h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px 0;">قم بتنزيل كراس التمارين أو ملخص النشاط الخاص بهذا الدرس للاستعانة به.</p>
+
+          ${(!hasTeacherResource && !hasTeacherPhoto && this.courseResources.length === 0) ? `
+            <div style="padding:20px; text-align:center; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border-color); color:var(--text-muted); font-size:0.88rem;">
+              <i data-lucide="file-x" style="width:32px; height:32px; opacity:0.4; margin-bottom:6px;"></i>
+              <p style="margin:0;">لا توجد ملفات أو كراسات مرفقة بهذا الدرس حالياً.</p>
+            </div>
+          ` : `
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+              ${this.currentLesson?.resourceUrl ? `
+                <div style="padding:16px; border-radius:14px; background:rgba(99,102,241,0.06); border:1px solid var(--primary-glow); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="file-text" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div style="overflow:hidden; text-overflow:ellipsis;">
+                      <strong style="font-size:0.9rem; color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.currentLesson.resourceTitle || 'كراس نشاط الدرس (PDF)'}</strong>
+                      <span style="font-size:0.78rem; color:var(--text-muted);">مورد الدرس المرفق من المعلم</span>
+                    </div>
+                  </div>
+                  <a href="${this.currentLesson.resourceUrl}" target="_blank" rel="noopener" class="btn-primary" style="font-size:0.8rem; padding:8px 14px; flex-shrink:0; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="download" style="width:14px;height:14px;"></i> تنزيل
+                  </a>
+                </div>
+              ` : ''}
+
+              ${this.currentLesson?.photo ? `
+                <div style="padding:16px; border-radius:14px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="image" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div style="overflow:hidden; text-overflow:ellipsis;">
+                      <strong style="font-size:0.9rem; color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">صورة ملخص النشاط 🖼️</strong>
+                      <span style="font-size:0.78rem; color:var(--text-muted);">غلاف وبانر التمارين</span>
+                    </div>
+                  </div>
+                  <a href="${this.currentLesson.photo}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:8px 14px; flex-shrink:0; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="external-link" style="width:14px;height:14px;"></i> فتح الصورة
+                  </a>
+                </div>
+              ` : ''}
+
+              ${this.courseResources.slice(0, 3).map(r => `
+                <div style="padding:16px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="folder-archive" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div style="overflow:hidden; text-overflow:ellipsis;">
+                      <strong style="font-size:0.9rem; color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.title}</strong>
+                      <span style="font-size:0.78rem; color:var(--text-muted);">ملف عام بالدورة</span>
+                    </div>
+                  </div>
+                  <a href="${r.url}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:8px 14px; flex-shrink:0; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="download" style="width:14px;height:14px;"></i> تنزيل
+                  </a>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+
+        <!-- Section 2: Student Upload Activity File / Submission -->
+        <div class="glass-card" style="padding:24px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0 0 4px 0; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="upload-cloud" style="color:var(--primary); width:20px; height:20px;"></i>
+                📤 رفع وتسليم ملف النشاط والواجب (Student Upload)
+              </h3>
+              <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">قم برفع إجاباتك أو ملف الإنجاز الخاص بهذا الدرس لإرساله إلى المعلم.</p>
+            </div>
+            ${this.enrollment ? '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; padding:6px 14px;">تسليم النشاط متاح ✅</span>' : ''}
+          </div>
+
+          <!-- File Upload Form -->
+          <div style="margin-bottom:20px; padding:20px; border-radius:14px; background:var(--bg-app); border:2px dashed var(--primary-glow); text-align:center;">
+            <div style="width:48px; height:48px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px;">
+              <i data-lucide="file-up" style="width:24px; height:24px;"></i>
+            </div>
+            <h4 style="font-size:0.95rem; font-weight:800; margin:0 0 6px 0; color:var(--text-main);">اختر أو اسحب ملف النشاط هنا</h4>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 14px 0;">يدعم ملفات PDF، الصور، والمستندات (Word / Drive)</p>
+
+            <form id="student-activity-upload-form" style="display:flex; flex-direction:column; gap:12px; max-width:480px; margin:0 auto;">
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="student-activity-filename" class="form-input" placeholder="اسم أو عنوان ملفك (مثال: حل واجب الدرس الأول)" style="flex:1; padding:8px 12px; font-size:0.85rem;" required>
+              </div>
+              
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="file" id="student-activity-file-input" class="form-input" style="flex:1; padding:6px 10px; font-size:0.82rem;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip" required>
+                <button type="submit" id="student-activity-submit-btn" class="btn-primary" style="padding:10px 18px; font-weight:800; font-size:0.85rem; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="upload" style="width:16px;height:16px;"></i> رفع وتسليم
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Submitted Activity Files List -->
+          <div>
+            <h4 style="font-weight:800; font-size:0.95rem; color:var(--text-main); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="check-circle" style="color:var(--success); width:16px; height:16px;"></i>
+              الملفات التي قمت بتسليمها لهذا الدرس (${submissions.length}):
+            </h4>
+
+            ${submissions.length === 0 ? `
+              <div style="padding:14px; text-align:center; color:var(--text-muted); font-size:0.82rem; font-style:italic;">
+                لم تقم برفع أو تسليم أي ملف لهذا الدرس حتى الآن.
+              </div>
+            ` : `
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${submissions.map(sub => `
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg-app); border-radius:12px; border:1px solid var(--border-color);">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <div style="width:36px; height:36px; border-radius:8px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i data-lucide="file-check" style="width:18px; height:18px;"></i>
+                      </div>
+                      <div>
+                        <strong style="font-size:0.88rem; color:var(--text-main); display:block;">${sub.fileName}</strong>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">تم التسليم: ${new Date(sub.uploadedAt).toLocaleDateString('ar-EG')}</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <a href="${sub.fileUrl}" target="_blank" rel="noopener" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="download" style="width:14px;height:14px;"></i> تنزيل ملفي
+                      </a>
+                      <button type="button" class="btn-secondary delete-student-submission-btn" data-id="${sub.id}" style="color:var(--error); border-color:var(--error); padding:6px 10px; font-size:0.78rem;" title="حذف الملف">
+                        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+        </div>
+
+      </div>
+    `;
+  }
+
+  renderLessonObjectivesWidget() {
+    if (!this.currentLesson) return '';
+    const objectives = this.currentLesson.objectives || [];
+    if (!objectives || objectives.length === 0) return '';
+
+    const lessonId = this.currentLesson.id;
+    const completedMap = this.enrollment?.completedLessonObjectives || {};
+    const completed = completedMap[lessonId] || [];
+    const completedCount = objectives.filter((_, idx) => completed.includes(String(idx))).length;
+    const progressPct = Math.round((completedCount / objectives.length) * 100);
+
+    return `
+      <div class="glass-card" style="padding:20px; border-radius:18px; margin-top:20px; margin-bottom:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <div>
+            <h3 style="font-weight:800; font-size:1.05rem; margin:0 0 2px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+              <i data-lucide="check-square" style="color:var(--primary); width:18px; height:18px;"></i>
+              🎯 معايير النجاح لهذا الدرس (${this.currentLesson.title}) - Success Criteria
+            </h3>
+            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">حدد المعايير والمهارات التي أتقنتها في هذا الدرس لمتابعة تحصيلك</p>
+          </div>
+          <div style="text-align:end;">
+            <div style="font-size:0.85rem; font-weight:800; color:var(--primary);">${completedCount} من ${objectives.length} معايير نجاح محققة (${progressPct}%)</div>
+            <div style="width:130px; height:6px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden; margin-top:4px;">
+              <div style="width:${progressPct}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--success)); transition:width 0.3s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${objectives.map((obj, idx) => {
+      const isDone = completed.includes(String(idx));
+      return `
+              <label style="display:flex; align-items:flex-start; gap:12px; padding:10px 14px; background:${isDone ? 'rgba(16,185,129,0.06)' : 'var(--bg-app)'}; border-radius:10px; border:1px solid ${isDone ? 'rgba(16,185,129,0.25)' : 'var(--border-color)'}; cursor:${this.enrollment ? 'pointer' : 'default'}; transition:all 0.2s ease;">
+                <input type="checkbox" class="student-lesson-objective-check" data-lesson-id="${lessonId}" data-index="${idx}" ${isDone ? 'checked' : ''} ${!this.enrollment ? 'disabled' : ''} style="width:18px; height:18px; margin-top:2px; accent-color:var(--success); cursor:pointer;">
+                <span style="font-weight:700; font-size:0.88rem; color:${isDone ? 'var(--text-main)' : 'var(--text-muted)'}; line-height:1.5;">
+                  ${obj}
+                </span>
+                ${isDone ? '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; margin-inline-start:auto;">مكتمل ✅</span>' : ''}
+              </label>
+            `;
+    }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  renderCourseObjectivesWidget() {
+    const objectives = this.course?.objectives || [];
+    if (!objectives || objectives.length === 0) return '';
+
+    const completed = this.enrollment?.completedObjectives || [];
+    const completedCount = objectives.filter((_, idx) => completed.includes(String(idx))).length;
+    const progressPct = Math.round((completedCount / objectives.length) * 100);
+
+    return `
+      <div class="glass-card" style="padding:22px; border-radius:18px; margin-top:24px; margin-bottom:24px; border:1px solid var(--border-color); background:var(--bg-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <div>
+            <h3 style="font-weight:800; font-size:1.1rem; margin:0 0 2px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+              <i data-lucide="target" style="color:var(--primary); width:20px; height:20px;"></i>
+              🎯 معايير النجاح الشاملة للدورة (Course Success Criteria)
+            </h3>
+            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">حدد المعايير ومخرجات الإتقان المنجزة لمتابعة تطور مستواك التعليمي في الدورة</p>
+          </div>
+          <div style="text-align:end;">
+            <div style="font-size:0.88rem; font-weight:800; color:var(--primary);">${completedCount} من ${objectives.length} معايير نجاح محققة (${progressPct}%)</div>
+            <div style="width:140px; height:6px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden; margin-top:4px;">
+              <div style="width:${progressPct}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--success)); transition:width 0.3s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;" id="course-objectives-checklist">
+          ${objectives.map((obj, idx) => {
+      const isDone = completed.includes(String(idx));
+      return `
+              <label style="display:flex; align-items:flex-start; gap:12px; padding:12px 16px; background:${isDone ? 'rgba(16,185,129,0.06)' : 'var(--bg-app)'}; border-radius:12px; border:1px solid ${isDone ? 'rgba(16,185,129,0.25)' : 'var(--border-color)'}; cursor:${this.enrollment ? 'pointer' : 'default'}; transition:all 0.2s ease;">
+                <input type="checkbox" class="student-objective-check" data-index="${idx}" ${isDone ? 'checked' : ''} ${!this.enrollment ? 'disabled' : ''} style="width:18px; height:18px; margin-top:2px; accent-color:var(--success); cursor:pointer;">
+                <span style="font-weight:700; font-size:0.9rem; color:${isDone ? 'var(--text-main)' : 'var(--text-muted)'}; line-height:1.5;">
+                  ${obj}
+                </span>
+                ${isDone ? '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; margin-inline-start:auto;">مكتمل ✅</span>' : ''}
+              </label>
+            `;
+    }).join('')}
         </div>
       </div>
     `;
@@ -587,7 +1008,7 @@ export default class CoursePlayerView {
 
   renderVideoPlayer() {
     if (!this.currentLesson) return "";
-    
+
     // Video Player Mode (if videoUrl is present)
     if (this.currentLesson.videoUrl && this.currentLesson.videoUrl.trim().length > 0) {
       const isMp4 = this.currentLesson.videoUrl.endsWith(".mp4");
@@ -674,6 +1095,167 @@ export default class CoursePlayerView {
         } catch (err) { heroCompleteBtn.disabled = false; }
       });
     }
+
+    // Student Lesson Objectives Toggle Event Listener
+    this.container.querySelectorAll(".student-lesson-objective-check").forEach(cb => {
+      cb.addEventListener("change", async () => {
+        const lessonId = cb.getAttribute("data-lesson-id");
+        const idx = cb.getAttribute("data-index");
+        const completed = cb.checked;
+        cb.disabled = true;
+        try {
+          const res = await apiFetch(`/student/enrollments/${this.courseId}/lessons/objectives/toggle`, {
+            method: "PATCH",
+            body: JSON.stringify({ lessonId, objectiveIndex: idx, completed })
+          });
+          if (res && res.completedLessonObjectives !== undefined) {
+            if (!this.enrollment) this.enrollment = {};
+            this.enrollment.completedLessonObjectives = res.completedLessonObjectives;
+            showToast(completed ? "تم تحديد هدف الدرس كمكتمل! 🎉" : "تم إلغاء تحديد هدف الدرس", "success");
+            await this.render();
+          }
+        } catch (err) {
+          cb.disabled = false;
+          cb.checked = !completed;
+          showToast(err.message || "تعذر تحديث حالة هدف الدرس", "error");
+        }
+      });
+    });
+
+    // Student Specific Assignment Submission Event Handlers
+    this.container.querySelectorAll(".student-assignment-submit-form").forEach(form => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const assignmentId = form.getAttribute("data-assignment-id");
+        const textInput = form.querySelector(".assignment-text-answer");
+        const fileInput = form.querySelector(".assignment-file-input");
+        const submitBtn = form.querySelector("button[type='submit']");
+
+        let textAnswer = textInput ? textInput.value.trim() : "";
+        let uploadedUrl = "";
+
+        if (fileInput && fileInput.files.length > 0) {
+          if (submitBtn) submitBtn.disabled = true;
+          try {
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            const token = state.token || localStorage.getItem("token");
+
+            const uploadRes = await fetch("/api/upload", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + token },
+              body: formData
+            });
+
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              uploadedUrl = uploadData.url;
+            }
+          } catch (err) {
+            console.error("Upload error:", err);
+          }
+        }
+
+        const finalContent = uploadedUrl ? `${textAnswer ? textAnswer + ' | ' : ''}رابط الملف المرفوع: ${uploadedUrl}` : textAnswer;
+
+        if (!finalContent) {
+          showToast("يرجى كتابة نص الإجابة أو ارفاق ملف قبل التسليم", "error");
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          await apiFetch(`/assignments/${assignmentId}/submit`, {
+            method: "POST",
+            body: JSON.stringify({ content: finalContent })
+          });
+          showToast("تم تسليم الواجب بنجاح! 🎉", "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "تعذر تسليم الواجب", "error");
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    });
+
+    // Student Activity Upload Form Handler
+    const activityForm = this.container.querySelector("#student-activity-upload-form");
+    if (activityForm) {
+      activityForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = this.container.querySelector("#student-activity-submit-btn");
+        const fileInput = this.container.querySelector("#student-activity-file-input");
+        const nameInput = this.container.querySelector("#student-activity-filename");
+
+        if (!fileInput || !fileInput.files.length) {
+          showToast("يرجى اختيار ملف النشاط قبل الضغط على رفع وتسليم", "error");
+          return;
+        }
+
+        const fileName = nameInput ? nameInput.value.trim() : "ملف النشاط";
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+          // 1. Upload file via /api/upload
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error("فشل رفع الملف لمركز الملفات.");
+          }
+
+          const uploadData = await uploadRes.json();
+          const fileUrl = uploadData.url;
+
+          // 2. Submit activity record
+          const lessonId = this.currentLesson?.id || "general";
+          const res = await apiFetch(`/student/enrollments/${this.courseId}/activity-submit`, {
+            method: "POST",
+            body: JSON.stringify({ lessonId, fileName, fileUrl })
+          });
+
+          if (res && res.activitySubmissions !== undefined) {
+            if (!this.enrollment) this.enrollment = {};
+            this.enrollment.activitySubmissions = res.activitySubmissions;
+            showToast("تم رفع وتسليم ملف النشاط بنجاح! 🎉", "success");
+            await this.render();
+          }
+        } catch (err) {
+          showToast(err.message || "تعذر تسليم الملف", "error");
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    // Student Activity Delete Handler
+    this.container.querySelectorAll(".delete-student-submission-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const submissionId = btn.getAttribute("data-id");
+        const lessonId = this.currentLesson?.id || "general";
+        try {
+          const res = await apiFetch(`/student/enrollments/${this.courseId}/activity-submit`, {
+            method: "DELETE",
+            body: JSON.stringify({ lessonId, submissionId })
+          });
+          if (res && res.activitySubmissions !== undefined) {
+            if (!this.enrollment) this.enrollment = {};
+            this.enrollment.activitySubmissions = res.activitySubmissions;
+            showToast("تم حذف ملف التسليم بنجاح", "info");
+            await this.render();
+          }
+        } catch (err) {
+          showToast(err.message || "تعذر حذف الملف", "error");
+        }
+      });
+    });
 
     // Next Lesson Navigation Button
     const nextLessonBtn = this.container.querySelector(".next-lesson-btn");

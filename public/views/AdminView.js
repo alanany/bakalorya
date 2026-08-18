@@ -67,7 +67,7 @@ export default class AdminView {
     let now = "";
     try {
       now = new Date().toLocaleDateString("ar", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-    } catch(e) {
+    } catch (e) {
       now = new Date().toLocaleDateString();
     }
 
@@ -482,6 +482,7 @@ export default class AdminView {
       this.subscriptions = subscriptions || [];
       this.adminEarnings = earnings || null;
       this.enrollments = enrollments || [];
+      this.updateAddCourseModalTeachers();
     } catch (err) {
       console.error("loadAllData error:", err);
     }
@@ -518,7 +519,7 @@ export default class AdminView {
           if (window.location.hash !== `#admin-dashboard/${tab}`) {
             history.pushState(null, "", `#admin-dashboard/${tab}`);
           }
-        } catch (err) {}
+        } catch (err) { }
         this.renderTab(this.activeTab);
       });
     });
@@ -535,20 +536,20 @@ export default class AdminView {
 
   // Tab heading metadata
   static TAB_META = {
-    stats:               { heading: "📊 الإحصائيات العامة",        sub: "نظرة شاملة على مؤشرات أداء المنصة" },
-    reports:             { heading: "📈 التقارير والسجلات",         sub: "تقارير مفصلة عن النشاط والأداء" },
-    categories:          { heading: "🗂️ إدارة التصنيفات",          sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
-    courses:             { heading: "📚 إدارة الدورات",             sub: "مراجعة والإشراف على جميع دورات المنصة" },
-    enrollments:         { heading: "🎓 طلبات وتسجيلات الكورسات", sub: "مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات" },
-    sessions:            { heading: "📹 إدارة الحصص والجلسات",      sub: "متابعة وإلغاء وإعادة جدولة حصص البث المباشر والحصص الخاصة 1-على-1" },
-    teachers:            { heading: "👨‍🏫 إدارة المعلمين",           sub: "إضافة وتعديل وإدارة حسابات المعلمين" },
-    students:            { heading: "🎓 إدارة الطلاب",             sub: "إضافة وتعديل وإدارة حسابات الطلاب" },
-    teacherApplications: { heading: "📝 طلبات انضمام المعلمين",    sub: "مراجعة السير الذاتية والقبول/الرفض لمعلمي المنصة الجدد" },
-    members:             { heading: "🛡️ جميع الأعضاء",             sub: "عرض وإدارة جميع مستخدمي المنصة" },
-    subscriptions:       { heading: "📅 إدارة الاشتراكات",         sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
-    earnings:            { heading: "💰 المدفوعات والمستحقات",    sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
-    plans:               { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)",   sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
-    settings:            { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)",   sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
+    stats: { heading: "📊 الإحصائيات العامة", sub: "نظرة شاملة على مؤشرات أداء المنصة" },
+    reports: { heading: "📈 التقارير والسجلات", sub: "تقارير مفصلة عن النشاط والأداء" },
+    categories: { heading: "🗂️ إدارة التصنيفات", sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
+    courses: { heading: "📚 إدارة الدورات", sub: "مراجعة والإشراف على جميع دورات المنصة" },
+    enrollments: { heading: "🎓 طلبات وتسجيلات الكورسات", sub: "مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات" },
+    sessions: { heading: "📹 إدارة الحصص والجلسات", sub: "متابعة وإلغاء وإعادة جدولة حصص البث المباشر والحصص الخاصة 1-على-1" },
+    teachers: { heading: "👨‍🏫 إدارة المعلمين", sub: "إضافة وتعديل وإدارة حسابات المعلمين" },
+    students: { heading: "🎓 إدارة الطلاب", sub: "إضافة وتعديل وإدارة حسابات الطلاب" },
+    teacherApplications: { heading: "📝 طلبات انضمام المعلمين", sub: "مراجعة السير الذاتية والقبول/الرفض لمعلمي المنصة الجدد" },
+    members: { heading: "🛡️ جميع الأعضاء", sub: "عرض وإدارة جميع مستخدمي المنصة" },
+    subscriptions: { heading: "📅 إدارة الاشتراكات", sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
+    earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
+    plans: { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
+    settings: { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
   };
 
   renderTab(tab, args = null) {
@@ -562,18 +563,18 @@ export default class AdminView {
     if (hEl) hEl.textContent = meta.heading || "";
     if (sEl) sEl.textContent = meta.sub || "";
 
-    if (tab === "stats")                content.innerHTML = this.renderStatsTab();
-    else if (tab === "categories")      content.innerHTML = this.renderCategoriesTab();
-    else if (tab === "teachers")        content.innerHTML = this.renderTeachersTab();
-    else if (tab === "students")        content.innerHTML = this.renderStudentsTab();
+    if (tab === "stats") content.innerHTML = this.renderStatsTab();
+    else if (tab === "categories") content.innerHTML = this.renderCategoriesTab();
+    else if (tab === "teachers") content.innerHTML = this.renderTeachersTab();
+    else if (tab === "students") content.innerHTML = this.renderStudentsTab();
     else if (tab === "teacherApplications") content.innerHTML = this.renderTeacherApplicationsTab();
-    else if (tab === "members")         content.innerHTML = this.renderMembersTab();
-    else if (tab === "courses")         content.innerHTML = this.renderCoursesTab();
-    else if (tab === "enrollments")     content.innerHTML = this.renderEnrollmentsTab();
-    else if (tab === "sessions")        content.innerHTML = this.renderSessionsTab(args);
-    else if (tab === "reports")         content.innerHTML = this.renderReportsTab();
-    else if (tab === "subscriptions")   content.innerHTML = this.renderSubscriptionsTab();
-    else if (tab === "earnings")        content.innerHTML = this.renderEarningsTab();
+    else if (tab === "members") content.innerHTML = this.renderMembersTab();
+    else if (tab === "courses") content.innerHTML = this.renderCoursesTab();
+    else if (tab === "enrollments") content.innerHTML = this.renderEnrollmentsTab();
+    else if (tab === "sessions") content.innerHTML = this.renderSessionsTab(args);
+    else if (tab === "reports") content.innerHTML = this.renderReportsTab();
+    else if (tab === "subscriptions") content.innerHTML = this.renderSubscriptionsTab();
+    else if (tab === "earnings") content.innerHTML = this.renderEarningsTab();
     else if (tab === "plans" || tab === "settings") content.innerHTML = this.renderPlansTab();
 
     // Always keep sidebar badges fresh
@@ -664,12 +665,12 @@ export default class AdminView {
 
       <div class="glass-card" style="padding:0; border-radius:20px; overflow:hidden; border:1px solid var(--border-color);">
         ${categories.length === 0
-          ? `<div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+        ? `<div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
               <i data-lucide="layers" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
               <h4 style="font-weight:700; margin-bottom:6px;">لا توجد تصنيفات معرفة بعد</h4>
               <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">انقر فوق "إضافة تصنيف جديد" لإضافة أول تخصص رسمي بالمنصة.</p>
             </div>`
-          : `<div style="overflow-x:auto;">
+        : `<div style="overflow-x:auto;">
               <table style="width:100%; border-collapse:collapse; text-align:start; font-size:0.88rem;">
                 <thead>
                   <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
@@ -726,7 +727,7 @@ export default class AdminView {
                 </tbody>
               </table>
             </div>`
-        }
+      }
       </div>
     `;
   }
@@ -737,8 +738,8 @@ export default class AdminView {
     const allSessions = this.allSessions || [];
 
     const teacherData = teachers.map(t => {
-      const completedSessions = allSessions.filter(s => 
-        (s.teacher?.id === t.id || s.teacherId === t.id) && 
+      const completedSessions = allSessions.filter(s =>
+        (s.teacher?.id === t.id || s.teacherId === t.id) &&
         (s.status === 'COMPLETED' || s.status === 'completed')
       );
       const totalMinutes = completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0);
@@ -802,9 +803,9 @@ export default class AdminView {
                 </thead>
                 <tbody>
                   ${teacherData.map(item => {
-                    const u = item.teacher;
-                    const joinDate = new Date(u.createdAt).toLocaleDateString();
-                    return `
+          const u = item.teacher;
+          const joinDate = new Date(u.createdAt).toLocaleDateString();
+          return `
                       <tr style="border-bottom:1px solid var(--border-color);">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
@@ -850,7 +851,7 @@ export default class AdminView {
                         </td>
                       </tr>
                     `;
-                  }).join("")}
+        }).join("")}
                 </tbody>
               </table>
             </div>
@@ -868,9 +869,9 @@ export default class AdminView {
 
     const statusBadge = (status) => {
       const map = {
-        pending:  { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "⏳ قيد المراجعة" },
-        approved: { color: "#22c55e", bg: "rgba(34,197,94,0.12)",  label: "✅ مقبول" },
-        rejected: { color: "#ef4444", bg: "rgba(239,68,68,0.12)",  label: "❌ مرفوض" },
+        pending: { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "⏳ قيد المراجعة" },
+        approved: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "✅ مقبول" },
+        rejected: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "❌ مرفوض" },
       };
       const s = map[status] || map.pending;
       return `<span style="font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:20px; background:${s.bg}; color:${s.color};">${s.label}</span>`;
@@ -1094,11 +1095,11 @@ export default class AdminView {
         ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noCourses")}</div>`
         : `<div style="display:flex;flex-direction:column;gap:16px;">
             ${this.courses.map(course => {
-              const coursePlansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
-              const isPending = course.status === "PENDING_REVIEW";
-              const isPublished = course.status === "PUBLISHED" || !course.status;
+          const coursePlansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
+          const isPending = course.status === "PENDING_REVIEW";
+          const isPublished = course.status === "PUBLISHED" || !course.status;
 
-              return `
+          return `
               <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px; ${isPending ? 'border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.03);' : ''}">
                 <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}"
                   style="width:72px;height:72px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;">
@@ -1147,7 +1148,7 @@ export default class AdminView {
                 </div>
               </div>
             `;
-            }).join("")}
+        }).join("")}
           </div>`
       }
     `;
@@ -1180,15 +1181,15 @@ export default class AdminView {
             </thead>
             <tbody>
               ${enrollments.map(e => {
-                const stMap = {
-                  'active': { label: 'مقبول ونشط ✅', bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
-                  'rejected': { label: 'مرفوض ❌', bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
-                  'PENDING': { label: 'في انتظار الاعتماد ⏳', bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
-                };
-                const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
-                const receiptUrl = e.payment?.receiptUrl;
+      const stMap = {
+        'active': { label: 'مقبول ونشط ✅', bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
+        'rejected': { label: 'مرفوض ❌', bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
+        'PENDING': { label: 'في انتظار الاعتماد ⏳', bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
+      };
+      const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
+      const receiptUrl = e.payment?.receiptUrl;
 
-                return `
+      return `
                   <tr style="border-bottom:1px solid var(--border-color); font-size:0.88rem;">
                     <td style="padding:14px 16px;">
                       <div style="font-weight:700; color:var(--text-main);">${e.student?.name || 'طالب'}</div>
@@ -1231,11 +1232,21 @@ export default class AdminView {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
         </div>
       `}
+    `;
+  }
+
+  updateAddCourseModalTeachers() {
+    const selectEl = document.getElementById("admin-course-teacher-id");
+    if (!selectEl) return;
+    const teachers = (this.allMembers || []).filter(m => m.role === "teacher");
+    selectEl.innerHTML = `
+      <option value="">🏛️ دورة عامة على المنصة (بدون معلم خاص)</option>
+      ${teachers.map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join('')}
     `;
   }
 
@@ -1450,10 +1461,10 @@ export default class AdminView {
     // Calculate Week Range (Sunday to Saturday)
     const currentDay = now.getDay();
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay);
-    startOfWeek.setHours(0,0,0,0);
+    startOfWeek.setHours(0, 0, 0, 0);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
-    endOfWeek.setHours(23,59,59,999);
+    endOfWeek.setHours(23, 59, 59, 999);
 
     // Calculate Month Range
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1492,7 +1503,7 @@ export default class AdminView {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
           <div>
             <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
-              ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0,8)} (${filteredSessions.length})` : `📹 إدارة الحصص والجلسات المباشرة (${filteredSessions.length})`}
+              ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0, 8)} (${filteredSessions.length})` : `📹 إدارة الحصص والجلسات المباشرة (${filteredSessions.length})`}
             </h3>
             <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
           </div>
@@ -1546,17 +1557,17 @@ export default class AdminView {
         <!-- Timetable View -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
           ${[0, 1, 2, 3, 4, 5, 6].map(dayIdx => {
-            const dayDate = new Date(startOfWeek);
-            dayDate.setDate(dayDate.getDate() + dayIdx);
-            const isTodayDay = dayDate.toDateString() === todayStr;
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(dayDate.getDate() + dayIdx);
+      const isTodayDay = dayDate.toDateString() === todayStr;
 
-            const daySessions = filteredSessions.filter(s => {
-              if (!s.scheduledAt) return false;
-              const d = new Date(s.scheduledAt);
-              return d.getDay() === dayIdx;
-            }).sort((a,b) => new Date(a.scheduledAt || 0) - new Date(b.scheduledAt || 0));
+      const daySessions = filteredSessions.filter(s => {
+        if (!s.scheduledAt) return false;
+        const d = new Date(s.scheduledAt);
+        return d.getDay() === dayIdx;
+      }).sort((a, b) => new Date(a.scheduledAt || 0) - new Date(b.scheduledAt || 0));
 
-            return `
+      return `
               <div class="glass-card" style="padding:16px; border-radius:18px; border:${isTodayDay ? '2px solid var(--primary)' : '1px solid var(--border-color)'}; background:${isTodayDay ? 'rgba(99,102,241,0.03)' : 'var(--bg-card)'}; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--border-color);">
                   <div>
@@ -1576,17 +1587,17 @@ export default class AdminView {
                       لا توجد حصص مجدولة
                     </div>
                   ` : daySessions.map(sess => {
-                    const teacherTz = sess.teacher?.timezone || "Africa/Cairo";
-                    const formatted = formatSessionDateTime(sess.scheduledAt, "Asia/Riyadh", { secondaryTz: teacherTz });
-                    const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
-                    const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
-                    const sessTeacherId = sess.teacher?.id || sess.teacherId || sess.course?.teacher?.id;
-                    const sameTimeGroupCount = sess.scheduledAt && sessTeacherId ? allSessions.filter(s => {
-                      const tId = s.teacher?.id || s.teacherId || s.course?.teacher?.id;
-                      return String(tId) === String(sessTeacherId) && s.scheduledAt && new Date(s.scheduledAt).getTime() === new Date(sess.scheduledAt).getTime();
-                    }).length : 1;
+        const teacherTz = sess.teacher?.timezone || "Africa/Cairo";
+        const formatted = formatSessionDateTime(sess.scheduledAt, "Asia/Riyadh", { secondaryTz: teacherTz });
+        const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
+        const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
+        const sessTeacherId = sess.teacher?.id || sess.teacherId || sess.course?.teacher?.id;
+        const sameTimeGroupCount = sess.scheduledAt && sessTeacherId ? allSessions.filter(s => {
+          const tId = s.teacher?.id || s.teacherId || s.course?.teacher?.id;
+          return String(tId) === String(sessTeacherId) && s.scheduledAt && new Date(s.scheduledAt).getTime() === new Date(sess.scheduledAt).getTime();
+        }).length : 1;
 
-                    return `
+        return `
                       <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
                           ${formatted.badgeHTML}
@@ -1609,11 +1620,11 @@ export default class AdminView {
                         </div>
                       </div>
                     `;
-                  }).join('')}
+      }).join('')}
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       ` : `
         <!-- Table View -->
@@ -1639,11 +1650,11 @@ export default class AdminView {
                 </thead>
                 <tbody>
                   ${filteredSessions.map(sess => {
-                    const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
-                    const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
-                    const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
+      const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
+      const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
+      const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
 
-                    return `
+      return `
                       <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
                         <td style="padding:14px 20px; vertical-align:middle;">
                           <strong style="font-size:0.92rem; color:var(--text-main); display:block;">${sess.title || "حصة خاصة"}</strong>
@@ -1679,7 +1690,7 @@ export default class AdminView {
                         </td>
                       </tr>
                     `;
-                  }).join("")}
+    }).join("")}
                 </tbody>
               </table>
             </div>
@@ -1697,7 +1708,7 @@ export default class AdminView {
     const total = rep.totalUsers || 1;
     const studentPct = Math.round(((rep.totalStudents || 0) / total) * 100);
     const teacherPct = Math.round(((rep.totalTeachers || 0) / total) * 100);
-    const adminPct   = 100 - (studentPct + teacherPct);
+    const adminPct = 100 - (studentPct + teacherPct);
 
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
@@ -1841,8 +1852,8 @@ export default class AdminView {
       statusText = 'ملغى ❌';
     }
 
-    const rowBg = s.isLowBalance 
-      ? 'background:rgba(239,68,68,0.03);' 
+    const rowBg = s.isLowBalance
+      ? 'background:rgba(239,68,68,0.03);'
       : (isChild ? 'background:rgba(0,0,0,0.015);' : '');
 
     const displayStyle = isHidden ? 'display:none;' : '';
@@ -1852,7 +1863,7 @@ export default class AdminView {
     return `
     <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
-        ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0,8)}
+        ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0, 8)}
       </td>
       <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
       <td style="padding:12px;">
@@ -2154,66 +2165,361 @@ export default class AdminView {
     `;
   }
 
-  // ── 10. Earnings Tab ─────────────────────────────────────────────────────────────
+  // ── 10. Earnings & Billings Tab ─────────────────────────────────────────────────────────────
   renderEarningsTab() {
     const e = this.adminEarnings || { payments: [], earnings: [] };
     const payments = e.payments || [];
     const earnings = e.earnings || [];
 
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-    const totalPayouts = earnings.reduce((sum, ear) => sum + ear.amount, 0);
+    const successfulPayments = payments.filter(p => p.status === "SUCCESS" || !p.status);
+    const totalRevenue = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalPayouts = earnings.reduce((sum, ear) => sum + (ear.amount || 0), 0);
     const platformNet = Math.max(0, totalRevenue - totalPayouts);
 
+    const formatCurrency = (val) => `${Number(val || 0).toLocaleString('ar-EG')} ج.م`;
+
     return `
-      <div class="dashboard-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:40px;">
-        ${this.statCard("dollar-sign", totalRevenue + " ج.م", "إجمالي إيرادات المنصة", "var(--success)", "var(--success-glow)")}
-        ${this.statCard("credit-card", totalPayouts + " ج.م", "إجمالي مستحقات المعلمين", "var(--warning, #f59e0b)", "rgba(245,158,11,0.15)")}
-        ${this.statCard("pie-chart", platformNet + " ج.م", "صافي ربح المنصة", "var(--primary)", "var(--primary-glow)")}
+      <!-- Stat Cards Grid (Clickable) -->
+      <div class="dashboard-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom:32px;">
+        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-revenue" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لعرض جدول الفواتير والمدفوعات الكامل">
+          <div class="stat-box-icon" style="color:var(--success); background:var(--success-glow);">
+            <i data-lucide="dollar-sign"></i>
+          </div>
+          <div>
+            <div class="stat-box-val">${formatCurrency(totalRevenue)}</div>
+            <div class="stat-box-lbl" style="font-weight:700;">إجمالي إيرادات المنصة 💳</div>
+            <div style="font-size:0.75rem; color:var(--success); margin-top:4px; font-weight:600; display:flex; align-items:center; gap:4px;">
+              <i data-lucide="arrow-down" style="width:12px;height:12px;"></i> انقر للتنقل لجدول الفواتير (${payments.length})
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-payouts" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لعرض مستحقات المعلمين">
+          <div class="stat-box-icon" style="color:var(--warning, #f59e0b); background:rgba(245,158,11,0.15);">
+            <i data-lucide="credit-card"></i>
+          </div>
+          <div>
+            <div class="stat-box-val">${formatCurrency(totalPayouts)}</div>
+            <div class="stat-box-lbl" style="font-weight:700;">إجمالي مستحقات المعلمين 💰</div>
+            <div style="font-size:0.75rem; color:var(--warning, #f59e0b); margin-top:4px; font-weight:600; display:flex; align-items:center; gap:4px;">
+              <i data-lucide="arrow-down" style="width:12px;height:12px;"></i> انقر للتنقل للمستحقات (${earnings.length})
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card stat-box" style="border: 1px solid var(--border-color);">
+          <div class="stat-box-icon" style="color:var(--primary); background:var(--primary-glow);">
+            <i data-lucide="pie-chart"></i>
+          </div>
+          <div>
+            <div class="stat-box-val">${formatCurrency(platformNet)}</div>
+            <div class="stat-box-lbl" style="font-weight:700;">صافي أرباح المنصة 📈</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+              (الإيرادات - مستحقات المعلمين)
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="glass-card" style="padding:24px; margin-bottom:24px;">
-        <h3 style="font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px;margin-bottom:20px;">
-          <i data-lucide="wallet" style="color:var(--warning,#f59e0b);width:20px;height:20px;"></i>
-          مستحقات المعلمين (Payouts)
+      <!-- Section 1: Detailed Platform Billings & Payments Table -->
+      <div class="glass-card" id="admin-billings-section" style="padding:24px; margin-bottom:32px; border-radius:16px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
+          <div>
+            <h3 style="font-weight:800; font-size:1.2rem; display:flex; align-items:center; gap:10px; margin:0 0 4px 0; color:var(--text-main);">
+              <i data-lucide="receipt" style="color:var(--primary); width:24px; height:24px;"></i>
+              سجل مدفوعات وفواتير الطلاب التفصيلية
+            </h3>
+            <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">عرض وتحليل كامل لكافة عمليات السداد والفواتير والإيرادات الواردة</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <div style="position:relative;">
+              <input type="text" id="admin-billing-search" class="form-input" placeholder="بحث باسم الطالب أو الفاتورة..." style="padding:8px 12px 8px 36px; font-size:0.85rem; width:220px; border-radius:8px;">
+              <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+            </div>
+            <select id="admin-billing-type-filter" class="form-input" style="padding:8px 12px; font-size:0.85rem; border-radius:8px; width:150px;">
+              <option value="ALL">جميع الأنواع</option>
+              <option value="SUBSCRIPTION">اشتراكات الباقات</option>
+              <option value="COURSE_ENROLLMENT">شراء كورسات</option>
+            </select>
+            <select id="admin-billing-status-filter" class="form-input" style="padding:8px 12px; font-size:0.85rem; border-radius:8px; width:140px;">
+              <option value="ALL">جميع الحالات</option>
+              <option value="SUCCESS">ناجحة ✅</option>
+              <option value="PENDING">قيد المراجعة ⏳</option>
+              <option value="FAILED">فاشلة ❌</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="table" style="width:100%; text-align:start; border-collapse:collapse;" id="admin-billings-table">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.82rem; background:rgba(0,0,0,0.02);">
+                <th style="padding:12px; font-weight:700;">رقم الفاتورة</th>
+                <th style="padding:12px; font-weight:700;">الطالب</th>
+                <th style="padding:12px; font-weight:700;">البند / تفاصيل الشراء</th>
+                <th style="padding:12px; font-weight:700;">المبلغ</th>
+                <th style="padding:12px; font-weight:700;">طريقة الدفع</th>
+                <th style="padding:12px; font-weight:700;">الحالة</th>
+                <th style="padding:12px; font-weight:700;">التاريخ</th>
+                <th style="padding:12px; font-weight:700; text-align:center;">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="admin-billings-tbody">
+              ${this.renderBillingsTableRows(payments)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 2: Teacher Payouts Table -->
+      <div class="glass-card" id="admin-payouts-section" style="padding:24px; border-radius:16px;">
+        <h3 style="font-weight:800; font-size:1.2rem; display:flex; align-items:center; gap:10px; margin-bottom:20px; color:var(--text-main);">
+          <i data-lucide="wallet" style="color:var(--warning,#f59e0b); width:24px; height:24px;"></i>
+          مستحقات المعلمين (Teacher Payouts)
         </h3>
         <div style="overflow-x:auto;">
-          <table class="table" style="width:100%;text-align:start;border-collapse:collapse;">
+          <table class="table" style="width:100%; text-align:start; border-collapse:collapse;">
             <thead>
-              <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.8rem;">
-                <th style="padding:12px;font-weight:700;">المعلم</th>
-                <th style="padding:12px;font-weight:700;">المبلغ</th>
-                <th style="padding:12px;font-weight:700;">النوع / الوصف</th>
-                <th style="padding:12px;font-weight:700;">الحالة</th>
-                <th style="padding:12px;font-weight:700;">التاريخ</th>
-                <th style="padding:12px;font-weight:700;">إجراءات</th>
+              <tr style="border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.82rem; background:rgba(0,0,0,0.02);">
+                <th style="padding:12px; font-weight:700;">المعلم</th>
+                <th style="padding:12px; font-weight:700;">المبلغ</th>
+                <th style="padding:12px; font-weight:700;">النوع / الوصف</th>
+                <th style="padding:12px; font-weight:700;">الحالة</th>
+                <th style="padding:12px; font-weight:700;">التاريخ</th>
+                <th style="padding:12px; font-weight:700; text-align:center;">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               ${earnings.map(ear => `
-                <tr style="border-bottom:1px solid var(--border-color);font-size:0.85rem;">
-                  <td style="padding:12px;font-weight:600;">${ear.teacher?.name || '-'}</td>
-                  <td style="padding:12px;color:var(--primary);font-weight:700;">${ear.amount} ج.م</td>
-                  <td style="padding:12px;">${ear.sourceType} <br><span style="font-size:0.7rem;color:var(--text-muted);">${ear.description || ''}</span></td>
+                <tr style="border-bottom:1px solid var(--border-color); font-size:0.85rem;">
+                  <td style="padding:12px; font-weight:600;">${ear.teacher?.name || '-'}</td>
+                  <td style="padding:12px; color:var(--primary); font-weight:700;">${ear.amount} ج.م</td>
+                  <td style="padding:12px;">${ear.sourceType === 'COURSE_SALE' ? 'بيع كورس' : ear.sourceType === 'SESSION_COMPLETED' ? 'جلسة منجزة' : ear.sourceType} <br><span style="font-size:0.7rem; color:var(--text-muted);">${ear.description || ''}</span></td>
                   <td style="padding:12px;">
-                    <span class="badge" style="background:${ear.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'};color:${ear.status === 'paid' ? '#10b981' : '#f59e0b'};">
+                    <span class="badge" style="background:${ear.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'}; color:${ear.status === 'paid' ? '#10b981' : '#f59e0b'}; font-weight:700;">
                       ${ear.status === 'paid' ? 'مدفوعة ✅' : 'معلقة ⏳'}
                     </span>
                   </td>
-                  <td style="padding:12px;color:var(--text-muted);">${new Date(ear.createdAt).toLocaleDateString('ar')}</td>
-                  <td style="padding:12px;">
+                  <td style="padding:12px; color:var(--text-muted);">${new Date(ear.createdAt).toLocaleDateString('ar')}</td>
+                  <td style="padding:12px; text-align:center;">
                     ${ear.status === 'pending' ? `
-                      <button class="btn-primary admin-pay-earning-btn" data-id="${ear.id}" style="padding:6px 12px;font-size:0.75rem;">
+                      <button class="btn-primary admin-pay-earning-btn" data-id="${ear.id}" style="padding:6px 12px; font-size:0.75rem;">
                         تسديد المبلغ
                       </button>
-                    ` : '<span style="color:var(--text-muted);font-size:0.75rem;">تم السداد</span>'}
+                    ` : '<span style="color:var(--text-muted); font-size:0.75rem;">تم السداد ✅</span>'}
                   </td>
                 </tr>
-              `).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد مستحقات مسجلة.</td></tr>`}
+              `).join('') || `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">لا توجد مستحقات مسجلة.</td></tr>`}
             </tbody>
           </table>
         </div>
       </div>
     `;
+  }
+
+  renderBillingsTableRows(payments) {
+    if (!payments || payments.length === 0) {
+      return `<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">لا توجد فواتير أو عمليات دفع مسجلة بعد.</td></tr>`;
+    }
+
+    return payments.map(p => {
+      const shortId = p.id ? `#${p.id.substring(0, 8)}` : '-';
+      const studentName = p.student?.name || 'طالب غير محدد';
+      const studentEmail = p.student?.email || '';
+      const studentAvatar = p.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${studentName}`;
+
+      let itemTitle = 'مدفوعات منصة';
+      let itemBadge = '';
+      if (p.type === 'COURSE_ENROLLMENT') {
+        const title = p.courseEnrollment?.course?.title || p.notes || 'شراء كورس';
+        itemTitle = `كورس: ${title}`;
+        itemBadge = `<span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.7rem;">كورس 📚</span>`;
+      } else if (p.type === 'SUBSCRIPTION') {
+        const title = p.subscription?.plan?.title || p.notes || 'باقة اشتراك';
+        itemTitle = `باقة: ${title}`;
+        itemBadge = `<span class="badge" style="background:rgba(236,72,153,0.1); color:#ec4899; font-size:0.7rem;">باقة 💎</span>`;
+      } else {
+        itemTitle = p.notes || 'عملية إيداع/شراء';
+        itemBadge = `<span class="badge" style="background:rgba(107,114,128,0.1); color:var(--text-muted); font-size:0.7rem;">عام 💳</span>`;
+      }
+
+      const statusMap = {
+        SUCCESS: { text: 'ناجحة ✅', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+        PENDING: { text: 'قيد المراجعة ⏳', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+        FAILED: { text: 'فاشلة ❌', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
+        REFUNDED: { text: 'مستردة 🔄', bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }
+      };
+      const st = statusMap[p.status] || { text: p.status || 'ناجحة ✅', bg: 'rgba(16,185,129,0.1)', color: '#10b981' };
+
+      const formattedDate = p.createdAt ? new Date(p.createdAt).toLocaleString('ar-EG', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      }) : '-';
+
+      return `
+        <tr style="border-bottom:1px solid var(--border-color); font-size:0.85rem; transition: background 0.15s;" class="admin-billing-row" data-type="${p.type || ''}" data-status="${p.status || 'SUCCESS'}" data-search="${(studentName + ' ' + studentEmail + ' ' + itemTitle + ' ' + (p.id || '')).toLowerCase()}">
+          <td style="padding:12px; font-weight:700; font-family:monospace; color:var(--text-muted); font-size:0.78rem;">${shortId}</td>
+          <td style="padding:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${studentAvatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
+              <div>
+                <div style="font-weight:700; color:var(--text-main);">${studentName}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${studentEmail}</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <div style="font-weight:600; margin-bottom:3px;">${itemTitle}</div>
+            ${itemBadge}
+          </td>
+          <td style="padding:12px; font-weight:800; color:var(--success); font-size:0.95rem;">${p.amount || 0} ج.م</td>
+          <td style="padding:12px;">
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:0.78rem; font-weight:600; padding:4px 8px; border-radius:6px; background:rgba(0,0,0,0.04); color:var(--text-main);">
+              💳 ${p.provider || 'تحويل مباشر'}
+            </span>
+          </td>
+          <td style="padding:12px;">
+            <span class="badge" style="background:${st.bg}; color:${st.color}; font-weight:700; padding:4px 10px;">
+              ${st.text}
+            </span>
+          </td>
+          <td style="padding:12px; font-size:0.78rem; color:var(--text-muted);">${formattedDate}</td>
+          <td style="padding:12px; text-align:center;">
+            <div style="display:flex; gap:6px; justify-content:center; align-items:center;">
+              <button class="btn-secondary admin-view-payment-details-btn" data-id="${p.id}" style="padding:5px 10px; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:4px;" title="عرض التفاصيل كاملة">
+                <i data-lucide="eye" style="width:14px; height:14px;"></i> تفاصيل
+              </button>
+              ${p.receiptUrl ? `
+                <a href="${p.receiptUrl}" target="_blank" class="btn-secondary" style="padding:5px 10px; font-size:0.75rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary);" title="عرض صورة الإيصال">
+                  <i data-lucide="file-text" style="width:14px; height:14px;"></i> الإيصال
+                </a>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  renderPaymentDetailsModal(paymentId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const e = this.adminEarnings || { payments: [] };
+    const p = (e.payments || []).find(pay => pay.id === paymentId);
+    if (!p) {
+      showToast("تعذر العثور على بيانات الفاتورة.", "error");
+      return;
+    }
+
+    const studentName = p.student?.name || 'غير معروف';
+    const studentEmail = p.student?.email || 'غير معروف';
+    const studentAvatar = p.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${studentName}`;
+
+    let itemDetails = '';
+    if (p.type === 'COURSE_ENROLLMENT' && p.courseEnrollment?.course) {
+      itemDetails = `
+        <div style="background:rgba(99,102,241,0.06); padding:14px; border-radius:10px; margin-bottom:14px; border:1px solid rgba(99,102,241,0.2);">
+          <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:4px;">📚 تفاصيل الكورس المشترى:</div>
+          <div style="font-weight:700; font-size:0.95rem; color:var(--text-main);">${p.courseEnrollment.course.title}</div>
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">معرف الكورس: ${p.courseEnrollment.course.id}</div>
+        </div>
+      `;
+    } else if (p.type === 'SUBSCRIPTION' && p.subscription?.plan) {
+      itemDetails = `
+        <div style="background:rgba(236,72,153,0.06); padding:14px; border-radius:10px; margin-bottom:14px; border:1px solid rgba(236,72,153,0.2);">
+          <div style="font-size:0.8rem; font-weight:700; color:#ec4899; margin-bottom:4px;">💎 تفاصيل الباقة المشترك بها:</div>
+          <div style="font-weight:700; font-size:0.95rem; color:var(--text-main);">${p.subscription.plan.title}</div>
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">عدد الحصص: ${p.subscription.plan.sessionsCount || p.subscription.remainingSessions || '-'} حصة</div>
+        </div>
+      `;
+    }
+
+    const statusMap = {
+      SUCCESS: { text: 'ناجحة ✅', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+      PENDING: { text: 'قيد المراجعة ⏳', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+      FAILED: { text: 'فاشلة ❌', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
+      REFUNDED: { text: 'مستردة 🔄', bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }
+    };
+    const st = statusMap[p.status] || { text: p.status || 'ناجحة ✅', bg: 'rgba(16,185,129,0.1)', color: '#10b981' };
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="payment-details-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:540px; border-radius:16px;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="receipt" style="color:var(--primary);"></i>
+              تفاصيل الفاتورة #${p.id ? p.id.substring(0, 8) : ''}
+            </h3>
+            <span class="modal-close-btn" id="close-payment-details-modal">&times;</span>
+          </div>
+          <div class="modal-body" style="padding:20px;">
+            <!-- Student Header -->
+            <div style="display:flex; align-items:center; gap:14px; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid var(--border-color);">
+              <img src="${studentAvatar}" style="width:48px; height:48px; border-radius:50%; border:2px solid var(--primary);">
+              <div>
+                <div style="font-weight:800; font-size:1rem; color:var(--text-main);">${studentName}</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">${studentEmail}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">ID: ${p.student?.id || '-'}</div>
+              </div>
+            </div>
+
+            ${itemDetails}
+
+            <!-- Key Info Grid -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; background:rgba(0,0,0,0.02); padding:14px; border-radius:10px; border:1px solid var(--border-color);">
+              <div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">المبلغ المدفوع:</div>
+                <div style="font-weight:800; font-size:1.1rem; color:var(--success);">${p.amount || 0} ${p.currency || 'EGP'}</div>
+              </div>
+              <div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">حالة العملية:</div>
+                <span class="badge" style="background:${st.bg}; color:${st.color}; font-weight:700; margin-top:4px;">${st.text}</span>
+              </div>
+              <div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">وسيلة / مزود الدفع:</div>
+                <div style="font-weight:700; font-size:0.88rem; color:var(--text-main); margin-top:2px;">${p.provider || 'تحويل مباشر'}</div>
+              </div>
+              <div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">رقم المعاملة (Ref ID):</div>
+                <div style="font-weight:600; font-size:0.82rem; color:var(--text-main); margin-top:2px; font-family:monospace;">${p.providerTransactionId || p.id || '-'}</div>
+              </div>
+              <div style="grid-column:1 / -1;">
+                <div style="font-size:0.78rem; color:var(--text-muted);">تاريخ الدفع:</div>
+                <div style="font-weight:600; font-size:0.85rem; color:var(--text-main); margin-top:2px;">${p.createdAt ? new Date(p.createdAt).toLocaleString('ar-EG') : '-'}</div>
+              </div>
+            </div>
+
+            ${p.notes ? `
+              <div style="margin-bottom:16px;">
+                <div style="font-size:0.8rem; font-weight:700; margin-bottom:4px;">ملاحظات العملية:</div>
+                <div style="font-size:0.85rem; color:var(--text-main); background:rgba(0,0,0,0.03); padding:10px; border-radius:8px; border:1px solid var(--border-color);">${p.notes}</div>
+              </div>
+            ` : ''}
+
+            ${p.receiptUrl ? `
+              <div style="margin-bottom:16px;">
+                <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>صورة إيصال السداد المرفقة:</span>
+                  <a href="${p.receiptUrl}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none;">فتح الصورة بالحجم الكامل ↗</a>
+                </div>
+                <div style="text-align:center; background:#000; padding:10px; border-radius:10px;">
+                  <img src="${p.receiptUrl}" style="max-height:240px; max-width:100%; border-radius:6px; object-fit:contain;">
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="close-payment-details-btn" style="width:100%;">إغلاق النافذة</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-payment-details-modal")?.addEventListener("click", closeModal);
+    document.getElementById("close-payment-details-btn")?.addEventListener("click", closeModal);
   }
 
   bindActionEvents() {
@@ -2317,11 +2623,11 @@ export default class AdminView {
         const catSelectEl = document.getElementById("admin-course-category-select");
         const catCustomEl = document.getElementById("admin-course-category-custom");
         const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
-        if (!category) { 
-          showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error"); 
+        if (!category) {
+          showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error");
           isSubmitting = false;
           if (submitBtn) submitBtn.disabled = false;
-          return; 
+          return;
         }
         const degree = document.getElementById("admin-course-degree").value;
         const teacherId = document.getElementById("admin-course-teacher-id").value;
@@ -2491,13 +2797,13 @@ export default class AdminView {
       });
     });
 
-        this.container.querySelectorAll(".admin-view-sub-sessions-btn").forEach(btn => {
+    this.container.querySelectorAll(".admin-view-sub-sessions-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const subId = btn.getAttribute("data-id");
         this.activeTab = "sessions";
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => {
-            b.classList.remove("active");
-            if(b.getAttribute("data-tab") === "sessions") b.classList.add("active");
+          b.classList.remove("active");
+          if (b.getAttribute("data-tab") === "sessions") b.classList.add("active");
         });
         this.renderTab("sessions", subId);
       });
@@ -2542,6 +2848,46 @@ export default class AdminView {
           showToast(err.message || "تعذر دفع المستحقات.", "error");
           btn.disabled = false;
         }
+      });
+    });
+
+    // Admin Billings Stat Cards Scroll Actions
+    this.container.querySelector("#stat-card-total-revenue")?.addEventListener("click", () => {
+      document.getElementById("admin-billings-section")?.scrollIntoView({ behavior: "smooth" });
+    });
+
+    this.container.querySelector("#stat-card-total-payouts")?.addEventListener("click", () => {
+      document.getElementById("admin-payouts-section")?.scrollIntoView({ behavior: "smooth" });
+    });
+
+    // Admin Billings Table Filter & Search
+    const filterBillings = () => {
+      const q = (document.getElementById("admin-billing-search")?.value || "").toLowerCase().trim();
+      const type = document.getElementById("admin-billing-type-filter")?.value || "ALL";
+      const status = document.getElementById("admin-billing-status-filter")?.value || "ALL";
+
+      this.container.querySelectorAll(".admin-billing-row").forEach(row => {
+        const searchData = row.getAttribute("data-search") || "";
+        const rowType = row.getAttribute("data-type") || "";
+        const rowStatus = row.getAttribute("data-status") || "";
+
+        const matchesSearch = !q || searchData.includes(q);
+        const matchesType = type === "ALL" || rowType === type;
+        const matchesStatus = status === "ALL" || rowStatus === status;
+
+        row.style.display = (matchesSearch && matchesType && matchesStatus) ? "" : "none";
+      });
+    };
+
+    document.getElementById("admin-billing-search")?.addEventListener("input", filterBillings);
+    document.getElementById("admin-billing-type-filter")?.addEventListener("change", filterBillings);
+    document.getElementById("admin-billing-status-filter")?.addEventListener("change", filterBillings);
+
+    // Admin View Payment Details Modal
+    this.container.querySelectorAll(".admin-view-payment-details-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const paymentId = btn.getAttribute("data-id");
+        this.renderPaymentDetailsModal(paymentId);
       });
     });
 
@@ -2624,7 +2970,7 @@ export default class AdminView {
           await this.loadAllData();
           this.updateBadges();
           this.renderTab("teacherApplications");
-        } catch(err) { btn.disabled = false; }
+        } catch (err) { btn.disabled = false; }
       });
     });
 
@@ -2641,7 +2987,7 @@ export default class AdminView {
           await this.loadAllData();
           this.updateBadges();
           this.renderTab("teacherApplications");
-        } catch(err) { btn.disabled = false; }
+        } catch (err) { btn.disabled = false; }
       });
     });
 
@@ -2860,7 +3206,7 @@ export default class AdminView {
         closeModal();
         await this.loadAllData();
         this.renderTab("categories");
-      } catch (err) {}
+      } catch (err) { }
     });
   }
 
@@ -3797,10 +4143,10 @@ export default class AdminView {
             <td style="padding:10px 12px;">${timeStr}</td>
             <td style="padding:10px 12px;">${item.teacherName}</td>
             <td style="padding:10px 12px;">
-              ${item.status === 'VALID' 
-                ? '<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981;">✓ جاهزة</span>' 
-                : `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;" title="${item.conflictReason || ''}">⚠️ تعارض</span>`
-              }
+              ${item.status === 'VALID'
+            ? '<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981;">✓ جاهزة</span>'
+            : `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;" title="${item.conflictReason || ''}">⚠️ تعارض</span>`
+          }
             </td>
             <td style="padding:10px 12px; text-align:end;">
               <input type="datetime-local" class="form-input wiz-row-date" data-idx="${idx}" value="${isoLocal}" style="padding:4px 8px; font-size:0.8rem;" />
@@ -3854,7 +4200,7 @@ export default class AdminView {
       }
     });
   }
-  
+
 
   renderCourseDetailsModal(course) {
     const modalId = 'course-details-modal-overlay';
@@ -4618,5 +4964,5 @@ export default class AdminView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

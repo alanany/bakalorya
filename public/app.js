@@ -228,6 +228,7 @@ export function renderCourseCard(course, { enrollmentStatus = null, isBanned = f
   const categoryTitle = course.category || "عام";
   const degreeText = course.degree || "عام / لجميع المراحل";
   const teacherName = course.teacher?.name || "المعلم الفاضل";
+  const teacherAvatar = course.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
   const isPaid = !course.isFree && course.price > 0;
   const priceLabel = isPaid ? `${course.price} ${course.currency || 'ج.م'}` : "مجاني 🎁";
   let actionButtonHTML = `<a href="#course-preview/${course.id}" class="course-price-pill" style="${isPaid ? 'background:linear-gradient(135deg,#a855f7,#6366f1);' : 'background:#10b981;'}">${priceLabel}</a>`;
