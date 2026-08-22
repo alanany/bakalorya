@@ -610,7 +610,20 @@ export default class AdminView {
     // Admin Add Course Modal Open & Close
     this.container.querySelector("#open-admin-add-course-modal-btn")?.addEventListener("click", () => {
       const modal = document.getElementById("admin-course-modal");
-      if (modal) modal.style.display = "flex";
+      if (modal) {
+        modal.style.display = "flex";
+        // Reset form & upload preview on modal open
+        const form = document.getElementById("admin-course-form");
+        if (form) form.reset();
+        const imgHidden = document.getElementById("admin-course-image");
+        if (imgHidden) imgHidden.value = "";
+        const idleBox = document.getElementById("admin-image-upload-idle");
+        const loadingBox = document.getElementById("admin-image-upload-loading");
+        const previewWrapper = document.getElementById("admin-image-preview-wrapper");
+        if (idleBox) idleBox.style.display = "block";
+        if (loadingBox) loadingBox.style.display = "none";
+        if (previewWrapper) previewWrapper.style.display = "none";
+      }
     });
 
     document.getElementById("close-admin-course-modal")?.addEventListener("click", () => {
@@ -623,78 +636,131 @@ export default class AdminView {
       if (modal) modal.style.display = "none";
     });
 
-    // Toggle custom category in admin course modal
-    document.getElementById("admin-course-category-select")?.addEventListener("change", (e) => {
-      const customWrapper = document.getElementById("admin-course-category-custom-wrapper");
-      if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
-    });
-
-    // Toggle direct URL input in admin course modal
-    document.getElementById("admin-toggle-url-input-btn")?.addEventListener("click", () => {
-      const urlWrapper = document.getElementById("admin-url-input-wrapper");
-      if (urlWrapper) urlWrapper.style.display = urlWrapper.style.display === "none" ? "block" : "none";
-    });
-
-    // File input trigger
-    document.getElementById("admin-btn-trigger-upload")?.addEventListener("click", () => {
-      document.getElementById("admin-course-image-file")?.click();
-    });
-
-    // Handle Image Upload
-    document.getElementById("admin-course-image-file")?.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const idleBox = document.getElementById("admin-image-upload-idle");
-      const loadingBox = document.getElementById("admin-image-upload-loading");
-      const previewWrapper = document.getElementById("admin-image-preview-wrapper");
-      const previewImg = document.getElementById("admin-course-preview-img");
-
-      if (idleBox) idleBox.style.display = "none";
-      if (loadingBox) loadingBox.style.display = "block";
-
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        const token = localStorage.getItem("token");
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
-        const uploadData = await uploadRes.json();
-        if (uploadData.url) {
-          document.getElementById("admin-course-image").value = uploadData.url;
-          if (previewImg) previewImg.src = uploadData.url;
-          if (loadingBox) loadingBox.style.display = "none";
-          if (previewWrapper) previewWrapper.style.display = "block";
-          showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
-        } else {
-          throw new Error("فشل رفع الصورة");
-        }
-      } catch (err) {
-        if (loadingBox) loadingBox.style.display = "none";
-        if (idleBox) idleBox.style.display = "block";
-        showToast(err.message || "فشل رفع صورة الغلاف", "error");
-      }
-    });
-
-    // Remove cover image
-    document.getElementById("admin-remove-course-image-btn")?.addEventListener("click", () => {
-      document.getElementById("admin-course-image").value = "";
-      document.getElementById("admin-course-image-file").value = "";
-      const previewWrapper = document.getElementById("admin-image-preview-wrapper");
-      const idleBox = document.getElementById("admin-image-upload-idle");
-      if (previewWrapper) previewWrapper.style.display = "none";
-      if (idleBox) idleBox.style.display = "block";
-    });
-
-    // Submit Admin Course Form
+    // Submit Admin Course Form & Attach Upload Listeners to Fresh Form
     const adminCourseForm = document.getElementById("admin-course-form");
     if (adminCourseForm) {
       const freshForm = adminCourseForm.cloneNode(true);
       adminCourseForm.parentNode.replaceChild(freshForm, adminCourseForm);
       let isSubmitting = false;
+
+      // Toggle custom category in admin course modal
+      freshForm.querySelector("#admin-course-category-select")?.addEventListener("change", (e) => {
+        const customWrapper = freshForm.querySelector("#admin-course-category-custom-wrapper");
+        if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
+      });
+
+      // Toggle direct URL input in admin course modal
+      freshForm.querySelector("#admin-toggle-url-input-btn")?.addEventListener("click", () => {
+        const urlWrapper = freshForm.querySelector("#admin-url-input-wrapper");
+        if (urlWrapper) urlWrapper.style.display = urlWrapper.style.display === "none" ? "block" : "none";
+      });
+
+      // Dropzone click trigger & file input
+      const dropzone = freshForm.querySelector("#admin-course-dropzone");
+      const fileInput = freshForm.querySelector("#admin-course-image-file");
+
+      dropzone?.addEventListener("click", (e) => {
+        if (e.target.closest("#admin-remove-course-image-btn") || e.target.closest("#admin-url-input-wrapper")) return;
+        fileInput?.click();
+      });
+
+      freshForm.querySelector("#admin-btn-trigger-upload")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput?.click();
+      });
+
+      // Drag and Drop support
+      dropzone?.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "var(--primary)";
+        dropzone.style.background = "rgba(99,102,241,0.08)";
+      });
+      dropzone?.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "var(--border-color)";
+        dropzone.style.background = "var(--bg-app)";
+      });
+      dropzone?.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "var(--border-color)";
+        dropzone.style.background = "var(--bg-app)";
+        if (e.dataTransfer?.files?.length > 0) {
+          if (fileInput) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event("change"));
+          }
+        }
+      });
+
+      // Handle Image Upload
+      fileInput?.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
+        const loadingBox = freshForm.querySelector("#admin-image-upload-loading");
+        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
+        const previewImg = freshForm.querySelector("#admin-course-preview-img");
+
+        if (idleBox) idleBox.style.display = "none";
+        if (loadingBox) loadingBox.style.display = "block";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadData.url) {
+            const hiddenImg = freshForm.querySelector("#admin-course-image");
+            if (hiddenImg) hiddenImg.value = uploadData.url;
+            if (previewImg) previewImg.src = uploadData.url;
+            if (loadingBox) loadingBox.style.display = "none";
+            if (previewWrapper) previewWrapper.style.display = "block";
+            showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
+          } else {
+            throw new Error(uploadData.error || "فشل رفع الصورة");
+          }
+        } catch (err) {
+          if (loadingBox) loadingBox.style.display = "none";
+          if (idleBox) idleBox.style.display = "block";
+          showToast(err.message || "فشل رفع صورة الغلاف", "error");
+        }
+      });
+
+      // Remove cover image
+      freshForm.querySelector("#admin-remove-course-image-btn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const hiddenImg = freshForm.querySelector("#admin-course-image");
+        if (hiddenImg) hiddenImg.value = "";
+        if (fileInput) fileInput.value = "";
+        const directUrl = freshForm.querySelector("#admin-course-image-url-direct");
+        if (directUrl) directUrl.value = "";
+        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
+        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
+        if (previewWrapper) previewWrapper.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+      });
+
+      // Direct URL Input handler
+      freshForm.querySelector("#admin-course-image-url-direct")?.addEventListener("input", (e) => {
+        const url = e.target.value.trim();
+        const hiddenImg = freshForm.querySelector("#admin-course-image");
+        const previewImg = freshForm.querySelector("#admin-course-preview-img");
+        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
+        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
+
+        if (url) {
+          if (hiddenImg) hiddenImg.value = url;
+          if (previewImg) previewImg.src = url;
+          if (previewWrapper) previewWrapper.style.display = "block";
+          if (idleBox) idleBox.style.display = "none";
+        }
+      });
 
       freshForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -703,9 +769,9 @@ export default class AdminView {
         const submitBtn = freshForm.querySelector("button[type='submit']");
         if (submitBtn) submitBtn.disabled = true;
 
-        const title = document.getElementById("admin-course-title").value.trim();
-        const catSelectEl = document.getElementById("admin-course-category-select");
-        const catCustomEl = document.getElementById("admin-course-category-custom");
+        const title = freshForm.querySelector("#admin-course-title").value.trim();
+        const catSelectEl = freshForm.querySelector("#admin-course-category-select");
+        const catCustomEl = freshForm.querySelector("#admin-course-category-custom");
         const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
         if (!category) {
           showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error");
@@ -713,13 +779,13 @@ export default class AdminView {
           if (submitBtn) submitBtn.disabled = false;
           return;
         }
-        const degree = document.getElementById("admin-course-degree").value;
-        const teacherId = document.getElementById("admin-course-teacher-id").value;
-        const description = document.getElementById("admin-course-desc").value.trim();
-        let image = document.getElementById("admin-course-image").value;
-        const directUrl = document.getElementById("admin-course-image-url-direct")?.value.trim();
+        const degree = freshForm.querySelector("#admin-course-degree").value;
+        const teacherId = freshForm.querySelector("#admin-course-teacher-id").value;
+        const description = freshForm.querySelector("#admin-course-desc").value.trim();
+        let image = freshForm.querySelector("#admin-course-image").value;
+        const directUrl = freshForm.querySelector("#admin-course-image-url-direct")?.value.trim();
         if (directUrl) image = directUrl;
-        const meetingLink = document.getElementById("admin-course-meeting-link").value.trim();
+        const meetingLink = freshForm.querySelector("#admin-course-meeting-link").value.trim();
 
         const payload = { title, category, degree, teacherId, image, meetingLink, description };
 
