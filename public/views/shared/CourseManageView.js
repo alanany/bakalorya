@@ -733,18 +733,12 @@ export default class CourseManageView {
 
                 <div class="form-group">
                   <label style="font-weight:700; margin-bottom:6px; display:block;">رابط فيديو الدرس (اختياري / Optional)</label>
-                  <input type="url" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=... (يمكن تركه فارغاً والاعتماد على صورة الدرس)" style="padding:10px 14px;">
+                  <input type="text" id="lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=... (يمكن تركه فارغاً والاعتماد على صورة الدرس)" style="padding:10px 14px;">
                 </div>
 
                 <div class="form-group">
                   <label style="font-weight:700; margin-bottom:6px; display:block;">شرح وتفاصيل الدرس (Lesson Details & Description)</label>
                   <textarea id="lesson-desc" class="form-input" rows="3" placeholder="أدخل ملخص وفكرة هذا الدرس..." style="padding:10px 14px; resize:vertical; font-family:inherit;"></textarea>
-                </div>
-
-                <div class="form-group">
-                  <label style="font-weight:700; margin-bottom:6px; display:block;">صورة / غلاف الدرس (مطلوب كبانر عند عدم وجود فيديو 🖼️) <span style="color:var(--error);">*</span></label>
-                  <input type="text" id="lesson-photo-url" class="form-input" placeholder="رابط صورة الملخص (https://...)" style="padding:8px 12px; margin-bottom:6px; font-size:0.88rem;">
-                  <input type="file" id="lesson-photo-file" class="form-input" accept="image/*" style="padding:8px 12px; font-size:0.85rem;">
                 </div>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -776,7 +770,7 @@ export default class CourseManageView {
                 </div>
                 <div class="form-group">
                   <label style="font-weight:700; margin-bottom:6px; display:block;">رابط الملف المرفق (Resource URL - PDF / Drive)</label>
-                  <input type="url" id="lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
+                  <input type="text" id="lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
                   <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">يستطيع الطالب فتح وتحميل الملف مباشرة من صفحة مشغل الدرس.</p>
                 </div>
               </div>
@@ -792,18 +786,6 @@ export default class CourseManageView {
 
                 <div style="display:flex; gap:8px;">
                   <input type="text" id="modal-lesson-objective-input" class="form-input" placeholder="أدخل معيارات خاصاً بالدرس (مثال: فهم كيفية تطبيق القانون بشكل صحيح)..." style="flex:1; padding:8px 12px; font-size:0.85rem;">
-                  <button type="button" id="modal-add-lesson-objective-btn" class="btn-primary" style="padding:8px 14px; font-size:0.82rem; font-weight:700; flex-shrink:0;">
-                    ➕ إضافة
-                  </button>
-                </div>
-
-                <div id="modal-lesson-objectives-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-                  <!-- Dynamic lesson objectives list -->
-                </div>
-              </div>
-
-                <div style="display:flex; gap:8px;">
-                  <input type="text" id="modal-lesson-objective-input" class="form-input" placeholder="أدخل هدفاً خاصاً بهذا الدرس (مثال: فهم طريقة استخراج النهايات بيائين)..." style="flex:1; padding:8px 12px; font-size:0.85rem;">
                   <button type="button" id="modal-add-lesson-objective-btn" class="btn-primary" style="padding:8px 14px; font-size:0.82rem; font-weight:700; flex-shrink:0;">
                     ➕ إضافة
                   </button>
@@ -1218,7 +1200,6 @@ export default class CourseManageView {
 
             document.getElementById("lesson-title").value = lesson.title || "";
             document.getElementById("lesson-video").value = lesson.videoUrl || "";
-            document.getElementById("lesson-photo-url").value = lesson.photo || "";
             document.getElementById("lesson-duration").value = lesson.duration || "20:00";
             document.getElementById("lesson-order").value = lesson.order || 1;
             document.getElementById("lesson-desc").value = lesson.description || "";
@@ -1278,55 +1259,41 @@ export default class CourseManageView {
       // Submit Lesson Form
       document.getElementById("lesson-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const id = document.getElementById("lesson-id").value;
+        const submitBtn = e.target.querySelector("button[type='submit']");
+        if (submitBtn) submitBtn.disabled = true;
 
-        let selectedChapter = chapterSelect?.value;
-        if (selectedChapter === "__NEW__") {
-          selectedChapter = customChapterInput?.value.trim() || "الوحدة العامة";
-        }
+        const id = document.getElementById("lesson-id")?.value;
+        const titleVal = document.getElementById("lesson-title")?.value.trim();
 
-        const videoUrlVal = document.getElementById("lesson-video")?.value.trim() || "";
-        let photoUrl = document.getElementById("lesson-photo-url")?.value.trim() || "";
-        const photoFileInput = document.getElementById("lesson-photo-file");
-
-        if (!videoUrlVal && !photoUrl && (!photoFileInput || !photoFileInput.files.length)) {
-          showToast("رابط الفيديو اختياري، ولكن عند عدم إضافة فيديو يجب تقديم صورة/غلاف للدرس كبانر للطلاب 🖼️", "error");
+        if (!titleVal) {
+          showToast("الرجاء كتابة عنوان الدرس.", "error");
+          if (submitBtn) submitBtn.disabled = false;
           return;
         }
 
-        if (photoFileInput && photoFileInput.files.length > 0) {
-          const formData = new FormData();
-          formData.append("file", photoFileInput.files[0]);
-          try {
-            const token = state.token || localStorage.getItem("token");
-            const uploadRes = await fetch("/api/upload", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + token },
-              body: formData
-            });
-            if (uploadRes.ok) {
-              const data = await uploadRes.json();
-              photoUrl = data.url;
-            }
-          } catch (err) {
-            console.error("Photo upload failed", err);
-          }
+        const chapterSelectEl = document.getElementById("lesson-chapter-select");
+        const customChapterInputEl = document.getElementById("lesson-chapter-custom");
+        let selectedChapter = chapterSelectEl?.value || "الوحدة العامة";
+        if (selectedChapter === "__NEW__") {
+          selectedChapter = customChapterInputEl?.value.trim() || "الوحدة العامة";
         }
+
+        const videoUrlVal = document.getElementById("lesson-video")?.value.trim() || "";
 
         // Clean questions array
         const validQuestions = (this.editingLessonQuestions || []).filter(q => q.questionText && q.questionText.trim().length > 0);
 
         const payload = {
           chapter: selectedChapter,
-          title: document.getElementById("lesson-title").value.trim(),
-          videoUrl: document.getElementById("lesson-video").value.trim(),
-          photo: photoUrl,
-          duration: document.getElementById("lesson-duration").value.trim() || "20:00",
-          order: parseInt(document.getElementById("lesson-order").value) || 1,
-          description: document.getElementById("lesson-desc").value.trim() || null,
-          notes: document.getElementById("lesson-notes").value.trim() || null,
-          resourceTitle: document.getElementById("lesson-resource-title").value.trim() || null,
-          resourceUrl: document.getElementById("lesson-resource-url").value.trim() || null,
+          title: titleVal,
+          videoUrl: videoUrlVal,
+          photo: null,
+          duration: document.getElementById("lesson-duration")?.value.trim() || "20:00",
+          order: parseInt(document.getElementById("lesson-order")?.value) || 1,
+          description: document.getElementById("lesson-desc")?.value.trim() || null,
+          notes: document.getElementById("lesson-notes")?.value.trim() || null,
+          resourceTitle: document.getElementById("lesson-resource-title")?.value.trim() || null,
+          resourceUrl: document.getElementById("lesson-resource-url")?.value.trim() || null,
           questions: validQuestions,
           objectives: this.editingLessonObjectives || []
         };
@@ -1341,7 +1308,12 @@ export default class CourseManageView {
           }
           if (lessonModal) lessonModal.style.display = "none";
           await this.render();
-        } catch (err) { console.error(err); }
+        } catch (err) {
+          console.error("Error saving lesson:", err);
+          showToast(err.message || "فشل حفظ الدرس. الرجاء التحقق من البيانات والمحاولة مجدداً.", "error");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
       });
     }
 
@@ -1490,12 +1462,12 @@ export default class CourseManageView {
 
         <div class="form-group" style="margin:0;">
           <label style="font-size:0.8rem; font-weight:700; display:block; margin-bottom:4px;">نص السؤال</label>
-          <input type="text" class="form-input q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;" required>
+          <input type="text" class="form-input q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
-          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;">
           <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="2" placeholder="الخيار (ج)" value="${q.options?.[2] || ''}" style="padding:6px 10px; font-size:0.82rem;">
           <input type="text" class="form-input q-opt-input" data-index="${idx}" data-opt="3" placeholder="الخيار (د)" value="${q.options?.[3] || ''}" style="padding:6px 10px; font-size:0.82rem;">
         </div>

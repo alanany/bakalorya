@@ -406,8 +406,8 @@ export default class TeacherView {
                     <input type="text" id="lesson-chapter" class="form-input" placeholder="${t("teacher.chapterPlaceholder")}" value="General" required style="padding:10px 14px;">
                   </div>
                   <div class="form-group">
-                    <label for="lesson-videourl" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.videoUrl")} <span style="color:var(--error);">*</span></label>
-                    <input type="url" id="lesson-videourl" class="form-input" placeholder="https://..." required style="padding:10px 14px;">
+                    <label for="lesson-videourl" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.videoUrl")} (اختياري / Optional)</label>
+                    <input type="text" id="lesson-videourl" class="form-input" placeholder="https://..." style="padding:10px 14px;">
                   </div>
                   <div class="form-group">
                     <label for="lesson-desc" style="font-weight:700; margin-bottom:6px; display:block;">${t("teacher.lessonDesc")}</label>
@@ -442,7 +442,7 @@ export default class TeacherView {
                   </div>
                   <div class="form-group">
                     <label style="font-weight:700; margin-bottom:6px; display:block;">رابط الملف المرفق (Resource URL - PDF / Drive)</label>
-                    <input type="url" id="teacher-lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
+                    <input type="text" id="teacher-lesson-resource-url" class="form-input" placeholder="https://drive.google.com/file/d/..." style="padding:10px 14px;">
                     <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">يستطيع الطالب فتح وتحميل الملف مباشرة من صفحة مشغل الدرس.</p>
                   </div>
                 </div>
@@ -1090,6 +1090,9 @@ bindEvents() {
 
     document.getElementById("add-lesson-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const submitBtn = e.target.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
       const title = document.getElementById("lesson-title").value.trim();
       const chapter = document.getElementById("lesson-chapter").value.trim() || "General";
       const videoUrl = document.getElementById("lesson-videourl").value.trim();
@@ -1113,7 +1116,12 @@ bindEvents() {
         lessonModal.style.display = "none";
         document.getElementById("add-lesson-form").reset();
         await this.render();
-      } catch (err) {}
+      } catch (err) {
+        console.error("Error saving lesson in TeacherView:", err);
+        showToast(err.message || "فشل حفظ الدرس. الرجاء التحقق والمحاولة مجدداً.", "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
 
     this.bindSessionActionButtons();
@@ -1330,12 +1338,12 @@ bindEvents() {
 
         <div class="form-group" style="margin:0;">
           <label style="font-size:0.8rem; font-weight:700; display:block; margin-bottom:4px;">نص السؤال</label>
-          <input type="text" class="form-input t-q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;" required>
+          <input type="text" class="form-input t-q-text-input" data-index="${idx}" placeholder="اكتب نص السؤال هنا..." value="${q.questionText || ''}" style="padding:8px 12px; font-size:0.88rem;">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
-          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;" required>
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="0" placeholder="الخيار (أ)" value="${q.options?.[0] || ''}" style="padding:6px 10px; font-size:0.82rem;">
+          <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="1" placeholder="الخيار (ب)" value="${q.options?.[1] || ''}" style="padding:6px 10px; font-size:0.82rem;">
           <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="2" placeholder="الخيار (ج)" value="${q.options?.[2] || ''}" style="padding:6px 10px; font-size:0.82rem;">
           <input type="text" class="form-input t-q-opt-input" data-index="${idx}" data-opt="3" placeholder="الخيار (د)" value="${q.options?.[3] || ''}" style="padding:6px 10px; font-size:0.82rem;">
         </div>

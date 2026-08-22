@@ -112,33 +112,36 @@ export default class CourseLandingView {
             
             <!-- Left: Course Content (Curriculum) -->
             <div style="flex: 2; min-width: 300px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-                <h2 style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin:0;">Course Content</h2>
-                <span style="font-size:0.9rem; color:var(--text-muted);">${Object.keys(chaptersMap).length} sections • ${this.course.lessons?.length || 0} lessons • ${durationText}</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:10px;">
+                <h2 style="font-size:1.6rem; font-weight:800; color:var(--text-main); margin:0;">📚 محتوى ومنهج الدورة (Units & Lessons)</h2>
+                <span style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">${Object.keys(chaptersMap).length} وحدات • ${this.course.lessons?.length || 0} دروس • ${durationText}</span>
               </div>
               
               ${Object.keys(chaptersMap).length === 0 ? `
                 <div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
-                  Curriculum is currently being developed.
+                  جاري إعداد وإضافة دروس المنهج في هذه الدورة.
                 </div>
               ` : `
                 <div style="border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow:hidden; background: var(--card-bg);">
                   ${Object.keys(chaptersMap).map((chName, idx) => `
                     <div style="border-bottom: 1px solid var(--border-color);">
-                      <div style="background: rgba(0,0,0,0.02); padding: 16px 24px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:700; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                          <i data-lucide="folder" style="width:18px; color:var(--primary);"></i> ${chName}
+                      <div style="background: rgba(99,102,241,0.05); padding: 16px 24px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:800; font-size:1.05rem; color:var(--text-main); display:flex; align-items:center; gap:10px;">
+                          <i data-lucide="folder-open" style="width:18px; color:var(--primary);"></i> ${chName}
                         </span>
-                        <span style="font-size:0.85rem; color:var(--text-muted);">${chaptersMap[chName].length} lessons</span>
+                        <span class="badge" style="font-size:0.78rem; background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800;">${chaptersMap[chName].length} دروس</span>
                       </div>
                       <div>
-                        ${chaptersMap[chName].map(l => `
-                          <div style="padding: 12px 24px 12px 48px; border-top: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background: var(--bg-color);">
-                            <span style="display:flex; align-items:center; gap:12px; font-size:0.95rem; color:var(--text-main);">
-                              <i data-lucide="play-circle" style="width:16px; color:var(--text-muted);"></i>
-                              ${l.title}
+                        ${chaptersMap[chName].map((l, lIdx) => `
+                          <div style="padding: 12px 24px 12px 36px; border-top: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background: var(--bg-color);">
+                            <span style="display:flex; align-items:center; gap:12px; font-size:0.92rem; color:var(--text-main); font-weight:600;">
+                              <i data-lucide="${l.videoUrl ? 'play-circle' : 'file-text'}" style="width:16px; color:${l.videoUrl ? 'var(--primary)' : 'var(--text-muted)'};"></i>
+                              #${lIdx + 1} ${l.title}
                             </span>
-                            <span style="font-size:0.8rem; color:var(--text-muted); background: var(--card-bg); padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border-color);">${l.duration || '--:--'}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                              ${l.isFree ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; font-weight:800;">مجاني 🎁</span>` : ''}
+                              <span style="font-size:0.78rem; color:var(--text-muted); background: var(--card-bg); padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border-color);">${l.duration || '--:--'}</span>
+                            </div>
                           </div>
                         `).join('')}
                       </div>

@@ -207,6 +207,11 @@ router.post("/assignments/:id/submit", authMiddleware, AssignmentController.subm
 router.get("/assignments/:id/submissions", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.getSubmissions);
 router.put("/submissions/:id/grade", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.gradeSubmission);
 
+// Resources (Lesson Materials)
+router.get("/resources", authMiddleware, ResourceController.getResources);
+router.post("/resources", authMiddleware, requireRole(["teacher", "admin"]), ResourceController.createResource);
+router.delete("/resources/:id", authMiddleware, requireRole(["teacher", "admin"]), ResourceController.deleteResource);
+
 // Admin Routes
 router.get("/admin/stats", authMiddleware, requireRole(["admin"]), AdminController.getStats);
 router.get("/admin/users", authMiddleware, requireRole(["admin"]), AdminController.getUsers);

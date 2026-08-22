@@ -374,6 +374,15 @@ export const AdminCoursesPage = {
     if (existing) existing.remove();
 
     const coursePlans = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id);
+    const lessons = course.lessons || [];
+
+    const unitsMap = {};
+    lessons.forEach(l => {
+      const chName = l.chapter || "الوحدة العامة";
+      if (!unitsMap[chName]) unitsMap[chName] = [];
+      unitsMap[chName].push(l);
+    });
+    const unitsCount = Object.keys(unitsMap).length;
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -408,14 +417,18 @@ export const AdminCoursesPage = {
         <div style="padding:24px; background:var(--bg-app); max-height:75vh; overflow-y:auto; font-size:0.9rem;">
           
           <!-- Quick Stats Grid -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:24px;">
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👨‍🏫 المعلم المسؤول</div>
               <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:2px;">${course.teacher?.name || 'غير محدد'}</div>
             </div>
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">📂 الوحدات الدراسية</div>
+              <div style="font-size:0.95rem; font-weight:800; color:#a855f7; margin-top:2px;">${unitsCount} وحدة</div>
+            </div>
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">📖 عدد الدروس</div>
-              <div style="font-size:0.95rem; font-weight:800; color:var(--primary); margin-top:2px;">${course.lessonsCount || 0} درس</div>
+              <div style="font-size:0.95rem; font-weight:800; color:var(--primary); margin-top:2px;">${lessons.length || course.lessonsCount || 0} درس</div>
             </div>
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👥 الطلاب المسجلين</div>
@@ -481,26 +494,56 @@ export const AdminCoursesPage = {
             `}
           </div>
 
-          <!-- Lessons List -->
-          ${course.lessons && course.lessons.length > 0 ? `
-            <div>
-              <h4 style="font-weight:800; margin:0 0 12px 0; color:var(--text-main); font-size:1rem;">📚 دروس الدورة المتاحة (${course.lessons.length}):</h4>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                ${course.lessons.map((lesson, i) => `
-                  <div style="background:var(--bg-card); padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                      <span style="font-weight:800; font-size:0.8rem; color:var(--primary); width:20px;">#${i + 1}</span>
-                      <span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${lesson.title}</span>
+          <!-- Section: Units and Lessons -->
+          <div style="margin-top:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <h4 style="font-weight:800; margin:0; color:var(--text-main); font-size:1rem; display:flex; align-items:center; gap:8px;">
+                📂 الوحدات والدروس المرتبطة بالمنهج (${unitsCount} وحدة دراسية • ${lessons.length} درس)
+              </h4>
+              <button id="modal-admin-add-lesson-btn" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius:10px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; font-weight:800;">
+                <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> إضافة درس جديد لهذا الكورس ➕
+              </button>
+            </div>
+
+            ${unitsCount > 0 ? `
+              <div style="display:flex; flex-direction:column; gap:14px;">
+                ${Object.keys(unitsMap).map((unitName, unitIdx) => `
+                  <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; overflow:hidden;">
+                    <div style="background:rgba(99,102,241,0.06); padding:12px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color);">
+                      <span style="font-weight:800; font-size:0.92rem; color:var(--primary); display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="folder-open" style="width:16px; height:16px;"></i> ${unitName}
+                      </span>
+                      <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800;">
+                        ${unitsMap[unitName].length} دروس
+                      </span>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:var(--text-muted);">
-                      ${lesson.duration ? `<span>⏱️ ${lesson.duration} دقيقة</span>` : ''}
-                      ${lesson.isFree ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; font-weight:800;">مجاني</span>` : ''}
+                    <div style="padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
+                      ${unitsMap[unitName].map((lesson, lessonIdx) => `
+                        <div style="padding:10px 14px; border-radius:10px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                          <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-weight:800; font-size:0.78rem; color:var(--primary); background:rgba(99,102,241,0.1); width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;">#${lessonIdx + 1}</span>
+                            <div>
+                              <div style="font-weight:700; color:var(--text-main); font-size:0.88rem;">${lesson.title}</div>
+                              ${lesson.description ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${lesson.description}</div>` : ''}
+                            </div>
+                          </div>
+                          <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:var(--text-muted);">
+                            ${lesson.videoUrl ? `<span style="color:#2563eb; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="video" style="width:12px;height:12px;"></i> فيديو</span>` : `<span style="color:var(--text-muted);">📄 ملخص/شرح</span>`}
+                            ${lesson.duration ? `<span>⏱️ ${lesson.duration}</span>` : ''}
+                            ${lesson.isFree ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.7rem; font-weight:800;">مجاني</span>` : ''}
+                          </div>
+                        </div>
+                      `).join('')}
                     </div>
                   </div>
                 `).join('')}
               </div>
-            </div>
-          ` : ''}
+            ` : `
+              <div style="background:var(--bg-card); text-align:center; padding:24px; border-radius:16px; border:1px dashed var(--border-color); color:var(--text-muted); font-size:0.88rem;">
+                لا توجد دروس أو وحدات مضافة في هذه الدورة حتى الآن.
+              </div>
+            `}
+          </div>
 
         </div>
       </div>
@@ -510,6 +553,10 @@ export const AdminCoursesPage = {
     if (window.lucide) window.lucide.createIcons();
 
     document.getElementById('close-course-modal')?.addEventListener('click', () => overlay.remove());
+
+    document.getElementById('modal-admin-add-lesson-btn')?.addEventListener('click', () => {
+      this.renderAdminAddLessonModal(course);
+    });
 
     const openAddPlanForCourse = () => {
       overlay.remove();
@@ -545,6 +592,161 @@ export const AdminCoursesPage = {
           showToast(err.message || 'فشل تحديث الخطة.', 'error');
         }
       });
+    });
+  },
+
+  renderAdminAddLessonModal(course) {
+    const modalId = 'admin-add-lesson-modal-overlay';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.style.display = 'flex';
+    overlay.style.backdropFilter = 'blur(8px)';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+
+    const existingUnits = Array.from(new Set((course.lessons || []).map(l => l.chapter || "الوحدة العامة"))).filter(Boolean);
+    if (existingUnits.length === 0) existingUnits.push("الوحدة الأولى");
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:620px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+        <div style="padding:20px 24px; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:42px; height:42px; border-radius:12px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="video" style="width:22px; height:22px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">إضافة درس جديد للدورة 🎥</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted); margin:2px 0 0 0;">${course.title}</p>
+            </div>
+          </div>
+          <span id="close-admin-lesson-modal" style="font-size:1.4rem; cursor:pointer; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+        </div>
+
+        <form id="admin-add-lesson-form" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px; max-height:80vh; overflow-y:auto;">
+          <!-- Unit / Chapter selection -->
+          <div class="form-group" style="margin:0;">
+            <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">الوحدة الدراسية (Unit / Chapter) <span style="color:var(--error);">*</span></label>
+            <select id="admin-lesson-chapter-select" class="form-select" style="border-radius:12px; padding:10px 14px; font-size:0.88rem; width:100%;">
+              ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join('')}
+              <option value="__NEW__">➕ إضافة وحدة دراسية جديدة...</option>
+            </select>
+            <input type="text" id="admin-lesson-chapter-custom" class="form-input" placeholder="اكتب اسم الوحدة الجديدة هنا..." style="display:none; border-radius:12px; padding:10px 14px; font-size:0.88rem; margin-top:8px;">
+          </div>
+
+          <!-- Lesson Title -->
+          <div class="form-group" style="margin:0;">
+            <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">عنوان الدرس <span style="color:var(--error);">*</span></label>
+            <input type="text" id="admin-lesson-title" class="form-input" placeholder="مثال: الدرس 1 - الشرح الأساسي للنظرية" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;" required>
+          </div>
+
+          <!-- Video URL (Optional) -->
+          <div class="form-group" style="margin:0;">
+            <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">رابط فيديو الدرس (اختياري / Optional)</label>
+            <input type="url" id="admin-lesson-video" class="form-input" placeholder="https://www.youtube.com/watch?v=... (يمكن تركه فارغاً)" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+          </div>
+
+          <!-- Description -->
+          <div class="form-group" style="margin:0;">
+            <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">شرح وتفاصيل الدرس</label>
+            <textarea id="admin-lesson-desc" class="form-input" rows="3" placeholder="ملخص وأفكار هذا الدرس..." style="border-radius:12px; padding:10px 14px; font-size:0.88rem; resize:vertical; font-family:inherit;"></textarea>
+          </div>
+
+          <!-- Duration & Order -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="form-group" style="margin:0;">
+              <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">مدة الدرس</label>
+              <input type="text" id="admin-lesson-duration" class="form-input" value="20:00" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">ترتيب الدرس</label>
+              <input type="number" id="admin-lesson-order" class="form-input" value="${(course.lessons || []).length + 1}" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+            </div>
+          </div>
+
+          <!-- Teacher Notes -->
+          <div class="form-group" style="margin:0;">
+            <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">ملاحظات ونقاط تذكير للطلاب (اختياري)</label>
+            <textarea id="admin-lesson-notes" class="form-input" rows="2" placeholder="أهم القوانين أو الإرشادات لهذا الدرس..." style="border-radius:12px; padding:10px 14px; font-size:0.88rem; resize:vertical; font-family:inherit;"></textarea>
+          </div>
+
+          <!-- Footer Buttons -->
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px; padding-top:16px; border-top:1px solid var(--border-color);">
+            <button type="button" class="btn-secondary" id="cancel-admin-lesson-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
+            <button type="submit" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#0056D2,#a855f7); border:none;">
+              <i data-lucide="check-circle" style="width:16px; height:16px; vertical-align:middle;"></i> حفظ ونشر الدرس 🚀
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => overlay.remove();
+    document.getElementById("close-admin-lesson-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-admin-lesson-modal")?.addEventListener("click", closeModal);
+
+    const selectEl = document.getElementById("admin-lesson-chapter-select");
+    const customInputEl = document.getElementById("admin-lesson-chapter-custom");
+    selectEl?.addEventListener("change", () => {
+      if (customInputEl) customInputEl.style.display = selectEl.value === "__NEW__" ? "block" : "none";
+    });
+
+    const form = document.getElementById("admin-add-lesson-form");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
+      const title = document.getElementById("admin-lesson-title").value.trim();
+      if (!title) {
+        showToast("الرجاء إدخال عنوان الدرس.", "error");
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+
+      let chapter = selectEl.value;
+      if (chapter === "__NEW__") {
+        chapter = customInputEl?.value.trim() || "الوحدة العامة";
+      }
+
+      const videoUrl = document.getElementById("admin-lesson-video").value.trim();
+      const description = document.getElementById("admin-lesson-desc").value.trim() || null;
+      const duration = document.getElementById("admin-lesson-duration").value.trim() || "20:00";
+      const order = parseInt(document.getElementById("admin-lesson-order").value) || 1;
+      const notes = document.getElementById("admin-lesson-notes").value.trim() || null;
+
+      const payload = {
+        title,
+        chapter,
+        videoUrl,
+        photo: null,
+        duration,
+        order,
+        description,
+        notes
+      };
+
+      try {
+        await apiFetch(`/courses/${course.id}/lessons`, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        showToast("تم إضافة الدرس إلى الكورس بنجاح! 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        const updatedCourse = (this.courses || []).find(c => c.id === course.id) || course;
+        this.renderCourseDetailsModal(updatedCourse);
+      } catch (err) {
+        console.error("Admin add lesson error:", err);
+        showToast(err.message || "فشل إضافة الدرس.", "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
   }
 

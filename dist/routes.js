@@ -10,6 +10,7 @@ const SessionController_1 = require("./controller/SessionController");
 const StudentController_1 = require("./controller/StudentController");
 const AdminController_1 = require("./controller/AdminController");
 const AssignmentController_1 = require("./controller/AssignmentController");
+const ResourceController_1 = require("./controller/ResourceController");
 const UserController_1 = require("./controller/UserController");
 const UploadController_1 = require("./controller/UploadController");
 const BlogController_1 = require("./controller/BlogController");
@@ -184,6 +185,10 @@ router.post("/assignments", auth_1.authMiddleware, (0, auth_1.requireRole)(["tea
 router.post("/assignments/:id/submit", auth_1.authMiddleware, AssignmentController_1.AssignmentController.submitAssignment);
 router.get("/assignments/:id/submissions", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.getSubmissions);
 router.put("/submissions/:id/grade", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.gradeSubmission);
+// Resources (Lesson Materials)
+router.get("/resources", auth_1.authMiddleware, ResourceController_1.ResourceController.getResources);
+router.post("/resources", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), ResourceController_1.ResourceController.createResource);
+router.delete("/resources/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), ResourceController_1.ResourceController.deleteResource);
 // Admin Routes
 router.get("/admin/stats", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getStats);
 router.get("/admin/users", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getUsers);

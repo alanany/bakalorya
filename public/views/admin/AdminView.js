@@ -1069,7 +1069,10 @@ export default class AdminView {
           showToast("تم إلغاء الحصة بنجاح وتوجيه الرصيد. ✅", "success");
           await this.loadAllData();
           this.renderTab("sessions");
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء الحصة", "error");
+        }
       });
     });
 
@@ -1132,7 +1135,10 @@ export default class AdminView {
           await this.loadAllData();
           this.updateBadges();
           this.renderTab("teacherApplications");
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل قبول طلب المعلم", "error");
+        }
       });
     });
 
@@ -1149,7 +1155,10 @@ export default class AdminView {
           await this.loadAllData();
           this.updateBadges();
           this.renderTab("teacherApplications");
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل رفض طلب المعلم", "error");
+        }
       });
     });
 
@@ -1202,7 +1211,10 @@ export default class AdminView {
           showToast(t("admin.toast.userDeleted"), "success");
           await this.loadAllData();
           this.renderTab(this.activeTab);
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل حذف العضو", "error");
+        }
       });
     });
 
@@ -1235,7 +1247,10 @@ export default class AdminView {
           showToast("تم حذف التصنيف بنجاح", "success");
           await this.loadAllData();
           this.renderTab("categories");
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل حذف التصنيف", "error");
+        }
       });
     });
 
@@ -1255,7 +1270,10 @@ export default class AdminView {
           showToast(t("admin.toast.courseDeleted"), "success");
           await this.loadAllData();
           this.renderTab("courses");
-        } catch (err) { btn.disabled = false; }
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل حذف الدورة", "error");
+        }
       });
     });
 

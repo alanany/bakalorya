@@ -166,9 +166,6 @@ class CourseController {
         if (!title) {
             return res.status(400).json({ error: "عنوان الدرس مطلوب." });
         }
-        if (!videoUrl && !photo) {
-            return res.status(400).json({ error: "يجب تقديم إما رابط الفيديو أو صورة الدرس كبانر للغلاف." });
-        }
         try {
             const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
             const lessonRepository = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
