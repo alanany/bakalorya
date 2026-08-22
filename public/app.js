@@ -1,34 +1,46 @@
+// ── Public / Shared Views ─────────────────────────────────────────────────────
 import LandingView from "./views/LandingView.js";
-import StudentView from "./views/StudentView.js";
-import TeacherView from "./views/TeacherView.js";
-import AdminView from "./views/AdminView.js";
-import CoursePlayerView from "./views/CoursePlayerView.js";
-import ClassroomView from "./views/ClassroomView.js";
-import CoursesView from "./views/CoursesView.js";
-import ScheduleView from "./views/ScheduleView.js";
-import SettingsView from "./views/SettingsView.js";
-import AssignmentsView from "./views/AssignmentsView.js";
-import ResourcesView from "./views/ResourcesView.js";
-import TestsView from "./views/TestsView.js";
-import StudentsView from "./views/StudentsView.js";
-import CourseManageView from "./views/CourseManageView.js";
-import CourseLandingView from "./views/CourseLandingView.js";
 import AuthView from "./views/AuthView.js";
-import RequestsView from "./views/RequestsView.js";
-import TeacherBlogsView from "./views/TeacherBlogsView.js";
-import BlogDetailsView from "./views/BlogDetailsView.js";
 import TeacherDetailsView from "./views/TeacherDetailsView.js";
-import TeacherApplyView from "./views/TeacherApplyView.js";
-import NotificationsView from "./views/NotificationsView.js";
-import SearchView from "./views/SearchView.js";
+import StudentsView from "./views/StudentsView.js";
 import AboutView from "./views/AboutView.js";
 import ContactView from "./views/ContactView.js";
 import FAQView from "./views/FAQView.js";
 import SubscriptionPlansView from "./views/SubscriptionPlansView.js";
-import TeacherAvailabilityView from "./views/TeacherAvailabilityView.js";
-import StudentPrivateSessionsView from "./views/StudentPrivateSessionsView.js";
-import TeacherPrivateSessionsView from "./views/TeacherPrivateSessionsView.js";
-import SubscriptionSessionsView from "./views/SubscriptionSessionsView.js";
+import SearchView from "./views/SearchView.js";
+import NotificationsView from "./views/NotificationsView.js";
+import ResourcesView from "./views/ResourcesView.js";
+import SettingsView from "./views/SettingsView.js";
+import RequestsView from "./views/RequestsView.js";
+import TestsView from "./views/TestsView.js";
+import BlogDetailsView from "./views/BlogDetailsView.js";
+
+// ── Admin Views ───────────────────────────────────────────────────────────────
+import AdminView from "./views/admin/AdminView.js";
+
+// ── Teacher Views ─────────────────────────────────────────────────────────────
+import TeacherView from "./views/teacher/TeacherView.js";
+import TeacherGroupsView from "./views/teacher/TeacherGroupsView.js";
+import TeacherPrivateSessionsView from "./views/teacher/TeacherPrivateSessionsView.js";
+import TeacherAvailabilityView from "./views/teacher/TeacherAvailabilityView.js";
+import TeacherBlogsView from "./views/teacher/TeacherBlogsView.js";
+import TeacherApplyView from "./views/teacher/TeacherApplyView.js";
+
+// ── Student Views ─────────────────────────────────────────────────────────────
+import StudentView from "./views/student/StudentView.js";
+import StudentGroupsView from "./views/student/StudentGroupsView.js";
+import StudentPrivateSessionsView from "./views/student/StudentPrivateSessionsView.js";
+import SubscriptionSessionsView from "./views/student/SubscriptionSessionsView.js";
+
+// ── Shared Role Views ─────────────────────────────────────────────────────────
+import CoursePlayerView from "./views/shared/CoursePlayerView.js";
+import CourseManageView from "./views/shared/CourseManageView.js";
+import CourseLandingView from "./views/shared/CourseLandingView.js";
+import CoursesView from "./views/shared/CoursesView.js";
+import AssignmentsView from "./views/shared/AssignmentsView.js";
+import ScheduleView from "./views/shared/ScheduleView.js";
+import ClassroomView from "./views/shared/ClassroomView.js";
+
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
 export const COUNTRY_CODES = [
@@ -691,8 +703,14 @@ export function updateHeader() {
           <a href="#teacher-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
             <i data-lucide="users"></i> طلابي في الحصص الخاصة
           </a>
+          <a href="#teacher-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
+            <i data-lucide="users"></i> مجموعاتي والحصص الجماعية
+          </a>
           <a href="#teacher-availability" class="sidebar-nav-item" style="color:var(--primary);">
             <i data-lucide="clock"></i> مواعيد التوفر
+          </a>
+          <a href="#teacher-financial" class="sidebar-nav-item" style="color:#10b981; font-weight:700;">
+            <i data-lucide="wallet"></i> الأرباح والمستحقات الماليّة
           </a>
           <a href="#assignments" class="sidebar-nav-item">
             <i data-lucide="clipboard-list"></i> ${t("nav.teacher.assignments")}
@@ -730,6 +748,9 @@ export function updateHeader() {
           </a>
           <a href="#student-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
             <i data-lucide="sparkles"></i> اشتراكاتي والحصص الخاصة
+          </a>
+          <a href="#student-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
+            <i data-lucide="users"></i> مجموعاتي والحصص الجماعية
           </a>
           <a href="#assignments" class="sidebar-nav-item">
             <i data-lucide="clipboard-list"></i> ${t("nav.assignments")}
@@ -1373,7 +1394,7 @@ export async function router() {
     window.location.hash = "#landing";
     return router();
   }
-  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-blogs" || routeBase === "#teacher-private-sessions") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
+  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-blogs" || routeBase === "#teacher-private-sessions" || routeBase === "#teacher-groups" || routeBase === "#teacher-financial") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
     showToast(t("error.accessRestricted") || "الوصول مقيد للمعلمين والمشرفين.", "error");
     window.location.hash = "#landing";
     return router();
@@ -1398,12 +1419,14 @@ export async function router() {
     case "#signup":
     case "#auth": ViewClass = AuthView; break;
     case "#student-dashboard": ViewClass = StudentView; break;
+    case "#student-groups": ViewClass = StudentGroupsView; break;
     case "#student-private-sessions": ViewClass = StudentPrivateSessionsView; break;
     case "#subscription-sessions": ViewClass = SubscriptionSessionsView; break;
     case "#course": ViewClass = CoursePlayerView; break;
     case "#teacher-portal": ViewClass = TeacherView; break;
     case "#teacher-financial": ViewClass = TeacherView; break;
     case "#teacher-private-sessions": ViewClass = TeacherPrivateSessionsView; break;
+    case "#teacher-groups": ViewClass = TeacherGroupsView; break;
     case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;

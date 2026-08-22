@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, formatSessionDateTime } from "../app.js";
+import { apiFetch, state, showToast, formatSessionDateTime } from "../../app.js";
 
 export default class ClassroomView {
   constructor(container, sessionId) {
@@ -127,7 +127,7 @@ export default class ClassroomView {
 
       // 3. Early Future Session Notice (Display notification banner inside classroom instead of blocking)
       const isEarlyEntry = isStudent && !isLive && !isWithinWindow && now.getTime() < windowStart;
-      const formatted = formatSessionDateTime(session.scheduledAt);
+      const formatted = formatSessionDateTime(this.session.scheduledAt);
 
       this.container.innerHTML = `
         ${isEarlyEntry ? `

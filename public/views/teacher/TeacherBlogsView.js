@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast } from "../app.js";
+import { apiFetch, state, showToast } from "../../app.js";
 
 export default class TeacherBlogsView {
   constructor(container) {

@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, canJoinSession, validateSessionScheduledDate, getMinSessionDateTimeISO } from "../app.js";
+import { apiFetch, state, showToast, t, canJoinSession, validateSessionScheduledDate, getMinSessionDateTimeISO } from "../../app.js";
 
 export default class ScheduleView {
   constructor(container) {

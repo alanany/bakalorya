@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog } from "../app.js";
+import { apiFetch, state, showToast, t, confirmDialog } from "../../app.js";
 
 export default class CourseManageView {
   constructor(container, courseId) {

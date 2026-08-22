@@ -1060,4 +1060,122 @@ export class SessionBookingController {
       return res.status(500).json({ error: "فشلت جدولة الحصص الجماعية." });
     }
   }
+
+  // POST /admin/group-sessions/add-student — Add student to group session
+  static async addStudentToGroupSession(req: AuthRequest, res: Response) {
+    const { sessionId, studentId } = req.body;
+    if (!sessionId || !studentId) {
+      return res.status(400).json({ error: "sessionId and studentId are required" });
+    }
+
+    try {
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const userRepository = AppDataSource.getRepository(User);
+
+      const sess = await sessionRepository.findOne({
+        where: { id: sessionId },
+        relations: ["teacher", "course"]
+      });
+
+      if (!sess) {
+        return res.status(404).json({ error: "الحصة غير موجودة." });
+      }
+
+      const student = await userRepository.findOneBy({ id: studentId });
+      if (!student) {
+        return res.status(404).json({ error: "الطالب غير موجود." });
+      }
+
+      const sameGroupSessions = await sessionRepository.find({
+        where: {
+          teacher: { id: sess.teacher.id },
+          title: sess.title
+        },
+        relations: ["student"]
+      });
+
+      const datesToSchedule = Array.from(new Set(sameGroupSessions.map(s => s.scheduledAt.getTime()))).map(t => new Date(t));
+      if (datesToSchedule.length === 0 && sess.scheduledAt) {
+        datesToSchedule.push(sess.scheduledAt);
+      }
+
+      let addedCount = 0;
+      for (const d of datesToSchedule) {
+        const existing = await sessionRepository.findOne({
+          where: {
+            teacher: { id: sess.teacher.id },
+            student: { id: student.id },
+            scheduledAt: d
+          }
+        });
+
+        if (!existing) {
+          const newSess = new Session();
+          newSess.title = sess.title;
+          newSess.teacher = sess.teacher;
+          newSess.student = student;
+          newSess.scheduledAt = d;
+          newSess.duration = sess.duration || 60;
+          newSess.status = "SCHEDULED";
+          newSess.topic = sess.topic || sess.title;
+          if (sess.course) newSess.course = sess.course;
+
+          await sessionRepository.save(newSess);
+          addedCount++;
+
+          try {
+            await NotificationController.createNotification(
+              student.id,
+              "تم إضافتك لحصة جماعية! 👥",
+              `تم إضافتك إلى المجموعة الدراسية "${sess.title}" مع المعلم ${sess.teacher?.name}.`,
+              "info",
+              `#classroom/${newSess.id}`
+            );
+          } catch (e) {}
+        }
+      }
+
+      return res.json({ message: `تم إضافة الطالب ${student.name} إلى المجموعة بنجاح! 🎉 (${addedCount} حصص)` });
+    } catch (err) {
+      console.error("addStudentToGroupSession error:", err);
+      return res.status(500).json({ error: "فشل إضافة الطالب إلى المجموعة." });
+    }
+  }
+
+  // POST /admin/group-sessions/remove-student — Remove student from group session
+  static async removeStudentFromGroupSession(req: AuthRequest, res: Response) {
+    const { sessionId, studentId } = req.body;
+    if (!sessionId || !studentId) {
+      return res.status(400).json({ error: "sessionId and studentId are required" });
+    }
+
+    try {
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const sess = await sessionRepository.findOne({
+        where: { id: sessionId },
+        relations: ["teacher"]
+      });
+
+      if (!sess) {
+        return res.status(404).json({ error: "الحصة غير موجودة." });
+      }
+
+      const toRemove = await sessionRepository.find({
+        where: {
+          teacher: { id: sess.teacher.id },
+          student: { id: studentId },
+          title: sess.title
+        }
+      });
+
+      if (toRemove.length > 0) {
+        await sessionRepository.remove(toRemove);
+      }
+
+      return res.json({ message: `تم إزالة الطالب من المجموعة بنجاح. ✅ (${toRemove.length} حصص)` });
+    } catch (err) {
+      console.error("removeStudentFromGroupSession error:", err);
+      return res.status(500).json({ error: "فشل إزالة الطالب من المجموعة." });
+    }
+  }
 }

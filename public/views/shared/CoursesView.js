@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, renderCourseCard } from "../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard } from "../../app.js";
 
 export default class CoursesView {
   constructor(container) {

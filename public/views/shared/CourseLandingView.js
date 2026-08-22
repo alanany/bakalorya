@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, showEnrollmentRequestedModal } from "../app.js";
+import { apiFetch, state, showToast, t, showEnrollmentRequestedModal } from "../../app.js";
 
 export default class CourseLandingView {
   constructor(container, courseId) {

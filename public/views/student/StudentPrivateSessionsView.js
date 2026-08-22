@@ -1,4 +1,4 @@
-import { apiFetch, showToast, t, getMinSessionDateTimeISO, validateSessionScheduledDate } from "../app.js";
+import { apiFetch, showToast, t, getMinSessionDateTimeISO, validateSessionScheduledDate } from "../../app.js";
 
 export default class StudentPrivateSessionsView {
   constructor(container) {

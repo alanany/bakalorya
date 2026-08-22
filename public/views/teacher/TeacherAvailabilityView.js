@@ -1,4 +1,4 @@
-import { apiFetch, showToast, t } from "../app.js";
+import { apiFetch, showToast, t } from "../../app.js";
 
 const DAYS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 

@@ -1,4 +1,4 @@
-import { apiFetch, showToast, t } from "../app.js";
+import { apiFetch, showToast, t } from "../../app.js";
 
 export default class SubscriptionSessionsView {
   constructor(container, subscriptionId) {

@@ -1,4 +1,4 @@
-import { apiFetch, showToast, t, renderPhoneInputGroup } from "../app.js";
+import { apiFetch, showToast, t, renderPhoneInputGroup } from "../../app.js";
 
 export default class TeacherApplyView {
   constructor(container) {
