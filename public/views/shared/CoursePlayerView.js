@@ -1011,19 +1011,39 @@ export default class CoursePlayerView {
 
     // Video Player Mode (if videoUrl is present)
     if (this.currentLesson.videoUrl && this.currentLesson.videoUrl.trim().length > 0) {
-      const isMp4 = this.currentLesson.videoUrl.endsWith(".mp4");
+      const rawUrl = this.currentLesson.videoUrl.trim();
+      const isMp4 = rawUrl.endsWith(".mp4") || rawUrl.includes(".mp4?");
+
       if (isMp4) {
         return `
           <video id="course-video-element" controls autoplay style="width:100%;height:100%;">
-            <source src="${this.currentLesson.videoUrl}" type="video/mp4">
+            <source src="${rawUrl}" type="video/mp4">
             ${t("course.videoNotSupported") || "الفيديو غير مدعوم في متصفحك"}
           </video>
         `;
-      } else {
-        return `
-          <iframe src="${this.currentLesson.videoUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>
-        `;
       }
+
+      // Convert YouTube / youtu.be watch links to embed links
+      const getEmbedUrl = (url) => {
+        // youtube.com/watch?v=ID
+        const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&showinfo=0`;
+
+        // youtube.com/embed/... — already embed
+        if (url.includes("youtube.com/embed/")) return url;
+
+        // Vimeo
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+
+        return url; // return as-is for other platforms
+      };
+
+      const embedUrl = getEmbedUrl(rawUrl);
+
+      return `
+        <iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>
+      `;
     }
 
     // Photo Banner Mode (if videoUrl is absent)
@@ -1048,6 +1068,7 @@ export default class CoursePlayerView {
       </div>
     `;
   }
+
 
   bindEvents() {
     const rows = this.container.querySelectorAll(".lesson-item-row");
