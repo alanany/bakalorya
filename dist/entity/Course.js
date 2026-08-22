@@ -23,6 +23,10 @@ let Course = class Course {
     degree;
     meetingLink;
     status;
+    price;
+    isFree;
+    currency;
+    paymentDetails;
     approvedBy;
     approvedAt;
     rejectionReason;
@@ -67,6 +71,22 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "status", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "float", default: 0 }),
+    __metadata("design:type", Number)
+], Course.prototype, "price", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: true }),
+    __metadata("design:type", Boolean)
+], Course.prototype, "isFree", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, default: "EGP" }),
+    __metadata("design:type", String)
+], Course.prototype, "currency", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Course.prototype, "paymentDetails", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, onDelete: "SET NULL" }),
     __metadata("design:type", User_1.User)
 ], Course.prototype, "approvedBy", void 0);
@@ -79,8 +99,8 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "rejectionReason", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true, onDelete: "CASCADE" }),
-    __metadata("design:type", User_1.User)
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
 ], Course.prototype, "teacher", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Lesson_1.Lesson, lesson => lesson.course, { cascade: true }),

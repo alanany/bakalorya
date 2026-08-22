@@ -21,6 +21,9 @@ let Enrollment = class Enrollment {
     progress; // 0 to 100
     status;
     completedLessons; // List of completed lesson IDs
+    completedObjectives; // List of completed objective keys/indexes
+    completedLessonObjectives; // { [lessonId: string]: string[] }
+    activitySubmissions; // { [lessonId: string]: Array<{ id: string, fileName: string, fileUrl: string, uploadedAt: string }> }
     payment; // Linked payment/receipt for this enrollment
     createdAt;
     updatedAt;
@@ -50,6 +53,18 @@ __decorate([
     (0, typeorm_1.Column)("simple-json", { nullable: true }),
     __metadata("design:type", Array)
 ], Enrollment.prototype, "completedLessons", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Array)
+], Enrollment.prototype, "completedObjectives", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "completedLessonObjectives", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "activitySubmissions", void 0);
 __decorate([
     (0, typeorm_1.OneToOne)(() => Payment_1.Payment, { nullable: true, eager: false, onDelete: "SET NULL" }),
     (0, typeorm_1.JoinColumn)(),

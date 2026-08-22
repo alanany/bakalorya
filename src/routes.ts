@@ -24,19 +24,42 @@ import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability 
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 
 // Configure Multer for file uploads
+const uploadDir = path.resolve(process.cwd(), "public/uploads");
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../public/uploads"));
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname) || ".jpg";
     const name = crypto.randomBytes(8).toString("hex") + ext;
     cb(null, name);
   }
 });
-const upload = multer({ storage });
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB max file size
+});
+
+const uploadSingleFile = (req: any, res: any, next: any) => {
+  upload.single("file")(req, res, (err: any) => {
+    if (err) {
+      console.error("Multer upload error:", err);
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `حجم أو نوع الملف غير مدعوم: ${err.message}` });
+      }
+      return res.status(500).json({ error: err.message || "فشل رفع الملف إلى السيرفر." });
+    }
+    next();
+  });
+};
 
 const router = Router();
 
@@ -117,7 +140,7 @@ router.get("/teacher/earnings", authMiddleware, requireRole(["teacher"]), Teache
 router.get("/admin/earnings", authMiddleware, requireRole(["admin"]), TeacherEarningController.getAdminEarnings);
 
 // Uploads
-router.post("/upload", authMiddleware, requireRole(["teacher", "admin"]), upload.single("file"), UploadController.uploadFile);
+router.post("/upload", authMiddleware, requireRole(["teacher", "admin"]), uploadSingleFile, UploadController.uploadFile);
 
 // Live Sessions
 router.get("/sessions", SessionController.getAll);

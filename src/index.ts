@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 async function startServer() {
   try {
     // Ensure uploads directory exists
-    const uploadsDir = path.join(__dirname, "../public/uploads");
+    const uploadsDir = path.resolve(process.cwd(), "public/uploads");
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
@@ -20,18 +20,19 @@ async function startServer() {
 
     // Configure Middlewares
     app.use(cors());
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
+    app.use(express.json({ limit: "50mb" }));
+    app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
     // Mount API Routes
     app.use("/api", router);
 
-    // Serve Frontend Static Files
-    app.use(express.static(path.join(__dirname, "../public")));
+    // Serve Uploads and Static Frontend Files
+    app.use("/uploads", express.static(uploadsDir));
+    app.use(express.static(path.resolve(process.cwd(), "public")));
 
     // Fallback route to serve index.html for SPA router support
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "../public/index.html"));
+      res.sendFile(path.resolve(process.cwd(), "public/index.html"));
     });
 
     // Start HTTP listener immediately so server NEVER returns 503 Service Unavailable

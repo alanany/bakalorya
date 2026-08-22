@@ -9,6 +9,7 @@ const CourseController_1 = require("./controller/CourseController");
 const SessionController_1 = require("./controller/SessionController");
 const StudentController_1 = require("./controller/StudentController");
 const AdminController_1 = require("./controller/AdminController");
+const AssignmentController_1 = require("./controller/AssignmentController");
 const UserController_1 = require("./controller/UserController");
 const UploadController_1 = require("./controller/UploadController");
 const BlogController_1 = require("./controller/BlogController");
@@ -26,18 +27,38 @@ const auth_1 = require("./middleware/auth");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
+const fs_1 = __importDefault(require("fs"));
 // Configure Multer for file uploads
+const uploadDir = path_1.default.resolve(process.cwd(), "public/uploads");
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path_1.default.join(__dirname, "../public/uploads"));
+        if (!fs_1.default.existsSync(uploadDir)) {
+            fs_1.default.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        const ext = path_1.default.extname(file.originalname);
+        const ext = path_1.default.extname(file.originalname) || ".jpg";
         const name = crypto_1.default.randomBytes(8).toString("hex") + ext;
         cb(null, name);
     }
 });
-const upload = (0, multer_1.default)({ storage });
+const upload = (0, multer_1.default)({
+    storage,
+    limits: { fileSize: 20 * 1024 * 1024 } // 20MB max file size
+});
+const uploadSingleFile = (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+        if (err) {
+            console.error("Multer upload error:", err);
+            if (err instanceof multer_1.default.MulterError) {
+                return res.status(400).json({ error: `حجم أو نوع الملف غير مدعوم: ${err.message}` });
+            }
+            return res.status(500).json({ error: err.message || "فشل رفع الملف إلى السيرفر." });
+        }
+        next();
+    });
+};
 const router = (0, express_1.Router)();
 // Auth Routes
 router.post("/auth/register", AuthController_1.AuthController.register);
@@ -54,6 +75,7 @@ router.post("/courses/:id/submit-for-review", auth_1.authMiddleware, (0, auth_1.
 router.post("/courses/:courseId/lessons", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.addLesson);
 router.put("/lessons/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.updateLesson);
 router.delete("/lessons/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.deleteLesson);
+router.get("/courses/:id/enrollments", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.getCourseEnrollments);
 // Course Approvals (Admin)
 router.get("/admin/courses/pending-review", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.getPendingCourses);
 router.post("/admin/courses/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.approveCourse);
@@ -83,6 +105,9 @@ router.delete("/teacher/availability/:id", auth_1.authMiddleware, (0, auth_1.req
 // Private Session Booking & Completion
 router.post("/sessions/book", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.bookSession);
 router.post("/sessions/batch-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.batchScheduleSessions);
+router.post("/sessions/group-schedule", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.scheduleGroupSession);
+router.post("/admin/group-sessions/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.addStudentToGroupSession);
+router.post("/admin/group-sessions/remove-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.removeStudentFromGroupSession);
 router.get("/subscriptions/:id/schedule-details", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getSubscriptionScheduleDetails);
 router.post("/sessions/preview-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.previewPackageSchedule);
 router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
@@ -101,7 +126,7 @@ router.get("/teacher/availability/mine", auth_1.authMiddleware, (0, auth_1.requi
 router.get("/teacher/earnings", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), TeacherEarningController_1.TeacherEarningController.getTeacherEarnings);
 router.get("/admin/earnings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.getAdminEarnings);
 // Uploads
-router.post("/upload", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), upload.single("file"), UploadController_1.UploadController.uploadFile);
+router.post("/upload", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), uploadSingleFile, UploadController_1.UploadController.uploadFile);
 // Live Sessions
 router.get("/sessions", SessionController_1.SessionController.getAll);
 router.post("/sessions", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), SessionController_1.SessionController.create);
@@ -112,6 +137,9 @@ router.patch("/sessions/:id/status", auth_1.authMiddleware, (0, auth_1.requireRo
 router.get("/student/enrollments", auth_1.authMiddleware, StudentController_1.StudentController.getEnrollments);
 router.post("/student/enrollments", auth_1.authMiddleware, StudentController_1.StudentController.enroll);
 router.post("/student/enrollments/:courseId/lessons/complete", auth_1.authMiddleware, StudentController_1.StudentController.completeLesson);
+router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", auth_1.authMiddleware, StudentController_1.StudentController.toggleLessonObjective);
+router.post("/student/enrollments/:courseId/activity-submit", auth_1.authMiddleware, StudentController_1.StudentController.submitActivityFile);
+router.delete("/student/enrollments/:courseId/activity-submit", auth_1.authMiddleware, StudentController_1.StudentController.deleteActivityFile);
 router.get("/student/stats", auth_1.authMiddleware, StudentController_1.StudentController.getDashboardStats);
 // Notifications
 router.get("/notifications", auth_1.authMiddleware, NotificationController_1.NotificationController.getUserNotifications);
@@ -134,6 +162,7 @@ router.post("/teacher/students", auth_1.authMiddleware, (0, auth_1.requireRole)(
 router.delete("/teacher/students/:studentId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.deleteStudent);
 router.get("/teacher/enrollment-requests", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.getEnrollmentRequests);
 router.patch("/teacher/enrollment-requests/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.updateEnrollmentRequest);
+router.put("/teacher/enrollment-requests/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.updateEnrollmentRequest);
 // Q&A
 router.get("/courses/:courseId/qa", QAController_1.QAController.getByCourse);
 router.post("/courses/:courseId/qa", auth_1.authMiddleware, QAController_1.QAController.createQuestion);
@@ -149,6 +178,12 @@ router.get("/blogs/:id", BlogController_1.BlogController.getOne);
 router.post("/blogs", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.create);
 router.put("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.update);
 router.delete("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.delete);
+// Assignments & Submissions
+router.get("/assignments", auth_1.authMiddleware, AssignmentController_1.AssignmentController.getAssignments);
+router.post("/assignments", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.createAssignment);
+router.post("/assignments/:id/submit", auth_1.authMiddleware, AssignmentController_1.AssignmentController.submitAssignment);
+router.get("/assignments/:id/submissions", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.getSubmissions);
+router.put("/submissions/:id/grade", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.gradeSubmission);
 // Admin Routes
 router.get("/admin/stats", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getStats);
 router.get("/admin/users", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getUsers);
@@ -157,7 +192,11 @@ router.put("/admin/users/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["
 router.patch("/admin/users/:id/role", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.updateUserRole);
 router.delete("/admin/users/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.deleteUser);
 router.get("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getCourses);
+router.post("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.createCourse);
 router.delete("/admin/courses/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.deleteCourse);
+router.get("/admin/enrollments", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getEnrollments);
+router.post("/admin/enrollments/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.approveEnrollment);
+router.post("/admin/enrollments/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.rejectEnrollment);
 router.get("/admin/reports", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getReports);
 router.get("/admin/teacher-applications", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherApplicationController_1.TeacherApplicationController.getApplications);
 router.patch("/admin/teacher-applications/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherApplicationController_1.TeacherApplicationController.reviewApplication);

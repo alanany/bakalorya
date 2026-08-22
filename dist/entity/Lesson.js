@@ -25,6 +25,7 @@ let Lesson = class Lesson {
     resourceUrl;
     resourceTitle;
     questions;
+    objectives; // Learning objectives for this specific lesson
     course;
     createdAt;
     updatedAt;
@@ -78,6 +79,10 @@ __decorate([
     (0, typeorm_1.Column)("simple-json", { nullable: true }),
     __metadata("design:type", Array)
 ], Lesson.prototype, "questions", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Array)
+], Lesson.prototype, "objectives", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)

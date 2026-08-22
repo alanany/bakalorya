@@ -32,6 +32,7 @@ let User = class User {
     education;
     phone;
     parentPhone;
+    timezone;
     createdAt;
     updatedAt;
 };
@@ -116,6 +117,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "parentPhone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, default: "Africa/Cairo" }),
+    __metadata("design:type", String)
+], User.prototype, "timezone", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
