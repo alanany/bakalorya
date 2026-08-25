@@ -407,7 +407,7 @@ export const AdminUsersPage = {
                 </div>
                 <div class="form-group" style="margin:0;">
                   <label for="member-education" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">المستوى الدراسي</label>
-                  ${renderEducationSelectHTML({ id: "member-education", selectedValue: isEdit ? (user.education || "Bakalorya 3") : "Bakalorya 3", style: "padding:8px 12px; font-size:0.88rem;" })}
+                  ${renderEducationSelectHTML({ id: "member-education", selectedValue: isEdit ? (user.education || "Entlq 3") : "Entlq 3", style: "padding:8px 12px; font-size:0.88rem;" })}
                 </div>
               </div>
 

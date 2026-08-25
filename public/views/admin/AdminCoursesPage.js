@@ -29,6 +29,11 @@ export const AdminCoursesPage = {
                 <div style="flex:1;min-width:0;">
                   <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
                     <span style="font-size:0.7rem;font-weight:700;color:var(--primary);text-transform:uppercase;">${course.category}</span>
+                    ${course.isFree !== false && (!course.price || Number(course.price) === 0) ? `
+                      <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.72rem; font-weight:800;">🎁 دورة مجانية</span>
+                    ` : `
+                      <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.72rem; font-weight:800;">💳 ${course.price} ${course.currency || 'EGP'}</span>
+                    `}
                     <span class="badge" style="background:rgba(139,92,246,0.12); color:#8b5cf6; font-size:0.7rem; font-weight:800;">${coursePlansCount} خطط اشتراك مخصصة</span>
                     ${isPending ? `
                       <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.72rem; font-weight:800;">🟡 قيد المراجعة والاعتماد (PENDING_REVIEW) ⏳</span>
@@ -40,7 +45,7 @@ export const AdminCoursesPage = {
                   </div>
                   <h4 style="font-weight:700;font-size:1rem;margin-bottom:6px;">${course.title}</h4>
                   <div style="display:flex;gap:20px;font-size:0.8rem;color:var(--text-muted);flex-wrap:wrap;">
-                    <span><i data-lucide="user" style="width:12px;height:12px;"></i> ${course.teacher?.name || "منصة باكالوريا التعليمية 🏛️"}</span>
+                    <span><i data-lucide="user" style="width:12px;height:12px;"></i> ${course.teacher?.name || "منصة انطلق التعليمية 🏛️"}</span>
                     <span><i data-lucide="book" style="width:12px;height:12px;"></i> ${course.lessonsCount || 0} ${t("admin.lessons")}</span>
                     <span><i data-lucide="users" style="width:12px;height:12px;"></i> ${course.enrollmentsCount || 0} ${t("admin.enrolled")}</span>
                   </div>
@@ -163,6 +168,187 @@ export const AdminCoursesPage = {
     `;
   },
 
+  renderApproveEnrollmentModal(enrollmentId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const enrollment = (this.enrollments || []).find(e => e.id === enrollmentId);
+    if (!enrollment) return;
+
+    const defaultAmount = enrollment.payment?.amount || enrollment.course?.price || 0;
+    const existingReceipt = enrollment.payment?.receiptUrl;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="approve-enrollment-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:9999;">
+        <div class="modal-content" style="max-width:540px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card);">
+          
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="check-circle" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">قبول واعتماد تسجيل الدورة 🎓</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">تأكيد استلام الرسوم وإرفاق إيصال التحويل المالي</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-approve-enrollment-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="approve-enrollment-form">
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px; max-height:75vh; overflow-y:auto;">
+              
+              <!-- Info Box -->
+              <div style="background:var(--bg-app); padding:14px 16px; border-radius:14px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px; font-size:0.86rem;">
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">👨‍🎓 الطالب:</span>
+                  <span style="font-weight:800; color:var(--text-main);">${enrollment.student?.name || 'طالب'} (${enrollment.student?.email || ''})</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">📚 الدورة التعليمية:</span>
+                  <span style="font-weight:800; color:var(--primary);">${enrollment.course?.title || 'دورة'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">🏷️ سعر الدورة المعتمد:</span>
+                  <span style="font-weight:800; color:#10b981;">${enrollment.course?.isFree ? 'دورة مجانية 🎁' : `${enrollment.course?.price || 0} ${enrollment.course?.currency || 'EGP'}`}</span>
+                </div>
+              </div>
+
+              <!-- Paid Amount & Provider -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-enrollment-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المدفوع (EGP) <span style="color:var(--error);">*</span></label>
+                  <input type="number" id="approve-enrollment-amount" class="form-input" value="${defaultAmount}" min="0" step="0.5" required style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-enrollment-provider" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">طريقة التحويل والدفع</label>
+                  <select id="approve-enrollment-provider" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.88rem;">
+                    <option value="Vodafone Cash">Vodafone Cash (فودافون كاش)</option>
+                    <option value="InstaPay">InstaPay (إنستاباي)</option>
+                    <option value="Bank Transfer">تحويل بنكي (Bank Transfer)</option>
+                    <option value="Cash">نقداً باليد (Cash)</option>
+                    <option value="Online Gateway">بوابة دفع إلكتروني (Card / Gateway)</option>
+                    <option value="Other">أخرى (Other)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Receipt Upload & Preview -->
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>🖼️ صورة إيصال التحويل والدفع:</span>
+                  ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none; font-weight:700;">عرض الإيصال الحالي ↗</a>` : ''}
+                </label>
+                
+                <input type="file" id="approve-enrollment-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
+                
+                <div id="enrollment-receipt-preview-container" style="${existingReceipt ? 'display:block;' : 'display:none;'} margin-top:10px; text-align:center;">
+                  <img id="enrollment-receipt-preview" src="${existingReceipt || ''}" style="max-height:140px; border-radius:10px; border:2px solid var(--border-color); object-fit:contain; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">معاينة صورة الإيصال المرفقة</div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="form-group" style="margin:0;">
+                <label for="approve-enrollment-notes" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">ملاحظات العملية / رقم المرجع (اختياري)</label>
+                <input type="text" id="approve-enrollment-notes" class="form-input" placeholder="مثال: تم التحويل من رقم 010xxxxxxxx أو كود العملية #9812" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
+              <button type="button" class="btn-secondary" id="cancel-approve-enrollment-modal" style="padding:8px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" id="submit-approve-enrollment-btn" class="btn-primary" style="padding:8px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#10b981; border-color:#10b981; gap:6px; display:inline-flex; align-items:center;">
+                <i data-lucide="check" style="width:16px; height:16px;"></i> تأكيد وقبول التسجيل ✅
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const modal = document.getElementById("approve-enrollment-modal");
+    const closeModal = () => modal?.remove();
+
+    document.getElementById("close-approve-enrollment-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-approve-enrollment-modal")?.addEventListener("click", closeModal);
+
+    const fileInput = document.getElementById("approve-enrollment-receipt-file");
+    const previewContainer = document.getElementById("enrollment-receipt-preview-container");
+    const previewImg = document.getElementById("enrollment-receipt-preview");
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById("approve-enrollment-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-approve-enrollment-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري الاعتماد...";
+      }
+
+      try {
+        let receiptUrl = existingReceipt || null;
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          } else {
+            showToast("فشل رفع صورة الإيصال", "error");
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i> تأكيد وقبول التسجيل ✅`;
+              if (window.lucide) window.lucide.createIcons();
+            }
+            return;
+          }
+        }
+
+        const amount = document.getElementById("approve-enrollment-amount").value;
+        const provider = document.getElementById("approve-enrollment-provider").value;
+        const notes = document.getElementById("approve-enrollment-notes").value.trim();
+
+        const res = await apiFetch(`/admin/enrollments/${enrollmentId}/approve`, {
+          method: "POST",
+          body: JSON.stringify({ amount, provider, receiptUrl, notes })
+        });
+
+        showToast(res.message || "تم اعتماد تسجيل الطالب وتأكيد الدفع بنجاح! 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("enrollments");
+      } catch (err) {
+        showToast(err.message || "حدث خطأ أثناء اعتماد التسجيل", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i> تأكيد وقبول التسجيل ✅`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    });
+  },
+
   updateAddCourseModalTeachers() {
     const selectEl = document.getElementById("admin-course-teacher-id");
     if (!selectEl) return;
@@ -177,7 +363,7 @@ export const AdminCoursesPage = {
     const categories = this.categories || [];
     return `
       <div class="modal-overlay" id="admin-course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
-        <div class="modal-content" style="max-width:650px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+        <div class="modal-content" style="max-width:680px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
           <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
             <div style="display:flex; align-items:center; gap:14px;">
               <div style="width:46px; height:46px; border-radius:14px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
@@ -185,14 +371,14 @@ export const AdminCoursesPage = {
               </div>
               <div>
                 <h3 class="modal-title" style="font-size:1.2rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">إضافة دورة تعليمية جديدة للمنصة ➕</h3>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، القسم المعني، السنة الدراسية والمعلم المسؤول</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، القسم، السعر (مجاني أو مدفوع) والمعلم المسؤول</p>
               </div>
             </div>
             <span class="modal-close-btn" id="close-admin-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
           </div>
 
           <form id="admin-course-form">
-            <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px;">
+            <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px; max-height:75vh; overflow-y:auto;">
               
               <!-- Course Title -->
               <div class="form-group" style="margin:0;">
@@ -292,6 +478,57 @@ export const AdminCoursesPage = {
                 </select>
               </div>
 
+              <!-- Course Pricing Type (Free vs Paid) -->
+              <div class="form-group" style="margin:0; background:rgba(99,102,241,0.04); border:1px solid var(--border-color); border-radius:16px; padding:16px;">
+                <label style="font-weight:800; font-size:0.9rem; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="tag" style="width:16px; height:16px; color:var(--primary);"></i>
+                  تسعير الدورة التعليمية (مجانية أو مدفوعة) <span style="color:var(--error);">*</span>
+                </label>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                  <label id="admin-pricing-free-label" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; border:2px solid var(--primary); cursor:pointer; transition:all 0.2s ease; background:var(--bg-card);">
+                    <input type="radio" name="admin-course-pricing-type" value="free" checked style="accent-color:var(--primary); width:16px; height:16px;">
+                    <div>
+                      <div style="font-weight:800; font-size:0.88rem; color:var(--text-main);">🎁 دورة مجانية</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">متاحة لجميع الطلاب مجاناً</div>
+                    </div>
+                  </label>
+
+                  <label id="admin-pricing-paid-label" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s ease; background:var(--bg-card);">
+                    <input type="radio" name="admin-course-pricing-type" value="paid" style="accent-color:var(--primary); width:16px; height:16px;">
+                    <div>
+                      <div style="font-weight:800; font-size:0.88rem; color:var(--text-main);">💳 دورة مدفوعة</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">تتطلب دفع مبلغ مالي للانضمام</div>
+                    </div>
+                  </label>
+                </div>
+
+                <!-- Paid Fields Container -->
+                <div id="admin-course-paid-fields" style="display:none; flex-direction:column; gap:12px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
+                  <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+                    <div class="form-group" style="margin:0;">
+                      <label for="admin-course-price" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">سعر الدورة</label>
+                      <input type="number" id="admin-course-price" class="form-input" placeholder="مثال: 350" min="0" step="0.5" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                      <label for="admin-course-currency" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">العملة</label>
+                      <select id="admin-course-currency" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.88rem;">
+                        <option value="EGP">EGP (جنيه)</option>
+                        <option value="SAR">SAR (ريال)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="AED">AED (درهم)</option>
+                        <option value="KWD">KWD (دينار)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-course-payment-details" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">بيانات وطريقة التحويل (Vodafone Cash / Instapay / Bank)</label>
+                    <input type="text" id="admin-course-payment-details" class="form-input" placeholder="مثال: تحويل فودافون كاش / انستاباي على 010xxxxxxxx" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                  </div>
+                </div>
+              </div>
+
               <!-- Course Description -->
               <div class="form-group" style="margin:0;">
                 <label for="admin-course-desc" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
@@ -384,6 +621,8 @@ export const AdminCoursesPage = {
     });
     const unitsCount = Object.keys(unitsMap).length;
 
+    const isCourseFree = course.isFree !== false && (!course.price || Number(course.price) === 0);
+
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = modalId;
@@ -400,6 +639,11 @@ export const AdminCoursesPage = {
             <div>
               <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
                 <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-size:0.75rem; font-weight:800;">${course.category || 'عام'}</span>
+                ${isCourseFree ? `
+                  <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem; font-weight:800;">🎁 دورة مجانية</span>
+                ` : `
+                  <span class="badge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.75rem; font-weight:800;">💳 ${course.price} ${course.currency || 'EGP'}</span>
+                `}
                 ${course.degree ? `<span class="badge" style="background:rgba(139,92,246,0.15); color:#8b5cf6; font-size:0.75rem; font-weight:800;">${course.degree}</span>` : ''}
               </div>
               <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">${course.title}</h3>
@@ -417,10 +661,16 @@ export const AdminCoursesPage = {
         <div style="padding:24px; background:var(--bg-app); max-height:75vh; overflow-y:auto; font-size:0.9rem;">
           
           <!-- Quick Stats Grid -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:24px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:24px;">
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👨‍🏫 المعلم المسؤول</div>
               <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:2px;">${course.teacher?.name || 'غير محدد'}</div>
+            </div>
+            <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">🏷️ نوع التسعير</div>
+              <div style="font-size:0.95rem; font-weight:800; color:${isCourseFree ? '#10b981' : 'var(--primary)'}; margin-top:2px;">
+                ${isCourseFree ? 'مجانية بالكامل 🎁' : `${course.price} ${course.currency || 'EGP'}`}
+              </div>
             </div>
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">📂 الوحدات الدراسية</div>
@@ -448,6 +698,12 @@ export const AdminCoursesPage = {
               <div style="margin-top:12px; font-size:0.82rem; font-weight:700;">
                 <span>🔗 رابط القاعة المباشرة:</span>
                 <a href="${course.meetingLink}" target="_blank" style="color:var(--primary); font-weight:700; text-decoration:none; margin-inline-start:6px;">${course.meetingLink}</a>
+              </div>
+            ` : ''}
+            ${course.paymentDetails ? `
+              <div style="margin-top:12px; padding:12px 14px; background:rgba(99,102,241,0.06); border-radius:12px; border:1px solid rgba(99,102,241,0.2); font-size:0.85rem;">
+                <span style="font-weight:800; color:var(--primary);">💳 بيانات وطرق الدفع والتحويل:</span>
+                <span style="margin-inline-start:6px; color:var(--text-main); font-weight:600;">${course.paymentDetails}</span>
               </div>
             ` : ''}
           </div>

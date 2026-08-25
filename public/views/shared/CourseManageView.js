@@ -108,11 +108,11 @@ export default class CourseManageView {
           <!-- Main Content Pane -->
           <div class="manage-content">
             ${this.activeTab === 'curriculum' ? this.renderCurriculum() :
-              this.activeTab === 'assignments' ? this.renderAssignmentsTab() :
-              this.activeTab === 'students' ? this.renderStudentsTab() :
+          this.activeTab === 'assignments' ? this.renderAssignmentsTab() :
+            this.activeTab === 'students' ? this.renderStudentsTab() :
               this.activeTab === 'resources' ? this.renderResourcesTab() :
-              this.renderSettings()
-            }
+                this.renderSettings()
+        }
           </div>
         </div>
 
@@ -147,6 +147,15 @@ export default class CourseManageView {
             display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-weight: 700; font-size: 0.8rem;
           }
           .lesson-actions button:hover { background: var(--primary-glow); color: var(--primary); border-color: var(--primary); }
+          /* Quill RTL editor styling */
+          .ql-toolbar { background: var(--bg-app) !important; border: 1px solid var(--border-color) !important; border-bottom: none !important; border-radius: 12px 12px 0 0 !important; }
+          .ql-container { border: none !important; font-size: 0.92rem !important; }
+          .ql-editor { min-height: 120px !important; font-family: 'Cairo', sans-serif !important; direction: rtl !important; text-align: right !important; color: var(--text-main) !important; padding: 12px 14px !important; }
+          .ql-editor.ql-blank::before { right: 14px !important; left: auto !important; color: var(--text-muted) !important; font-style: normal !important; }
+          .ql-snow .ql-stroke { stroke: var(--text-muted) !important; }
+          .ql-snow .ql-fill { fill: var(--text-muted) !important; }
+          .ql-snow .ql-picker { color: var(--text-muted) !important; }
+          .ql-snow.ql-toolbar button:hover .ql-stroke, .ql-snow .ql-toolbar button:hover .ql-stroke { stroke: var(--primary) !important; }
         </style>
 
         <!-- Modals -->
@@ -367,10 +376,10 @@ export default class CourseManageView {
         ` : `
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
             ${assignments.map(a => {
-              const dueDateStr = new Date(a.dueDate).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              const isOverdue = new Date() > new Date(a.dueDate);
+      const dueDateStr = new Date(a.dueDate).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isOverdue = new Date() > new Date(a.dueDate);
 
-              return `
+      return `
                 <div class="glass-card" style="padding:20px; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:space-between; background:var(--bg-app);">
                   <div>
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
@@ -396,7 +405,7 @@ export default class CourseManageView {
                   </div>
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
       </div>
@@ -484,18 +493,18 @@ export default class CourseManageView {
         ` : `
           <div style="display:flex; flex-direction:column; gap:20px;">
             ${enrollments.map(enroll => {
-              const student = enroll.student || {};
-              const completedCount = (enroll.completedLessons || []).length;
-              const totalLessons = lessons.length || 1;
-              const progressPct = enroll.progress || Math.round((completedCount / totalLessons) * 100);
-              
-              const submissionsMap = enroll.activitySubmissions || {};
-              let totalSubmissions = 0;
-              Object.values(submissionsMap).forEach(list => {
-                if (Array.isArray(list)) totalSubmissions += list.length;
-              });
+      const student = enroll.student || {};
+      const completedCount = (enroll.completedLessons || []).length;
+      const totalLessons = lessons.length || 1;
+      const progressPct = enroll.progress || Math.round((completedCount / totalLessons) * 100);
 
-              return `
+      const submissionsMap = enroll.activitySubmissions || {};
+      let totalSubmissions = 0;
+      Object.values(submissionsMap).forEach(list => {
+        if (Array.isArray(list)) totalSubmissions += list.length;
+      });
+
+      return `
                 <div style="padding:20px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:16px;">
                   
                   <!-- Student Info & Progress Header -->
@@ -533,11 +542,11 @@ export default class CourseManageView {
                     ` : `
                       <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
                         ${Object.entries(submissionsMap).map(([lessonKey, list]) => {
-                          if (!Array.isArray(list) || list.length === 0) return '';
-                          const targetLesson = lessons.find(l => String(l.id) === String(lessonKey));
-                          const lessonTitle = targetLesson ? targetLesson.title : "نشاط عام";
+        if (!Array.isArray(list) || list.length === 0) return '';
+        const targetLesson = lessons.find(l => String(l.id) === String(lessonKey));
+        const lessonTitle = targetLesson ? targetLesson.title : "نشاط عام";
 
-                          return list.map(sub => `
+        return list.map(sub => `
                             <div style="padding:12px 14px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:10px;">
                               <div style="overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;">
                                 <strong style="font-size:0.85rem; color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub.fileName}</strong>
@@ -548,14 +557,14 @@ export default class CourseManageView {
                               </a>
                             </div>
                           `).join('');
-                        }).join('')}
+      }).join('')}
                       </div>
                     `}
                   </div>
 
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
       </div>
@@ -1202,7 +1211,12 @@ export default class CourseManageView {
             document.getElementById("lesson-video").value = lesson.videoUrl || "";
             document.getElementById("lesson-duration").value = lesson.duration || "20:00";
             document.getElementById("lesson-order").value = lesson.order || 1;
-            document.getElementById("lesson-desc").value = lesson.description || "";
+            // Set Quill editor content (HTML)
+            if (this._lessonDescEditor) {
+              this._lessonDescEditor.root.innerHTML = lesson.description || "";
+            } else {
+              document.getElementById("lesson-desc").value = lesson.description || "";
+            }
             document.getElementById("lesson-notes").value = lesson.notes || "";
             document.getElementById("lesson-resource-title").value = lesson.resourceTitle || "";
             document.getElementById("lesson-resource-url").value = lesson.resourceUrl || "";
@@ -1283,6 +1297,13 @@ export default class CourseManageView {
         // Clean questions array
         const validQuestions = (this.editingLessonQuestions || []).filter(q => q.questionText && q.questionText.trim().length > 0);
 
+        // Get description from Quill editor or fallback hidden input
+        const descHtml = this._lessonDescEditor
+          ? this._lessonDescEditor.root.innerHTML.trim()
+          : (document.getElementById("lesson-desc")?.value.trim() || "");
+        // Treat empty Quill output as null
+        const descVal = (descHtml === "<p><br></p>" || descHtml === "") ? null : descHtml;
+
         const payload = {
           chapter: selectedChapter,
           title: titleVal,
@@ -1290,7 +1311,7 @@ export default class CourseManageView {
           photo: null,
           duration: document.getElementById("lesson-duration")?.value.trim() || "20:00",
           order: parseInt(document.getElementById("lesson-order")?.value) || 1,
-          description: document.getElementById("lesson-desc")?.value.trim() || null,
+          description: descVal,
           notes: document.getElementById("lesson-notes")?.value.trim() || null,
           resourceTitle: document.getElementById("lesson-resource-title")?.value.trim() || null,
           resourceUrl: document.getElementById("lesson-resource-url")?.value.trim() || null,

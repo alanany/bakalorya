@@ -32,10 +32,20 @@ export class UserController {
     try {
       const { id } = req.params;
       const userRepository = AppDataSource.getRepository(User);
-      const teacher = await userRepository.findOne({
-        where: { id, role: "teacher" },
-        select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "createdAt"]
+      let teacher = await userRepository.findOne({
+        where: [
+          { id, role: "teacher" },
+          { id, role: "admin" }
+        ],
+        select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "createdAt"]
       });
+
+      if (!teacher) {
+        teacher = await userRepository.findOne({
+          where: { id },
+          select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "createdAt"]
+        });
+      }
 
       if (!teacher) {
         return res.status(404).json({ error: "Teacher not found" });
@@ -47,6 +57,7 @@ export class UserController {
       return res.status(500).json({ error: "Failed to fetch teacher profile" });
     }
   }
+
 
   static async getStudents(req: AuthRequest, res: Response) {
     try {

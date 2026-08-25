@@ -23,7 +23,7 @@ export default class TeacherBlogsView {
             <h2 style="font-size:1.8rem; font-weight:900; margin:0 0 6px 0; color:var(--text-color); display:flex; align-items:center; gap:10px;">
               <i data-lucide="newspaper" style="color:#ec4899;"></i> مقالات المدونة التربوية
             </h2>
-            <p style="color:var(--text-muted); margin:0;">نشر وإدارة مقالاتك وإرشاداتك التربوية لطلاب البكالوريا</p>
+            <p style="color:var(--text-muted); margin:0;">نشر وإدارة مقالاتك وإرشاداتك التربوية لطلاب الانطلق</p>
           </div>
           <button class="btn-primary" id="open-blog-modal-btn" style="background:linear-gradient(135deg,#ec4899,#a855f7); border:none; padding:12px 22px; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
             <i data-lucide="plus-circle"></i> نشر مقال جديد
@@ -59,7 +59,7 @@ export default class TeacherBlogsView {
               <div class="modal-body">
                 <div class="form-group">
                   <label for="blog-title">عنوان المقال</label>
-                  <input type="text" id="blog-title" class="form-input" placeholder="مثال: أفضل 5 طرق لتنظيم الوقت في البكالوريا" required>
+                  <input type="text" id="blog-title" class="form-input" placeholder="مثال: أفضل 5 طرق لتنظيم الوقت في الانطلق" required>
                 </div>
                 <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                   <div>
@@ -77,7 +77,7 @@ export default class TeacherBlogsView {
                 </div>
                 <div class="form-group">
                   <label for="blog-content">محتوى المقال والإرشادات</label>
-                  <textarea id="blog-content" class="form-input" style="height:160px; resize:vertical;" placeholder="اكتب النصائح والمنهجية هنا لطلاب البكالوريا..." required></textarea>
+                  <textarea id="blog-content" class="form-input" style="height:160px; resize:vertical;" placeholder="اكتب النصائح والمنهجية هنا لطلاب الانطلق..." required></textarea>
                 </div>
               </div>
               <div class="modal-footer">
@@ -100,7 +100,7 @@ export default class TeacherBlogsView {
         <div class="glass-card" style="text-align:center; padding:60px 24px; color:var(--text-muted); grid-column:1/-1; border-radius:20px; border:2px dashed var(--border-color);">
           <i data-lucide="newspaper" style="width:52px; height:52px; opacity:0.35; margin-bottom:16px;"></i>
           <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:8px; color:var(--text-color);">لم تنشر أي مقال بعد</h3>
-          <p style="margin-bottom:20px; font-size:0.9rem;">شارك خبرتك التربوية مع طلاب البكالوريا من خلال نشر أول مقال تعليمي.</p>
+          <p style="margin-bottom:20px; font-size:0.9rem;">شارك خبرتك التربوية مع طلاب الانطلق من خلال نشر أول مقال تعليمي.</p>
           <button class="btn-primary" id="open-blog-modal-btn-empty" style="background:linear-gradient(135deg,#ec4899,#a855f7); border:none; display:inline-flex; gap:8px; align-items:center;">
             <i data-lucide="plus-circle"></i> ابدأ بكتابة مقالك الأول
           </button>

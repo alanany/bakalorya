@@ -623,6 +623,14 @@ export default class AdminView {
         if (idleBox) idleBox.style.display = "block";
         if (loadingBox) loadingBox.style.display = "none";
         if (previewWrapper) previewWrapper.style.display = "none";
+
+        // Reset pricing UI
+        const paidFields = document.getElementById("admin-course-paid-fields");
+        if (paidFields) paidFields.style.display = "none";
+        const freeLabel = document.getElementById("admin-pricing-free-label");
+        const paidLabel = document.getElementById("admin-pricing-paid-label");
+        if (freeLabel) freeLabel.style.borderColor = "var(--primary)";
+        if (paidLabel) paidLabel.style.borderColor = "var(--border-color)";
       }
     });
 
@@ -642,6 +650,21 @@ export default class AdminView {
       const freshForm = adminCourseForm.cloneNode(true);
       adminCourseForm.parentNode.replaceChild(freshForm, adminCourseForm);
       let isSubmitting = false;
+
+      // Pricing radio listeners (Free vs Paid)
+      const pricingRadios = freshForm.querySelectorAll("input[name='admin-course-pricing-type']");
+      const paidFields = freshForm.querySelector("#admin-course-paid-fields");
+      const freeLabel = freshForm.querySelector("#admin-pricing-free-label");
+      const paidLabel = freshForm.querySelector("#admin-pricing-paid-label");
+
+      pricingRadios.forEach(radio => {
+        radio.addEventListener("change", (e) => {
+          const isPaid = e.target.value === "paid";
+          if (paidFields) paidFields.style.display = isPaid ? "flex" : "none";
+          if (freeLabel) freeLabel.style.borderColor = isPaid ? "var(--border-color)" : "var(--primary)";
+          if (paidLabel) paidLabel.style.borderColor = isPaid ? "var(--primary)" : "var(--border-color)";
+        });
+      });
 
       // Toggle custom category in admin course modal
       freshForm.querySelector("#admin-course-category-select")?.addEventListener("change", (e) => {
@@ -787,7 +810,26 @@ export default class AdminView {
         if (directUrl) image = directUrl;
         const meetingLink = freshForm.querySelector("#admin-course-meeting-link").value.trim();
 
-        const payload = { title, category, degree, teacherId, image, meetingLink, description };
+        // Pricing extraction
+        const pricingType = freshForm.querySelector("input[name='admin-course-pricing-type']:checked")?.value || "free";
+        const isFree = pricingType === "free";
+        const price = isFree ? 0 : parseFloat(freshForm.querySelector("#admin-course-price")?.value || "0");
+        const currency = freshForm.querySelector("#admin-course-currency")?.value || "EGP";
+        const paymentDetails = freshForm.querySelector("#admin-course-payment-details")?.value.trim() || "";
+
+        const payload = {
+          title,
+          category,
+          degree,
+          teacherId,
+          image,
+          meetingLink,
+          description,
+          isFree,
+          price,
+          currency,
+          paymentDetails
+        };
 
         try {
           await apiFetch("/admin/courses", {
@@ -842,16 +884,9 @@ export default class AdminView {
 
     // Admin Approve Course Enrollment
     this.container.querySelectorAll(".admin-approve-enrollment-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        try {
-          const res = await apiFetch(`/admin/enrollments/${id}/approve`, { method: "POST" });
-          showToast(res.message || "تم اعتماد تسجيل الطالب بنجاح! ✅", "success");
-          await this.loadAllData();
-          this.renderTab("enrollments");
-        } catch (err) {
-          showToast(err.message || "فشل اعتماد التسجيل", "error");
-        }
+        this.renderApproveEnrollmentModal(id);
       });
     });
 

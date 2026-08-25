@@ -28,7 +28,7 @@ export default class LandingView {
             <div class="glass-card hero-card-main" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
               <div style="max-width:320px; z-index:2;">
                 <h1 style="font-size:2.1rem; font-weight:900; line-height:1.25; margin-bottom:14px; color:#ffffff;">
-                  ابدأ، طوّر، وحقق أفضل درجات البكالوريا 🎓
+                  ابدأ، طوّر، وحقق أفضل درجات الانطلق 🎓
                 </h1>
                 <p style="font-size:0.95rem; opacity:0.9; line-height:1.6; margin-bottom:24px;">
                   تعلم وتفوق مع أفضل الدورات والدروس المباشرة مع نخبة معلمي المملكة والمغرب العربي.
@@ -47,7 +47,7 @@ export default class LandingView {
             <div class="glass-card hero-card-secondary" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px;">
               <div style="max-width:320px; z-index:2;">
                 <h2 style="font-size:1.8rem; font-weight:900; line-height:1.3; margin-bottom:14px; color:var(--text-color);">
-                  ارتقِ بمستوى طلابك وانضم لطاقم معلّمي بكالوريا 👨‍🏫
+                  ارتقِ بمستوى طلابك وانضم لطاقم معلّمي انطلق 👨‍🏫
                 </h2>
                 <p style="font-size:0.92rem; color:var(--text-muted); line-height:1.6; margin-bottom:24px;">
                   قدّم دوراتك وبثك المباشر لآلاف الطلاب ومكّنهم من تحقيق أفضل النتائج.
@@ -77,9 +77,7 @@ export default class LandingView {
 
         <!-- SCREENSHOT 1: SECTION 2 (DYNAMIC NEW AND POPULAR 3-COLUMNS FROM DATABASE) -->
         <section style="max-width:1280px; margin:0 auto; padding:32px 24px;">
-          <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:24px; display:flex; align-items:center; gap:8px;">
-            الجديد والأكثر شعبية من قاعدة البيانات <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Real Database Courses)</span>
-          </h2>
+          
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
 
@@ -132,7 +130,7 @@ export default class LandingView {
             
             <div class="gradient-banner-inner" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
               <div style="max-width:440px;">
-                <h2 style="font-size:1.8rem; font-weight:900; margin-bottom:6px; color:#ffffff;">استعد لاجتياز امتحانات البكالوريا بامتياز</h2>
+                <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:6px; color:#ffffff;">استعد لاجتياز امتحانات الانطلق بامتياز</h2>
                 <p style="font-size:0.92rem; opacity:0.9; margin:0;">اختر مسارك المفضل وابدأ في مراجعة أقوى الدورات والشهادات التدريبية.</p>
               </div>
 
@@ -162,7 +160,7 @@ export default class LandingView {
                   bakalorya <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
                 </div>
                 <h3 style="font-size:1.5rem; font-weight:900; line-height:1.3; margin-bottom:12px; color:#ffffff;">
-                  احصل على وصول كلي لجميع دورات وملخصات البكالوريا
+                  احصل على وصول كلي لجميع دورات وملخصات الانطلق
                 </h3>
                 <a href="#signup" style="color:#ffffff; font-weight:800; font-size:0.95rem; text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">
                   ابدأ تجربتك المجانية لمدة 7 أيام <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
@@ -191,7 +189,7 @@ export default class LandingView {
 
         <!-- SCREENSHOT 3: SECTION 1 (MAIN UX PATHS) -->
         <section style="max-width:1280px; margin:0 auto; padding:16px 24px 32px 24px;">
-          <h2 style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
+          <h2 style="font-size:1.8rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
             ماذا تريد أن تتعلم؟
           </h2>
           <div class="learn-paths-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
@@ -200,7 +198,7 @@ export default class LandingView {
               <div style="width:80px; height:80px; background:rgba(37,99,235,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#2563eb;">
                 <i data-lucide="book-open" style="width:40px; height:40px;"></i>
               </div>
-              <h3 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">📚 الكورسات</h3>
+              <h3 style="font-size:1.6rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">📚 الكورسات</h3>
               <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
                 تعلم من خلال كورسات منظمة خطوة بخطوة مع نخبة من الأساتذة.
               </p>
@@ -212,7 +210,7 @@ export default class LandingView {
               <div style="width:80px; height:80px; background:rgba(16,185,129,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#10b981;">
                 <i data-lucide="users" style="width:40px; height:40px;"></i>
               </div>
-              <h3 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">👨‍🏫 حصص فردية</h3>
+              <h3 style="font-size:1.6rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">👨‍🏫 حصص فردية</h3>
               <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
                 اختر مدرسًا واحجز حصصًا خاصة (1 على 1) تناسب جدولك ومستواك الدراسي.
               </p>
@@ -227,7 +225,7 @@ export default class LandingView {
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
               <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
-                استكشف المراحل والصفوف الدراسية <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Explore All Degrees & Levels)</span>
+                استكشف المراحل والصفوف الدراسية
               </h2>
               <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">شامل لجميع الصفوف الدراسية من الابتدائية والإعدادية حتى الثانوية والأزهر الشريف</p>
             </div>
@@ -303,7 +301,7 @@ export default class LandingView {
           <div class="glass-card outcome-banner-inner" style="background:#001e50; color:#ffffff; border-radius:24px; padding:48px 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:32px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,30,80,0.35);">
             <div style="max-width:540px; z-index:2;">
               <h2 style="font-size:2.2rem; font-weight:900; line-height:1.25; margin-bottom:16px; color:#ffffff;">
-                91% من طلاب منصة بكالوريا حققوا ميزة التفوق والنجاح
+                91% من طلاب منصة انطلق حققوا ميزة التفوق والنجاح
               </h2>
               <p style="font-size:1.05rem; color:#93c5fd; line-height:1.6; margin-bottom:28px;">
                 أظهرت النتائج ارتفاعاً ملحوظاً في المعدلات العامة واستيعاب المفاهيم الصعبة مع حلول التدارك والبث المباشر.
@@ -332,7 +330,7 @@ export default class LandingView {
         <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
           <div style="margin-bottom:24px;">
             <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
-              لماذا يختار الطلاب والأساتذة منصة بكالوريا <span style="font-size:1rem; color:var(--text-muted); font-weight:600;">(Why people choose Bakalorya)</span>
+              لماذا يختار الطلاب والأساتذة منصة انطلق 
             </h2>
             <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">أهم المزايا والركائز الأساسية التي تضمن تفوق الطلاب وتمكين المعلمين بالمنصة</p>
           </div>
@@ -346,7 +344,7 @@ export default class LandingView {
                 </div>
                 <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">نخبة من أفضل المعلمين المعتمدين</h4>
                 <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
-                  دروس ومراجعات استثنائية مقدمة من نخبة من كبار أساتذة البكالوريا والمراحل الدراسية لضمان استيعاب المفاهيم الصعبة.
+                  دروس ومراجعات استثنائية مقدمة من نخبة من كبار أساتذة الانطلق والمراحل الدراسية لضمان استيعاب المفاهيم الصعبة.
                 </p>
               </div>
             </div>
@@ -396,17 +394,17 @@ export default class LandingView {
         <!-- SCREENSHOT 4: SECTION 2 (FAQ ACCORDION SECTION) -->
         <section style="max-width:1280px; margin:0 auto; padding:10px 24px 24px 24px;">
           <h2 style="font-size:1.35rem; font-weight:900; color:var(--text-color); margin-bottom:16px;">
-            الأسئلة الشائعة والمتكررة <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">(Frequently asked questions)</span>
+            الأسئلة الشائعة والمتكررة
           </h2>
 
           <div style="display:flex; flex-direction:column; gap:8px;">
             <div class="faq-accordion-item glass-card" style="border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
               <div class="faq-question" style="padding:12px 18px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-weight:800; font-size:0.88rem; color:var(--text-color);">
-                <span>هل منصة بكالوريا معتمدة وتقدم شهادات ومتابعة دورية؟</span>
+                <span>هل منصة انطلق معتمدة وتقدم شهادات ومتابعة دورية؟</span>
                 <i data-lucide="chevron-down" class="faq-icon" style="transition:transform 0.3s; width:16px; height:16px;"></i>
               </div>
               <div class="faq-answer" style="display:none; padding:0 18px 12px 18px; font-size:0.82rem; color:var(--text-muted); line-height:1.5; border-top:1px solid var(--border-color); padding-top:10px;">
-                نعم، توفر المنصة دورات ومراجعات شاملة من قِبل نخبة من أساتذة البكالوريا المتميزين، مع متابعة مستمرة للدرجات وحفظ المحتوى على حساب الطالب.
+                نعم، توفر المنصة دورات ومراجعات شاملة من قِبل نخبة من أساتذة الانطلق المتميزين، مع متابعة مستمرة للدرجات وحفظ المحتوى على حساب الطالب.
               </div>
             </div>
 
@@ -422,11 +420,11 @@ export default class LandingView {
 
             <div class="faq-accordion-item glass-card" style="border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
               <div class="faq-question" style="padding:12px 18px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-weight:800; font-size:0.88rem; color:var(--text-color);">
-                <span>ما هي ميزات اشتراك Bakalorya PLUS وماذا يتضمن؟</span>
+                <span>ما هي ميزات اشتراك Entlq PLUS وماذا يتضمن؟</span>
                 <i data-lucide="chevron-down" class="faq-icon" style="transition:transform 0.3s; width:16px; height:16px;"></i>
               </div>
               <div class="faq-answer" style="display:none; padding:0 18px 12px 18px; font-size:0.82rem; color:var(--text-muted); line-height:1.5; border-top:1px solid var(--border-color); padding-top:10px;">
-                يتيح اشتراك Bakalorya PLUS الوصول الشامل لكافة الدورات المسجلة والبث المباشر ومكتبة الملفات بخصم اشتراك موحد موفر للطالب.
+                يتيح اشتراك Entlq PLUS الوصول الشامل لكافة الدورات المسجلة والبث المباشر ومكتبة الملفات بخصم اشتراك موحد موفر للطالب.
               </div>
             </div>
 
@@ -462,7 +460,7 @@ export default class LandingView {
             </div>
             <div>
               <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">99.4%</div>
-              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">نسبة النجاح في البكالوريا</div>
+              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">نسبة النجاح في الانطلق</div>
             </div>
             <div>
               <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">+120</div>
@@ -487,8 +485,8 @@ export default class LandingView {
                 <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:700; font-size:0.85rem; margin-bottom:6px;">
                   <i data-lucide="award" style="width:16px;height:16px;"></i> نخبة الأساتذة والخبراء
                 </div>
-                <h2 style="font-size:2rem; font-weight:900; margin:0; color:var(--text-color);">تعلم على يد أفضل أساتذة البكالوريا 👨‍🏫</h2>
-                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">أساتذة ذوو خبرة طويلة في إعداد طلاب البكالوريا للدرجات العليا</p>
+                <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">تعلم على يد أفضل أساتذة الانطلق 👨‍🏫</h2>
+                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">أساتذة ذوو خبرة طويلة في إعداد طلاب الانطلق للدرجات العليا</p>
               </div>
               <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">انضم كـ معلم بالمنصة</a>
             </div>
@@ -507,8 +505,8 @@ export default class LandingView {
               <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:700; font-size:0.85rem; margin-bottom:6px;">
                 <i data-lucide="newspaper" style="width:16px;height:16px;"></i> المدونة والإرشادات التربوية
               </div>
-              <h2 style="font-size:2rem; font-weight:900; margin:0; color:var(--text-color);">أحدث المقالات والنصائح للبكالوريا 📝</h2>
-              <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">إرشادات ومنهجيات لم مساعدة طلاب البكالوريا على المذاكرة بذكاء وتفادي التوتر</p>
+              <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">أحدث المقالات والنصائح للانطلق 📝</h2>
+              <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">إرشادات ومنهجيات لم مساعدة طلاب الانطلق على المذاكرة بذكاء وتفادي التوتر</p>
             </div>
             <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح جميع المقالات ➔</a>
           </div>
@@ -522,7 +520,7 @@ export default class LandingView {
         <!-- CALL TO ACTION BANNER -->
         <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:70px 24px; text-align:center;">
           <div style="max-width:800px; margin:0 auto;">
-            <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في البكالوريا؟</h2>
+            <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في الانطلق؟</h2>
             <p style="font-size:1.1rem; opacity:0.9; margin-bottom:32px; line-height:1.6;">انضم اليوم إلى آلاف الطلاب واستفد من أحدث الدورات التفاعلية والدروس المباشرة مع نخبة المعلمين.</p>
             <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
               <a href="#signup" class="btn-primary" style="background:#ffffff; color:var(--primary); padding:16px 36px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
@@ -542,12 +540,11 @@ export default class LandingView {
             
             <div class="footer-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:40px; margin-bottom:50px;">
               <div>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
-                  <div style="width:36px; height:36px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.2rem;">B</div>
-                  <span style="font-size:1.4rem; font-weight:900; color:var(--text-color);">Bakalorya</span>
-                </div>
+                <a href="#landing" style="text-decoration:none; display:inline-flex; align-items:center; margin-bottom:16px;">
+                  <img src="assets/logo.png" alt="انطلق" style="height:48px; width:auto; object-fit:contain; border-radius:10px; padding:4px 8px; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+                </a>
                 <p style="line-height:1.6; font-size:0.85rem; margin-bottom:20px;">
-                  المنصة التعليمية التفاعلية الأولى المخصصة لمساعدة طلاب البكالوريا والدراسات الثانوية على تحقيق التفوق الأكاديمي.
+                  المنصة التعليمية التفاعلية الأولى المخصصة لمساعدة طلاب الانطلق والدراسات الثانوية على تحقيق التفوق الأكاديمي.
                 </p>
 
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -573,7 +570,7 @@ export default class LandingView {
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">روابط سريعة</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
                   <li><a href="#landing" style="color:var(--text-muted); text-decoration:none;">الصفحة الرئيسية</a></li>
-                  <li><a href="#about" style="color:var(--text-muted); text-decoration:none;">عن منصة بكالوريا (About Us)</a></li>
+                  <li><a href="#about" style="color:var(--text-muted); text-decoration:none;">عن منصة انطلق (About Us)</a></li>
                   <li><a href="#courses" style="color:var(--text-muted); text-decoration:none;">دليل الدورات التعليمية</a></li>
                   <li><a href="#schedule" style="color:var(--text-muted); text-decoration:none;">جدول البث المباشر</a></li>
                   <li><a href="#faq" style="color:var(--text-muted); text-decoration:none;">الأسئلة الشائعة (FAQ)</a></li>
@@ -599,7 +596,7 @@ export default class LandingView {
             </div>
 
             <div class="footer-bottom" style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
-              <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة بكالوريا التعليمية (Bakalorya Platform)</div>
+              <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية (Entlq Platform)</div>
               
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <a href="#about" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--primary)';" onmouseleave="this.style.borderColor='var(--border-color)';">
@@ -813,13 +810,13 @@ export default class LandingView {
           <div class="glass-card" style="padding:28px; border-radius:20px; border:1px solid var(--border-color); text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher/${teacher.id}'">
             <img src="${teacher.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${teacher.id}`}" style="width:84px; height:84px; border-radius:50%; border:3px solid var(--primary); margin:0 auto 16px auto; background:var(--bg-app); object-fit:cover;">
             <h3 style="font-size:1.15rem; font-weight:800; margin:0 0 4px 0; color:var(--text-color);">${teacher.name}</h3>
-            <div style="font-size:0.82rem; color:var(--primary); font-weight:700; margin-bottom:12px;">${teacher.education || 'أستاذ وخبير تربوي في البكالوريا'}</div>
+            <div style="font-size:0.82rem; color:var(--primary); font-weight:700; margin-bottom:12px;">${teacher.education || 'أستاذ وخبير تربوي في الانطلق'}</div>
             <div style="display:flex; justify-content:center; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted); margin-bottom:18px; background:var(--bg-app); padding:8px 12px; border-radius:12px;">
               <span>⭐ 4.95 (أستاذ موثوق)</span>
               <span>•</span>
               <span>${teacher.location || 'المنصة الرقمية'}</span>
             </div>
-            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">خبير تربوي في إعداد وشرح دروس البكالوريا والتمارين المنهجية التطبيقية.</p>
+            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">خبير تربوي في إعداد وشرح دروس الانطلق والتمارين المنهجية التطبيقية.</p>
             <a href="#teacher/${teacher.id}" class="btn-secondary" style="width:100%; justify-content:center; font-size:0.85rem; padding:8px 14px; text-decoration:none; display:inline-flex;">عرض ملف الأستاذ والدورات ➔</a>
           </div>
         `).join("");

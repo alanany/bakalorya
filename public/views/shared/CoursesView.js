@@ -9,12 +9,10 @@ export default class CoursesView {
 
   async render() {
     try {
-      if (!state.user) return;
-
       this.container.innerHTML = `
         <div style="max-width:1280px; margin:0 auto; padding:40px 24px;">
           <h2 class="dashboard-section-title" style="font-size:2rem; margin-bottom:32px;">
-            <i data-lucide="book-open"></i> ${t("nav.courses")}
+            <i data-lucide="book-open"></i> ${t("nav.courses") || "الدورات التعليمية"}
           </h2>
           <div id="courses-content-area">
             <div style="text-align:center; padding:50px;">
@@ -196,6 +194,33 @@ export default class CoursesView {
       const allCourses = await apiFetch("/courses");
       const contentArea = this.container.querySelector("#courses-content-area");
 
+      // 1. Unauthenticated / Guest View
+      if (!state.user) {
+        const publishedCourses = (allCourses || []).filter(c => c.status === "PUBLISHED" || !c.status);
+
+        let html = `
+        
+
+          <!-- Course Catalog -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+            <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="compass"></i> دليل الدورات التعليمية المتاحة (${publishedCourses.length})</h3>
+          </div>
+
+          ${publishedCourses.length === 0
+            ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
+                  <p>لا توجد دورات تعليمية متاحة حالياً.</p>
+                </div>`
+            : `<div class="courses-grid">
+                  ${publishedCourses.map(course => this.renderCourseCard(course, 0, false)).join("")}
+                </div>`
+          }
+        `;
+        contentArea.innerHTML = html;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      // 2. Logged-in Student View
       if (state.user.role === "student") {
         const enrollments = await apiFetch("/student/enrollments");
         const enrolledCourseIds = (enrollments || []).map(e => e.course?.id);
@@ -227,7 +252,7 @@ export default class CoursesView {
         contentArea.innerHTML = html;
 
       } else {
-        // Teacher / Admin View
+        // 3. Teacher / Admin View
         const myCourses = (allCourses || []).filter(c => c.teacher?.id === state.user.id || state.user.role === 'admin');
 
         let html = `

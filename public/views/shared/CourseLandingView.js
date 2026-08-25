@@ -163,33 +163,41 @@ export default class CourseLandingView {
                 <div style="display:flex; gap:16px; align-items:center; margin-bottom:16px;">
                   <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:64px; height:64px; border-radius:50%; border: 2px solid var(--primary);">
                   <div>
-                    <div style="font-weight:800; font-size:1.1rem; color:var(--text-main);">${this.course.teacher?.name || "Bakalorya Instructor"}</div>
+                    <div style="font-weight:800; font-size:1.1rem; color:var(--text-main);">${this.course.teacher?.name || "Entlq Instructor"}</div>
                     <div style="font-size:0.9rem; color:var(--text-muted);">Teacher</div>
                   </div>
                 </div>
               </div>
 
               <!-- Cross-sell section -->
-               <div class="glass-card" style="padding: 24px; margin-top:24px; background:linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02)); border:1px solid rgba(16,185,129,0.25);">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; color:#10b981;">
-                  <div style="width:42px; height:42px; border-radius:12px; background:rgba(16,185,129,0.12); display:flex; align-items:center; justify-content:center;">
-                    <i data-lucide="video" style="width:22px; height:22px;"></i>
+              <div class="glass-card" style="padding: 24px; margin-top:24px; background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(99,102,241,0.04)); border:1.5px solid rgba(16,185,129,0.3); border-radius:18px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; color:#10b981;">
+                  <div style="width:42px; height:42px; border-radius:12px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; color:#10b981;">
+                    <i data-lucide="sparkles" style="width:22px; height:22px;"></i>
                   </div>
-                  <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main);">حصة خاصة مع المعلم</h3>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                  <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:40px; height:40px; border-radius:50%; border:2px solid rgba(16,185,129,0.4);">
                   <div>
-                    <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${this.course.teacher?.name || 'المعلم'}</div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">متاح للحصص الفردية (1-على-1)</div>
+                    <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main);">حصة خاصة مع المعلم</h3>
+                    <span style="font-size:0.75rem; color:#10b981; font-weight:700;">متابعة فردية 1-on-1 مباشر</span>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; background:var(--bg-app); padding:10px 14px; border-radius:12px; border:1px solid var(--border-color);">
+                  <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:42px; height:42px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
+                  <div>
+                    <div style="font-weight:800; font-size:0.92rem; color:var(--text-main);">${this.course.teacher?.name || 'أستاذ المادة'}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">متاح للاستشارات والحصص الخاصة</div>
                   </div>
                 </div>
                 <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
-                  احجز حصة خاصة مباشرة مع هذا المعلم لشرح مخصص وتفاعل فردي.
+                  هل تحتاج لشرح مخصص، حل أسئلة محددة، أو مراجعة فردية مع الأستاذ؟ احجز حصتك الخاصة الآن.
                 </p>
-               ${this.enrollmentStatus !== 'active' ? `` : ` <button id="book-private-session-card-btn" class="btn-primary" style="background:#10b981; border-color:#10b981; width:100%; justify-content:center;">
-                  <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> احجز حصة خاصة الآن
-                </button>`}
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:10px 16px; border-radius:12px; font-weight:800; font-size:0.88rem; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                    <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> طلب حجز حصة خاصة الآن 🚀
+                  </a>
+                  <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:8px 16px; border-radius:12px; font-weight:700; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> باقات واشتراكات الحصص الشهرية
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -272,7 +280,7 @@ export default class CourseLandingView {
     const existingModal = document.getElementById("paid-course-modal-dynamic");
     if (existingModal) existingModal.remove();
 
-    const paymentInfo = this.course.paymentDetails || "فودافون كاش / إنستاباي / IBAN البنك الأهلي المصري\nرقم المحفظة المعتمـد: 01012345678\nالاسم: أكاديمية بكالوريا التعليمية";
+    const paymentInfo = this.course.paymentDetails || "فودافون كاش / إنستاباي / IBAN البنك الأهلي المصري\nرقم المحفظة المعتمـد: 01012345678\nالاسم: أكاديمية انطلق التعليمية";
 
     const modalHTML = `
       <div class="modal-overlay" id="paid-course-modal-dynamic" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:10000;">
@@ -291,7 +299,7 @@ export default class CourseLandingView {
               <div>
                 <div style="font-size:0.75rem; color:var(--primary); font-weight:800; text-transform:uppercase;">${this.course.category}</div>
                 <div style="font-size:1rem; font-weight:800; color:var(--text-main); margin-top:2px;">${this.course.title}</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">المعلم: ${this.course.teacher?.name || 'منصة بكالوريا'}</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">المعلم: ${this.course.teacher?.name || 'منصة انطلق'}</div>
               </div>
               <div style="text-align:end; font-size:1.2rem; font-weight:800; color:var(--primary);">
                 ${this.course.price} ${this.course.currency || 'ج.م'}

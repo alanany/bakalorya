@@ -1,9 +1,10 @@
-import { apiFetch, state, showToast, t, getCleanWhatsAppNumber } from "../app.js";
+import { apiFetch, state, showToast, t, getCleanWhatsAppNumber, renderCourseCard } from "../app.js";
 
 export default class TeacherDetailsView {
   constructor(container, teacherId) {
     this.container = container;
-    this.teacherId = teacherId;
+    // Extract ID either from parameter or hash
+    this.teacherId = teacherId || (window.location.hash.split("/")[1] || "").split("?")[0];
     this.teacher = null;
     this.courses = [];
     this.blogs = [];
@@ -11,13 +12,18 @@ export default class TeacherDetailsView {
 
   async render() {
     this.container.innerHTML = `
-      <div style="width:100%; max-width:1400px; margin:0 auto; padding:40px 32px 80px;">
-        <div style="text-align:center; padding:60px; color:var(--text-muted);">
-          <div class="spinner" style="margin:0 auto 16px;"></div>
-          <p>جارٍ تحميل ملف الأستاذ...</p>
+      <div style="width:100%; max-width:1400px; margin:0 auto; padding:60px 24px 80px;">
+        <div style="text-align:center; padding:60px 20px; color:var(--text-muted);" class="glass-card">
+          <div class="spinner" style="width:44px; height:44px; margin:0 auto 16px; border-width:3px;"></div>
+          <p style="font-weight:700; font-size:1rem;">جارٍ تحميل ملف الأستاذ والدورات...</p>
         </div>
       </div>
     `;
+
+    if (!this.teacherId) {
+      this.renderNotFound();
+      return;
+    }
 
     try {
       const [teacher, allCourses, allBlogs, reviewsRes] = await Promise.all([
@@ -48,12 +54,12 @@ export default class TeacherDetailsView {
 
   renderNotFound() {
     this.container.innerHTML = `
-      <div style="max-width:600px; margin:80px auto; text-align:center; padding:40px;">
+      <div style="max-width:600px; margin:80px auto; text-align:center; padding:48px 28px; border-radius:24px;" class="glass-card">
         <div style="font-size:4rem; margin-bottom:16px;">👨‍🏫</div>
-        <h2 style="font-size:1.8rem; font-weight:800; margin-bottom:12px;">ملف الأستاذ غير موجود</h2>
-        <p style="color:var(--text-muted); margin-bottom:24px;">عذراً، لم نتمكن من العثور على المعلم المطلوب.</p>
-        <a href="#landing" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
-          <i data-lucide="arrow-right"></i> العودة للصفحة الرئيسية
+        <h2 style="font-size:1.8rem; font-weight:900; margin-bottom:10px; color:var(--text-main);">ملف الأستاذ غير موجود</h2>
+        <p style="color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin-bottom:28px;">عذراً، لم نتمكن من العثور على المعلم المطلوب أو أن الرابط غير صحيح.</p>
+        <a href="#landing" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 24px; border-radius:30px; margin:0 auto;">
+          <i data-lucide="arrow-right" style="width:16px;height:16px;"></i> العودة للصفحة الرئيسية
         </a>
       </div>
     `;
@@ -61,15 +67,19 @@ export default class TeacherDetailsView {
   }
 
   renderContent() {
-    const tProfile = this.teacher;
-    const name = tProfile.name || "أستاذ البكالوريا";
-    const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`;
-    const education = tProfile.education || "أستاذ وخبير تربوي متميز في البكالوريا";
+    const tProfile = this.teacher || {};
+    const name = tProfile.name || "أستاذ";
+    const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+    const education = tProfile.education || "أستاذ وخبير تربوي متميز بالمنصة";
     const location = tProfile.location || "المنصة الرقمية";
-    const categories = [...new Set((this.teacherCourses || []).map(c => c.category).filter(Boolean))];
+    const categories = [...new Set([
+      ...(this.courses || []).map(c => c.category).filter(Boolean),
+      ...(Array.isArray(tProfile.customCategories) ? tProfile.customCategories : [])
+    ])];
 
     const rawPhone = tProfile.phone || "";
     const cleanPhoneWa = getCleanWhatsAppNumber(rawPhone);
+
 
     this.container.innerHTML = `
       <div style="width:100%; max-width:1400px; margin:0 auto; padding:32px 32px 80px;">
@@ -120,9 +130,12 @@ export default class TeacherDetailsView {
 
               <!-- Quick Contact Actions -->
               <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <a href="#student-private-sessions" class="btn-primary" style="text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg, #a855f7, #6366f1); border:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(168,85,247,0.3);">
+                  <i data-lucide="sparkles"></i> طلب حصة خاصة (1-on-1) 🎯
+                </a>
                 ${tProfile.meetingLink ? `
-                  <a href="${tProfile.meetingLink}" target="_blank" class="btn-primary" style="text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; display:inline-flex; align-items:center; gap:8px;">
-                    <i data-lucide="video"></i> رابط البث المباشر للأستاذ
+                  <a href="${tProfile.meetingLink}" target="_blank" class="btn-secondary" style="text-decoration:none; padding:10px 20px; border-radius:30px; font-size:0.88rem; display:inline-flex; align-items:center; gap:8px;">
+                    <i data-lucide="video"></i> قاعة البث المباشر
                   </a>
                 ` : ''}
                 ${rawPhone ? `
@@ -131,6 +144,7 @@ export default class TeacherDetailsView {
                   </a>
                 ` : ''}
               </div>
+
             </div>
           </div>
         </div>

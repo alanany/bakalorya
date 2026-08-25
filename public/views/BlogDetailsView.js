@@ -93,7 +93,7 @@ export default class BlogDetailsView {
               <img src="${authorAvatar}" style="width:46px; height:46px; border-radius:50%; border:2px solid var(--primary);">
               <div>
                 <h4 style="font-size:0.95rem; font-weight:700; margin:0 0 2px 0;">${authorName}</h4>
-                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">أستاذ ومؤطر بمنصة باكالوريا</p>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">أستاذ ومؤطر بمنصة انطلق</p>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:20px; font-size:0.85rem; color:var(--text-muted);">

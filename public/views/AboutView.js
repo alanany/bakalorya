@@ -12,13 +12,13 @@ export default class AboutView {
         <!-- Hero Header -->
         <div class="glass-card" style="padding:48px 36px; border-radius:28px; border:1px solid var(--border-color); background:linear-gradient(135deg, rgba(0,86,210,0.08) 0%, rgba(99,102,241,0.04) 100%); text-align:center;">
           <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,86,210,0.12); color:var(--primary); font-size:0.8rem; font-weight:800; padding:6px 18px; border-radius:30px; margin-bottom:16px;">
-            <i data-lucide="info" style="width:14px; height:14px;"></i> عن منصة بكالوريا
+            <i data-lucide="info" style="width:14px; height:14px;"></i> عن منصة انطلق
           </div>
           <h1 style="font-size:2.4rem; font-weight:900; color:var(--text-color); margin:0 0 16px 0; line-height:1.25;">
             رائدون في تمكين الطلاب والمعلمين بأحدث تقنيات التعليم الرقمي 🚀
           </h1>
           <p style="font-size:1.05rem; color:var(--text-muted); max-width:760px; margin:0 auto; line-height:1.7;">
-            منصة "بكالوريا" هي المنصة التعليمية التفاعلية الأولى المصممة لمواكبة متطلبات المناهج التعليمية الحديثة من الابتدائية حتى الثانوية والأزهر الشريف، وتقديم تجربة تعلم استثنائية وبث مباشر تفاعلي مع نخبة كبار الأساتذة.
+            منصة "انطلق" هي المنصة التعليمية التفاعلية الأولى المصممة لمواكبة متطلبات المناهج التعليمية الحديثة من الابتدائية حتى الثانوية والأزهر الشريف، وتقديم تجربة تعلم استثنائية وبث مباشر تفاعلي مع نخبة كبار الأساتذة.
           </p>
         </div>
 

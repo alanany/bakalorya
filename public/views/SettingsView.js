@@ -20,7 +20,7 @@ export default class SettingsView {
               <i data-lucide="user"></i> User Profile
             </h3>
             <div style="display:flex; align-items:center; gap:24px; margin-bottom:24px;">
-              <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Bakalorya'}" style="width:80px;height:80px;border-radius:50%;border:2px solid var(--primary);">
+              <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq'}" style="width:80px;height:80px;border-radius:50%;border:2px solid var(--primary);">
               <div>
                 <h4 style="font-size:1.3rem; margin:0 0 4px 0;">${state.user.name}</h4>
                 <p style="color:var(--text-muted); margin:0 0 8px 0;">${state.user.email}</p>
@@ -47,7 +47,7 @@ export default class SettingsView {
                   placeholder: "0555123456",
                   required: false
                 })}
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">اختر مفتاح الدولة واكتب رقم هاتفك لاستلام إشعارات البكالوريا عبر واتساب.</small>
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">اختر مفتاح الدولة واكتب رقم هاتفك لاستلام إشعارات الانطلق عبر واتساب.</small>
               </div>
 
               ${state.user.role === 'student' ? `
@@ -71,9 +71,9 @@ export default class SettingsView {
                   <i data-lucide="graduation-cap" style="width:16px;height:16px;color:var(--primary);"></i>
                   المستوى والتخصص الدراسي (Education Level / Stream)
                 </label>
-                ${renderEducationSelectHTML ? renderEducationSelectHTML({ id: "settings-education", selectedValue: state.user.education || "Bakalorya 3" }) : `
+                ${renderEducationSelectHTML ? renderEducationSelectHTML({ id: "settings-education", selectedValue: state.user.education || "Entlq 3" }) : `
                   <select id="settings-education" class="form-select">
-                    <option value="Bakalorya 3" ${state.user.education?.includes("Bakalorya 3") ? "selected" : ""}>Bakalorya 3</option>
+                    <option value="Entlq 3" ${state.user.education?.includes("Entlq 3") ? "selected" : ""}>Entlq 3</option>
                   </select>
                 `}
               </div>

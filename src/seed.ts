@@ -122,7 +122,7 @@ async function seed() {
     await userRepository.save(teacher);
 
     const admin = userRepository.create({
-      name:     "مشرف باكالوريا",
+      name:     "مشرف انطلق",
       email:    "admin@bakalorya.com",
       password: adminPasswordHash,
       role:     "admin",
@@ -134,7 +134,7 @@ async function seed() {
     await blogRepository.clear();
 
     const blog1 = blogRepository.create({
-      title: "أفضل 5 طرق لتنظيم الوقت وتفادي التوتر أثناء التحضير للبكالوريا",
+      title: "أفضل 5 طرق لتنظيم الوقت وتفادي التوتر أثناء التحضير للانطلق",
       content: "تعلم كيفية بناء جدول مراجعة أسبوعي متوازن يجمع بين التركيز العالي وأوقات الراحة المستحقة لضمان تحصيل أفضل النتائج.",
       category: "📐 تنظيم الوقت",
       image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600",
@@ -163,7 +163,7 @@ async function seed() {
 
     // Seed sample initial Baccalaureate courses
     const course1 = courseRepository.create({
-      title: "الدورة الشاملة في الرياضيات - باكالوريا 2026",
+      title: "الدورة الشاملة في الرياضيات - انطلق 2026",
       description: "شرح وافٍ وتطبيقات شاملة في الدوال العددية، المتتاليات، والاحتمالات مخصصة لشعب العلوم، الرياضيات وتقني رياضي.",
       category: "الرياضيات",
       degree: "3ème AS - BAC",
@@ -244,7 +244,7 @@ async function seed() {
 
     const premiumPlan = planRepository.create({
       name: "الباقة المكثفة (12 حصة / شهر)",
-      description: "3 حصص أسبوعياً للمكثف والمراجعات الشاملة لحصد أعلى العلامات في البكالوريا",
+      description: "3 حصص أسبوعياً للمكثف والمراجعات الشاملة لحصد أعلى العلامات في الانطلق",
       sessionsCount: 12,
       price: 1500,
       currency: "EGP",

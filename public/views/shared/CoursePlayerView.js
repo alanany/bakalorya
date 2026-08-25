@@ -118,53 +118,81 @@ export default class CoursePlayerView {
       }
 
       this.container.innerHTML = `
-        <div class="course-player-container">
-          <!-- Main Video Area -->
-          <div class="player-main-area">
-            
-            ${activeLiveSession ? `
-              <!-- Active Live Session Notification Banner -->
-              <div class="glass-card" style="border-color:var(--success); background:rgba(16,185,129,0.08); padding:16px 24px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                  <span class="session-tag live">${t("session.liveNow")}</span>
-                  <div>
-                    <strong style="font-size:0.95rem; color:var(--text-main);">${activeLiveSession.title}</strong>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${t("course.instructedBy")} ${this.course?.teacher?.name || ''}</div>
-                  </div>
-                </div>
-                <a href="#classroom/${activeLiveSession.id}" class="btn-primary" style="background:var(--success); font-size:0.85rem; padding:8px 16px;">
-                  <i data-lucide="video"></i> ${t("course.joinLiveClass")}
-                </a>
+        <div class="course-player-studio-view" style="width:100%; max-width:1440px; margin:0 auto; padding:20px 20px 80px; box-sizing:border-box;">
+          
+          <!-- 1. Top Cinema Header / Breadcrumb Bar -->
+          <div class="glass-card" style="margin-bottom:20px; padding:16px 24px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+              <a href="#courses" class="btn-secondary" style="padding:7px 14px; border-radius:20px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="arrow-right" style="width:14px;height:14px;"></i> كل الدورات
+              </a>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:12px;">
+                  🎓 ${this.course?.degree || 'لجميع المراحل'}
+                </span>
+                <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--text-main); font-weight:700; font-size:0.75rem; padding:4px 10px; border-radius:12px;">
+                  📚 ${this.course?.category || 'عام'}
+                </span>
               </div>
-            ` : ""}
-
-            <div class="video-container" id="video-wrapper">
-              ${this.currentLesson ? this.renderVideoPlayer() : `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:40px; text-align:center; color:var(--text-muted);">
-                  <i data-lucide="video" style="width:48px; height:48px; color:var(--primary); margin-bottom:16px;"></i>
-                  <h3 style="color:var(--text-main); font-weight:700; margin-bottom:8px;">${t("course.onlineSessionsTitle")}</h3>
-                  <p style="font-size:0.85rem; max-width:400px; line-height:1.5;">${t("course.noLessonsSub")}</p>
-                </div>
-              `}
+              <h1 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">${this.course?.title || ''}</h1>
             </div>
 
-            <div class="player-details-card">
-              <div class="player-details-header">
-                <h1 class="player-course-title">${this.course?.title || ''}</h1>
-                <h3 class="player-lesson-title" id="active-lesson-heading">${this.currentLesson ? this.currentLesson.title : t("course.onlineSessionsTitle")}</h3>
+            <!-- Progress Meter Pill -->
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                <span style="font-size:0.78rem; font-weight:800; color:var(--text-main);">${completedCount} من ${totalLessonsCount} درس مكتمل</span>
+                <span style="font-size:0.72rem; color:var(--text-muted);">${completionPercentage}% إنجاز</span>
+              </div>
+              <div style="width:70px; height:8px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden;">
+                <div style="width:${completionPercentage}%; height:100%; background:linear-gradient(90deg, var(--primary), #10b981); border-radius:10px;"></div>
+              </div>
+            </div>
+          </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; color:var(--text-muted); font-size:0.85rem; margin-top:8px;">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <img src="${this.course?.teacher?.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher"}" alt="Avatar" class="teacher-avatar">
-                    <span>${t("course.instructedBy")} <strong>${this.course?.teacher?.name || t("course.instructor")}</strong></span>
+          <!-- 2. Main Studio Grid Layout (Video Left + Curriculum Right) -->
+          <div class="course-studio-grid" style="display:grid; grid-template-columns: 1fr 380px; gap:24px; align-items:start;">
+            
+            <!-- Left: Video Player, Action Bar & Tabbed Panes -->
+            <div class="studio-main-column" style="display:flex; flex-direction:column; gap:20px; min-width:0;">
+              
+              ${activeLiveSession ? `
+                <!-- Active Live Session Notification Banner -->
+                <div class="glass-card" style="border:1.5px solid #10b981; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.05)); padding:16px 22px; border-radius:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; box-shadow:0 8px 24px rgba(16,185,129,0.15);">
+                  <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="width:40px; height:40px; border-radius:12px; background:#10b981; color:#ffffff; display:flex; align-items:center; justify-content:center; animation:pulse 2s infinite;">
+                      <i data-lucide="video" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="session-tag live" style="font-size:0.72rem; padding:2px 8px;">بث مباشر الآن 🔴</span>
+                        <strong style="font-size:0.95rem; color:var(--text-main);">${activeLiveSession.title}</strong>
+                      </div>
+                      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">المعلم: ${this.course?.teacher?.name || ''}</div>
+                    </div>
                   </div>
-                  ${this.currentLesson ? `<span style="font-weight:600; color:var(--primary); background:rgba(99,102,241,0.08); padding:4px 12px; border-radius:20px; border:1px solid var(--primary-glow);">⏱️ ${this.currentLesson.duration} ${t("course.minsDuration")}</span>` : ""}
+                  <a href="#classroom/${activeLiveSession.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; font-size:0.85rem; padding:8px 18px; border-radius:24px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="door-open"></i> انضم إلى قاعة البث المباشر
+                  </a>
                 </div>
+              ` : ""}
+
+              <!-- Video Stage Viewport Container -->
+              <div class="video-container" id="video-wrapper" style="border-radius:22px; overflow:hidden; border:1px solid var(--border-color); box-shadow:0 14px 40px rgba(0,0,0,0.12); position:relative; aspect-ratio:16/9; background:#09090b;">
+                ${this.currentLesson ? this.renderVideoPlayer() : `
+                  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:40px; text-align:center; color:var(--text-muted);">
+                    <div style="width:64px; height:64px; border-radius:20px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                      <i data-lucide="video" style="width:32px; height:32px; color:var(--primary);"></i>
+                    </div>
+                    <h3 style="color:#ffffff; font-weight:800; font-size:1.2rem; margin-bottom:8px;">${t("course.onlineSessionsTitle")}</h3>
+                    <p style="font-size:0.88rem; max-width:420px; line-height:1.6; color:#a1a1aa;">${t("course.noLessonsSub")}</p>
+                  </div>
+                `}
               </div>
 
               <!-- Lesson Focal Action Bar -->
               ${this.currentLesson ? `
-                <div class="lesson-focal-action-bar" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:16px 20px; margin:16px 0 24px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
+                <div class="lesson-focal-action-bar glass-card" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:20px; padding:18px 22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; box-shadow:0 8px 30px rgba(0,0,0,0.04);">
+                  
                   <!-- Left: Completion & Next Lesson Buttons -->
                   <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <button class="lesson-completion-hero-btn ${isCurrentCompleted ? 'completed' : ''}" data-lesson-id="${this.currentLesson.id}" style="padding:10px 22px; border-radius:30px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all 0.25s ease; ${isCurrentCompleted ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff; box-shadow:0 6px 20px rgba(16,185,129,0.35);' : 'background:linear-gradient(135deg, #6366f1, #4f46e5); color:#fff; box-shadow:0 6px 20px rgba(99,102,241,0.35);'}">
@@ -182,9 +210,13 @@ export default class CoursePlayerView {
 
                   <!-- Right: Quick Content Shortcuts -->
                   <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    ${this.currentLesson.notes ? `
-                      <button class="focal-shortcut-btn switch-tab-shortcut" data-tab="notes" style="background:rgba(245,158,11,0.1); color:var(--accent); border:1px solid rgba(245,158,11,0.3); padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                        <i data-lucide="bookmark" style="width:14px;height:14px;"></i> ملاحظات المعلم
+                    <button class="focal-shortcut-btn switch-tab-shortcut" data-tab="private-sessions" style="background:linear-gradient(135deg, rgba(168,85,247,0.12), rgba(16,185,129,0.08)); color:#a855f7; border:1px solid rgba(168,85,247,0.3); padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="sparkles" style="width:14px;height:14px;"></i> حصة خاصة 🎯
+                    </button>
+
+                    ${(this.currentLesson.questions || []).length > 0 ? `
+                      <button class="focal-shortcut-btn switch-tab-shortcut" data-tab="quiz" style="background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.3); padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="help-circle" style="width:14px;height:14px;"></i> أسئلة الدرس (${(this.currentLesson.questions || []).length})
                       </button>
                     ` : ''}
 
@@ -194,220 +226,289 @@ export default class CoursePlayerView {
                       </button>
                     ` : ''}
 
-                    ${(this.currentLesson.questions || []).length > 0 ? `
-                      <button class="focal-shortcut-btn switch-tab-shortcut" data-tab="quiz" style="background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.3); padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                        <i data-lucide="help-circle" style="width:14px;height:14px;"></i> أسئلة الدرس (${(this.currentLesson.questions || []).length})
-                      </button>
-                    ` : ''}
+                    <button class="focal-shortcut-btn switch-tab-shortcut" data-tab="qa" style="background:var(--bg-app); color:var(--text-muted); border:1px solid var(--border-color); padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="message-square" style="width:14px;height:14px;"></i> اسأل المعلم
+                    </button>
                   </div>
                 </div>
               ` : ''}
 
-              <!-- Tabs -->
-              <div class="tabs-header">
-               
-                <button class="tab-btn ${this.activeTab === "details" ? "active" : ""}" data-tab="details">
-                  <i data-lucide="info"></i> ${t("course.tabDetails")}
-                </button>
-                <button class="tab-btn ${this.activeTab === "assignments" ? "active" : ""}" data-tab="assignments">
-                  <i data-lucide="clipboard-list"></i> 📝 الواجبات والأنشطة (${(this.courseAssignments || []).filter(a => !a.lesson || String(a.lesson.id) === String(this.currentLesson?.id)).length})
-                </button>
-                <button class="tab-btn ${this.activeTab === "activity" ? "active" : ""}" data-tab="activity">
-                  <i data-lucide="file-up"></i> 📁 الملفات والكراسات
-                </button>
-                <button class="tab-btn ${this.activeTab === "notes" ? "active" : ""}" data-tab="notes">
-                  <i data-lucide="file-text"></i> ${t("course.tabNotes")}
-                </button>
-                <button class="tab-btn ${this.activeTab === "quiz" ? "active" : ""}" data-tab="quiz">
-                  <i data-lucide="help-circle"></i> أسئلة الدرس (${(this.currentLesson?.questions || []).length})
-                </button>
-                <button class="tab-btn ${this.activeTab === "resources" ? "active" : ""}" data-tab="resources">
-                  <i data-lucide="folder-open"></i> الموارد التعليمية (${this.courseResources.length})
-                </button>
-                <button class="tab-btn ${this.activeTab === "sessions" ? "active" : ""}" data-tab="sessions">
-                  <i data-lucide="video"></i> ${t("course.tabLiveSessions")} (${this.liveSessions.length})
-                </button>
-                <button class="tab-btn ${this.activeTab === "qa" ? "active" : ""}" data-tab="qa">
-                  <i data-lucide="message-square"></i> ${t("course.tabQA")} (${(this.qaList || []).length})
-                </button>
-                <button class="tab-btn ${this.activeTab === "reviews" ? "active" : ""}" data-tab="reviews">
-                  <i data-lucide="star"></i> التقييمات والمراجعات ⭐ (${this.courseReviewsCount || 0})
-                </button>
-              </div>
-
-              <!-- Assignments Pane -->
-              <div class="tab-content-pane ${this.activeTab === "assignments" ? "active" : ""}" id="pane-assignments">
-                ${this.renderAssignmentsPane()}
-              </div>
-
-              <!-- Activity & Files Pane -->
-              <div class="tab-content-pane ${this.activeTab === "activity" ? "active" : ""}" id="pane-activity">
-                ${this.renderActivityPane()}
-              </div>
-
-              <!-- Details Pane -->
-              <div class="tab-content-pane ${this.activeTab === "details" ? "active" : ""}" id="pane-details">
-                ${this.currentLesson?.photo ? `
-                  <div style="margin-bottom:20px; background:var(--bg-card); padding:18px; border-radius:18px; border:1px solid var(--border-color); box-shadow:0 8px 30px rgba(0,0,0,0.06);">
-                    <div style="font-size:0.95rem; font-weight:800; color:var(--text-color); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                      <span style="display:flex; align-items:center; gap:8px;">
-                        <i data-lucide="image" style="color:var(--primary); width:20px; height:20px;"></i>
-                        صورة / ملخص الدرس المرفق (${this.currentLesson.title})
-                      </span>
-                      <a href="${this.currentLesson.photo}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:6px 14px; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                        <i data-lucide="external-link" style="width:14px;height:14px;"></i> تكبير وتنزيل الصورة
-                      </a>
-                    </div>
-                    <div style="border-radius:14px; overflow:hidden; border:1px solid var(--border-color); background:rgba(0,0,0,0.03); text-align:center; padding:10px;">
-                      <img src="${this.currentLesson.photo}" alt="ملخص الدرس" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:10px; cursor:pointer;" onclick="window.open('${this.currentLesson.photo}', '_blank')">
-                    </div>
-                  </div>
-                ` : ''}
-
-                ${this.currentLesson?.resourceUrl ? `
-                  <div style="margin-bottom:20px; background:rgba(99,102,241,0.06); padding:16px; border-radius:14px; border:1px solid var(--primary-glow); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                      <i data-lucide="paperclip" style="color:var(--primary); width:22px; height:22px; flex-shrink:0;"></i>
-                      <div>
-                        <strong style="font-size:0.95rem; color:var(--text-main); display:block;">${this.currentLesson.resourceTitle || 'الملف المرفق الخاص بالدرس'}</strong>
+              <!-- Tabbed Hub Section -->
+              <div class="player-details-card glass-card" style="padding:24px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
+                
+                <!-- Lesson Title & Instructor Meta -->
+                <div class="player-details-header" style="margin-bottom:20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+                    <div>
+                      <h2 class="player-lesson-title" id="active-lesson-heading" style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0 0 6px 0;">
+                        ${this.currentLesson ? this.currentLesson.title : (this.course?.title || t("course.onlineSessionsTitle"))}
+                      </h2>
+                      <div style="display:flex; align-items:center; gap:12px; font-size:0.85rem; color:var(--text-muted); flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <img src="${this.course?.teacher?.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher"}" alt="Avatar" style="width:26px; height:26px; border-radius:50%; border:1.5px solid var(--primary); object-fit:cover;">
+                          <span>المعلم: <strong style="color:var(--text-main);">${this.course?.teacher?.name || t("course.instructor")}</strong></span>
+                        </div>
+                        ${this.currentLesson?.duration ? `<span style="font-weight:700; color:var(--primary);">⏱️ المدة: ${this.currentLesson.duration} دقيقة</span>` : ''}
                       </div>
                     </div>
-                    <a href="${this.currentLesson.resourceUrl}" target="_blank" rel="noopener" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; text-decoration:none;">
-                      <i data-lucide="external-link"></i> فتح وتنزيل المورد
-                    </a>
                   </div>
-                ` : ''}
-
-                <div style="font-size:1rem; line-height:1.7; color:var(--text-main); margin-bottom:20px; white-space:pre-wrap;">
-                  ${this.currentLesson ? (this.currentLesson.description || t("course.noDescription")) : (this.course.description || t("course.noDescription"))}
                 </div>
-              </div>
 
-              <!-- Notes Pane -->
-              <div class="tab-content-pane ${this.activeTab === "notes" ? "active" : ""}" id="pane-notes">
-                ${this.currentLesson?.notes ? `
-                  <div style="margin-bottom:20px; background:rgba(245,158,11,0.08); border:1px solid var(--accent); border-radius:14px; padding:16px;">
-                    <h4 style="font-size:0.95rem; font-weight:800; color:var(--accent); margin:0 0 8px 0; display:flex; align-items:center; gap:6px;">
-                      <i data-lucide="bookmark" style="width:18px;height:18px;"></i> ملاحظات ونقاط استذكار من المعلم
+                <!-- Tabs Header -->
+                <div class="tabs-header" style="display:flex; gap:6px; border-bottom:1px solid var(--border-color); margin-bottom:22px; overflow-x:auto; padding-bottom:6px;">
+                  <button class="tab-btn ${this.activeTab === "details" ? "active" : ""}" data-tab="details">
+                    <i data-lucide="info"></i> ${t("course.tabDetails")}
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "private-sessions" ? "active" : ""}" data-tab="private-sessions" style="color:var(--primary); font-weight:800;">
+                    <i data-lucide="sparkles"></i> طلب حصة خاصة (1-on-1) 🎯
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "assignments" ? "active" : ""}" data-tab="assignments">
+                    <i data-lucide="clipboard-list"></i> الواجبات والأنشطة (${(this.courseAssignments || []).filter(a => !a.lesson || String(a.lesson.id) === String(this.currentLesson?.id)).length})
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "activity" ? "active" : ""}" data-tab="activity">
+                    <i data-lucide="file-up"></i> الملفات والكراسات
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "notes" ? "active" : ""}" data-tab="notes">
+                    <i data-lucide="file-text"></i> ${t("course.tabNotes")}
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "quiz" ? "active" : ""}" data-tab="quiz">
+                    <i data-lucide="help-circle"></i> أسئلة الدرس (${(this.currentLesson?.questions || []).length})
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "resources" ? "active" : ""}" data-tab="resources">
+                    <i data-lucide="folder-open"></i> الموارد التعليمية (${this.courseResources.length})
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "sessions" ? "active" : ""}" data-tab="sessions">
+                    <i data-lucide="video"></i> ${t("course.tabLiveSessions")} (${this.liveSessions.length})
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "qa" ? "active" : ""}" data-tab="qa">
+                    <i data-lucide="message-square"></i> ${t("course.tabQA")} (${(this.qaList || []).length})
+                  </button>
+                  <button class="tab-btn ${this.activeTab === "reviews" ? "active" : ""}" data-tab="reviews">
+                    <i data-lucide="star"></i> التقييمات ⭐ (${this.courseReviewsCount || 0})
+                  </button>
+                </div>
+
+                <!-- Private Sessions Pane -->
+                <div class="tab-content-pane ${this.activeTab === "private-sessions" ? "active" : ""}" id="pane-private-sessions">
+                  ${this.renderPrivateSessionsPane()}
+                </div>
+
+                <!-- Assignments Pane -->
+                <div class="tab-content-pane ${this.activeTab === "assignments" ? "active" : ""}" id="pane-assignments">
+                  ${this.renderAssignmentsPane()}
+                </div>
+
+                <!-- Activity & Files Pane -->
+                <div class="tab-content-pane ${this.activeTab === "activity" ? "active" : ""}" id="pane-activity">
+                  ${this.renderActivityPane()}
+                </div>
+
+                <!-- Details Pane -->
+                <div class="tab-content-pane ${this.activeTab === "details" ? "active" : ""}" id="pane-details">
+                  ${this.currentLesson?.photo ? `
+                    <div style="margin-bottom:20px; background:var(--bg-app); padding:18px; border-radius:18px; border:1px solid var(--border-color);">
+                      <div style="font-size:0.95rem; font-weight:800; color:var(--text-color); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <span style="display:flex; align-items:center; gap:8px;">
+                          <i data-lucide="image" style="color:var(--primary); width:20px; height:20px;"></i>
+                          صورة / ملخص الدرس المرفق (${this.currentLesson.title})
+                        </span>
+                        <a href="${this.currentLesson.photo}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:6px 14px; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                          <i data-lucide="external-link" style="width:14px;height:14px;"></i> تكبير وتنزيل الصورة
+                        </a>
+                      </div>
+                      <div style="border-radius:14px; overflow:hidden; border:1px solid var(--border-color); background:rgba(0,0,0,0.03); text-align:center; padding:10px;">
+                        <img src="${this.currentLesson.photo}" alt="ملخص الدرس" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:10px; cursor:pointer;" onclick="window.open('${this.currentLesson.photo}', '_blank')">
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  ${this.currentLesson?.resourceUrl ? `
+                    <div style="margin-bottom:20px; background:rgba(99,102,241,0.06); padding:16px; border-radius:14px; border:1px solid var(--primary-glow); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <i data-lucide="paperclip" style="color:var(--primary); width:22px; height:22px; flex-shrink:0;"></i>
+                        <div>
+                          <strong style="font-size:0.95rem; color:var(--text-main); display:block;">${this.currentLesson.resourceTitle || 'الملف المرفق الخاص بالدرس'}</strong>
+                        </div>
+                      </div>
+                      <a href="${this.currentLesson.resourceUrl}" target="_blank" rel="noopener" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; text-decoration:none;">
+                        <i data-lucide="external-link"></i> فتح وتنزيل المورد
+                      </a>
+                    </div>
+                  ` : ''}
+
+                  <div style="font-size:0.95rem; line-height:1.7; color:var(--text-main); margin-bottom:20px; white-space:pre-wrap;">
+                    ${this.currentLesson ? (this.currentLesson.description || t("course.noDescription")) : (this.course?.description || t("course.noDescription"))}
+                  </div>
+
+                  <!-- Private Sessions Highlight Card in Details Pane -->
+                  <div class="glass-card" style="margin-top:24px; padding:24px; border-radius:20px; background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08)); border:1.5px solid var(--border-focus); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:18px;">
+                    <div style="display:flex; align-items:center; gap:16px; flex:1; min-width:280px;">
+                      <img src="${this.course?.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:58px; height:58px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
+                      <div>
+                        <div style="font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                          <span>طلب حصة خاصة مع الأستاذ ${this.course?.teacher?.name || 'المعلم'}</span>
+                          <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.75rem;">1-on-1 مباشر</span>
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--text-muted); margin:4px 0 0 0; line-height:1.5;">
+                          هل ترغب في مراجعة مخصصة، حل تدريبات إضافية، أو الاستفسار عن نقاط صعبة؟ يمكنك طلب حجز حصة خاصة فردية مباشرة مع الأستاذ.
+                        </p>
+                      </div>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                      <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                        <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> طلب حجز حصة خاصة 🚀
+                      </a>
+                      <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:10px 18px; border-radius:30px; font-size:0.85rem; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="sparkles" style="width:16px;height:16px;"></i> باقات الحصص الشهرية
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notes Pane -->
+                <div class="tab-content-pane ${this.activeTab === "notes" ? "active" : ""}" id="pane-notes">
+                  ${this.currentLesson?.notes ? `
+                    <div style="margin-bottom:20px; background:rgba(245,158,11,0.08); border:1px solid var(--accent); border-radius:14px; padding:16px;">
+                      <h4 style="font-size:0.95rem; font-weight:800; color:var(--accent); margin:0 0 8px 0; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="bookmark" style="width:18px;height:18px;"></i> ملاحظات ونقاط استذكار من المعلم
+                      </h4>
+                      <div style="font-size:0.9rem; line-height:1.6; color:var(--text-main); white-space:pre-wrap;">${this.currentLesson.notes}</div>
+                    </div>
+                  ` : ''}
+
+                  <p style="margin-bottom: 12px; font-weight:700; font-size:0.9rem;">${t("course.notesHint")}</p>
+                  <textarea id="notes-textarea" class="form-input" style="width: 100%; height: 120px; font-family: inherit; resize: vertical; margin-bottom: 12px; padding:12px;" placeholder="${t("course.notesPlaceholder")}"></textarea>
+                  <button class="btn-primary" id="save-notes-btn" style="font-size:0.85rem; padding:8px 16px;">${t("course.saveNotes")}</button>
+                </div>
+
+                <!-- Quiz Questions Pane -->
+                <div class="tab-content-pane ${this.activeTab === "quiz" ? "active" : ""}" id="pane-quiz">
+                  ${this.renderLessonQuizSection()}
+                </div>
+
+                <!-- Online Live Sessions Pane -->
+                <div class="tab-content-pane ${this.activeTab === "sessions" ? "active" : ""}" id="pane-sessions">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                    <h4 style="font-weight:700;">${t("course.onlineSessionsTitle")}</h4>
+                    ${isTeacherOrAdmin ? `
+                      <button class="btn-primary" id="open-course-session-modal-btn" style="font-size:0.8rem; padding:8px 14px;">
+                        <i data-lucide="plus-circle"></i> ${t("teacher.planSession")}
+                      </button>
+                    ` : ""}
+                  </div>
+
+                  ${this.liveSessions.length === 0
+                    ? `<div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-app); border-radius:var(--radius-sm);">
+                          ${t("course.noLiveSessions")}
+                        </div>`
+                    : `<div style="display:flex; flex-direction:column; gap:12px;">
+                          ${this.liveSessions.map(session => this.renderSessionRow(session)).join("")}
+                        </div>`
+                  }
+                </div>
+
+                <!-- Resources Content Pane -->
+                <div class="tab-content-pane ${this.activeTab === "resources" ? "active" : ""}" id="pane-resources">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                    <h4 style="font-weight:800; font-size:1.1rem; color:var(--text-main); margin:0;">
+                      <i data-lucide="folder-open" style="width:18px;height:18px;color:var(--primary);vertical-align:middle;margin-inline-end:6px;"></i>
+                      الموارد التعليمية والملفات المرفقة بالدورة
                     </h4>
-                    <div style="font-size:0.9rem; line-height:1.6; color:var(--text-main); white-space:pre-wrap;">${this.currentLesson.notes}</div>
                   </div>
-                ` : ''}
 
-                <p style="margin-bottom: 12px; font-weight:700; font-size:0.9rem;">${t("course.notesHint")}</p>
-                <textarea id="notes-textarea" class="form-input" style="width: 100%; height: 120px; font-family: inherit; resize: vertical; margin-bottom: 12px; padding:12px;" placeholder="${t("course.notesPlaceholder")}"></textarea>
-                <button class="btn-primary" id="save-notes-btn" style="font-size:0.85rem; padding:8px 16px;">${t("course.saveNotes")}</button>
-              </div>
-
-              <!-- Quiz Questions Pane -->
-              <div class="tab-content-pane ${this.activeTab === "quiz" ? "active" : ""}" id="pane-quiz">
-                ${this.renderLessonQuizSection()}
-              </div>
-
-              <!-- Online Live Sessions Pane -->
-              <div class="tab-content-pane ${this.activeTab === "sessions" ? "active" : ""}" id="pane-sessions">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                  <h4 style="font-weight:700;">${t("course.onlineSessionsTitle")}</h4>
-                  ${isTeacherOrAdmin ? `
-                    <button class="btn-primary" id="open-course-session-modal-btn" style="font-size:0.8rem; padding:8px 14px;">
-                      <i data-lucide="plus-circle"></i> ${t("teacher.planSession")}
-                    </button>
-                  ` : ""}
+                  ${this.courseResources.length === 0 ? `
+                    <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
+                      <i data-lucide="folder-open" style="width:48px; height:48px; margin-bottom:12px; opacity:0.4;"></i>
+                      <p>لا توجد موارد مرفقة بهذه الدورة حتى الآن.</p>
+                    </div>
+                  ` : `
+                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:16px;">
+                      ${this.courseResources.map(r => this.renderResourceCardInCourse(r)).join("")}
+                    </div>
+                  `}
                 </div>
 
-                ${this.liveSessions.length === 0
-          ? `<div style="text-align:center; padding:30px; color:var(--text-muted); background:var(--bg-card); border-radius:var(--radius-sm);">
-                        ${t("course.noLiveSessions")}
-                      </div>`
-          : `<div style="display:flex; flex-direction:column; gap:12px;">
-                        ${this.liveSessions.map(session => this.renderSessionRow(session)).join("")}
-                      </div>`
-        }
-              </div>
-
-              <!-- Resources Content Pane -->
-              <div class="tab-content-pane ${this.activeTab === "resources" ? "active" : ""}" id="pane-resources">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                  <h4 style="font-weight:800; font-size:1.1rem; color:var(--text-main); margin:0;">
-                    <i data-lucide="folder-open" style="width:18px;height:18px;color:var(--primary);vertical-align:middle;margin-inline-end:6px;"></i>
-                    الموارد التعليمية والملفات المرفقة بالدورة
-                  </h4>
+                <!-- Q&A Pane -->
+                <div class="tab-content-pane ${this.activeTab === "qa" ? "active" : ""}" id="pane-qa">
+                  ${this.renderQAPane()}
                 </div>
 
-                ${this.courseResources.length === 0 ? `
-                  <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
-                    <i data-lucide="folder-open" style="width:48px; height:48px; margin-bottom:12px; opacity:0.4;"></i>
-                    <p>لا توجد موارد مرفقة بهذه الدورة حتى الآن.</p>
-                  </div>
-                ` : `
-                  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:16px;">
-                    ${this.courseResources.map(r => this.renderResourceCardInCourse(r)).join("")}
-                  </div>
-                `}
-              </div>
+                <!-- Reviews & Ratings Pane -->
+                <div class="tab-content-pane ${this.activeTab === "reviews" ? "active" : ""}" id="pane-reviews">
+                  ${this.renderReviewsPane()}
+                </div>
 
-              <!-- Q&A Pane -->
-              <div class="tab-content-pane ${this.activeTab === "qa" ? "active" : ""}" id="pane-qa">
-                ${this.renderQAPane()}
-              </div>
-
-              <!-- Reviews & Ratings Pane -->
-              <div class="tab-content-pane ${this.activeTab === "reviews" ? "active" : ""}" id="pane-reviews">
-                ${this.renderReviewsPane()}
-              </div>
-            </div>
-          </div>
-
-          <!-- Sidebar Curriculum -->
-          <div class="sidebar-curriculum" style="background:var(--bg-card); border-radius:18px; border:1px solid var(--border-color); padding:20px; box-shadow:0 8px 30px rgba(0,0,0,0.04);">
-            <div style="margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <h3 class="curriculum-title" style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                  <i data-lucide="book-open" style="color:var(--primary); width:20px; height:20px;"></i>
-                  ${t("course.curriculum")}
-                </h3>
-                <span style="font-size:0.8rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.08); padding:3px 10px; border-radius:12px; border:1px solid var(--primary-glow);">${completionPercentage}% مكتمل</span>
-              </div>
-              <div style="width:100%; height:8px; background:rgba(0,0,0,0.05); border-radius:10px; overflow:hidden; border:1px solid var(--border-color);">
-                <div style="width:${completionPercentage}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--success)); transition:width 0.4s ease;"></div>
-              </div>
-              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:6px; display:flex; justify-content:space-between;">
-                <span>تم إكمال ${completedCount} من ${totalLessonsCount} درس</span>
               </div>
             </div>
 
-            ${hasLessons ? Object.keys(chapters).map(chName => {
-          const chLessons = chapters[chName] || [];
-          const chCompleted = chLessons.filter(l => this.completedLessons.includes(l.id)).length;
-          return `
-                <div class="chapter-group" style="margin-bottom:16px;">
-                  <div class="chapter-header-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h4 class="chapter-header" style="font-size:0.9rem; font-weight:800; color:var(--text-main); margin:0;">${chName}</h4>
-                    <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">${chCompleted}/${chLessons.length}</span>
-                  </div>
+            <!-- Right Column: Sticky Curriculum & Chapters Index -->
+            <div class="sidebar-curriculum-sticky glass-card" style="position:sticky; top:88px; border-radius:24px; border:1px solid var(--border-color); padding:22px; background:var(--bg-card); box-shadow:0 8px 30px rgba(0,0,0,0.04); max-height:calc(100vh - 110px); overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- Curriculum Header -->
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="book-open" style="color:var(--primary); width:20px; height:20px;"></i>
+                    فهرس ومحتوى الدورة
+                  </h3>
+                  <span style="font-size:0.78rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.1); padding:3px 10px; border-radius:12px;">
+                    ${totalLessonsCount} درس
+                  </span>
+                </div>
 
-                  <div class="lesson-list-items" style="display:flex; flex-direction:column; gap:8px;">
-                    ${chLessons.map(lesson => {
-            const isActive = this.currentLesson && lesson.id === this.currentLesson.id;
-            const isChecked = this.completedLessons.includes(lesson.id);
-            return `
-                        <div class="lesson-item-row ${isActive ? "active" : ""} ${isChecked ? "completed" : ""}" data-lesson-id="${lesson.id}" style="padding:12px; border-radius:12px; border:1px solid ${isActive ? 'var(--primary)' : 'var(--border-color)'}; background:${isActive ? 'rgba(99,102,241,0.08)' : 'var(--bg-app)'}; cursor:pointer; transition:all 0.2s ease; ${isActive ? 'box-shadow:0 4px 16px rgba(99,102,241,0.15);' : ''}">
-                          <div class="lesson-item-left" style="display:flex; align-items:center; gap:10px; flex-grow:1;">
-                            <div class="lesson-checkbox ${isChecked ? "checked" : ""}" data-lesson-id="${lesson.id}" style="flex-shrink:0;">
-                              ${isChecked ? '<i data-lucide="check" style="width:14px;height:14px;"></i>' : ""}
-                            </div>
-                            <div class="lesson-item-title-meta" style="display:flex; flex-direction:column; gap:2px; overflow:hidden;">
-                              <span class="lesson-item-title" style="font-size:0.86rem; font-weight:${isActive ? '800' : '600'}; color:${isActive ? 'var(--primary)' : 'var(--text-main)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                ${isActive ? '▶ ' : ''}${lesson.title}
-                              </span>
-                              <div style="display:flex; align-items:center; gap:6px; font-size:0.73rem; color:var(--text-muted);">
-                                <span>⏱️ ${lesson.duration} ${t("session.mins")}</span>
-                                ${(lesson.questions || []).length > 0 ? '<span style="color:var(--success); font-weight:700;">• ❓ اختبار</span>' : ''}
-                                ${lesson.resourceUrl ? '<span style="color:var(--primary); font-weight:700;">• 📎 ملف</span>' : ''}
+                <!-- Search inside lessons -->
+                <div style="position:relative; margin-bottom:12px;">
+                  <input type="text" id="curriculum-search-input" class="form-input" placeholder="🔍 ابحث في دروس الدورة..." style="width:100%; border-radius:12px; padding:8px 12px; font-size:0.82rem; background:var(--bg-app);">
+                </div>
+
+                <!-- Overall Progress Bar -->
+                <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color);">
+                  <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; margin-bottom:6px; color:var(--text-main);">
+                    <span>مستوى التقدم الكلي</span>
+                    <span>${completionPercentage}%</span>
+                  </div>
+                  <div style="width:100%; height:7px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden;">
+                    <div style="width:${completionPercentage}%; height:100%; background:linear-gradient(90deg, var(--primary), #10b981); transition:width 0.4s ease;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Chapters & Lessons List -->
+              <div style="display:flex; flex-direction:column; gap:16px;">
+                ${hasLessons ? Object.keys(chapters).map((chName, chIdx) => {
+                  const chLessons = chapters[chName] || [];
+                  const chCompleted = chLessons.filter(l => this.completedLessons.includes(l.id)).length;
+                  return `
+                    <div class="chapter-group-modern" style="display:flex; flex-direction:column; gap:8px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-radius:10px; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.1);">
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                          <i data-lucide="folder" style="width:15px; height:15px; color:var(--primary);"></i>
+                          ${chName}
+                        </span>
+                        <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">${chCompleted}/${chLessons.length}</span>
+                      </div>
+
+                      <div class="lesson-list-items" style="display:flex; flex-direction:column; gap:6px; padding-inline-start:4px;">
+                        ${chLessons.map(lesson => {
+                          const isActive = this.currentLesson && lesson.id === this.currentLesson.id;
+                          const isChecked = this.completedLessons.includes(lesson.id);
+                          return `
+                            <div class="lesson-item-row ${isActive ? "active" : ""} ${isChecked ? "completed" : ""}" data-lesson-id="${lesson.id}" style="padding:10px 12px; border-radius:12px; border:1px solid ${isActive ? 'var(--primary)' : 'var(--border-color)'}; background:${isActive ? 'rgba(99,102,241,0.1)' : 'var(--bg-app)'}; cursor:pointer; transition:all 0.2s ease; display:flex; align-items:center; justify-content:space-between; gap:8px; ${isActive ? 'box-shadow:0 4px 14px rgba(99,102,241,0.15);' : ''}">
+                              <div style="display:flex; align-items:center; gap:10px; flex-grow:1; overflow:hidden;">
+                                <div class="lesson-checkbox ${isChecked ? "checked" : ""}" data-lesson-id="${lesson.id}" style="flex-shrink:0;">
+                                  ${isChecked ? '<i data-lucide="check" style="width:14px;height:14px;"></i>' : ""}
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden;">
+                                  <span class="lesson-item-title" style="font-size:0.85rem; font-weight:${isActive ? '800' : '600'}; color:${isActive ? 'var(--primary)' : 'var(--text-main)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${lesson.title}
+                                  </span>
+                                  <div style="display:flex; align-items:center; gap:6px; font-size:0.72rem; color:var(--text-muted);">
+                                    <span>⏱️ ${lesson.duration} د</span>
+                                    ${(lesson.questions || []).length > 0 ? '<span style="color:var(--success); font-weight:700;">• ❓ اختبار</span>' : ''}
+                                    ${lesson.resourceUrl ? '<span style="color:var(--primary); font-weight:700;">• 📎 ملف</span>' : ''}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <i data-lucide="${isActive ? 'play-circle' : 'play'}" style="width:16px;height:16px;color:${isActive ? 'var(--primary)' : 'var(--text-muted)'}; opacity:${isActive ? "1" : "0.4"}; flex-shrink:0;"></i>
                         </div>
                       `;
           }).join("")}
@@ -515,9 +616,93 @@ export default class CoursePlayerView {
     `;
   }
 
+  renderPrivateSessionsPane() {
+    const teacher = this.course?.teacher;
+    const teacherName = teacher?.name || "معلم الدورة";
+    const teacherAvatar = teacher?.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher";
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:24px;">
+        <!-- Hero Header -->
+        <div class="glass-card" style="padding:28px; border-radius:20px; background:linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.1)); border:1.5px solid var(--border-focus); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+          <div style="display:flex; align-items:center; gap:18px;">
+            <img src="${teacherAvatar}" alt="${teacherName}" style="width:68px; height:68px; border-radius:50%; border:3px solid var(--primary); object-fit:cover; box-shadow:0 4px 16px rgba(99,102,241,0.25);">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">الحصص الخاصة والاستشارات الفردية مع الأستاذ ${teacherName}</h3>
+                <span class="badge" style="background:rgba(16,185,129,0.18); color:#10b981; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px;">1-on-1 مباشر</span>
+              </div>
+              <p style="color:var(--text-muted); font-size:0.88rem; margin:6px 0 0 0; line-height:1.6;">
+                احصل على جلسة خاصة مباشرة وتفاعلية فردية لشرح الدروس المعقدة، حل نماذج الامتحانات، والإجابة على كافة استفساراتك بشكل حصري.
+              </p>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35);">
+              <i data-lucide="calendar-plus" style="width:18px;height:18px;"></i> طلب حجز حصة خاصة الآن 🚀
+            </a>
+            <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:12px 20px; border-radius:30px; font-weight:800; font-size:0.9rem; display:inline-flex; align-items:center; gap:8px;">
+              <i data-lucide="sparkles" style="width:16px;height:16px;"></i> باقات الحصص الشهرية (4, 8, 12)
+            </a>
+          </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px;">
+          <div class="glass-card" style="padding:22px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-card);">
+            <div style="width:42px; height:42px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+              <i data-lucide="video" style="width:20px; height:20px;"></i>
+            </div>
+            <h4 style="font-weight:800; font-size:1rem; margin:0 0 6px 0; color:var(--text-main);">فصل دراسي رقمي مباشر</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0; line-height:1.6;">جلسة فيديو صوت وصورة عالية الدقة مع سبورة تفاعلية ومشاركة الشاشة لشرح المنهج خطوة بخطوة.</p>
+          </div>
+
+          <div class="glass-card" style="padding:22px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-card);">
+            <div style="width:42px; height:42px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+              <i data-lucide="target" style="width:20px; height:20px;"></i>
+            </div>
+            <h4 style="font-weight:800; font-size:1rem; margin:0 0 6px 0; color:var(--text-main);">تركيز كامل على احتياجاتك</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0; line-height:1.6;">حدد الدروس أو المسائل التي تواجه فيها صعوبة ليقوم الأستاذ بإعادة صياغتها وشرحها لك خصيصاً.</p>
+          </div>
+
+          <div class="glass-card" style="padding:22px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-card);">
+            <div style="width:42px; height:42px; border-radius:12px; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+              <i data-lucide="calendar" style="width:20px; height:20px;"></i>
+            </div>
+            <h4 style="font-weight:800; font-size:1rem; margin:0 0 6px 0; color:var(--text-main);">مرونة وسهولة في المواعيد</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0; line-height:1.6;">اختر التوقيت المناسب لجدولك الدراسي الأسبوعي وقم بالتنسيق المباشر مع المعلم.</p>
+          </div>
+        </div>
+
+        <!-- How it works card -->
+        <div class="glass-card" style="padding:24px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <h4 style="font-weight:800; font-size:1.05rem; margin:0 0 16px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            <i data-lucide="help-circle" style="color:var(--primary); width:20px; height:20px;"></i>
+            كيف تطلب حصتك الخاصة في 3 خطوات بسيطة؟
+          </h4>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div style="padding:14px; background:var(--bg-app); border-radius:12px; border:1px solid var(--border-color);">
+              <div style="font-weight:800; font-size:0.9rem; color:var(--primary); margin-bottom:4px;">1️⃣ اختيار الباقة أو الطلب</div>
+              <div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">اختر باقة الحصص الشهرية أو اضغط على طلب حصة خاصة مع المعلم.</div>
+            </div>
+            <div style="padding:14px; background:var(--bg-app); border-radius:12px; border:1px solid var(--border-color);">
+              <div style="font-weight:800; font-size:0.9rem; color:var(--primary); margin-bottom:4px;">2️⃣ تحديد الموعد والموضوع</div>
+              <div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">حدد اليوم والساعة والدرس المراد مراجعته مع الأستاذ.</div>
+            </div>
+            <div style="padding:14px; background:var(--bg-app); border-radius:12px; border:1px solid var(--border-color);">
+              <div style="font-weight:800; font-size:0.9rem; color:#10b981; margin-bottom:4px;">3️⃣ حضور الجلسة المباشرة</div>
+              <div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">ادخل قاعة الفصل الافتراضي في الموعد المحدد وابدأ التعلم التفاعلي.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   renderAssignmentsPane() {
     const lessonId = this.currentLesson?.id;
-    const lessonAssignments = (this.courseAssignments || []).filter(a => 
+    const lessonAssignments = (this.courseAssignments || []).filter(a =>
       !a.lesson || String(a.lesson.id) === String(lessonId)
     );
 
@@ -545,11 +730,11 @@ export default class CoursePlayerView {
         ` : `
           <div style="display:flex; flex-direction:column; gap:20px;">
             ${lessonAssignments.map(asg => {
-              const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-              const isOverdue = new Date() > new Date(asg.dueDate);
-              const isSubmitted = !!asg.submission;
+      const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isOverdue = new Date() > new Date(asg.dueDate);
+      const isSubmitted = !!asg.submission;
 
-              return `
+      return `
                 <div style="padding:20px; border-radius:16px; background:var(--bg-app); border:1px solid ${isSubmitted ? 'rgba(16,185,129,0.35)' : 'var(--border-color)'}; transition:all 0.2s ease;">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -595,7 +780,7 @@ export default class CoursePlayerView {
                   `}
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
       </div>
@@ -611,7 +796,7 @@ export default class CoursePlayerView {
     const hasTeacherPhoto = !!this.currentLesson?.photo;
 
     // Filter assignments for this specific lesson or course-wide
-    const lessonAssignments = (this.courseAssignments || []).filter(a => 
+    const lessonAssignments = (this.courseAssignments || []).filter(a =>
       !a.lesson || String(a.lesson.id) === String(lessonId)
     );
 
@@ -633,11 +818,11 @@ export default class CoursePlayerView {
 
             <div style="display:flex; flex-direction:column; gap:16px;">
               ${lessonAssignments.map(asg => {
-                const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const isOverdue = new Date() > new Date(asg.dueDate);
-                const isSubmitted = !!asg.submission;
+      const dueDateStr = new Date(asg.dueDate).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isOverdue = new Date() > new Date(asg.dueDate);
+      const isSubmitted = !!asg.submission;
 
-                return `
+      return `
                   <div style="padding:18px; border-radius:14px; background:var(--bg-app); border:1px solid ${isSubmitted ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'};">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
                       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -675,7 +860,7 @@ export default class CoursePlayerView {
                     `}
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
           </div>
         ` : ''}
@@ -1323,6 +1508,19 @@ export default class CoursePlayerView {
         if (targetPane) targetPane.classList.add("active");
       });
     });
+
+    // Curriculum Search Filter
+    const curriculumSearch = this.container.querySelector("#curriculum-search-input");
+    if (curriculumSearch) {
+      curriculumSearch.addEventListener("input", (e) => {
+        const q = (e.target.value || "").toLowerCase().trim();
+        this.container.querySelectorAll(".lesson-item-row").forEach(row => {
+          const title = (row.querySelector(".lesson-item-title")?.innerText || "").toLowerCase();
+          row.style.display = (!q || title.includes(q)) ? "flex" : "none";
+        });
+      });
+    }
+
 
     const saveBtn = this.container.querySelector("#save-notes-btn");
     if (saveBtn) {

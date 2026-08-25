@@ -430,7 +430,7 @@ export default class StudentsView {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px;">
               <div class="form-group" style="margin:0;">
                 <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">المستوى الدراسي <span style="color:var(--error);">*</span></label>
-                ${renderEducationSelectHTML({ id: "new-student-education", selectedValue: "Bakalorya 3", required: true, style: "padding:10px 14px; font-size:0.88rem; border-radius:12px;" })}
+                ${renderEducationSelectHTML({ id: "new-student-education", selectedValue: "Entlq 3", required: true, style: "padding:10px 14px; font-size:0.88rem; border-radius:12px;" })}
               </div>
               <div class="form-group" style="margin:0;">
                 <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">تسجيله في دورة تعليمية <span style="color:var(--error);">*</span></label>

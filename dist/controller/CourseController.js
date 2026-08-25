@@ -203,7 +203,7 @@ class CourseController {
     }
     static async update(req, res) {
         const { id } = req.params;
-        const { title, description, category, degree, image, meetingLink } = req.body;
+        const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails } = req.body;
         try {
             const courseRepository = data_source_1.AppDataSource.getRepository(Course_1.Course);
             const course = await courseRepository.findOne({
@@ -228,6 +228,20 @@ class CourseController {
                 course.image = image;
             if (meetingLink !== undefined)
                 course.meetingLink = meetingLink;
+            if (price !== undefined) {
+                const numericPrice = parseFloat(price) || 0;
+                course.price = numericPrice;
+                course.isFree = numericPrice === 0 || isFree === true || isFree === "true";
+            }
+            else if (isFree !== undefined) {
+                course.isFree = isFree === true || isFree === "true";
+                if (course.isFree)
+                    course.price = 0;
+            }
+            if (currency !== undefined)
+                course.currency = currency;
+            if (paymentDetails !== undefined)
+                course.paymentDetails = paymentDetails;
             await courseRepository.save(course);
             return res.status(200).json(course);
         }

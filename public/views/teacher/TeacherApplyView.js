@@ -12,7 +12,7 @@ export default class TeacherApplyView {
         <!-- Header / Title -->
         <div style="text-align:center; margin-bottom:36px;">
           <div style="display:inline-flex; align-items:center; gap:8px; background:var(--primary-glow); border:1px solid var(--border-focus); border-radius:30px; padding:6px 18px; font-size:0.8rem; font-weight:800; color:var(--primary); text-transform:uppercase; margin-bottom:14px;">
-            <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> الانضمام لنخبة معلمي منصة باكالوريا
+            <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> الانضمام لنخبة معلمي منصة انطلق
           </div>
           <h1 style="font-size:2.2rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">طلب انضمام أستاذ جديد 👨‍🏫</h1>
           <p style="font-size:1rem; color:var(--text-muted); max-width:600px; margin:0 auto; line-height:1.6;">
@@ -57,7 +57,7 @@ export default class TeacherApplyView {
 
               <div class="form-group" style="grid-column:1/-1;">
                 <label style="font-weight:700; margin-bottom:8px; display:block;">نبذة عن منهجيتك في التدريس والخبرة الميدانية</label>
-                <textarea id="apply-bio" class="form-input" rows="4" placeholder="اكتب ملخصاً قصيراً عن منهجيتك وتجربتك في إعداد طلاب البكالوريا..." style="padding:12px 16px; resize:vertical;"></textarea>
+                <textarea id="apply-bio" class="form-input" rows="4" placeholder="اكتب ملخصاً قصيراً عن منهجيتك وتجربتك في إعداد طلاب الانطلق..." style="padding:12px 16px; resize:vertical;"></textarea>
               </div>
 
             </div>
@@ -115,7 +115,7 @@ export default class TeacherApplyView {
             </div>
             <h2 style="font-size:1.8rem; font-weight:900; margin-bottom:12px; color:var(--text-color);">تم تسليم طلبك بنجاح 🎉</h2>
             <p style="color:var(--text-muted); line-height:1.6; margin-bottom:28px;">
-              شكراً لرغبتك في الانضمام لطاقم التدريس في منصة باكالوريا. سيقوم قسم الإشراف بمراجعة بياناتك والتواصل معك عبر بريدك الإلكتروني والواتساب في أقرب وقت.
+              شكراً لرغبتك في الانضمام لطاقم التدريس في منصة انطلق. سيقوم قسم الإشراف بمراجعة بياناتك والتواصل معك عبر بريدك الإلكتروني والواتساب في أقرب وقت.
             </p>
             <a href="#landing" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
               <i data-lucide="home"></i> العودة للصفحة الرئيسية

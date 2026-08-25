@@ -229,6 +229,10 @@ export class AdminController {
         degree: c.degree,
         meetingLink: c.meetingLink,
         status: c.status,
+        price: c.price,
+        isFree: c.isFree,
+        currency: c.currency || "EGP",
+        paymentDetails: c.paymentDetails || null,
         createdAt: c.createdAt,
         teacher: c.teacher ? { id: c.teacher.id, name: c.teacher.name, avatar: c.teacher.avatar, education: c.teacher.education } : null,
         lessons: c.lessons?.map(l => ({ id: l.id, title: l.title, duration: l.duration, videoUrl: l.videoUrl })) || [],
@@ -441,10 +445,12 @@ export class AdminController {
         payment.courseEnrollment = enrollment;
       }
 
+      const { amount, receiptUrl, notes, provider } = req.body;
+
       payment.amount = amount !== undefined ? Number(amount) : (payment.amount || 0);
       payment.currency = "EGP";
       payment.status = "SUCCESS";
-      payment.provider = "manual";
+      payment.provider = provider || payment.provider || "manual";
       if (receiptUrl) payment.receiptUrl = receiptUrl;
       if (notes) payment.notes = notes;
 

@@ -117,7 +117,7 @@ export function getCleanWhatsAppNumber(phone) {
   return clean;
 }
 
-export function renderEducationSelectHTML({ id = "education-select", selectedValue = "Bakalorya 3", required = true, style = "" } = {}) {
+export function renderEducationSelectHTML({ id = "education-select", selectedValue = "Entlq 3", required = true, style = "" } = {}) {
   const isSel = (val) => String(selectedValue).toLowerCase() === String(val).toLowerCase() ? "selected" : "";
 
   const options = `
@@ -135,10 +135,10 @@ export function renderEducationSelectHTML({ id = "education-select", selectedVal
       <option value="Grade 8 (Intermediate)" ${isSel("Grade 8 (Intermediate)")}>الصف 8 متوسط (Grade 8)</option>
       <option value="Grade 9 (Intermediate)" ${isSel("Grade 9 (Intermediate)")}>الصف 9 متوسط (Grade 9 BEM)</option>
     </optgroup>
-    <optgroup label="التعليم الثانوي والباكالوريا">
-      <option value="Bakalorya 1" ${isSel("Bakalorya 1")}>بكالوريا 1 (1ث - Bakalorya 1)</option>
-      <option value="Bakalorya 2" ${isSel("Bakalorya 2")}>بكالوريا 2 (2ث - Bakalorya 2)</option>
-      <option value="Bakalorya 3" ${isSel("Bakalorya 3") || isSel("BAC") ? "selected" : ""}>بكالوريا 3 (3ث - Bakalorya 3 BAC)</option>
+    <optgroup label="التعليم الثانوي والانطلق">
+      <option value="Entlq 1" ${isSel("Entlq 1")}>انطلق 1 (1ث - Entlq 1)</option>
+      <option value="Entlq 2" ${isSel("Entlq 2")}>انطلق 2 (2ث - Entlq 2)</option>
+      <option value="Entlq 3" ${isSel("Entlq 3") || isSel("BAC") ? "selected" : ""}>انطلق 3 (3ث - Entlq 3 BAC)</option>
     </optgroup>
     <optgroup label="مستوى آخر">
       <option value="Other" ${isSel("Other")}>آخر (Other)</option>
@@ -611,7 +611,7 @@ export function updateHeader() {
         </a>
 
         <div class="user-profile-trigger">
-          <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Bakalorya"}" alt="Avatar" class="user-avatar">
+          <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq"}" alt="Avatar" class="user-avatar">
           <span class="user-profile-name" style="font-weight:700; font-size:0.88rem;">${state.user.name}</span>
           <button class="logout-btn" id="logout-button" title="${t("nav.logout") || 'تسجيل الخروج'}">
             <i data-lucide="log-out" style="width:15px; height:15px;"></i>
@@ -632,7 +632,17 @@ export function updateHeader() {
       if (confirmed) clearAuth();
     });
   } else {
-    navMenu.innerHTML = ``;
+    navMenu.innerHTML = `
+      <a href="#courses" class="nav-link" style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text-main); text-decoration:none;">
+        <i data-lucide="book-open" style="width:16px;height:16px;"></i> ${t("nav.courses") || "الدورات التعليمية"}
+      </a>
+      <a href="#about" class="nav-link" style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text-main); text-decoration:none;">
+        <i data-lucide="info" style="width:16px;height:16px;"></i> ${t("nav.about") || "عن المنصة"}
+      </a>
+      <a href="#faq" class="nav-link" style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text-main); text-decoration:none;">
+        <i data-lucide="help-circle" style="width:16px;height:16px;"></i> ${t("nav.faq") || "الأسئلة الشائعة"}
+      </a>
+    `;
     authContainer.innerHTML = `
       <a href="#login" style="color:#0056D2; font-weight:700; text-decoration:none; font-size:0.9rem; margin-inline-end:8px;">${t("nav.login") || "Log In"}</a>
       <a href="#signup" style="border:1.5px solid #0056D2; color:#0056D2; background:transparent; padding:8px 18px; border-radius:6px; font-weight:800; font-size:0.9rem; text-decoration:none; transition:all 0.2s;" onmouseenter="this.style.background='#0056D2'; this.style.color='#ffffff';" onmouseleave="this.style.background='transparent'; this.style.color='#0056D2';">${t("auth.register") || "Join for Free"}</a>
@@ -650,86 +660,78 @@ export function updateHeader() {
   };
 
   if (sidebarList) {
-    let links = `
-      <a href="#landing" class="sidebar-nav-item">
-        <i data-lucide="home"></i> ${t("nav.home")}
-      </a>
-    `;
+    let links = "";
     if (state.user) {
       if (state.user.role === "admin") {
         links += `
-          <a href="#admin-dashboard/stats" class="sidebar-nav-item" style="color:var(--primary); font-weight:700;">
-            <i data-lucide="shield"></i> لوحة تحكم المشرف
+          <a href="#admin-dashboard" class="sidebar-nav-item active" style="color:var(--primary); font-weight:800;">
+            <i data-lucide="shield"></i> ${t("nav.adminPanel")}
           </a>
-          <a href="#admin-dashboard/categories" class="sidebar-nav-item">
-            <i data-lucide="layers"></i> إدارة التصنيفات
+          <a href="#admin-dashboard/stats" class="sidebar-nav-item">
+            <i data-lucide="pie-chart"></i> الإحصائيات العامة
+          </a>
+          <a href="#admin-dashboard/users" class="sidebar-nav-item">
+            <i data-lucide="users"></i> المستخدمين والمدربين
           </a>
           <a href="#admin-dashboard/courses" class="sidebar-nav-item">
-            <i data-lucide="book-open"></i> إدارة الدورات
+            <i data-lucide="book-open"></i> إدارة الكورسات
           </a>
-          <a href="#admin-dashboard/teachers" class="sidebar-nav-item">
-            <i data-lucide="graduation-cap"></i> إدارة المعلمين
-          </a>
-          <a href="#admin-dashboard/students" class="sidebar-nav-item">
-            <i data-lucide="users"></i> إدارة الطلاب
-          </a>
-          <a href="#admin-dashboard/teacherApplications" class="sidebar-nav-item">
-            <i data-lucide="user-plus"></i> طلبات انضمام المعلمين
-          </a>
-          <a href="#admin-dashboard/members" class="sidebar-nav-item">
-            <i data-lucide="shield-check"></i> جميع الأعضاء
-          </a>
-          <a href="#admin-dashboard/reports" class="sidebar-nav-item">
-            <i data-lucide="bar-chart-3"></i> التقارير والسجلات
+          <a href="#admin-dashboard/enrollments" class="sidebar-nav-item">
+            <i data-lucide="graduation-cap"></i> طلبات تسجيل الكورسات
           </a>
           <a href="#admin-dashboard/subscriptions" class="sidebar-nav-item">
-            <i data-lucide="calendar-heart"></i> إدارة الاشتراكات
+            <i data-lucide="credit-card"></i> الاشتراكات والمدفوعات
           </a>
           <a href="#admin-dashboard/plans" class="sidebar-nav-item">
-            <i data-lucide="settings"></i> الإعدادات وخطط الباقات
+            <i data-lucide="sparkles"></i> خطط الاشتراكات
+          </a>
+          <a href="#admin-dashboard/earnings" class="sidebar-nav-item">
+            <i data-lucide="wallet"></i> أرباح المعلمين
+          </a>
+          <a href="#admin-dashboard/reports" class="sidebar-nav-item">
+            <i data-lucide="flag"></i> البلاغات والشكاوى
           </a>
         `;
       } else if (state.user.role === "teacher") {
         links += `
-          <a href="#teacher-portal" class="sidebar-nav-item">
+          <a href="#teacher-portal" class="sidebar-nav-item active">
             <i data-lucide="graduation-cap"></i> ${t("nav.teacherPortal")}
           </a>
           <a href="#courses" class="sidebar-nav-item">
             <i data-lucide="book-open"></i> ${t("nav.teacher.courses")}
           </a>
+          <a href="#students" class="sidebar-nav-item">
+            <i data-lucide="users"></i> ${t("nav.teacher.students") || "الطلاب المسجلين"}
+          </a>
+          <a href="#enrollment-requests" class="sidebar-nav-item">
+            <i data-lucide="user-check"></i> ${t("nav.teacher.requests") || "طلبات التسجيل"}
+          </a>
           <a href="#schedule" class="sidebar-nav-item">
-            <i data-lucide="calendar"></i> ${t("nav.teacher.schedule")}
+            <i data-lucide="calendar"></i> ${t("nav.schedule")}
           </a>
           <a href="#teacher-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
-            <i data-lucide="users"></i> طلابي في الحصص الخاصة
+            <i data-lucide="sparkles"></i> الحصص الخاصة والاستشارات
           </a>
           <a href="#teacher-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
-            <i data-lucide="users"></i> مجموعاتي والحصص الجماعية
+            <i data-lucide="users"></i> المجموعات والحصص الجماعية
           </a>
-          <a href="#teacher-availability" class="sidebar-nav-item" style="color:var(--primary);">
-            <i data-lucide="clock"></i> مواعيد التوفر
+          <a href="#teacher-availability" class="sidebar-nav-item">
+            <i data-lucide="clock"></i> إدارة المواعيد والأوقات
           </a>
-          <a href="#teacher-financial" class="sidebar-nav-item" style="color:#10b981; font-weight:700;">
-            <i data-lucide="wallet"></i> الأرباح والمستحقات الماليّة
+          <a href="#teacher-financial" class="sidebar-nav-item">
+            <i data-lucide="dollar-sign"></i> المحفظة والأرباح
+          </a>
+          <a href="#teacher-blogs" class="sidebar-nav-item">
+            <i data-lucide="pen-tool"></i> المقالات والمدونات
           </a>
           <a href="#assignments" class="sidebar-nav-item">
-            <i data-lucide="clipboard-list"></i> ${t("nav.teacher.assignments")}
-          </a>
-          <a href="#resources" class="sidebar-nav-item">
-            <i data-lucide="library"></i> ${t("nav.teacher.resources")}
+            <i data-lucide="clipboard-list"></i> الواجبات والأنشطة
           </a>
           <a href="#tests" class="sidebar-nav-item">
-            <i data-lucide="check-square"></i> ${t("nav.teacher.tests")}
+            <i data-lucide="check-square"></i> الاختبارات والتقييمات
           </a>
-          <a href="#enrollment-requests" class="sidebar-nav-item" style="position:relative; display:flex; align-items:center;">
-            <i data-lucide="user-check"></i> ${t("nav.teacher.requests") || "طلبات التسجيل"}
-            <span id="sidebar-pending-requests-badge" style="display:none; background:var(--error); color:#fff; font-size:0.7rem; font-weight:700; padding:2px 7px; border-radius:10px; margin-inline-start:auto; box-shadow:0 0 8px rgba(239,68,68,0.5);">0</span>
-          </a>
-          <a href="#students" class="sidebar-nav-item">
-            <i data-lucide="users"></i> ${t("nav.teacher.students")}
-          </a>
-          <a href="#teacher-blogs" class="sidebar-nav-item" style="color:#ec4899;">
-            <i data-lucide="newspaper"></i> مقالات المدونة
+          <a href="#resources" class="sidebar-nav-item">
+            <i data-lucide="library"></i> المكتبة والمذكرات
           </a>
           <a href="#settings" class="sidebar-nav-item">
             <i data-lucide="settings"></i> ${t("nav.settings")}
@@ -772,7 +774,7 @@ export function updateHeader() {
       links += `
         <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border-color);">
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-            <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Bakalorya'}" style="width:36px;height:36px;border-radius:50%;">
+            <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq'}" style="width:36px;height:36px;border-radius:50%;">
             <div>
               <div style="font-weight:700;font-size:0.9rem;">${state.user.name}</div>
               <div style="font-size:0.75rem;color:var(--text-muted);">${state.user.role.toUpperCase()}</div>
@@ -785,9 +787,26 @@ export function updateHeader() {
       `;
     } else {
       links += `
-        <a href="#landing" class="sidebar-nav-item login-btn" style="margin-top:20px; justify-content:center;">
-          <i data-lucide="log-in"></i> ${t("nav.login")}
+        <a href="#landing" class="sidebar-nav-item">
+          <i data-lucide="home"></i> الرئيسية
         </a>
+        <a href="#courses" class="sidebar-nav-item">
+          <i data-lucide="book-open"></i> ${t("nav.courses") || "الدورات التعليمية"}
+        </a>
+        <a href="#about" class="sidebar-nav-item">
+          <i data-lucide="info"></i> عن المنصة
+        </a>
+        <a href="#faq" class="sidebar-nav-item">
+          <i data-lucide="help-circle"></i> الأسئلة الشائعة
+        </a>
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
+          <a href="#signup" class="btn-primary" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="user-plus"></i> إنشاء حساب جديد
+          </a>
+          <a href="#login" class="btn-secondary" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="log-in"></i> ${t("nav.login")}
+          </a>
+        </div>
       `;
     }
     sidebarList.innerHTML = links;
@@ -1063,7 +1082,7 @@ export function showEnrollmentAcceptanceModal({
 يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والجلسات التفاعلية عبر منصتنا:
 🔗 ${window.location.origin}/#courses
 
-نتمنى لك توفيقاً وحصداً لأعلى العلامات في البكالوريا! 🌟💯`;
+نتمنى لك توفيقاً وحصداً لأعلى العلامات في الانطلق! 🌟💯`;
 
   function buildStepHTML() {
     const dots = [1,2,3].map(s =>

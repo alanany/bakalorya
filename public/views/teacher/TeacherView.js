@@ -12,7 +12,7 @@ export default class TeacherView {
     this.privateSessionFilter = "all";
     this.selectedCourseForLesson = null;
     this.assignedSubscriptions = [];
-    
+
     // New View State
     this.currentViewMode = 'dashboard';
     this.selectedSubscriptionId = null;
@@ -60,112 +60,272 @@ export default class TeacherView {
       const caps = state.user?.teacherCapabilities;
       const canAddCourse = state.user?.role === 'admin' || (Array.isArray(caps) ? caps.includes('COURSE_INSTRUCTOR') : (typeof caps === 'string' ? caps.includes('COURSE_INSTRUCTOR') : false));
 
+      const hour = new Date().getHours();
+      let timeGreeting = "أهلاً بك يا أستاذ";
+      if (hour >= 5 && hour < 12) timeGreeting = "صباح الهمة والعطاء يا أستاذ ☀️";
+      else if (hour >= 12 && hour < 17) timeGreeting = "طاب يومك بكل خير يا أستاذ 🌤️";
+      else timeGreeting = "مساء التميز والإنجاز يا أستاذ 🌙";
+
+      const teacherName = state.user?.name || "المعلم";
+      const teacherAvatar = state.user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+
       this.container.innerHTML = `
-        <div class="teacher-layout">
-          <div class="teacher-header-row">
-            <div>
-              <h2 style="font-size: 1.8rem; font-weight:800; margin-bottom: 8px;">${t("teacher.portalTitle")}</h2>
-              <p style="color:var(--text-muted)">${t("teacher.portalSubtitle").replace("{name}", state.user.name)}</p>
-            </div>
-            <div class="teacher-actions-top">
-              ${canAddCourse ? `
-                <button class="btn-primary" id="open-course-modal-btn" style="font-weight:800; gap:6px; background:var(--primary); padding:9px 18px; border-radius:10px; display:inline-flex; align-items:center;">
-                  <i data-lucide="plus-circle" style="width:16px; height:16px;"></i> إضافة دورة جديدة (طلب مراجعة) ➕
-                </button>
-              ` : ''}
-              <button class="btn-secondary" id="open-financial-hub-btn" style="border-color:#f59e0b; color:#d97706; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:800;">
-                <i data-lucide="wallet" style="width:16px; height:16px;"></i> 💰 السجل المالي والمستحقات
-              </button>
-              <button class="btn-secondary" id="open-session-modal-btn" style="border-color:var(--primary); color:var(--primary);"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>
-              <a href="#assignments" class="btn-secondary" style="border-color:#8b5cf6; color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-weight:800;"><i data-lucide="clipboard-list"></i> 📝 الواجبات والأنشطة</a>
-              <a href="#students" class="btn-primary" style="background:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-weight:800;"><i data-lucide="user-plus"></i> إضافة / إدارة الطلاب</a>
-              <a href="#teacher-blogs" class="btn-secondary" style="border-color:#ec4899; color:#ec4899; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px;"><i data-lucide="newspaper"></i> مقالات المدونة</a>
+        <div class="teacher-portal-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
+          
+          <!-- 1. Educator Studio Hero Header -->
+          <div class="glass-card hero-teacher-banner" style="position:relative; overflow:hidden; border-radius:28px; padding:32px 36px; margin-bottom:28px; background:linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(168,85,247,0.08) 50%, rgba(245,158,11,0.08) 100%); border:1.5px solid var(--border-focus); box-shadow:0 12px 36px rgba(79,70,229,0.08);">
+            
+            <!-- Ambient Glow Orbs -->
+            <div style="position:absolute; top:-30px; left:-30px; width:160px; height:160px; background:radial-gradient(circle, rgba(79,70,229,0.25) 0%, rgba(79,70,229,0) 70%); border-radius:50%; pointer-events:none;"></div>
+            <div style="position:absolute; bottom:-40px; right:-20px; width:180px; height:180px; background:radial-gradient(circle, rgba(245,158,11,0.2) 0%, rgba(245,158,11,0) 70%); border-radius:50%; pointer-events:none;"></div>
+
+            <div style="position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px;">
+              
+              <!-- Left: Teacher Info & Meta -->
+              <div style="display:flex; align-items:center; gap:20px; flex:1; min-width:280px;">
+                <div style="position:relative; flex-shrink:0;">
+                  <img src="${teacherAvatar}" alt="${teacherName}" style="width:76px; height:76px; border-radius:50%; border:3px solid var(--primary); object-fit:cover; background:var(--bg-app); box-shadow:0 8px 24px rgba(79,70,229,0.25);">
+                  <span style="position:absolute; bottom:2px; right:2px; width:16px; height:16px; background:#10b981; border:2px solid var(--bg-card); border-radius:50%;" title="متصل ومتاح للتدريس"></span>
+                </div>
+
+                <div>
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+                    <span style="font-size:0.82rem; font-weight:800; color:var(--primary); background:var(--primary-glow); padding:3px 12px; border-radius:20px; border:1px solid rgba(79,70,229,0.2); display:inline-flex; align-items:center; gap:4px;">
+                      <i data-lucide="sparkles" style="width:13px;height:13px;"></i> ${timeGreeting}
+                    </span>
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted); background:rgba(0,0,0,0.03); padding:3px 10px; border-radius:20px;">
+                      👨‍🏫 لوحة المعلم المعتمد
+                    </span>
+                  </div>
+
+                  <h1 style="font-size:clamp(1.4rem, 4vw, 1.9rem); font-weight:900; margin:0 0 6px 0; color:var(--text-main); letter-spacing:-0.5px;">
+                    مرحباً بك، <span style="background:linear-gradient(135deg, var(--primary), #9333ea); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">${teacherName}</span> 👋
+                  </h1>
+                  
+                  <p style="color:var(--text-muted); font-size:0.92rem; margin:0; line-height:1.5;">
+                    تابع دوراتك التعليمية، جدول حصص البث المباشر، وحصص الطلاب الخاصة واستحقاقاتك المالية.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Right: Quick Action Buttons & Timezone -->
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
+                ${getTimezoneBadgeHTML()}
+                
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${canAddCourse ? `
+                    <button class="btn-primary" id="open-course-modal-btn" style="padding:10px 20px; font-weight:800; font-size:0.88rem; border-radius:30px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 16px rgba(79,70,229,0.3);">
+                      <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
+                    </button>
+                  ` : ''}
+                  
+                  <button class="btn-secondary" id="open-session-modal-btn" style="padding:10px 18px; font-weight:700; font-size:0.85rem; border-radius:30px; border-color:var(--primary); color:var(--primary); background:rgba(255,255,255,0.7); display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="calendar-plus" style="width:15px;height:15px;"></i> جدولة حصة مباشرة 📅
+                  </button>
+
+                  <button class="btn-secondary" id="open-financial-hub-btn" style="padding:10px 18px; font-weight:700; font-size:0.85rem; border-radius:30px; border-color:#f59e0b; color:#d97706; background:rgba(245,158,11,0.06); display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="wallet" style="width:15px;height:15px;"></i> 💰 السجل المالي
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div class="dashboard-stats-grid" style="margin-bottom: 40px;">
-            <div class="glass-card stat-box">
-              <div class="stat-box-icon"><i data-lucide="book-open"></i></div>
+          <!-- 2. Performance & Metric Stats Grid (5 Gamified Stat Cards) -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:16px; margin-bottom:32px;">
+            
+            <!-- Stat 1: Published Courses -->
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+              <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(79,70,229,0.05)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="book-open" style="width:24px; height:24px;"></i>
+              </div>
               <div>
-                <div class="stat-box-val">${totalCourses}</div>
-                <div class="stat-box-lbl">${t("teacher.publishedCourses")}</div>
+                <div style="font-size:1.5rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                  ${totalCourses}
+                </div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
+                  الدورات المنشورة
+                </div>
               </div>
             </div>
-            <div class="glass-card stat-box">
-              <div class="stat-box-icon" style="color:var(--accent); background:var(--accent-glow);"><i data-lucide="video"></i></div>
+
+            <!-- Stat 2: Scheduled Classes -->
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+              <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05)); color:#ec4899; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="video" style="width:24px; height:24px;"></i>
+              </div>
               <div>
-                <div class="stat-box-val">${upcomingSessions}</div>
-                <div class="stat-box-lbl">${t("teacher.scheduledClasses")}</div>
+                <div style="font-size:1.5rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                  ${upcomingSessions}
+                </div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
+                  حصص مباشرة قادمة
+                </div>
               </div>
             </div>
-            <div class="glass-card stat-box">
-              <div class="stat-box-icon" style="color:var(--info); background:var(--info-glow);"><i data-lucide="users"></i></div>
+
+            <!-- Stat 3: Active Students -->
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+              <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.05)); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="users" style="width:24px; height:24px;"></i>
+              </div>
               <div>
-                <div class="stat-box-val">${activeStudentsCount}</div>
-                <div class="stat-box-lbl">${t("teacher.activeStudents")}</div>
+                <div style="font-size:1.5rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                  ${activeStudentsCount}
+                </div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
+                  الطلاب الفعالون
+                </div>
               </div>
             </div>
-            <div class="glass-card stat-box">
-              <div class="stat-box-icon" style="color:#10b981; background:rgba(16,185,129,0.1);"><i data-lucide="calendar-check"></i></div>
+
+            <!-- Stat 4: Completed Private Sessions -->
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+              <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="calendar-check" style="width:24px; height:24px;"></i>
+              </div>
               <div>
-                <div class="stat-box-val">${completedPrivate}</div>
-                <div class="stat-box-lbl">حصص خاصة مكتملة</div>
+                <div style="font-size:1.5rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                  ${completedPrivate}
+                </div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
+                  حصص خاصة مكتملة
+                </div>
               </div>
             </div>
-            <div class="glass-card stat-box" id="stat-box-earnings" style="cursor:pointer; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.03);" title="انقر لعرض تفاصيل السجل المالي والمستحقات">
-              <div class="stat-box-icon" style="color:#f59e0b; background:rgba(245,158,11,0.15);"><i data-lucide="wallet"></i></div>
-              <div>
-                <div class="stat-box-val" style="color:#b45309;">${pendingEarnings.toLocaleString()} ج.م</div>
-                <div class="stat-box-lbl" style="font-weight:800;">مستحقات معلقة (السجل المالي ↗)</div>
+
+            <!-- Stat 5: Pending Earnings -->
+            <div class="glass-card stat-card-hover" id="stat-box-earnings" style="cursor:pointer; padding:20px; border-radius:20px; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.04); display:flex; align-items:center; gap:16px;" title="انقر لعرض تفاصيل السجل المالي والمستحقات">
+              <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.08)); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="wallet" style="width:24px; height:24px;"></i>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:1.4rem; font-weight:900; color:#b45309; line-height:1.1;">
+                  ${pendingEarnings.toLocaleString()} <span style="font-size:0.85rem; font-weight:700;">ج.م</span>
+                </div>
+                <div style="font-size:0.78rem; font-weight:800; color:var(--text-main); margin-top:2px;">
+                  مستحقات معلقة ↗
+                </div>
               </div>
             </div>
+
           </div>
 
-          <!-- Private Sessions Section (Today) -->
-          <div style="margin-bottom:40px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
-              <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="user-check"></i> حصصي الخاصة اليوم</h3>
-              <button class="btn-secondary" id="view-all-private-btn" style="font-size:0.82rem; padding:7px 16px; border-color:var(--primary); color:var(--primary);">
-                <i data-lucide="list" style="width:14px;height:14px;"></i> عرض الكل
-              </button>
+          <!-- 3. Pending Enrollment Requests Radar (If requests exist) -->
+          ${this.enrollmentRequests.length > 0 ? `
+            <div class="glass-card" style="margin-bottom:32px; padding:20px 24px; border-radius:20px; background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05)); border:1.5px solid #f59e0b; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:44px; height:44px; border-radius:14px; background:#f59e0b; color:#ffffff; display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="user-plus" style="width:22px; height:22px;"></i>
+                </div>
+                <div>
+                  <h3 style="font-size:1.05rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">
+                    طلبات انضمام جديدة معلقة (${this.enrollmentRequests.length})
+                  </h3>
+                  <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
+                    يوجد طلاب في انتظار مراجعة واعتماد طلب تسجيلهم في دوراتك التعليمية.
+                  </p>
+                </div>
+              </div>
+              <a href="#enrollment-requests" class="btn-primary" style="background:#f59e0b; border:none; padding:8px 20px; font-weight:800; font-size:0.85rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="check-square"></i> مراجعة الطلبات فوراً ↗
+              </a>
             </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px;" id="today-private-sessions">
-              ${this.todaySessions.length === 0
-                ? `<div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted); grid-column:1/-1;">
-                    <i data-lucide="calendar" style="width:32px;height:32px;margin-bottom:8px;opacity:0.4;"></i>
-                    <p>لا توجد حصص خاصة مجدولة اليوم</p>
-                  </div>`
-                : this.todaySessions.map(s => this.renderPrivateSessionCard(s)).join('')
-              }
-            </div>
-          </div>
+          ` : ''}
 
+          <!-- 4. Main Two-Column Command Grid Layout -->
+          <div class="dashboard-main-grid-layout" style="display:grid; grid-template-columns: 1fr 370px; gap:28px; align-items:start;">
+            
+            <!-- Left Column: Group Live Classes -->
+            <div style="display:flex; flex-direction:column; gap:32px;">
+              
+              <!-- Section: Group Live Sessions -->
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+                  <div>
+                    <h2 style="font-size:1.25rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="video" style="width:22px; height:22px; color:#10b981;"></i>
+                      جلسات وحصص المجموعة المباشرة
+                    </h2>
+                    <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">الحصص العامة المجدولة مع مجموعات الطلاب</p>
+                  </div>
 
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn-secondary" id="open-session-modal-btn-2" style="font-size:0.8rem; padding:8px 16px; border-radius:20px; border-color:var(--primary); color:var(--primary); display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="calendar-plus"></i> جدولة حصة 📅
+                    </button>
+                    <a href="#schedule" style="font-size:0.85rem; color:var(--primary); font-weight:700; text-decoration:none; margin-inline-start:4px;">
+                      الجدول الكلي ↗
+                    </a>
+                  </div>
+                </div>
 
-          <div class="student-dashboard-layout" style="grid-template-columns: 1fr; padding:0;">
-            <!-- Live Sessions (Group) -->
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
-                <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="video"></i> جلسات المجموعة اليوم</h3>
-                <a href="#schedule" style="font-size:0.9rem; color:var(--primary); font-weight:600; display:flex; align-items:center; gap:4px;">
-                  ${t("nav.schedule")} <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
-                </a>
+                <div class="schedule-list" id="teacher-schedule-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+                  ${filteredSessions.length === 0 ? `
+                    <div class="glass-card" style="text-align:center; padding:36px 20px; color:var(--text-muted); grid-column:1/-1; border-radius:18px;">
+                      <i data-lucide="calendar" style="width:36px; height:36px; opacity:0.35; margin-bottom:8px;"></i>
+                      <div style="font-weight:700; font-size:0.9rem; color:var(--text-main); margin-bottom:2px;">لا توجد حصص جماعية مجدولة اليوم</div>
+                      <p style="font-size:0.8rem; margin:0;">يمكنك جدولة لقاء مباشر جديد في أي وقت مع طلابك.</p>
+                    </div>
+                  ` : filteredSessions.map(session => this.renderTeacherSessionCard(session)).join("")}
+                </div>
               </div>
 
-              <div class="schedule-list" id="teacher-schedule-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
-                ${
-                  filteredSessions.length === 0
-                    ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted); grid-column: 1 / -1;">
-                        ${t("teacher.noSessions")}
-                      </div>`
-                    : filteredSessions.map(session => this.renderTeacherSessionCard(session)).join("")
-                }
-              </div>
             </div>
-          </div>
+
+            <!-- Right Column: Today's Private Sessions & Toolbox -->
+            <div style="display:flex; flex-direction:column; gap:24px;">
+              
+              <!-- Today's 1-on-1 Private Sessions -->
+              <div class="glass-card" style="padding:22px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                  <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="user-check" style="width:18px; height:18px; color:#a855f7;"></i>
+                    حصصي الخاصة اليوم (${this.todaySessions.length})
+                  </h3>
+                  <button class="btn-secondary" id="view-all-private-btn" style="font-size:0.78rem; padding:5px 12px; border-radius:14px; border-color:var(--primary); color:var(--primary);">
+                    عرض الكل ↗
+                  </button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:12px;" id="today-private-sessions">
+                  ${this.todaySessions.length === 0 ? `
+                    <div style="text-align:center; padding:28px 14px; background:var(--bg-app); border-radius:16px; border:1px dashed var(--border-color); color:var(--text-muted);">
+                      <i data-lucide="calendar-check" style="width:36px; height:36px; opacity:0.35; margin-bottom:8px;"></i>
+                      <div style="font-weight:700; font-size:0.88rem; color:var(--text-main); margin-bottom:2px;">لا توجد حصص خاصة مجدولة اليوم</div>
+                      <p style="font-size:0.78rem; margin:0;">سيتم إشعارك فور قيام أي طالب بحجز حصة جديدة.</p>
+                    </div>
+                  ` : this.todaySessions.map(s => this.renderPrivateSessionCard(s)).join('')}
+                </div>
+              </div>
+
+
+              <!-- Quick Educator Toolbox -->
+              <div class="glass-card" style="padding:22px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
+                <h4 style="font-size:1rem; font-weight:800; margin:0 0 14px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="wrench" style="width:18px; height:18px; color:var(--primary);"></i>
+                  أدوات المعلم السريعة
+                </h4>
+                
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <a href="#assignments" class="btn-secondary" style="justify-content:flex-start; text-decoration:none; padding:10px 14px; font-size:0.82rem; font-weight:700; border-radius:12px; gap:8px;">
+                    <i data-lucide="clipboard-list" style="color:#8b5cf6; width:16px;height:16px;"></i> 📝 بنك الواجبات وتصحيح المهام
+                  </a>
+                  <a href="#students" class="btn-secondary" style="justify-content:flex-start; text-decoration:none; padding:10px 14px; font-size:0.82rem; font-weight:700; border-radius:12px; gap:8px;">
+                    <i data-lucide="user-plus" style="color:#10b981; width:16px;height:16px;"></i> 👥 سجل الطلاب والمجموعات
+                  </a>
+                  <a href="#teacher-blogs" class="btn-secondary" style="justify-content:flex-start; text-decoration:none; padding:10px 14px; font-size:0.82rem; font-weight:700; border-radius:12px; gap:8px;">
+                    <i data-lucide="newspaper" style="color:#ec4899; width:16px;height:16px;"></i> ✍️ نشر مقال تعليمي بالمدونة
+                  </a>
+                </div>
+              </div>
+
+            </div>
 
           </div>
         </div>
+
 
         <!-- Course Creation Modal -->
         <div class="modal-overlay" id="course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
@@ -690,8 +850,8 @@ export default class TeacherView {
     `;
   }
 
-  
-bindEvents() {
+
+  bindEvents() {
     document.querySelectorAll(".teacher-view-sub-sessions-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const subId = e.currentTarget.getAttribute("data-id");
@@ -702,14 +862,14 @@ bindEvents() {
     });
 
     document.getElementById("back-to-dashboard-btn")?.addEventListener("click", () => {
-        this.currentViewMode = 'dashboard';
-        this.selectedSubscriptionId = null;
-        this.render();
+      this.currentViewMode = 'dashboard';
+      this.selectedSubscriptionId = null;
+      this.render();
     });
 
     document.getElementById("student-sessions-status-filter")?.addEventListener("change", (e) => {
-        this.sessionsFilterStatus = e.target.value;
-        this.render();
+      this.sessionsFilterStatus = e.target.value;
+      this.render();
     });
 
     // Financial Hub Event Listeners
@@ -755,7 +915,7 @@ bindEvents() {
           try {
             const requests = await apiFetch("/teacher/enrollment-requests");
             const req = Array.isArray(requests) ? requests.find(r => r.id === id) : null;
-            
+
             showEnrollmentAcceptanceModal({
               enrollmentId: id,
               studentName: req?.student?.name || "الطالب",
@@ -829,9 +989,8 @@ bindEvents() {
 
     const courseModal = document.getElementById("course-modal");
     this.setupImageUploadEvents();
-    
-    // Open for Create
-    document.getElementById("open-course-modal-btn")?.addEventListener("click", async () => { 
+
+    const openCourseModalHandler = async () => {
       document.getElementById("create-course-form").reset();
       document.getElementById("create-course-form").removeAttribute("data-id");
       document.getElementById("course-image-url").value = "";
@@ -841,9 +1000,14 @@ bindEvents() {
       if (idleBox) idleBox.style.display = "block";
       await this.populateCategoryOptions();
       courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
-      courseModal.style.display = "flex"; 
-    });
-    
+      courseModal.style.display = "flex";
+    };
+
+    // Open for Create
+    document.getElementById("open-course-modal-btn")?.addEventListener("click", openCourseModalHandler);
+    document.getElementById("open-course-modal-btn-2")?.addEventListener("click", openCourseModalHandler);
+    document.getElementById("open-course-modal-btn-empty")?.addEventListener("click", openCourseModalHandler);
+
     document.getElementById("close-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
     document.getElementById("cancel-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
 
@@ -860,7 +1024,7 @@ bindEvents() {
           document.getElementById("course-desc").value = course.description || "";
           document.getElementById("course-image-url").value = course.image || "";
           document.getElementById("course-meeting-link").value = course.meetingLink || "";
-          
+
           const previewWrapper = document.getElementById("image-preview-wrapper");
           const previewImg = document.getElementById("course-preview-img");
           const idleBox = document.getElementById("image-upload-idle");
@@ -879,7 +1043,7 @@ bindEvents() {
         }
       });
     });
-    
+
     document.getElementById("create-course-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("course-title").value;
@@ -926,12 +1090,11 @@ bindEvents() {
         }
         courseModal.style.display = "none";
         await this.render();
-      } catch (err) {}
+      } catch (err) { }
     });
 
     const sessionModal = document.getElementById("session-modal");
-    // Open for Session Create
-    document.getElementById("open-session-modal-btn")?.addEventListener("click", () => {
+    const openSessionModalHandler = () => {
       const form = document.getElementById("create-session-form");
       form.reset();
       form.removeAttribute("data-id");
@@ -939,9 +1102,14 @@ bindEvents() {
       if (dateInput) dateInput.min = getMinSessionDateTimeISO();
       sessionModal.querySelector(".modal-title").innerText = t("teacher.scheduleSession");
       sessionModal.style.display = "flex";
-    });
+    };
+
+    // Open for Session Create
+    document.getElementById("open-session-modal-btn")?.addEventListener("click", openSessionModalHandler);
+    document.getElementById("open-session-modal-btn-2")?.addEventListener("click", openSessionModalHandler);
     document.getElementById("close-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
     document.getElementById("cancel-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
+
 
     document.querySelectorAll(".add-session-trigger").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1276,7 +1444,7 @@ bindEvents() {
           await apiFetch(`/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "live" }) });
           showToast(t("toast.sessionLive"), "success");
           await this.render();
-        } catch (err) {}
+        } catch (err) { }
       });
     });
 
@@ -1300,7 +1468,7 @@ bindEvents() {
     }
 
     let optionsHTML = `<option value="">-- اختر التصنيف المعتمد بالمنصة --</option>`;
-    
+
     if (apiCategories && apiCategories.length > 0) {
       apiCategories.forEach(cat => {
         const isSel = selectedCategory && (selectedCategory === cat.name || selectedCategory.toLowerCase() === cat.name.toLowerCase());
@@ -1764,5 +1932,5 @@ bindEvents() {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

@@ -1,5 +1,5 @@
 /**
- * WhatsApp Notification Helper Utility for Bakalorya Platform
+ * WhatsApp Notification Helper Utility for Entlq Platform
  * Handles phone formatting, link generation, and Arabic notification templates.
  */
 
@@ -51,7 +51,7 @@ export function buildRegistrationSuccessMessage(
   const roleTitle = role === "teacher" ? "معلم" : "طالب";
   return `مرحباً ${studentName}! 🎉
 
-تم تفعيل وتأكيد حسابك بنجاح كـ (${roleTitle}) في منصة **باكالوريا** للتعليم الإلكتروني 🎓.
+تم تفعيل وتأكيد حسابك بنجاح كـ (${roleTitle}) في منصة **انطلق** للتعليم الإلكتروني 🎓.
 
 يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والجلسات المباشرة:
 🔗 ${platformUrl}/#login
@@ -77,7 +77,7 @@ export function buildEnrollmentAcceptedMessage(
 يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والجلسات التفاعلية عبر الرابط:
 🔗 ${platformUrl}/#courses
 
-نتمنى لك توفيقاً وحصداً لأعلى العلامات في البكالوريا! 🌟💯`;
+نتمنى لك توفيقاً وحصداً لأعلى العلامات في الانطلق! 🌟💯`;
 }
 
 /**

@@ -59,7 +59,7 @@ export default class FAQView {
           <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,86,210,0.12); color:var(--primary); font-size:0.8rem; font-weight:800; padding:6px 18px; border-radius:30px; margin-bottom:14px;">
             <i data-lucide="help-circle" style="width:14px; height:14px;"></i> الأسئلة الشائعة والمتكررة
           </div>
-          <h1 style="font-size:2.2rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">كل ما تحتاج معرفته عن منصة بكالوريا ❓</h1>
+          <h1 style="font-size:2.2rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">كل ما تحتاج معرفته عن منصة انطلق ❓</h1>
           <p style="font-size:0.98rem; color:var(--text-muted); max-width:620px; margin:0 auto; line-height:1.6;">
             استكشف إجابات أهم الأسئلة حول طرق التسجيل، جلسات البث المباشر، أدوات المعلمين والاشتراكات.
           </p>

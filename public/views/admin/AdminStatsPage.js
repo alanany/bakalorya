@@ -119,7 +119,7 @@ export const AdminStatsPage = {
                       <!-- Description -->
                       <td style="padding:14px 16px; vertical-align:middle;">
                         <div style="font-size:0.85rem; color:var(--text-main); line-height:1.5;">
-                          ${cat.description || 'تصنيف رسمي معتمد لدروس البكالوريا'}
+                          ${cat.description || 'تصنيف رسمي معتمد لدروس الانطلق'}
                         </div>
                       </td>
 
