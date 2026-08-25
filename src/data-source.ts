@@ -46,8 +46,8 @@ export function getDataSourceOptions(): DataSourceOptions {
   const clean = (val?: string) => (val || "").trim().replace(/^["']|["']$/g, "");
 
   if (type === "mysql" || type === "postgres") {
-    let host = clean(process.env.DB_HOST) || "127.0.0.1";
-    if (host === "localhost") host = "127.0.0.1";
+    const host = clean(process.env.DB_HOST) || "localhost";
+
 
     return {
       type: type,
