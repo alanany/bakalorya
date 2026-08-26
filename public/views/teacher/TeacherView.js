@@ -1023,6 +1023,8 @@ export default class TeacherView {
           document.getElementById("course-degree").value = course.degree || "";
           document.getElementById("course-desc").value = course.description || "";
           document.getElementById("course-image-url").value = course.image || "";
+          const directUrlInput = document.getElementById("course-image-url-direct");
+          if (directUrlInput) directUrlInput.value = course.image || "";
           document.getElementById("course-meeting-link").value = course.meetingLink || "";
 
           const previewWrapper = document.getElementById("image-preview-wrapper");
@@ -1038,7 +1040,7 @@ export default class TeacherView {
           }
 
           document.getElementById("create-course-form").setAttribute("data-id", courseId);
-          courseModal.querySelector(".modal-title").innerText = "Edit Course";
+          courseModal.querySelector(".modal-title").innerText = "تعديل الدورة التعليمية";
           courseModal.style.display = "flex";
         }
       });
@@ -1053,12 +1055,12 @@ export default class TeacherView {
       if (!category) { showToast("الرجاء إدخال تصنيف الدورة.", "error"); return; }
       const degree = document.getElementById("course-degree").value;
       const description = document.getElementById("course-desc").value;
-      let image = document.getElementById("course-image-url").value;
+      let image = document.getElementById("course-image-url")?.value || document.getElementById("course-image-url-direct")?.value.trim() || "";
       const meetingLink = document.getElementById("course-meeting-link").value;
       const fileInput = document.getElementById("course-image-file");
 
-      // Handle file upload
-      if (fileInput && fileInput.files.length > 0) {
+      // Handle file upload if not uploaded yet
+      if (!image && fileInput && fileInput.files.length > 0) {
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
         try {
@@ -1071,8 +1073,6 @@ export default class TeacherView {
           if (uploadRes.ok) {
             const data = await uploadRes.json();
             image = data.url;
-          } else {
-            console.error("Upload failed with status", uploadRes.status);
           }
         } catch (err) {
           console.error("Upload failed", err);

@@ -808,9 +808,7 @@ export default class AdminView {
         const degree = freshForm.querySelector("#admin-course-degree").value;
         const teacherId = freshForm.querySelector("#admin-course-teacher-id").value;
         const description = freshForm.querySelector("#admin-course-desc").value.trim();
-        let image = freshForm.querySelector("#admin-course-image").value;
-        const directUrl = freshForm.querySelector("#admin-course-image-url-direct")?.value.trim();
-        if (directUrl) image = directUrl;
+        let image = freshForm.querySelector("#admin-course-image")?.value || freshForm.querySelector("#admin-course-image-url-direct")?.value.trim() || "";
         const meetingLink = freshForm.querySelector("#admin-course-meeting-link").value.trim();
 
         // Pricing extraction

@@ -645,9 +645,44 @@ export default class CourseManageView {
           </div>
 
           <div class="form-group" style="margin-bottom:24px;">
-            <label style="font-weight:700; margin-bottom:6px; display:block;">صورة الغلاف (رابط أو رفع ملف)</label>
-            <input type="text" id="manage-image-url" class="form-input" value="${this.course.image || ''}" placeholder="https://..." style="padding:10px 14px; margin-bottom:8px;">
-            <input type="file" id="manage-image-file" class="form-input" accept="image/*">
+            <label style="font-weight:700; font-size:0.9rem; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="display:flex; align-items:center; gap:6px;">
+                <i data-lucide="image" style="width:16px; height:16px; color:#f59e0b;"></i>
+                صورة غلاف الدورة
+              </span>
+              <button type="button" id="manage-toggle-url-btn" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.78rem; cursor:pointer;">
+                أو أدخل رابط صورة مباشرة 🔗
+              </button>
+            </label>
+
+            <div id="manage-image-dropzone" style="border:2px dashed var(--border-color); border-radius:16px; padding:20px; text-align:center; background:var(--bg-app); cursor:pointer; transition:all 0.2s ease;">
+              <input type="file" id="manage-image-file" accept="image/*" style="display:none;">
+
+              <div id="manage-image-idle" style="${this.course.image ? 'display:none;' : 'display:block;'}">
+                <button type="button" class="btn-secondary" id="manage-trigger-upload-btn" style="padding:8px 20px; border-radius:30px; font-size:0.85rem; margin:0 auto; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="upload-cloud" style="width:16px; height:16px;"></i> اختيار صورة جديدة من جهازك
+                </button>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصيغ المدعومة: JPG, PNG, WEBP</p>
+              </div>
+
+              <div id="manage-image-loading" style="display:none; padding:12px; color:var(--primary); font-weight:700; font-size:0.88rem;">
+                <i data-lucide="loader" class="spinner" style="width:20px; height:20px; display:inline-block; vertical-align:middle; margin-inline-end:6px;"></i> جاري رفع وتحديث الصورة...
+              </div>
+
+              <div id="manage-image-preview-wrapper" style="${this.course.image ? 'display:block;' : 'display:none;'} text-align:center;">
+                <div style="position:relative; display:inline-block;">
+                  <img id="manage-course-preview-img" src="${this.course.image || ''}" style="max-height:160px; max-width:100%; border-radius:14px; object-fit:cover; border:2px solid var(--primary); box-shadow:0 6px 16px rgba(0,0,0,0.12);">
+                  <button type="button" id="manage-remove-image-btn" title="حذف الصورة" style="position:absolute; top:-8px; right:-8px; background:var(--error,#ef4444); color:#fff; border:none; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.3);">✕</button>
+                </div>
+                <p style="font-size:0.78rem; color:var(--success,#10b981); font-weight:800; margin:8px 0 0 0;">✓ صورة الغلاف الحالية محددة ومحفوظة</p>
+              </div>
+            </div>
+
+            <div id="manage-url-wrapper" style="display:none; margin-top:10px;">
+              <input type="url" id="manage-image-url-direct" class="form-input" value="${this.course.image || ''}" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+            </div>
+
+            <input type="hidden" id="manage-image-url" value="${this.course.image || ''}">
           </div>
 
           <button type="submit" id="save-course-settings-btn" class="btn-primary" style="padding:12px 28px; font-weight:800;">
@@ -1407,6 +1442,96 @@ export default class CourseManageView {
 
     // --- SETTINGS EVENTS ---
     if (this.activeTab === "settings") {
+      const fileInput = document.getElementById("manage-image-file");
+      const triggerBtn = document.getElementById("manage-trigger-upload-btn");
+      const dropzone = document.getElementById("manage-image-dropzone");
+      const idleBox = document.getElementById("manage-image-idle");
+      const loadingBox = document.getElementById("manage-image-loading");
+      const previewWrapper = document.getElementById("manage-image-preview-wrapper");
+      const previewImg = document.getElementById("manage-course-preview-img");
+      const removeBtn = document.getElementById("manage-remove-image-btn");
+      const hiddenUrlInput = document.getElementById("manage-image-url");
+      const toggleUrlBtn = document.getElementById("manage-toggle-url-btn");
+      const urlWrapper = document.getElementById("manage-url-wrapper");
+      const directUrlInput = document.getElementById("manage-image-url-direct");
+
+      triggerBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput?.click();
+      });
+
+      dropzone?.addEventListener("click", (e) => {
+        if (e.target === dropzone || idleBox?.contains(e.target)) {
+          fileInput?.click();
+        }
+      });
+
+      toggleUrlBtn?.addEventListener("click", () => {
+        if (urlWrapper.style.display === "none") {
+          urlWrapper.style.display = "block";
+          toggleUrlBtn.innerText = "إلغاء أدخل الرابط ✕";
+        } else {
+          urlWrapper.style.display = "none";
+          toggleUrlBtn.innerText = "أو أدخل رابط صورة مباشرة 🔗";
+        }
+      });
+
+      directUrlInput?.addEventListener("input", (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+          hiddenUrlInput.value = val;
+          previewImg.src = val;
+          previewWrapper.style.display = "block";
+          if (idleBox) idleBox.style.display = "none";
+        }
+      });
+
+      removeBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hiddenUrlInput.value = "";
+        if (fileInput) fileInput.value = "";
+        if (directUrlInput) directUrlInput.value = "";
+        previewWrapper.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+      });
+
+      fileInput?.addEventListener("change", async () => {
+        if (!fileInput.files || fileInput.files.length === 0) return;
+        const file = fileInput.files[0];
+
+        if (idleBox) idleBox.style.display = "none";
+        if (loadingBox) loadingBox.style.display = "block";
+        if (previewWrapper) previewWrapper.style.display = "none";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+          });
+
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            hiddenUrlInput.value = data.url;
+            previewImg.src = data.url;
+            if (loadingBox) loadingBox.style.display = "none";
+            if (previewWrapper) previewWrapper.style.display = "block";
+            showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
+          } else {
+            throw new Error("Upload failed with status " + uploadRes.status);
+          }
+        } catch (err) {
+          console.error("Image upload failed", err);
+          if (loadingBox) loadingBox.style.display = "none";
+          if (idleBox) idleBox.style.display = "block";
+          showToast("تعذر رفع الصورة، الرجاء المحاولة مرة أخرى.", "error");
+        }
+      });
+
       document.getElementById("manage-course-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("save-course-settings-btn");
@@ -1419,38 +1544,17 @@ export default class CourseManageView {
           category: document.getElementById("manage-category").value,
           description: document.getElementById("manage-desc").value.trim(),
           meetingLink: document.getElementById("manage-meeting-link").value.trim(),
+          image: hiddenUrlInput?.value || document.getElementById("manage-image-url-direct")?.value.trim() || ""
         };
 
-        let image = document.getElementById("manage-image-url").value;
-        const fileInput = document.getElementById("manage-image-file");
-
-        if (fileInput && fileInput.files.length > 0) {
-          const formData = new FormData();
-          formData.append("file", fileInput.files[0]);
-          try {
-            const token = state.token || localStorage.getItem("token");
-            const uploadRes = await fetch("/api/upload", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + token },
-              body: formData
-            });
-            if (uploadRes.ok) {
-              const data = await uploadRes.json();
-              image = data.url;
-            }
-          } catch (err) {
-            console.error("Upload failed", err);
-          }
-        }
-
-        payload.image = image;
-
         try {
-          await apiFetch(`/courses/${this.courseId}`, { method: "PUT", body: JSON.stringify(payload) });
-          showToast("تم حفظ إعدادات الدورة بنجاح! ✅", "success");
+          const updatedCourse = await apiFetch(`/courses/${this.courseId}`, { method: "PUT", body: JSON.stringify(payload) });
+          this.course = updatedCourse;
+          showToast("تم حفظ إعدادات الدورة وتحديث الصورة بنجاح! ✅", "success");
           await this.render();
         } catch (err) {
           console.error(err);
+          showToast(err.message || "فشل حفظ التغييرات", "error");
           btn.disabled = false;
           btn.innerHTML = `<i data-lucide="save"></i> حفظ التغييرات`;
           if (window.lucide) window.lucide.createIcons();

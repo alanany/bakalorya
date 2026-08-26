@@ -160,7 +160,7 @@ export default class LandingView {
             <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #0056D2 0%, #2563eb 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,86,210,0.2);">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
-                  bakalorya <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
+                   <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
                 </div>
                 <h3 style="font-size:1.5rem; font-weight:900; line-height:1.3; margin-bottom:12px; color:#ffffff;">
                   احصل على وصول كلي لجميع دورات وملخصات انطلق
@@ -175,7 +175,7 @@ export default class LandingView {
             <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; color:#93c5fd; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
-                  bakalorya <span style="color:#ffffff; font-weight:500;">for teachers & schools</span>
+                   <span style="color:#ffffff; font-weight:500;">for teachers & schools</span>
                 </div>
                 <h3 style="font-size:1.5rem; font-weight:900; line-height:1.3; margin-bottom:12px; color:#ffffff;">
                   مكّن أساتذتك وطلابك من أحدث أدوات التعليم الرقمي
@@ -329,7 +329,7 @@ export default class LandingView {
         </section>
 
 
-        <!-- SECTION: WHY PEOPLE CHOOSE BAKALORYA (FEATURE ICONS GRID) -->
+        <!-- SECTION: WHY PEOPLE CHOOSE entlqEDU (FEATURE ICONS GRID) -->
         <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
           <div style="margin-bottom:24px;">
             <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
@@ -454,7 +454,7 @@ export default class LandingView {
         </section>
 
 
-        <!-- BAKALORYA CORE: REAL-TIME PLATFORM METRICS & INTERACTIVE CHART -->
+        <!-- entlqEDU CORE: REAL-TIME PLATFORM METRICS & INTERACTIVE CHART -->
         <section id="platform-analytics-section" style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:60px 24px; position:relative; overflow:hidden;">
           <div style="max-width:1280px; margin:0 auto; position:relative; z-index:2;">
             
@@ -507,54 +507,14 @@ export default class LandingView {
 
             </div>
 
-            <!-- Dynamic Animated Chart Stage -->
-            <div class="glass-card" style="padding:28px; border-radius:24px; border:1px solid var(--border-color); background:var(--bg-app); box-shadow:0 12px 32px rgba(0,0,0,0.04);">
+           
               
-              <!-- Chart Header with tabs -->
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
-                <div>
-                  <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:800; font-size:0.82rem; margin-bottom:4px;">
-                    <i data-lucide="trending-up" style="width:16px;height:16px;"></i> إحصائيات ونشاط المنصة الحي
-                  </div>
-                  <h3 style="font-size:1.3rem; font-weight:900; margin:0; color:var(--text-color);">
-                    مؤشرات النمو والتفاعل الأكاديمي 📊
-                  </h3>
-                </div>
 
-                <!-- Tab switcher buttons -->
-                <div style="display:flex; background:var(--bg-card); padding:4px; border-radius:14px; border:1px solid var(--border-color); gap:4px; flex-wrap:wrap;">
-                  <button type="button" id="chart-tab-growth" class="chart-tab-btn active" data-chart-type="growth" style="padding:8px 14px; border-radius:10px; border:none; background:var(--primary); color:#ffffff; font-weight:800; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
-                    <i data-lucide="activity" style="width:14px;height:14px;"></i> نشاط الطلاب والجلسات
-                  </button>
-                  <button type="button" id="chart-tab-distribution" class="chart-tab-btn" data-chart-type="distribution" style="padding:8px 14px; border-radius:10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
-                    <i data-lucide="pie-chart" style="width:14px;height:14px;"></i> توزيع المواد والتخصصات
-                  </button>
-                  <button type="button" id="chart-tab-engagement" class="chart-tab-btn" data-chart-type="engagement" style="padding:8px 14px; border-radius:10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
-                    <i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i> معدل إنجاز الدروس
-                  </button>
-                </div>
-              </div>
+               
 
-              <!-- Canvas Container -->
-              <div style="position:relative; height:300px; width:100%;" id="chart-canvas-wrapper">
-                <canvas id="landing-live-chart"></canvas>
-              </div>
+             
 
-              <!-- Highlights Bottom Strip -->
-              <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:16px; margin-top:20px; padding-top:18px; border-top:1px solid var(--border-color); font-size:0.82rem; font-weight:700; color:var(--text-muted);">
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span style="width:10px; height:10px; border-radius:50%; background:#6366f1; display:inline-block;"></span>
-                  <span>متوسط تقييم المعلمين: <strong style="color:var(--text-color);">4.95 / 5 ⭐</strong></span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span style="width:10px; height:10px; border-radius:50%; background:#06b6d4; display:inline-block;"></span>
-                  <span>إجمالي الحصص المسجلة: <strong style="color:var(--text-color);" id="chart-stat-sessions">+0 حصة</strong></span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span style="width:10px; height:10px; border-radius:50%; background:#10b981; display:inline-block;"></span>
-                  <span>معدل إتمام المقررات: <strong style="color:var(--text-color);">96.4% 🚀</strong></span>
-                </div>
-              </div>
+              
 
             </div>
 
@@ -677,7 +637,7 @@ export default class LandingView {
               <div>
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">الدعم والتواصل</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:12px; font-size:0.85rem;">
-                  <li style="display:flex; align-items:center; gap:8px;"><i data-lucide="mail" style="color:var(--primary); width:16px; height:16px;"></i> support@bakalorya.com</li>
+                  <li style="display:flex; align-items:center; gap:8px;"><i data-lucide="mail" style="color:var(--primary); width:16px; height:16px;"></i> support@entlqedu.com</li>
                   <li style="display:flex; align-items:center; gap:8px;"><i data-lucide="phone" style="color:var(--primary); width:16px; height:16px;"></i> +213 555 123 456</li>
                 </ul>
               </div>
@@ -1256,7 +1216,7 @@ export default class LandingView {
               padding: 12,
               cornerRadius: 12,
               callbacks: {
-                label: function(context) {
+                label: function (context) {
                   const total = context.dataset.data.reduce((a, b) => a + b, 0);
                   const val = context.parsed;
                   const pct = Math.round((val / total) * 100);

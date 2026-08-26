@@ -65,7 +65,7 @@ export default class CourseLandingView {
         <div style="background:var(--bg-color); min-height:100vh;">
           
           <!-- Top Cover (Slider / Hero) -->
-          <div style="position: relative; width: 100%; min-height: 340px; background-image: url('${this.course.image}'); background-size: cover; background-position: center; padding: 40px 16px;">
+          <div style="position: relative; width: 100%; min-height: 340px; background-image: url('${this.course.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200'}'); background-size: cover; background-position: center; padding: 40px 16px;">
             <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 100%); display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding: 24px 16px;">
               <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; justify-content:center;">
                 <span style="background: var(--primary); color: white; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800; text-transform: uppercase;">
