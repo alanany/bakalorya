@@ -133,16 +133,7 @@ export default class TeacherDetailsView {
                 <a href="#student-private-sessions" class="btn-primary" style="text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg, #a855f7, #6366f1); border:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(168,85,247,0.3);">
                   <i data-lucide="sparkles"></i> طلب حصة خاصة (1-on-1) 🎯
                 </a>
-                ${tProfile.meetingLink ? `
-                  <a href="${tProfile.meetingLink}" target="_blank" class="btn-secondary" style="text-decoration:none; padding:10px 20px; border-radius:30px; font-size:0.88rem; display:inline-flex; align-items:center; gap:8px;">
-                    <i data-lucide="video"></i> قاعة البث المباشر
-                  </a>
-                ` : ''}
-                ${rawPhone ? `
-                  <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="text-decoration:none; padding:10px 20px; border-radius:30px; font-size:0.88rem; color:var(--success); border-color:var(--success); display:inline-flex; align-items:center; gap:8px;">
-                    <i data-lucide="message-circle"></i> تواصل عبر WhatsApp
-                  </a>
-                ` : ''}
+              
               </div>
 
             </div>
@@ -348,5 +339,5 @@ export default class TeacherDetailsView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

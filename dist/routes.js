@@ -66,6 +66,8 @@ router.post("/auth/register", AuthController_1.AuthController.register);
 router.post("/auth/login", AuthController_1.AuthController.login);
 router.get("/auth/me", auth_1.authMiddleware, AuthController_1.AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController_1.AdminTeacherController.acceptInvitation);
+// Public Platform Stats & Analytics
+router.get("/public/stats", AdminController_1.AdminController.getPublicStats);
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController_1.CourseController.getAll);
 router.get("/courses/:id", CourseController_1.CourseController.getOne);
@@ -97,6 +99,7 @@ router.patch("/admin/subscriptions/:id/assign-teacher", auth_1.authMiddleware, (
 router.patch("/admin/subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.approveSubscription);
 router.patch("/admin/subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.rejectSubscription);
 router.patch("/admin/subscriptions/:id/renew", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.renewSubscription);
+router.patch("/subscriptions/:id/cancel", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.cancelSubscription);
 router.delete("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.markAsPaid);
 // Teacher Availability (Session Teacher capability enforced)

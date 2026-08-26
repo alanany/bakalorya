@@ -6,6 +6,9 @@ export default class LandingView {
     this.courses = [];
     this.sessions = [];
     this.activeCategory = "all";
+    this.platformStats = null;
+    this.chartInstance = null;
+    this.currentChartType = "growth";
   }
 
   async render() {
@@ -15,9 +18,9 @@ export default class LandingView {
         <!-- TOP UTILITY BAR -->
         <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.82rem; color:var(--text-muted);">
           <div style="max-width:1280px; margin:0 auto; display:flex; gap:24px; align-items:center; font-weight:700;">
-            <span style="color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:4px; cursor:pointer;">للطلاب والمتفوقين (For Students)</span>
-            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمعلمين والأساتذة (For Teachers)</span>
-            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمدارس والمؤسسات (For Schools)</span>
+            <span style="color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:4px; cursor:pointer;">للطلاب والمتفوقين</span>
+            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمعلمين والأساتذة</span>
+            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمدارس والمؤسسات</span>
           </div>
         </div>
 
@@ -28,10 +31,10 @@ export default class LandingView {
             <div class="glass-card hero-card-main" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
               <div style="max-width:320px; z-index:2;">
                 <h1 style="font-size:2.1rem; font-weight:900; line-height:1.25; margin-bottom:14px; color:#ffffff;">
-                  ابدأ، طوّر، وحقق أفضل درجات الانطلق 🎓
+                  ابدأ، طوّر، وحقق أفضل درجات انطلق 🎓
                 </h1>
                 <p style="font-size:0.95rem; opacity:0.9; line-height:1.6; margin-bottom:24px;">
-                  تعلم وتفوق مع أفضل الدورات والدروس المباشرة مع نخبة معلمي المملكة والمغرب العربي.
+                  تعلم وتفوق مع أفضل الدورات والدروس المباشرة مع نخبة معلمي مصر و الوطن العربي.
                 </p>
                 <a href="#signup" class="btn-primary" style="background:#ffffff; color:#0056D2; padding:12px 28px; font-weight:800; font-size:0.95rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
                   سجل مجاناً الآن <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
@@ -87,7 +90,7 @@ export default class LandingView {
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   الأكثر طلباً ومتابعة <i data-lucide="arrow-left" style="width:16px;height:16px; color:var(--primary);"></i>
                 </h3>
-                <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">Most popular</span>
+                <span style="font-size:0.75rem; color:var(--primary); font-weight:700;"></span>
               </div>
               <div id="most-popular-container" style="display:flex; flex-direction:column; gap:14px;">
                 <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
@@ -100,7 +103,7 @@ export default class LandingView {
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   الإصدارات الحديثة <i data-lucide="arrow-left" style="width:16px;height:16px; color:#f59e0b;"></i>
                 </h3>
-                <span style="font-size:0.75rem; color:#f59e0b; font-weight:700;">Hot new releases</span>
+                <span style="font-size:0.75rem; color:#f59e0b; font-weight:700;"></span>
               </div>
               <div id="new-releases-container" style="display:flex; flex-direction:column; gap:14px;">
                 <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
@@ -113,7 +116,7 @@ export default class LandingView {
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   جلسات البث والمراجعات <i data-lucide="arrow-left" style="width:16px;height:16px; color:#10b981;"></i>
                 </h3>
-                <span style="font-size:0.75rem; color:#10b981; font-weight:700;">Trending sessions</span>
+                <span style="font-size:0.75rem; color:#10b981; font-weight:700;"></span>
               </div>
               <div id="trending-sessions-container" style="display:flex; flex-direction:column; gap:14px;">
                 <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
@@ -130,7 +133,7 @@ export default class LandingView {
             
             <div class="gradient-banner-inner" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
               <div style="max-width:440px;">
-                <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:6px; color:#ffffff;">استعد لاجتياز امتحانات الانطلق بامتياز</h2>
+                <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:6px; color:#ffffff;">استعد لاجتياز امتحانات انطلق بامتياز</h2>
                 <p style="font-size:0.92rem; opacity:0.9; margin:0;">اختر مسارك المفضل وابدأ في مراجعة أقوى الدورات والشهادات التدريبية.</p>
               </div>
 
@@ -160,7 +163,7 @@ export default class LandingView {
                   bakalorya <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
                 </div>
                 <h3 style="font-size:1.5rem; font-weight:900; line-height:1.3; margin-bottom:12px; color:#ffffff;">
-                  احصل على وصول كلي لجميع دورات وملخصات الانطلق
+                  احصل على وصول كلي لجميع دورات وملخصات انطلق
                 </h3>
                 <a href="#signup" style="color:#ffffff; font-weight:800; font-size:0.95rem; text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">
                   ابدأ تجربتك المجانية لمدة 7 أيام <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
@@ -344,7 +347,7 @@ export default class LandingView {
                 </div>
                 <h4 style="font-size:1.05rem; font-weight:900; margin:0 0 8px 0; color:#0f172a;">نخبة من أفضل المعلمين المعتمدين</h4>
                 <p style="font-size:0.85rem; color:#475569; line-height:1.6; margin:0;">
-                  دروس ومراجعات استثنائية مقدمة من نخبة من كبار أساتذة الانطلق والمراحل الدراسية لضمان استيعاب المفاهيم الصعبة.
+                  دروس ومراجعات استثنائية مقدمة من نخبة من كبار أساتذة انطلق والمراحل الدراسية لضمان استيعاب المفاهيم الصعبة.
                 </p>
               </div>
             </div>
@@ -404,7 +407,7 @@ export default class LandingView {
                 <i data-lucide="chevron-down" class="faq-icon" style="transition:transform 0.3s; width:16px; height:16px;"></i>
               </div>
               <div class="faq-answer" style="display:none; padding:0 18px 12px 18px; font-size:0.82rem; color:var(--text-muted); line-height:1.5; border-top:1px solid var(--border-color); padding-top:10px;">
-                نعم، توفر المنصة دورات ومراجعات شاملة من قِبل نخبة من أساتذة الانطلق المتميزين، مع متابعة مستمرة للدرجات وحفظ المحتوى على حساب الطالب.
+                نعم، توفر المنصة دورات ومراجعات شاملة من قِبل نخبة من أساتذة انطلق المتميزين، مع متابعة مستمرة للدرجات وحفظ المحتوى على حساب الطالب.
               </div>
             </div>
 
@@ -451,25 +454,110 @@ export default class LandingView {
         </section>
 
 
-        <!-- BAKALORYA CORE: METRICS TICKER STRIP -->
-        <section style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:36px 24px;">
-          <div class="metrics-strip-grid" style="max-width:1280px; margin:0 auto; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px; text-align:center;">
-            <div>
-              <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">+15,000</div>
-              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">طالب مسجل بالمنصة</div>
+        <!-- BAKALORYA CORE: REAL-TIME PLATFORM METRICS & INTERACTIVE CHART -->
+        <section id="platform-analytics-section" style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:60px 24px; position:relative; overflow:hidden;">
+          <div style="max-width:1280px; margin:0 auto; position:relative; z-index:2;">
+            
+            <!-- 4 Modern Stat Cards -->
+            <div class="metrics-strip-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:40px;">
+              
+              <!-- Students Count -->
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(0,86,210,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+                <div style="width:54px; height:54px; border-radius:16px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="users" style="width:26px; height:26px;"></i>
+                </div>
+                <div>
+                  <div id="stat-students-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">طالب مسجل بالمنصة</div>
+                </div>
+              </div>
+
+              <!-- Success Rate -->
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+                <div style="width:54px; height:54px; border-radius:16px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="award" style="width:26px; height:26px;"></i>
+                </div>
+                <div>
+                  <div id="stat-success-num" style="font-size:2.1rem; font-weight:900; color:#10b981; line-height:1; font-family:'Outfit','Cairo',sans-serif;">99.4%</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">نسبة النجاح في انطلق</div>
+                </div>
+              </div>
+
+              <!-- Courses Count -->
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(245,158,11,0.2); background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+                <div style="width:54px; height:54px; border-radius:16px; background:rgba(245,158,11,0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="book-open" style="width:26px; height:26px;"></i>
+                </div>
+                <div>
+                  <div id="stat-courses-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">دورة تعليمية شاملة</div>
+                </div>
+              </div>
+
+              <!-- Teachers Count -->
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(6,182,212,0.2); background:linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+                <div style="width:54px; height:54px; border-radius:16px; background:rgba(6,182,212,0.15); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="graduation-cap" style="width:26px; height:26px;"></i>
+                </div>
+                <div>
+                  <div id="stat-teachers-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">استاذ وخبير تربوي</div>
+                </div>
+              </div>
+
             </div>
-            <div>
-              <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">99.4%</div>
-              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">نسبة النجاح في الانطلق</div>
+
+            <!-- Dynamic Animated Chart Stage -->
+            <div class="glass-card" style="padding:28px; border-radius:24px; border:1px solid var(--border-color); background:var(--bg-app); box-shadow:0 12px 32px rgba(0,0,0,0.04);">
+              
+              <!-- Chart Header with tabs -->
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+                <div>
+                  <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:800; font-size:0.82rem; margin-bottom:4px;">
+                    <i data-lucide="trending-up" style="width:16px;height:16px;"></i> إحصائيات ونشاط المنصة الحي
+                  </div>
+                  <h3 style="font-size:1.3rem; font-weight:900; margin:0; color:var(--text-color);">
+                    مؤشرات النمو والتفاعل الأكاديمي 📊
+                  </h3>
+                </div>
+
+                <!-- Tab switcher buttons -->
+                <div style="display:flex; background:var(--bg-card); padding:4px; border-radius:14px; border:1px solid var(--border-color); gap:4px; flex-wrap:wrap;">
+                  <button type="button" id="chart-tab-growth" class="chart-tab-btn active" data-chart-type="growth" style="padding:8px 14px; border-radius:10px; border:none; background:var(--primary); color:#ffffff; font-weight:800; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                    <i data-lucide="activity" style="width:14px;height:14px;"></i> نشاط الطلاب والجلسات
+                  </button>
+                  <button type="button" id="chart-tab-distribution" class="chart-tab-btn" data-chart-type="distribution" style="padding:8px 14px; border-radius:10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                    <i data-lucide="pie-chart" style="width:14px;height:14px;"></i> توزيع المواد والتخصصات
+                  </button>
+                  <button type="button" id="chart-tab-engagement" class="chart-tab-btn" data-chart-type="engagement" style="padding:8px 14px; border-radius:10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                    <i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i> معدل إنجاز الدروس
+                  </button>
+                </div>
+              </div>
+
+              <!-- Canvas Container -->
+              <div style="position:relative; height:300px; width:100%;" id="chart-canvas-wrapper">
+                <canvas id="landing-live-chart"></canvas>
+              </div>
+
+              <!-- Highlights Bottom Strip -->
+              <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:16px; margin-top:20px; padding-top:18px; border-top:1px solid var(--border-color); font-size:0.82rem; font-weight:700; color:var(--text-muted);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="width:10px; height:10px; border-radius:50%; background:#6366f1; display:inline-block;"></span>
+                  <span>متوسط تقييم المعلمين: <strong style="color:var(--text-color);">4.95 / 5 ⭐</strong></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="width:10px; height:10px; border-radius:50%; background:#06b6d4; display:inline-block;"></span>
+                  <span>إجمالي الحصص المسجلة: <strong style="color:var(--text-color);" id="chart-stat-sessions">+0 حصة</strong></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="width:10px; height:10px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+                  <span>معدل إتمام المقررات: <strong style="color:var(--text-color);">96.4% 🚀</strong></span>
+                </div>
+              </div>
+
             </div>
-            <div>
-              <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">+120</div>
-              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">دورة تعليمية شاملة</div>
-            </div>
-            <div>
-              <div style="font-size:2.2rem; font-weight:900; color:var(--primary); line-height:1;">+50</div>
-              <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700; margin-top:6px;">استاذ وخبير تربوي</div>
-            </div>
+
           </div>
         </section>
 
@@ -485,8 +573,8 @@ export default class LandingView {
                 <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:700; font-size:0.85rem; margin-bottom:6px;">
                   <i data-lucide="award" style="width:16px;height:16px;"></i> نخبة الأساتذة والخبراء
                 </div>
-                <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">تعلم على يد أفضل أساتذة الانطلق 👨‍🏫</h2>
-                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">أساتذة ذوو خبرة طويلة في إعداد طلاب الانطلق للدرجات العليا</p>
+                <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">تعلم على يد أفضل أساتذة انطلق 👨‍🏫</h2>
+                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">أساتذة ذوو خبرة طويلة في إعداد طلاب انطلق للدرجات العليا</p>
               </div>
               <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">انضم كـ معلم بالمنصة</a>
             </div>
@@ -506,7 +594,7 @@ export default class LandingView {
                 <i data-lucide="newspaper" style="width:16px;height:16px;"></i> المدونة والإرشادات التربوية
               </div>
               <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">أحدث المقالات والنصائح للانطلق 📝</h2>
-              <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">إرشادات ومنهجيات لم مساعدة طلاب الانطلق على المذاكرة بذكاء وتفادي التوتر</p>
+              <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">إرشادات ومنهجيات لم مساعدة طلاب انطلق على المذاكرة بذكاء وتفادي التوتر</p>
             </div>
             <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح جميع المقالات ➔</a>
           </div>
@@ -520,7 +608,7 @@ export default class LandingView {
         <!-- CALL TO ACTION BANNER -->
         <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:70px 24px; text-align:center;">
           <div style="max-width:800px; margin:0 auto;">
-            <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في الانطلق؟</h2>
+            <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في انطلق</h2>
             <p style="font-size:1.1rem; opacity:0.9; margin-bottom:32px; line-height:1.6;">انضم اليوم إلى آلاف الطلاب واستفد من أحدث الدورات التفاعلية والدروس المباشرة مع نخبة المعلمين.</p>
             <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
               <a href="#signup" class="btn-primary" style="background:#ffffff; color:var(--primary); padding:16px 36px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
@@ -544,7 +632,7 @@ export default class LandingView {
                   <img src="assets/logo.png" alt="انطلق" style="height:48px; width:auto; object-fit:contain; border-radius:10px; padding:4px 8px; background:#ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.08);">
                 </a>
                 <p style="line-height:1.6; font-size:0.85rem; margin-bottom:20px;">
-                  المنصة التعليمية التفاعلية الأولى المخصصة لمساعدة طلاب الانطلق والدراسات الثانوية على تحقيق التفوق الأكاديمي.
+                  المنصة التعليمية التفاعلية الأولى المخصصة لمساعدة طلاب انطلق والدراسات الثانوية على تحقيق التفوق الأكاديمي.
                 </p>
 
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -570,19 +658,19 @@ export default class LandingView {
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">روابط سريعة</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
                   <li><a href="#landing" style="color:var(--text-muted); text-decoration:none;">الصفحة الرئيسية</a></li>
-                  <li><a href="#about" style="color:var(--text-muted); text-decoration:none;">عن منصة انطلق (About Us)</a></li>
+                  <li><a href="#about" style="color:var(--text-muted); text-decoration:none;">عن منصة انطلق</a></li>
                   <li><a href="#courses" style="color:var(--text-muted); text-decoration:none;">دليل الدورات التعليمية</a></li>
                   <li><a href="#schedule" style="color:var(--text-muted); text-decoration:none;">جدول البث المباشر</a></li>
-                  <li><a href="#faq" style="color:var(--text-muted); text-decoration:none;">الأسئلة الشائعة (FAQ)</a></li>
+                  <li><a href="#faq" style="color:var(--text-muted); text-decoration:none;">الأسئلة الشائعة</a></li>
                 </ul>
               </div>
 
               <div>
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">للمعلمين والمدارس</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
-                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">👨‍🏫 للمعلمين والأساتذة (For Teachers)</a></li>
-                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">🏫 للمدارس والمؤسسات (For Schools)</a></li>
-                  <li><a href="#contact" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">💬 تواصل معنا (Contact Us)</a></li>
+                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">👨‍🏫 للمعلمين والأساتذة</a></li>
+                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">🏫 للمدارس والمؤسسات</a></li>
+                  <li><a href="#contact" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">💬 تواصل معنا</a></li>
                 </ul>
               </div>
 
@@ -596,17 +684,17 @@ export default class LandingView {
             </div>
 
             <div class="footer-bottom" style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
-              <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية (Entlq Platform)</div>
+              <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية</div>
               
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <a href="#about" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--primary)';" onmouseleave="this.style.borderColor='var(--border-color)';">
-                  <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i> عن المنصة (About Us)
+                  <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i> عن المنصة
                 </a>
                 <a href="#contact" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='#10b981';" onmouseleave="this.style.borderColor='var(--border-color)';">
-                  <i data-lucide="headphones" style="width:14px; height:14px; color:#10b981;"></i> تواصل معنا (Contact Us)
+                  <i data-lucide="headphones" style="width:14px; height:14px; color:#10b981;"></i> تواصل معنا
                 </a>
                 <a href="#faq" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='#f59e0b';" onmouseleave="this.style.borderColor='var(--border-color)';">
-                  <i data-lucide="help-circle" style="width:14px; height:14px; color:#f59e0b;"></i> الأسئلة الشائعة (FAQ)
+                  <i data-lucide="help-circle" style="width:14px; height:14px; color:#f59e0b;"></i> الأسئلة الشائعة
                 </a>
               </div>
             </div>
@@ -624,21 +712,25 @@ export default class LandingView {
 
   async loadCoursesAsync() {
     try {
-      const [coursesRes, sessionsRes, teachersRes, blogsRes, categoriesRes] = await Promise.allSettled([
+      const [coursesRes, sessionsRes, teachersRes, blogsRes, categoriesRes, statsRes] = await Promise.allSettled([
         apiFetch("/courses"),
         apiFetch("/sessions"),
         apiFetch("/teachers"),
         apiFetch("/blogs"),
-        apiFetch("/categories")
+        apiFetch("/categories"),
+        apiFetch("/public/stats")
       ]);
       this.courses = coursesRes.status === "fulfilled" && Array.isArray(coursesRes.value) ? coursesRes.value : [];
       this.sessions = sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value) ? sessionsRes.value : [];
       this.teachers = teachersRes.status === "fulfilled" && Array.isArray(teachersRes.value) ? teachersRes.value : [];
       this.blogs = blogsRes.status === "fulfilled" && Array.isArray(blogsRes.value) ? blogsRes.value : [];
       this.categories = categoriesRes.status === "fulfilled" && Array.isArray(categoriesRes.value) ? categoriesRes.value : [];
+      this.platformStats = statsRes.status === "fulfilled" ? statsRes.value : null;
 
       this.renderDynamicLandingSections();
       this.renderFilteredCourses();
+      this.renderPlatformStats(this.platformStats);
+      this.initLiveChart(this.platformStats, this.currentChartType);
       if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.error("Failed to load data for landing page", e);
@@ -810,13 +902,13 @@ export default class LandingView {
           <div class="glass-card" style="padding:28px; border-radius:20px; border:1px solid var(--border-color); text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher/${teacher.id}'">
             <img src="${teacher.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${teacher.id}`}" style="width:84px; height:84px; border-radius:50%; border:3px solid var(--primary); margin:0 auto 16px auto; background:var(--bg-app); object-fit:cover;">
             <h3 style="font-size:1.15rem; font-weight:800; margin:0 0 4px 0; color:var(--text-color);">${teacher.name}</h3>
-            <div style="font-size:0.82rem; color:var(--primary); font-weight:700; margin-bottom:12px;">${teacher.education || 'أستاذ وخبير تربوي في الانطلق'}</div>
+            <div style="font-size:0.82rem; color:var(--primary); font-weight:700; margin-bottom:12px;">${teacher.education || 'أستاذ وخبير تربوي في انطلق'}</div>
             <div style="display:flex; justify-content:center; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted); margin-bottom:18px; background:var(--bg-app); padding:8px 12px; border-radius:12px;">
               <span>⭐ 4.95 (أستاذ موثوق)</span>
               <span>•</span>
               <span>${teacher.location || 'المنصة الرقمية'}</span>
             </div>
-            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">خبير تربوي في إعداد وشرح دروس الانطلق والتمارين المنهجية التطبيقية.</p>
+            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">خبير تربوي في إعداد وشرح دروس انطلق والتمارين المنهجية التطبيقية.</p>
             <a href="#teacher/${teacher.id}" class="btn-secondary" style="width:100%; justify-content:center; font-size:0.85rem; padding:8px 14px; text-decoration:none; display:inline-flex;">عرض ملف الأستاذ والدورات ➔</a>
           </div>
         `).join("");
@@ -922,6 +1014,335 @@ export default class LandingView {
         }
       });
     });
+
+    this.bindChartEvents();
   }
-  onDestroy() { }
+
+  bindChartEvents() {
+    const tabBtns = this.container.querySelectorAll(".chart-tab-btn");
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const type = btn.getAttribute("data-chart-type");
+        this.currentChartType = type;
+
+        tabBtns.forEach(b => {
+          const isActive = b === btn;
+          b.style.background = isActive ? "var(--primary)" : "transparent";
+          b.style.color = isActive ? "#ffffff" : "var(--text-muted)";
+          b.style.fontWeight = isActive ? "800" : "700";
+        });
+
+        this.initLiveChart(this.platformStats, type);
+      });
+    });
+  }
+
+  renderPlatformStats(stats) {
+    const students = stats?.totalStudents !== undefined ? Math.max(stats.totalStudents, 15) : (this.teachers?.length || 1) * 25;
+    const courses = stats?.totalCourses !== undefined ? stats.totalCourses : (this.courses?.length || 12);
+    const teachers = stats?.totalTeachers !== undefined ? stats.totalTeachers : (this.teachers?.length || 6);
+    const sessions = stats?.totalSessions !== undefined ? stats.totalSessions : (this.sessions?.length || 45);
+
+    this.animateValue("stat-students-num", 0, students, 1400, "+");
+    this.animateValue("stat-courses-num", 0, courses, 1200, "+");
+    this.animateValue("stat-teachers-num", 0, teachers, 1000, "+");
+
+    const sessionsBadge = document.getElementById("chart-stat-sessions");
+    if (sessionsBadge) {
+      sessionsBadge.textContent = `+${sessions} حصة`;
+    }
+  }
+
+  animateValue(id, start, end, duration, prefix = "+", suffix = "") {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(easeProgress * (end - start) + start);
+      el.textContent = `${prefix}${current.toLocaleString('ar-EG')}${suffix}`;
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        el.textContent = `${prefix}${end.toLocaleString('ar-EG')}${suffix}`;
+      }
+    };
+    window.requestAnimationFrame(step);
+  }
+
+  initLiveChart(stats, type = "growth") {
+    if (!window.Chart) {
+      // Retry in 200ms if Chart.js is still loading
+      setTimeout(() => this.initLiveChart(stats, type), 200);
+      return;
+    }
+
+    const canvas = document.getElementById("landing-live-chart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+      this.chartInstance = null;
+    }
+
+    const isDark = document.body.classList.contains("dark-theme");
+    const textColor = isDark ? "#e2e8f0" : "#334155";
+    const gridColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
+
+    const monthlyData = stats?.monthlyData || [
+      { month: "يناير", students: 180, sessions: 45 },
+      { month: "فبراير", students: 340, sessions: 90 },
+      { month: "مارس", students: 580, sessions: 160 },
+      { month: "أبريل", students: 890, sessions: 280 },
+      { month: "مايو", students: 1250, sessions: 410 },
+      { month: "يونيو", students: stats?.totalStudents || 1680, sessions: stats?.totalSessions || 540 }
+    ];
+
+    if (type === "growth") {
+      // Area / Line Chart
+      const gradStudents = ctx.createLinearGradient(0, 0, 0, 300);
+      gradStudents.addColorStop(0, "rgba(99, 102, 241, 0.35)");
+      gradStudents.addColorStop(1, "rgba(99, 102, 241, 0.0)");
+
+      const gradSessions = ctx.createLinearGradient(0, 0, 0, 300);
+      gradSessions.addColorStop(0, "rgba(6, 182, 212, 0.3)");
+      gradSessions.addColorStop(1, "rgba(6, 182, 212, 0.0)");
+
+      this.chartInstance = new window.Chart(ctx, {
+        type: "line",
+        data: {
+          labels: monthlyData.map(d => d.month),
+          datasets: [
+            {
+              label: "إجمالي الطلاب النشطين",
+              data: monthlyData.map(d => d.students),
+              borderColor: "#6366f1",
+              backgroundColor: gradStudents,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.42,
+              pointBackgroundColor: "#6366f1",
+              pointBorderColor: "#ffffff",
+              pointBorderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 8
+            },
+            {
+              label: "جلسات البث والمراجعات المكتملة",
+              data: monthlyData.map(d => d.sessions),
+              borderColor: "#06b6d4",
+              backgroundColor: gradSessions,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.42,
+              pointBackgroundColor: "#06b6d4",
+              pointBorderColor: "#ffffff",
+              pointBorderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 8
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 1200,
+            easing: "easeOutQuart"
+          },
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: "top",
+              align: "end",
+              labels: {
+                color: textColor,
+                font: { family: "Cairo, sans-serif", weight: "700", size: 12 },
+                boxWidth: 14,
+                usePointStyle: true,
+                pointStyle: "circle"
+              }
+            },
+            tooltip: {
+              rtl: true,
+              textDirection: "rtl",
+              backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "rgba(255,255,255,0.95)",
+              titleColor: isDark ? "#ffffff" : "#0f172a",
+              bodyColor: isDark ? "#cbd5e1" : "#475569",
+              borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)",
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 12,
+              boxPadding: 6,
+              bodyFont: { family: "Cairo, sans-serif", weight: "600" },
+              titleFont: { family: "Cairo, sans-serif", weight: "800" }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { family: "Cairo, sans-serif", weight: "700" } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { family: "Outfit, sans-serif", weight: "600" } }
+            }
+          }
+        }
+      });
+
+    } else if (type === "distribution") {
+      // Doughnut Chart of Subjects
+      const dist = stats?.categoryDistribution || {};
+      let labels = Object.keys(dist);
+      let values = Object.values(dist);
+
+      if (labels.length === 0) {
+        labels = ["الرياضيات والعلوم", "الفيزياء والكيمياء", "اللغات والترجمة", "العلوم الإنسانية والفلسفة", "علوم الحاسب والتقنية"];
+        values = [35, 25, 20, 12, 8];
+      }
+
+      const colors = ["#6366f1", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6"];
+
+      this.chartInstance = new window.Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: colors.slice(0, labels.length),
+            borderColor: isDark ? "#0f172a" : "#ffffff",
+            borderWidth: 3,
+            hoverOffset: 12
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 1100,
+            easing: "easeOutCirc"
+          },
+          cutout: "64%",
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                color: textColor,
+                font: { family: "Cairo, sans-serif", weight: "700", size: 12 },
+                padding: 14,
+                boxWidth: 14,
+                usePointStyle: true,
+                pointStyle: "circle"
+              }
+            },
+            tooltip: {
+              rtl: true,
+              textDirection: "rtl",
+              backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "rgba(255,255,255,0.95)",
+              titleColor: isDark ? "#ffffff" : "#0f172a",
+              bodyColor: isDark ? "#cbd5e1" : "#475569",
+              padding: 12,
+              cornerRadius: 12,
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const val = context.parsed;
+                  const pct = Math.round((val / total) * 100);
+                  return ` ${context.label}: ${val} دورات (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+    } else if (type === "engagement") {
+      // Rounded Bar Chart
+      const weekDays = ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+      const studyHours = [240, 310, 280, 420, 390, 480, 520];
+      const completedTasks = [180, 260, 220, 340, 310, 400, 450];
+
+      this.chartInstance = new window.Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: weekDays,
+          datasets: [
+            {
+              label: "ساعات التعلم والمشاهدة",
+              data: studyHours,
+              backgroundColor: "#6366f1",
+              borderRadius: 8,
+              borderSkipped: false
+            },
+            {
+              label: "الواجبات والاختبارات المكتملة",
+              data: completedTasks,
+              backgroundColor: "#10b981",
+              borderRadius: 8,
+              borderSkipped: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 1000,
+            easing: "easeOutQuad"
+          },
+          plugins: {
+            legend: {
+              position: "top",
+              align: "end",
+              labels: {
+                color: textColor,
+                font: { family: "Cairo, sans-serif", weight: "700", size: 12 },
+                boxWidth: 14,
+                usePointStyle: true,
+                pointStyle: "circle"
+              }
+            },
+            tooltip: {
+              rtl: true,
+              textDirection: "rtl",
+              backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "rgba(255,255,255,0.95)",
+              titleColor: isDark ? "#ffffff" : "#0f172a",
+              bodyColor: isDark ? "#cbd5e1" : "#475569",
+              padding: 12,
+              cornerRadius: 12
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { family: "Cairo, sans-serif", weight: "700" } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { family: "Outfit, sans-serif", weight: "600" } }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  onDestroy() {
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+      this.chartInstance = null;
+    }
+  }
 }

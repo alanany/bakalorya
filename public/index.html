@@ -12,8 +12,9 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <!-- Lucide Icons -->
+  <!-- Lucide Icons & Chart.js -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Global Stylesheet -->
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -44,143 +45,10 @@
       height: 80px !important;
     }
 
-    /* ── SPLASH INTRO ANIMATION ── */
-    .splash-overlay {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at center, #0f172a 0%, #080c14 100%);
-      z-index: 999999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.7s ease;
-    }
-
-    .splash-logo-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .splash-logo-img {
-      height: 260px;
-      object-fit: contain;
-      background: #ffffff;
-      border-radius: 36px;
-      padding: 30px 70px;
-      box-shadow: 0 0 120px rgba(0, 86, 210, 0.75), 0 30px 80px rgba(0, 0, 0, 0.6);
-      animation: splashLogoZoom 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    .splash-text {
-      font-family: 'Cairo', 'Outfit', sans-serif;
-      font-size: 1.6rem;
-      font-weight: 900;
-      color: #ffffff;
-      letter-spacing: 0.5px;
-      opacity: 0;
-      animation: splashTextFadeIn 0.8s ease 0.4s forwards;
-    }
-
-    .splash-loader-bar {
-      width: 200px;
-      height: 5px;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 10px;
-    }
-
-    .splash-loader-progress {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, #0056D2, #6366f1);
-      animation: splashBarFill 1.6s ease forwards;
-    }
-
-    @keyframes splashLogoZoom {
-      0% {
-        transform: scale(0.3);
-        opacity: 0;
-        filter: blur(14px);
-      }
-
-      60% {
-        transform: scale(1.25);
-        opacity: 1;
-        filter: blur(0);
-      }
-
-      100% {
-        transform: scale(1.1);
-        opacity: 1;
-      }
-    }
-
-    @keyframes splashTextFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(12px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes splashBarFill {
-      0% {
-        transform: translateX(-100%);
-      }
-
-      100% {
-        transform: translateX(0);
-      }
-    }
-
-    .splash-overlay.fade-out {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
   </style>
 </head>
 
 <body class="light-theme">
-  <!-- ── Splash Intro Screen ── -->
-  <div id="splash-overlay" class="splash-overlay">
-    <div class="splash-logo-container">
-      <img src="assets/logo.png" alt="انطلق" class="splash-logo-img">
-      <div class="splash-text">منصة انطلق للتعليم الإلكتروني 🎓</div>
-      <div class="splash-loader-bar">
-        <div class="splash-loader-progress"></div>
-      </div>
-    </div>
-  </div>
-  <script>
-    function hideSplash() {
-      setTimeout(() => {
-        const splash = document.getElementById('splash-overlay');
-        if (splash) {
-          splash.classList.add('fade-out');
-          setTimeout(() => splash.remove(), 600);
-        }
-      }, 800);
-    }
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', hideSplash);
-    } else {
-      hideSplash();
-    }
-    // Safety fallback
-    setTimeout(() => {
-      const splash = document.getElementById('splash-overlay');
-      if (splash) splash.remove();
-    }, 3000);
-  </script>
   <!-- Side Menu Overlay & Sidebar Drawer -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <aside class="app-sidebar" id="app-sidebar">
@@ -203,7 +71,7 @@
 
       <!-- Brand Logo + Toggle + Teachers Link -->
       <div class="header-left-brand" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
-        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية / Side Menu"
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية"
           style="display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
           <i data-lucide="menu" style="width:20px; height:20px;"></i>
         </button>
@@ -223,9 +91,9 @@
           style="width:100%; display:flex; align-items:center; background:var(--bg-app); border:1px solid var(--border-color); border-radius:30px; padding:4px 4px 4px 16px; transition:border-color 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);"
           id="header-search-wrapper">
           <input type="text" id="header-search-input"
-            placeholder="What do you want to learn? (ماذا تريد أن تتعلم اليوم؟)"
+            placeholder="بحث..."
             style="width:100%; border:none; background:transparent; outline:none; font-size:0.88rem; font-family:inherit; color:var(--text-color); padding-inline-start:8px;">
-          <button id="header-search-btn" title="Search"
+          <button id="header-search-btn" title="بحث"
             style="width:34px; height:34px; border-radius:50%; background:#0056D2; color:#ffffff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background 0.2s;"
             onmouseenter="this.style.background='#1e40af'" onmouseleave="this.style.background='#0056D2'">
             <i data-lucide="search" style="width:16px; height:16px;"></i>
@@ -240,11 +108,11 @@
 
       <!-- Right Header Actions (Log In + Join for Free + Controls) -->
       <div class="header-actions" style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <button class="theme-toggle" id="lang-toggle" title="تبديل اللغة / Switch Language"
+        <button class="theme-toggle" id="lang-toggle" title="تبديل اللغة"
           style="font-size:0.75rem; font-weight:700; min-width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
           EN
         </button>
-        <button class="theme-toggle" id="theme-toggle" title="Toggle Theme"
+        <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر"
           style="width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center;">
           <i data-lucide="sun" class="sun-icon" style="width:16px; height:16px;"></i>
           <i data-lucide="moon" class="moon-icon" style="width:16px; height:16px;"></i>

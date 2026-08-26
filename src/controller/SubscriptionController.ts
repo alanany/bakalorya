@@ -478,6 +478,48 @@ export class SubscriptionController {
 
 
 
+  // Student or Admin cancel subscription
+  static async cancelSubscription(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+
+    try {
+      const subscriptionRepository = AppDataSource.getRepository(Subscription);
+      const auditRepository = AppDataSource.getRepository(AuditLog);
+
+      const subscription = await subscriptionRepository.findOne({
+        where: { id },
+        relations: ["student", "plan", "teacher"]
+      });
+
+      if (!subscription) return res.status(404).json({ error: "الاشتراك غير موجود." });
+
+      if (req.user!.role !== "admin" && subscription.student.id !== req.user!.id) {
+        return res.status(403).json({ error: "غير مصرح لك بإلغاء هذا الاشتراك." });
+      }
+
+      subscription.status = "CANCELLED";
+      await subscriptionRepository.save(subscription);
+
+      const audit = new AuditLog();
+      audit.actor = { id: req.user!.id } as User;
+      audit.action = "SUBSCRIPTION_CANCELLED";
+      audit.entityType = "Subscription";
+      audit.entityId = subscription.id;
+      audit.metadata = JSON.stringify({
+        cancelledBy: req.user!.role,
+        studentName: subscription.student?.name,
+        reason: reason || "Cancelled by student"
+      });
+      await auditRepository.save(audit);
+
+      return res.status(200).json({ message: "تم إلغاء الاشتراك بنجاح.", subscription });
+    } catch (err) {
+      console.error("Cancel subscription error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
   static async deletePlan(req: AuthRequest, res: Response) {
     const { id } = req.params;
     try {

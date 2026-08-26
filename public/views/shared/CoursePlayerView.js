@@ -355,10 +355,10 @@ export default class CoursePlayerView {
                       </div>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                      <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                      <a href="#subscription-plans?courseId=${this.course?.id || ''}&teacherId=${this.course?.teacher?.id || ''}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
                         <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> طلب حجز حصة خاصة 🚀
                       </a>
-                      <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:10px 18px; border-radius:30px; font-size:0.85rem; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+                      <a href="#subscription-plans?courseId=${this.course?.id || ''}&teacherId=${this.course?.teacher?.id || ''}" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:10px 18px; border-radius:30px; font-size:0.85rem; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
                         <i data-lucide="sparkles" style="width:16px;height:16px;"></i> باقات الحصص الشهرية
                       </a>
                     </div>
@@ -639,10 +639,10 @@ export default class CoursePlayerView {
           </div>
 
           <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35);">
+            <a href="#subscription-plans?courseId=${this.course?.id || ''}&teacherId=${this.course?.teacher?.id || ''}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35);">
               <i data-lucide="calendar-plus" style="width:18px;height:18px;"></i> طلب حجز حصة خاصة الآن 🚀
             </a>
-            <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:12px 20px; border-radius:30px; font-weight:800; font-size:0.9rem; display:inline-flex; align-items:center; gap:8px;">
+            <a href="#subscription-plans?courseId=${this.course?.id || ''}&teacherId=${this.course?.teacher?.id || ''}" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:12px 20px; border-radius:30px; font-weight:800; font-size:0.9rem; display:inline-flex; align-items:center; gap:8px;">
               <i data-lucide="sparkles" style="width:16px;height:16px;"></i> باقات الحصص الشهرية (4, 8, 12)
             </a>
           </div>

@@ -69,6 +69,9 @@ router.post("/auth/login", AuthController.login);
 router.get("/auth/me", authMiddleware, AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvitation);
 
+// Public Platform Stats & Analytics
+router.get("/public/stats", AdminController.getPublicStats);
+
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController.getAll);
 router.get("/courses/:id", CourseController.getOne);
@@ -104,6 +107,7 @@ router.patch("/admin/subscriptions/:id/assign-teacher", authMiddleware, requireR
 router.patch("/admin/subscriptions/:id/approve", authMiddleware, requireRole(["admin"]), SubscriptionController.approveSubscription);
 router.patch("/admin/subscriptions/:id/reject", authMiddleware, requireRole(["admin"]), SubscriptionController.rejectSubscription);
 router.patch("/admin/subscriptions/:id/renew", authMiddleware, requireRole(["admin"]), SubscriptionController.renewSubscription);
+router.patch("/subscriptions/:id/cancel", authMiddleware, SubscriptionController.cancelSubscription);
 router.delete("/subscription-plans/:id", authMiddleware, requireRole(["admin"]), SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", authMiddleware, requireRole(["admin"]), TeacherEarningController.markAsPaid);
 

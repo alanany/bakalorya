@@ -194,86 +194,352 @@ export default class CoursesView {
       const allCourses = await apiFetch("/courses");
       const contentArea = this.container.querySelector("#courses-content-area");
 
-      // 1. Unauthenticated / Guest View
-      if (!state.user) {
-        const publishedCourses = (allCourses || []).filter(c => c.status === "PUBLISHED" || !c.status);
+      // ── helpers ──────────────────────────────────────────────────────────
+      let enrollments = [];
+      let enrolledCourseIds = [];
 
-        let html = `
-        
-
-          <!-- Course Catalog -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-            <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="compass"></i> دليل الدورات التعليمية المتاحة (${publishedCourses.length})</h3>
-          </div>
-
-          ${publishedCourses.length === 0
-            ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
-                  <p>لا توجد دورات تعليمية متاحة حالياً.</p>
-                </div>`
-            : `<div class="courses-grid">
-                  ${publishedCourses.map(course => this.renderCourseCard(course, 0, false)).join("")}
-                </div>`
-          }
-        `;
-        contentArea.innerHTML = html;
-        if (window.lucide) window.lucide.createIcons();
-        return;
+      if (state.user && state.user.role === "student") {
+        enrollments = await apiFetch("/student/enrollments").catch(() => []);
+        enrolledCourseIds = (enrollments || []).map(e => e.course?.id);
       }
 
-      // 2. Logged-in Student View
-      if (state.user.role === "student") {
-        const enrollments = await apiFetch("/student/enrollments");
-        const enrolledCourseIds = (enrollments || []).map(e => e.course?.id);
-        const catalogCourses = (allCourses || []).filter(c => !enrolledCourseIds.includes(c.id));
+      const isTeacher = state.user && (state.user.role === "teacher" || state.user.role === "admin");
+      const isStudent = state.user && state.user.role === "student";
+      const isGuest   = !state.user;
 
-        let html = `
-          <!-- Active Courses -->
-          <h3 class="dashboard-section-title"><i data-lucide="graduation-cap"></i> ${t("student.myTrack")}</h3>
-          ${(enrollments || []).length === 0
-            ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted); margin-bottom: 40px;">
-                  <p style="margin-bottom:16px;">${t("student.noEnrollments")}</p>
-                </div>`
-            : `<div class="courses-grid" style="margin-bottom: 40px;">
-                  ${enrollments.map(enroll => this.renderCourseCard(enroll.course, enroll.progress, true, false, enroll.status)).join("")}
-                </div>`
-          }
+      // Decide which pool of courses each section uses
+      const publishedPool = (allCourses || []).filter(c => c.status === "PUBLISHED" || !c.status);
+      const myCourses     = isTeacher
+        ? (allCourses || []).filter(c => c.teacher?.id === state.user.id || state.user.role === "admin")
+        : [];
+      const catalogPool   = isStudent
+        ? publishedPool.filter(c => !enrolledCourseIds.includes(c.id))
+        : publishedPool;
 
-          <!-- Course Catalog -->
-          <h3 class="dashboard-section-title"><i data-lucide="compass"></i> ${t("student.exploreCourses")}</h3>
-          ${catalogCourses.length === 0
-            ? `<div class="glass-card" style="text-align:center; padding: 30px; color:var(--text-muted);">
-                  <p>${t("student.allEnrolled")}</p>
-                </div>`
-            : `<div class="courses-grid">
-                  ${catalogCourses.map(course => this.renderCourseCard(course, 0, false)).join("")}
-                </div>`
-          }
-        `;
-        contentArea.innerHTML = html;
+      // ── same grade options as the "add course" form ───────────────────────
+      const gradeOptions = [
+        { group: "🌱 المرحلة الابتدائية", options: [
+          "الابتدائية - الصف الأول",
+          "الابتدائية - الصف الثاني",
+          "الابتدائية - الصف الثالث",
+          "الابتدائية - الصف الرابع",
+          "الابتدائية - الصف الخامس",
+          "الابتدائية - الصف السادس",
+        ]},
+        { group: "📘 المرحلة الإعدادية", options: [
+          "الإعدادية - الصف الأول",
+          "الإعدادية - الصف الثاني",
+          "الإعدادية - الصف الثالث",
+        ]},
+        { group: "🎓 المرحلة الثانوية", options: [
+          "الثانوية - الصف الأول",
+          "الثانوية - الصف الثاني (علمي)",
+          "الثانوية - الصف الثاني (أدبي)",
+          "الثانوية - الصف الثالث (علمي علوم)",
+          "الثانوية - الصف الثالث (علمي رياضة)",
+          "الثانوية - الصف الثالث (أدبي)",
+          "الثانوية الأزهرية",
+        ]},
+        { group: "🌟 عام وتأسيس", options: [
+          "جميع المراحل والصفوف",
+          "تأسيس ودورات عامة",
+        ]},
+      ];
 
-      } else {
-        // 3. Teacher / Admin View
-        const myCourses = (allCourses || []).filter(c => c.teacher?.id === state.user.id || state.user.role === 'admin');
+      const gradesOptionsHTML = gradeOptions.map(g =>
+        `<optgroup label="${g.group}">${g.options.map(o => `<option value="${o}">${o}</option>`).join("")}</optgroup>`
+      ).join("");
 
-        let html = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="folder-git-2"></i> ${t("teacher.coursesDir")}</h3>
+      // ── fetch categories from API (same as populateCategoryOptions) ────────
+      let apiCategories = [];
+      try { apiCategories = await apiFetch("/categories"); } catch (e) { /* ignore */ }
+      const fieldsOptionsHTML = (apiCategories || []).map(cat =>
+        `<option value="${cat.name}">${cat.name}</option>`
+      ).join("");
+
+      // ── build filter bar HTML ─────────────────────────────────────────────
+      const filterBarHTML = `
+        <div id="courses-filter-bar" style="
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 16px 20px;
+          margin-bottom: 28px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: center;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+        ">
+          <!-- Search -->
+          <div style="flex:1; min-width:220px; position:relative;">
+            <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted); pointer-events:none;"></i>
+            <input
+              type="text"
+              id="filter-search"
+              placeholder="ابحث عن دورة أو معلم..."
+              autocomplete="off"
+              style="
+                width: 100%;
+                padding: 10px 40px 10px 14px;
+                border-radius: 30px;
+                border: 1.5px solid var(--border-color);
+                background: var(--bg-app);
+                color: var(--text-main);
+                font-size: 0.88rem;
+                font-weight: 600;
+                outline: none;
+                transition: border-color 0.2s;
+                box-sizing: border-box;
+              "
+            >
           </div>
-          
-          ${myCourses.length === 0
-            ? `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
-                  ${t("teacher.noCourses")}
-                </div>`
-            : `<div class="courses-grid">
-                  ${myCourses.map(course => this.renderCourseCard(course, 0, true, true)).join("")}
-                </div>`
-          }
+
+          <!-- Grade filter -->
+          <div style="position:relative; min-width:200px; flex:0 0 auto;">
+            <i data-lucide="graduation-cap" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none; z-index:1;"></i>
+            <select id="filter-grade" style="
+              appearance:none;
+              width: 100%;
+              padding: 10px 36px 10px 14px;
+              border-radius: 30px;
+              border: 1.5px solid var(--border-color);
+              background: var(--bg-app);
+              color: var(--text-main);
+              font-size: 0.85rem;
+              font-weight: 600;
+              cursor: pointer;
+              outline: none;
+              transition: border-color 0.2s;
+            ">
+              <option value="">🎓 كل المراحل الدراسية</option>
+              ${gradesOptionsHTML}
+            </select>
+          </div>
+
+          <!-- Category / Field filter -->
+          <div style="position:relative; min-width:180px; flex:0 0 auto;">
+            <i data-lucide="layers" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none; z-index:1;"></i>
+            <select id="filter-field" style="
+              appearance:none;
+              width: 100%;
+              padding: 10px 36px 10px 14px;
+              border-radius: 30px;
+              border: 1.5px solid var(--border-color);
+              background: var(--bg-app);
+              color: var(--text-main);
+              font-size: 0.85rem;
+              font-weight: 600;
+              cursor: pointer;
+              outline: none;
+              transition: border-color 0.2s;
+            ">
+              <option value="">📚 كل المواد</option>
+              ${fieldsOptionsHTML}
+            </select>
+          </div>
+
+          <!-- Clear button -->
+          <button id="filter-clear-btn" style="
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 30px;
+            border: 1.5px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.83rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+          ">
+            <i data-lucide="x-circle" style="width:14px;height:14px;"></i>
+            مسح الفلاتر
+          </button>
+
+          <!-- Results counter -->
+          <span id="filter-results-count" style="
+            margin-inline-start: auto;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            white-space: nowrap;
+          "></span>
+        </div>
+      `;
+
+      // ── build section HTML ────────────────────────────────────────────────
+      let sectionsHTML = "";
+
+      if (isGuest) {
+        sectionsHTML = `
+          <div id="section-catalog">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+              <h3 class="dashboard-section-title" style="margin:0;">
+                <i data-lucide="compass"></i> دليل الدورات التعليمية المتاحة
+              </h3>
+            </div>
+            <div class="courses-grid" id="grid-catalog"></div>
+            <div id="grid-catalog-empty" style="display:none;">
+              <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
+                <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;"></i>
+                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
+              </div>
+            </div>
+          </div>
         `;
-        contentArea.innerHTML = html;
-        this.bindEvents();
+      } else if (isStudent) {
+        sectionsHTML = `
+          <!-- Enrolled -->
+          <div id="section-enrolled" style="margin-bottom:40px;">
+            <h3 class="dashboard-section-title"><i data-lucide="graduation-cap"></i> ${t("student.myTrack")}</h3>
+            <div class="courses-grid" id="grid-enrolled"></div>
+            <div id="grid-enrolled-empty" style="display:none;">
+              <div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted);">
+                <p>لا توجد دورات مسجّل بها تطابق البحث.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Catalog -->
+          <div id="section-catalog">
+            <h3 class="dashboard-section-title"><i data-lucide="compass"></i> ${t("student.exploreCourses")}</h3>
+            <div class="courses-grid" id="grid-catalog"></div>
+            <div id="grid-catalog-empty" style="display:none;">
+              <div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted);">
+                <i data-lucide="search-x" style="width:40px;height:40px;opacity:0.3;margin-bottom:10px;"></i>
+                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        // Teacher / Admin
+        sectionsHTML = `
+          <div id="section-catalog">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+              <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="folder-git-2"></i> ${t("teacher.coursesDir")}</h3>
+            </div>
+            <div class="courses-grid" id="grid-catalog"></div>
+            <div id="grid-catalog-empty" style="display:none;">
+              <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
+                <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;"></i>
+                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      contentArea.innerHTML = filterBarHTML + sectionsHTML;
+      if (window.lucide) window.lucide.createIcons();
+
+      // ── render initial course cards ───────────────────────────────────────
+      const gridCatalog   = document.getElementById("grid-catalog");
+      const gridEnrolled  = document.getElementById("grid-enrolled");
+
+      if (isStudent) {
+        if (enrollments.length > 0) {
+          gridEnrolled.innerHTML = enrollments.map(enroll =>
+            this.renderCourseCard(enroll.course, enroll.progress, true, false, enroll.status)
+          ).join("");
+        } else {
+          document.getElementById("grid-enrolled-empty").style.display = "block";
+        }
+        gridCatalog.innerHTML = catalogPool.map(c => this.renderCourseCard(c, 0, false)).join("");
+      } else if (isTeacher) {
+        gridCatalog.innerHTML = myCourses.map(c => this.renderCourseCard(c, 0, true, true)).join("");
+      } else {
+        gridCatalog.innerHTML = publishedPool.map(c => this.renderCourseCard(c, 0, false)).join("");
       }
 
       if (window.lucide) window.lucide.createIcons();
+      if (isTeacher) this.bindEvents();
+
+      // ── filtering logic ───────────────────────────────────────────────────
+      const applyFilters = () => {
+        const q      = (document.getElementById("filter-search")?.value || "").trim().toLowerCase();
+        const grade  = (document.getElementById("filter-grade")?.value  || "").toLowerCase();
+        const field  = (document.getElementById("filter-field")?.value  || "").toLowerCase();
+
+        const matches = (course) => {
+          if (!course) return false;
+          const title   = (course.title       || "").toLowerCase();
+          const desc    = (course.description || "").toLowerCase();
+          const teacher = (course.teacher?.name || "").toLowerCase();
+          const cat     = (course.category    || "").toLowerCase();
+          const deg     = (course.degree      || "").toLowerCase();
+
+          const qOk    = !q     || title.includes(q) || desc.includes(q) || teacher.includes(q) || cat.includes(q) || deg.includes(q);
+          const grOk   = !grade || deg.includes(grade);
+          const fieldOk= !field || cat.includes(field);
+          return qOk && grOk && fieldOk;
+        };
+
+        let totalVisible = 0;
+
+        // Catalog grid
+        if (gridCatalog) {
+          const pool = isTeacher ? myCourses : isStudent ? catalogPool : publishedPool;
+          const filtered = pool.filter(c => matches(c));
+          gridCatalog.innerHTML = filtered.map(c => {
+            if (isTeacher) return this.renderCourseCard(c, 0, true, true);
+            if (isStudent) return this.renderCourseCard(c, 0, false);
+            return this.renderCourseCard(c, 0, false);
+          }).join("");
+          const emptyEl = document.getElementById("grid-catalog-empty");
+          if (emptyEl) emptyEl.style.display = filtered.length === 0 ? "block" : "none";
+          totalVisible += filtered.length;
+          if (window.lucide) window.lucide.createIcons();
+        }
+
+        // Enrolled grid (student only)
+        if (gridEnrolled && isStudent) {
+          const filtered = enrollments.filter(e => matches(e.course));
+          gridEnrolled.innerHTML = filtered.map(e =>
+            this.renderCourseCard(e.course, e.progress, true, false, e.status)
+          ).join("");
+          const emptyEl = document.getElementById("grid-enrolled-empty");
+          if (emptyEl) emptyEl.style.display = filtered.length === 0 ? "block" : "none";
+          totalVisible += filtered.length;
+          if (window.lucide) window.lucide.createIcons();
+        }
+
+        // Update counter
+        const counter = document.getElementById("filter-results-count");
+        if (counter) {
+          const hasFilter = q || grade || field;
+          counter.textContent = hasFilter ? `${totalVisible} نتيجة` : "";
+        }
+
+        if (isTeacher) this.bindEvents();
+      };
+
+      // bind filter inputs
+      document.getElementById("filter-search")?.addEventListener("input", applyFilters);
+      document.getElementById("filter-grade")?.addEventListener("change", applyFilters);
+      document.getElementById("filter-field")?.addEventListener("change", applyFilters);
+
+      document.getElementById("filter-clear-btn")?.addEventListener("click", () => {
+        const s = document.getElementById("filter-search");
+        const g = document.getElementById("filter-grade");
+        const f = document.getElementById("filter-field");
+        if (s) s.value = "";
+        if (g) g.value = "";
+        if (f) f.value = "";
+        applyFilters();
+      });
+
+      // focus style
+      const searchInput = document.getElementById("filter-search");
+      if (searchInput) {
+        searchInput.addEventListener("focus",  () => searchInput.style.borderColor = "var(--primary)");
+        searchInput.addEventListener("blur",   () => searchInput.style.borderColor = "var(--border-color)");
+      }
+
     } catch (err) {
       console.error("Courses content loading error:", err);
     }

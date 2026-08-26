@@ -584,7 +584,10 @@ export default class AdminView {
     if (hEl) hEl.textContent = meta.heading || "";
     if (sEl) sEl.textContent = meta.sub || "";
 
-    if (tab === "stats") content.innerHTML = this.renderStatsTab();
+    if (tab === "stats") {
+      content.innerHTML = this.renderStatsTab();
+      this.bindAdminStatsEvents();
+    }
     else if (tab === "categories") content.innerHTML = this.renderCategoriesTab();
     else if (tab === "teachers") content.innerHTML = this.renderTeachersTab();
     else if (tab === "students") content.innerHTML = this.renderStudentsTab();
@@ -1357,7 +1360,12 @@ export default class AdminView {
 
   // ── Render Category Modal (Create / Edit) ──────────────────────────────────
 
-  onDestroy() { }
+  onDestroy() {
+    if (this.adminChartInstance) {
+      this.adminChartInstance.destroy();
+      this.adminChartInstance = null;
+    }
+  }
 
 }
 

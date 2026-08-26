@@ -12,10 +12,11 @@ export default class CourseLandingView {
     try {
       this.container.innerHTML = `<div class="app-loader"><div class="spinner"></div></div>`;
 
-      // Fetch course and enrollments (if logged in)
+      // Fetch course, enrollments, and subscriptions (if logged in)
       const fetchPromises = [apiFetch(`/courses/${this.courseId}`)];
       if (state.user && state.user.role === 'student') {
-        fetchPromises.push(apiFetch("/student/enrollments"));
+        fetchPromises.push(apiFetch("/student/enrollments").catch(() => []));
+        fetchPromises.push(apiFetch("/subscriptions/my").catch(() => []));
       }
 
       const results = await Promise.all(fetchPromises);
@@ -30,6 +31,10 @@ export default class CourseLandingView {
       } else if (state.user && (state.user.role === 'teacher' || state.user.role === 'admin')) {
         // Teachers/Admins don't "enroll" but they have access
         this.enrollmentStatus = 'active';
+      }
+
+      if (results[2]) {
+        this.mySubscriptions = results[2] || [];
       }
 
       const hasLessons = this.course.lessons && this.course.lessons.length > 0;
@@ -98,9 +103,9 @@ export default class CourseLandingView {
                     <i data-lucide="plus-circle"></i> ${!this.course.isFree && this.course.price > 0 ? `التحاق بالدورة (${this.course.price} ${this.course.currency || 'ج.م'}) 💳` : (t("course.enroll") || "التسجيل مجاناً 🎁")}
                   </button>
                 `}
-                ${this.course.teacher && (!state.user || state.user.role === 'student' && this.enrollmentStatus === 'active') ? `
-                  <button id="book-private-session-hero-btn" class="btn-secondary" style="padding: 12px 24px; font-size: 0.9rem; font-weight: 800; border-radius: 30px; background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.5); color:#fff; backdrop-filter:blur(8px); display:inline-flex; align-items:center; justify-content:center; gap:8px;">
-                    <i data-lucide="user-check"></i> احجز حصص خاصة مع المعلم
+                ${this.course.teacher ? `
+                  <button id="book-private-session-hero-btn" class="btn-secondary" style="padding: 12px 24px; font-size: 0.9rem; font-weight: 800; border-radius: 30px; background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.5); color:#fff; backdrop-filter:blur(8px); display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                    <i data-lucide="calendar-plus"></i> طلب حجز حصة خاصة 🚀
                   </button>
                 ` : ''}
               </div>
@@ -191,12 +196,12 @@ export default class CourseLandingView {
                   هل تحتاج لشرح مخصص، حل أسئلة محددة، أو مراجعة فردية مع الأستاذ؟ احجز حصتك الخاصة الآن.
                 </p>
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                  <a href="#student-private-sessions" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; text-decoration:none; padding:10px 16px; border-radius:12px; font-weight:800; font-size:0.88rem; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                  <button id="book-private-session-card-btn" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; padding:10px 16px; border-radius:12px; font-weight:800; font-size:0.88rem; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer; width:100%;">
                     <i data-lucide="calendar-plus" style="width:16px;height:16px;"></i> طلب حجز حصة خاصة الآن 🚀
-                  </a>
-                  <a href="#subscription-plans" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); text-decoration:none; padding:8px 16px; border-radius:12px; font-weight:700; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                  </button>
+                  <button id="plans-card-btn" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); padding:8px 16px; border-radius:12px; font-weight:700; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; width:100%;">
                     <i data-lucide="sparkles" style="width:14px;height:14px;"></i> باقات واشتراكات الحصص الشهرية
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -205,11 +210,11 @@ export default class CourseLandingView {
 
           <!-- Bottom: Reviews (Placeholder) -->
           <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px 60px 24px;">
-            <h2 style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-bottom:24px;">Student Reviews</h2>
+            <h2 style="font-size:1.8rem; font-weight:800; color:var(--text-main); margin-bottom:24px;">آراء وتقييمات الطلاب 🌟</h2>
             <div class="glass-card" style="padding: 40px; text-align:center;">
               <i data-lucide="message-square" style="width:48px; height:48px; color:var(--border-color); margin-bottom:16px;"></i>
-              <h3 style="font-size:1.2rem; color:var(--text-main); margin-bottom:8px;">No reviews yet</h3>
-              <p style="color:var(--text-muted); font-size:0.95rem;">Enroll now and be the first to leave a review for this course!</p>
+              <h3 style="font-size:1.2rem; color:var(--text-main); margin-bottom:8px;">لا توجد تقييمات حتى الآن</h3>
+              <p style="color:var(--text-muted); font-size:0.95rem;">سجل بالدورة الآن وكن أول من يشارك رأيه وتجربته التعليمية!</p>
             </div>
           </div>
 
@@ -269,11 +274,335 @@ export default class CourseLandingView {
         window.location.hash = "#login";
         return;
       }
-      window.location.hash = "#subscription-plans";
+
+      if (state.user.role === 'teacher' || state.user.role === 'admin') {
+        const teacherId = this.course.teacher?.id || '';
+        window.location.hash = `#subscription-plans?courseId=${this.course.id}${teacherId ? `&teacherId=${teacherId}` : ''}`;
+        return;
+      }
+
+      if (this.enrollmentStatus !== 'active') {
+        this.renderMustEnrollModal();
+        return;
+      }
+
+      // Check if student already has an active / ongoing subscription for this course or teacher
+      const existingSub = (this.mySubscriptions || []).find(s => 
+        (s.subjectId === this.course.id || s.teacher?.id === this.course.teacher?.id) && 
+        s.status !== "CANCELLED" && s.status !== "EXPIRED"
+      );
+
+      if (existingSub) {
+        this.renderExistingSubscriptionModal(existingSub);
+        return;
+      }
+
+      const teacherId = this.course.teacher?.id || '';
+      window.location.hash = `#subscription-plans?courseId=${this.course.id}${teacherId ? `&teacherId=${teacherId}` : ''}`;
     };
 
     document.getElementById("book-private-session-hero-btn")?.addEventListener("click", handleBookPrivateSession);
     document.getElementById("book-private-session-card-btn")?.addEventListener("click", handleBookPrivateSession);
+    document.getElementById("plans-card-btn")?.addEventListener("click", handleBookPrivateSession);
+  }
+
+  renderExistingSubscriptionModal(sub) {
+    const existingModal = document.getElementById("existing-sub-modal-dynamic");
+    if (existingModal) existingModal.remove();
+
+    const remaining = sub.remainingCredits !== undefined ? sub.remainingCredits : (sub.totalSessions || 0);
+    const total = sub.totalSessions || 0;
+    const teacherName = sub.teacher?.name || this.course.teacher?.name || 'أستاذ المادة';
+    const isPendingPayment = sub.status === 'PENDING_PAYMENT';
+    const isTeacherAssignmentPending = sub.status === 'TEACHER_ASSIGNMENT_PENDING';
+    const isSchedulePending = sub.status === 'SCHEDULE_PENDING';
+    const isActive = sub.status === 'ACTIVE';
+
+    let headerIcon = 'calendar-check-2';
+    let headerTitle = 'تفاصيل اشتراكك الحالي للحصص الخاصة 🌟';
+    let statusBadgeHTML = '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800;">نشط ✅</span>';
+
+    if (isPendingPayment) {
+      headerIcon = 'clock';
+      headerTitle = 'طلب الاشتراك قيد مراجعة وتأكيد الدفع ⏳';
+      statusBadgeHTML = '<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:800;">⏳ في انتظار تأكيد الدفع من الإدارة</span>';
+    } else if (isTeacherAssignmentPending) {
+      headerIcon = 'user-check';
+      headerTitle = 'تم الدفع - قيد تعيين المعلم ⏳';
+      statusBadgeHTML = '<span class="badge" style="background:rgba(59,130,246,0.15); color:#3b82f6; font-weight:800;">تم الدفع - قيد تعيين المعلم</span>';
+    } else if (isSchedulePending) {
+      headerIcon = 'calendar-range';
+      headerTitle = 'تم تعيين المعلم - قيد جدولة الباقة 🗓️';
+      statusBadgeHTML = '<span class="badge" style="background:rgba(139,92,246,0.15); color:#8b5cf6; font-weight:800;">قيد جدولة الحصص 🗓️</span>';
+    }
+
+    const modalHTML = `
+      <div class="modal-overlay" id="existing-sub-modal-dynamic" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:10000; justify-content:center; align-items:center;">
+        <div class="modal-content" style="max-width:540px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); box-shadow:0 20px 40px rgba(0,0,0,0.35);">
+          
+          <!-- Header -->
+          <div style="padding:24px; text-align:center; background:linear-gradient(135deg, ${isPendingPayment ? 'rgba(245,158,11,0.12), rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.12), rgba(16,185,129,0.1)'}); border-bottom:1px solid var(--border-color);">
+            <div style="width:64px; height:64px; border-radius:50%; background:${isPendingPayment ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color:${isPendingPayment ? '#f59e0b' : 'var(--primary)'}; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; border:2px solid ${isPendingPayment ? 'rgba(245,158,11,0.3)' : 'rgba(99,102,241,0.3)'};">
+              <i data-lucide="${headerIcon}" style="width:32px; height:32px;"></i>
+            </div>
+            <h3 style="font-weight:900; font-size:1.25rem; margin:0 0 6px 0; color:var(--text-main);">
+              ${headerTitle}
+            </h3>
+            <div style="display:flex; justify-content:center; gap:8px; align-items:center; flex-wrap:wrap;">
+              ${statusBadgeHTML}
+              <span class="badge" style="background:var(--bg-app); color:var(--text-muted); font-size:0.75rem; border:1px solid var(--border-color);">
+                ${sub.plan?.name || 'باقة الحصص'}
+              </span>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div style="padding:24px;">
+            
+            <!-- Subscription Info Box -->
+            <div style="background:var(--bg-app); padding:16px; border-radius:16px; border:1px solid var(--border-color); margin-bottom:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <img src="${sub.teacher?.avatar || this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:44px; height:44px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
+                  <div>
+                    <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">أ. ${teacherName}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">كورس: ${this.course.title}</div>
+                  </div>
+                </div>
+                ${!isPendingPayment ? `
+                  <div style="text-align:end;">
+                    <span style="font-size:1.4rem; font-weight:900; color:var(--primary);">${remaining}</span>
+                    <span style="font-size:0.72rem; color:var(--text-muted); display:block;">حصص متبقية من ${total}</span>
+                  </div>
+                ` : `
+                  <div style="text-align:end;">
+                    <span style="font-size:1.2rem; font-weight:900; color:#f59e0b;">${total} حصص</span>
+                    <span style="font-size:0.72rem; color:var(--text-muted); display:block;">إجمالي الباقة</span>
+                  </div>
+                `}
+              </div>
+
+              <div style="font-size:0.78rem; color:var(--text-muted); display:flex; justify-content:space-between; border-top:1px solid var(--border-color); padding-top:10px; margin-top:8px;">
+                <span>${isPendingPayment ? 'تاريخ الطلب: ' : 'ينتهي في: '}<strong>${new Date(isPendingPayment ? (sub.createdAt || sub.startDate) : sub.endDate).toLocaleDateString('ar')}</strong></span>
+                <span>الباقة: <strong>${sub.plan?.name || `${total} حصص`}</strong></span>
+              </div>
+            </div>
+
+            <!-- Context message depending on status -->
+            ${isPendingPayment ? `
+              <div style="background:rgba(245,158,11,0.08); padding:14px 16px; border-radius:14px; border:1px solid rgba(245,158,11,0.25); margin-bottom:20px; line-height:1.6; text-align:center;">
+                <p style="font-size:0.92rem; color:var(--text-main); margin:0 0 6px 0; font-weight:700;">
+                  ⏳ طلب اشتراكك قيد مراجعة وتأكيد الدفع
+                </p>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+                  تم إرسال طلب اشتراكك في باقة (${sub.plan?.name || 'الحصص الخاصة'}). الطلب حالياً في انتظار تأكيد الدفع والاعتماد من قبل إدارة المنصة لتفعيل رصيد الحصص في حسابك مباشرة.
+                </p>
+              </div>
+
+              <!-- Action buttons for PENDING_PAYMENT -->
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="close-existing-sub-modal-btn" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.92rem; justify-content:center;">
+                  حسناً، فهمت 👍
+                </button>
+
+                <button type="button" id="cancel-existing-sub-btn" class="btn-secondary" style="border-color:rgba(239,68,68,0.3); color:#ef4444; padding:10px; border-radius:14px; font-weight:700; font-size:0.85rem; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="x-circle" style="width:15px;height:15px;"></i> إلغاء طلب الاشتراك الحالي
+                </button>
+              </div>
+            ` : isTeacherAssignmentPending ? `
+              <div style="background:rgba(59,130,246,0.08); padding:14px 16px; border-radius:14px; border:1px solid rgba(59,130,246,0.25); margin-bottom:20px; line-height:1.6; text-align:center;">
+                <p style="font-size:0.92rem; color:var(--text-main); margin:0 0 6px 0; font-weight:700;">
+                  ✅ تم تأكيد الدفع بنجاح
+                </p>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+                  الطلب حالياً في انتظار تعيين المعلم المناسب من قبل الإدارة للبدء في جدولة الحصص.
+                </p>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="close-existing-sub-modal-btn" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.92rem; justify-content:center;">
+                  حسناً، فهمت 👍
+                </button>
+                <button type="button" id="cancel-existing-sub-btn" class="btn-secondary" style="border-color:rgba(239,68,68,0.3); color:#ef4444; padding:10px; border-radius:14px; font-weight:700; font-size:0.85rem; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="x-circle" style="width:15px;height:15px;"></i> إلغاء الطلب
+                </button>
+              </div>
+            ` : isSchedulePending ? `
+              <div style="background:rgba(139,92,246,0.08); padding:14px 16px; border-radius:14px; border:1px solid rgba(139,92,246,0.25); margin-bottom:20px; line-height:1.6; text-align:center;">
+                <p style="font-size:0.92rem; color:var(--text-main); margin:0 0 6px 0; font-weight:700;">
+                  🗓️ تم تعيين المعلم وجاري جدولة الحصص
+                </p>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+                  تم ربط باقتك بالأستاذ (أ. ${teacherName})، والإدارة تقوم بجدولة المواعيد المتاحة حالياً.
+                </p>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="#subscription-sessions?id=${sub.id}" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.92rem; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="calendar" style="width:16px;height:16px;"></i> متابعة جدول الحصص 🗓️
+                </a>
+                <button type="button" id="close-existing-sub-modal-btn" class="btn-secondary" style="padding:8px; border:none; color:var(--text-muted); font-size:0.85rem; justify-content:center;">
+                  إغلاق
+                </button>
+              </div>
+            ` : `
+              <!-- Active Subscription UI -->
+              ${remaining >= 2 ? `
+                <p style="font-size:0.9rem; color:var(--text-main); line-height:1.6; margin:0 0 20px 0; background:rgba(99,102,241,0.06); padding:12px 14px; border-radius:12px; border-inline-start:4px solid var(--primary);">
+                  💡 <strong>اشتراكك ما زال مستمراً:</strong> لديك رصيد <strong>${remaining} حصص قادمة</strong> متاحة للاستخدام. يمكنك متابعة جدول حصصك الحالي أو التجديد المبكر لإضافة رصيد إضافي، كما يمكنك إلغاء الاشتراك إذا كنت ترغب في ذلك.
+                </p>
+              ` : `
+                <p style="font-size:0.9rem; color:var(--text-main); line-height:1.6; margin:0 0 20px 0; background:rgba(245,158,11,0.08); padding:12px 14px; border-radius:12px; border-inline-start:4px solid var(--warning,#f59e0b);">
+                  ⚡ <strong>رصيدك قارب على الانتهاء:</strong> متبقي لديك (${remaining} حصة فقط). ننصحك بتجديد اشتراكك الآن لإضافة حصص جديدة ومتابعة دروسك دون انقطاع 🚀.
+                </p>
+              `}
+
+              <!-- Action buttons for ACTIVE -->
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <a href="#subscription-sessions?id=${sub.id}" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.92rem; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="calendar" style="width:16px;height:16px;"></i> عرض وإدارة جدول حصصي الحالية 🗓️
+                </a>
+
+                <a href="#subscription-plans?courseId=${this.course.id}&teacherId=${this.course.teacher?.id || ''}" class="btn-secondary" style="border-color:var(--primary); color:var(--primary); padding:11px; border-radius:14px; font-weight:800; font-size:0.9rem; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> تجديد الاشتراك وشراء باقة إضافية 🔄
+                </a>
+
+                <button type="button" id="cancel-existing-sub-btn" class="btn-secondary" style="border-color:rgba(239,68,68,0.3); color:#ef4444; padding:10px; border-radius:14px; font-weight:700; font-size:0.85rem; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="x-circle" style="width:15px;height:15px;"></i> طلب إلغاء الاشتراك الحالي
+                </button>
+
+                <button type="button" id="close-existing-sub-modal-btn" class="btn-secondary" style="padding:8px; border:none; color:var(--text-muted); font-size:0.85rem; justify-content:center;">
+                  إغلاق
+                </button>
+              </div>
+            `}
+
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+
+    const modalEl = document.getElementById("existing-sub-modal-dynamic");
+    const closeModal = () => modalEl?.remove();
+
+    document.getElementById("close-existing-sub-modal-btn")?.addEventListener("click", closeModal);
+
+    document.getElementById("cancel-existing-sub-btn")?.addEventListener("click", async () => {
+      const confirmed = confirm("هل أنت متأكد من رغبتك في إلغاء هذا الاشتراك؟");
+      if (!confirmed) return;
+
+      try {
+        await apiFetch(`/subscriptions/${sub.id}/cancel`, {
+          method: "PATCH",
+          body: JSON.stringify({ reason: "إلغاء الاشتراك من قبل الطالب" })
+        });
+        showToast("تم إلغاء الاشتراك بنجاح.", "success");
+        closeModal();
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إلغاء الاشتراك", "error");
+      }
+    });
+  }
+
+  renderMustEnrollModal() {
+    const existingModal = document.getElementById("must-enroll-modal-dynamic");
+
+    if (existingModal) existingModal.remove();
+
+    const isPending = this.enrollmentStatus === 'pending';
+    const isRejected = this.enrollmentStatus === 'rejected';
+    const isPaid = !this.course.isFree && this.course.price > 0;
+    const teacherName = this.course.teacher?.name || 'أستاذ المادة';
+
+    const modalHTML = `
+      <div class="modal-overlay" id="must-enroll-modal-dynamic" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:10000; justify-content:center; align-items:center;">
+        <div class="modal-content" style="max-width:500px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+          
+          <div style="padding:24px; text-align:center; background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color);">
+            <div style="width:64px; height:64px; border-radius:50%; background:rgba(245,158,11,0.15); color:#f59e0b; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; border:2px solid rgba(245,158,11,0.3);">
+              <i data-lucide="${isPending ? 'clock' : isRejected ? 'x-circle' : 'lock'}" style="width:32px; height:32px;"></i>
+            </div>
+            <h3 style="font-weight:900; font-size:1.3rem; margin:0 0 6px 0; color:var(--text-main);">
+              ${isPending ? 'طلب الالتحاق قيد المراجعة ⏳' : isRejected ? 'طلب الالتحاق مرفوض ❌' : 'يلزم الالتحاق بالكورس أولاً 🔒'}
+            </h3>
+            <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.78rem;">
+              📚 ${this.course.title}
+            </span>
+          </div>
+
+          <div style="padding:24px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; background:var(--bg-app); padding:12px 14px; border-radius:14px; border:1px solid var(--border-color);">
+              <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:46px; height:46px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
+              <div>
+                <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">${teacherName}</div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">أستاذ ومحاضر الكورس</div>
+              </div>
+            </div>
+
+            ${isPending ? `
+              <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 24px 0; text-align:center;">
+                طلب تسجيلك في هذا الكورس تم إرساله بنجاح وهو قيد المراجعة والموافقة من الإدارة حالياً.<br>
+                <span style="color:var(--text-muted); font-size:0.85rem; display:block; margin-top:8px;">
+                  بمجرد تفعيل اشتراكك في الكورس، ستتمكن من حجز الحصص الخاصة 1-on-1 مباشرة مع الأستاذ.
+                </span>
+              </p>
+              <div style="display:flex; justify-content:center;">
+                <button type="button" id="close-must-enroll-modal" class="btn-primary" style="padding:10px 28px; border-radius:30px; font-weight:800;">
+                  حسناً، فهمت
+                </button>
+              </div>
+            ` : isRejected ? `
+              <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 24px 0; text-align:center;">
+                تم رفض طلب تسجيلك في هذا الكورس سابقاً. يرجى التواصل مع الدعم أو محاولة التسجيل مرة أخرى.
+              </p>
+              <div style="display:flex; justify-content:center;">
+                <button type="button" id="close-must-enroll-modal" class="btn-secondary" style="padding:10px 28px; border-radius:30px; font-weight:800;">
+                  إغلاق
+                </button>
+              </div>
+            ` : `
+              <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 20px 0;">
+                لطلب حجز حصة خاصة فردية ومباشرة (1-on-1) مع <strong>أ. ${teacherName}</strong>، يجب أن تكون مسجلاً ومشتركاً في كورس <strong>"${this.course.title}"</strong> أولاً.
+              </p>
+
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="enroll-now-from-dialog-btn" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.95rem; justify-content:center; gap:8px;">
+                  <i data-lucide="sparkles" style="width:16px;height:16px;"></i> ${isPaid ? `التحاق بالكورس الآن (${this.course.price} ${this.course.currency || 'ج.م'}) 💳` : 'التسجيل في الكورس مجاناً الآن 🎁'}
+                </button>
+                <button type="button" id="close-must-enroll-modal" class="btn-secondary" style="padding:10px; border-radius:14px; font-weight:700; font-size:0.88rem; justify-content:center;">
+                  إلغاء
+                </button>
+              </div>
+            `}
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+
+    const modalEl = document.getElementById("must-enroll-modal-dynamic");
+    const closeModal = () => modalEl?.remove();
+
+    document.getElementById("close-must-enroll-modal")?.addEventListener("click", closeModal);
+    document.getElementById("enroll-now-from-dialog-btn")?.addEventListener("click", () => {
+      closeModal();
+      const enrollHeroBtn = document.getElementById("enroll-hero-btn");
+      if (enrollHeroBtn) {
+        enrollHeroBtn.click();
+      } else {
+        if (isPaid) {
+          this.renderPaidCourseEnrollmentModal();
+        }
+      }
+    });
   }
 
   renderPaidCourseEnrollmentModal() {
