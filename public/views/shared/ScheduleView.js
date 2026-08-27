@@ -96,13 +96,27 @@ export default class ScheduleView {
 
       if (state.user.role === "teacher") {
         this.sessions = (allSessions || []).filter(s => s.teacher?.id === state.user.id);
-        this.courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id));
+        this.courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id)).catch(() => []);
         const courseSelect = document.getElementById("session-course-id");
         if (courseSelect) {
           courseSelect.innerHTML = `<option value="">${t("teacher.selectCoursePlaceholder")}</option>` +
             this.courses.map(c => `<option value="${c.id}">${c.title}</option>`).join("");
         }
+      } else if (state.user.role === "student") {
+        const enrollments = await apiFetch("/student/enrollments").catch(() => []);
+        const enrolledCourseIds = new Set((enrollments || []).filter(e => e.status === "active").map(e => e.course?.id).filter(Boolean));
+        
+        this.sessions = (allSessions || []).filter(s => {
+          if (s.student?.id) {
+            return s.student.id === state.user.id;
+          }
+          if (s.course?.id) {
+            return enrolledCourseIds.has(s.course.id);
+          }
+          return false;
+        });
       } else {
+        // Admin & other staff
         this.sessions = allSessions || [];
       }
 

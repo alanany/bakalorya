@@ -213,12 +213,23 @@ export class UserController {
 
   static async updateProfile(req: AuthRequest, res: Response) {
     try {
-      const { name, meetingLink, customCategories, phone, education, location } = req.body;
+      const { name, meetingLink, customCategories, phone, education, location, avatar } = req.body;
       const userRepository = AppDataSource.getRepository(User);
       
       const user = await userRepository.findOneBy({ id: req.user!.id });
       if (!user) {
         return res.status(404).json({ error: "User not found" });
+      }
+
+      // If user is student, only allow updating avatar
+      if (req.user?.role === "student") {
+        if (avatar !== undefined) {
+          user.avatar = avatar;
+          await userRepository.save(user);
+          const { password, ...safeUser } = user;
+          return res.json(safeUser);
+        }
+        return res.status(403).json({ error: "عفواً، تعديل بيانات الملف الشخصي للطالب متاح فقط من قِبل إدارة المنصة." });
       }
 
       if (phone) {
@@ -235,6 +246,7 @@ export class UserController {
       if (location !== undefined) user.location = location;
       if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (customCategories !== undefined) user.customCategories = customCategories;
+      if (avatar !== undefined) user.avatar = avatar;
 
       await userRepository.save(user);
 
@@ -244,6 +256,36 @@ export class UserController {
     } catch (error) {
       console.error("Error updating profile:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // Upload Avatar for any authenticated user (Student, Teacher, Admin)
+  static async uploadAvatar(req: AuthRequest, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "لم يتم اختيار أي ملف صورة" });
+      }
+
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      const userRepository = AppDataSource.getRepository(User);
+      const user = await userRepository.findOneBy({ id: req.user!.id });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      user.avatar = avatarUrl;
+      await userRepository.save(user);
+
+      const { password, ...safeUser } = user;
+      return res.json({
+        success: true,
+        message: "تم تحديث صورتك الشخصية بنجاح! 📸",
+        avatar: avatarUrl,
+        user: safeUser
+      });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      return res.status(500).json({ error: "فشل رفع الصورة الشخصية" });
     }
   }
 

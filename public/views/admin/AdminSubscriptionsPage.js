@@ -300,10 +300,15 @@ export const AdminSubscriptionsPage = {
 
       <div class="glass-card" style="padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-          <h3 style="font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px;">
-            <i data-lucide="calendar-heart" style="color:var(--primary);width:20px;height:20px;"></i>
-            قائمة الاشتراكات
-          </h3>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <h3 style="font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px; margin:0;">
+              <i data-lucide="calendar-heart" style="color:var(--primary);width:20px;height:20px;"></i>
+              قائمة الاشتراكات
+            </h3>
+            <button class="btn-primary" id="admin-open-manual-sub-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
+              <i data-lucide="user-plus" style="width:15px;height:15px;"></i> ➕ إضافة وتفعيل اشتراك يدوي لطالب
+            </button>
+          </div>
           
           <!-- Filters -->
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -472,6 +477,291 @@ export const AdminSubscriptionsPage = {
         showToast(err.message || "حدث خطأ أثناء تفعيل الاشتراك", "error");
         submitBtn.disabled = false;
         submitBtn.innerText = "تأكيد الدفع وتفعيل الاشتراك ✅";
+      }
+    });
+  },
+
+  // ── Render Manual Subscription Creation Modal ──────────────────────────────
+  renderManualSubscriptionModal() {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const students = (this.allMembers || []).filter(u => u.role === "student");
+    const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
+    const plans = this.allPlans || [];
+
+    if (students.length === 0) {
+      showToast("لا يوجد طلاب مسجلون في المنصة حالياً لإضافتهم.", "warning");
+      return;
+    }
+
+    if (plans.length === 0) {
+      showToast("الرجاء إنشاء خطة اشتراك واحدة على الأقل أولاً.", "warning");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const defaultPlan = plans[0];
+    const defaultDurationDays = defaultPlan.durationDays || 30;
+    const defaultEndDate = new Date(Date.now() + defaultDurationDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="manual-sub-modal" style="display:flex;">
+        <div class="modal-content" style="max-width:580px; max-height:90vh; overflow-y:auto;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="display:flex;align-items:center;gap:8px;">
+              <i data-lucide="user-plus" style="color:var(--primary);width:22px;height:22px;"></i>
+              إضافة وتفعيل اشتراك يدوي لطالب 💳
+            </h3>
+            <span class="modal-close-btn" id="close-manual-sub-modal">&times;</span>
+          </div>
+          <form id="manual-sub-form">
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+              
+              <div style="background:linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(99,102,241,0.08) 100%); border:1px solid rgba(16,185,129,0.2); padding:12px 16px; border-radius:12px; font-size:0.85rem; color:var(--text-main);">
+                <div style="display:flex; align-items:center; gap:6px; font-weight:800; margin-bottom:4px; color:#10b981;">
+                  <i data-lucide="zap" style="width:16px;height:16px;"></i> تفعيل فوري وشحن رصيد تلقائي
+                </div>
+                سيتم تفعيل الاشتراك مباشرة وإيداع رصيد الحصص في حساب الطالب وتسجيل سند القبض المالي وإرسال إشعار فوري.
+              </div>
+
+              <!-- 1. Student Selection -->
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">
+                  1️⃣ اختر الطالب <span style="color:#ef4444;">*</span>:
+                </label>
+                <select id="manual-sub-student-select" class="form-input" required style="width:100%;padding:10px;font-size:0.88rem;">
+                  <option value="" disabled selected>-- اختر طالباً من القائمة --</option>
+                  ${students.map(st => `
+                    <option value="${st.id}" data-education="${st.education || ''}" data-phone="${st.phone || ''}">
+                      ${st.name} (${st.email}${st.phone ? ' - ' + st.phone : ''})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- 2. Plan Selection -->
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">
+                  2️⃣ باقة الاشتراك <span style="color:#ef4444;">*</span>:
+                </label>
+                <select id="manual-sub-plan-select" class="form-input" required style="width:100%;padding:10px;font-size:0.88rem;">
+                  ${plans.map((p, idx) => `
+                    <option value="${p.id}" data-price="${p.price}" data-sessions="${p.sessionsCount}" data-duration="${p.durationDays || 30}" ${idx === 0 ? 'selected' : ''}>
+                      ${p.name} (${p.sessionsCount} حصص - ${p.price} ${p.currency || 'ج.م'})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- 3. Teacher Selection (Optional) -->
+              <div class="form-group">
+                <label style="font-size:0.88rem;font-weight:700;display:block;margin-bottom:6px;">
+                  3️⃣ الأستاذ المعين (اختياري - يمكن تركه لتعيينه لاحقاً):
+                </label>
+                <select id="manual-sub-teacher-select" class="form-input" style="width:100%;padding:10px;font-size:0.88rem;">
+                  <option value="">-- بدون تعيين الآن (في انتظار التعيين) --</option>
+                  ${teachers.map(tc => `
+                    <option value="${tc.id}">
+                      أ. ${tc.name} ${tc.customCategories ? `(${tc.customCategories})` : ''}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- 4. Subject and Level -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">المادة / التخصص:</label>
+                  <input type="text" id="manual-sub-subject" class="form-input" placeholder="مثال: رياضيات، فيزياء..." style="width:100%;padding:10px;">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">المرحلة الدراسية:</label>
+                  <input type="text" id="manual-sub-level" class="form-input" placeholder="مثال: الثالث الثانوي..." style="width:100%;padding:10px;">
+                </div>
+              </div>
+
+              <!-- 5. Dates -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">تاريخ البداية:</label>
+                  <input type="date" id="manual-sub-start-date" class="form-input" value="${todayStr}" required style="width:100%;padding:10px;">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">تاريخ الانتهاء:</label>
+                  <input type="date" id="manual-sub-end-date" class="form-input" value="${defaultEndDate}" required style="width:100%;padding:10px;">
+                </div>
+              </div>
+
+              <!-- 6. Payment Amount & Provider -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">المبلغ المحصل (ج.م):</label>
+                  <input type="number" id="manual-sub-amount" class="form-input" value="${defaultPlan.price}" required min="0" style="width:100%;padding:10px;">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">طريقة التحصيل / الدفع:</label>
+                  <select id="manual-sub-provider" class="form-input" style="width:100%;padding:10px;">
+                    <option value="كاش / يدوي">كاش / استلام يدوي 💵</option>
+                    <option value="فودافون كاش">فودافون كاش 📱</option>
+                    <option value="إنستاباي / تحويل بنكي">إنستاباي / تحويل بنكي 🏦</option>
+                    <option value="محفظة إلكترونية">محفظة إلكترونية 💳</option>
+                    <option value="مجاني / منحة دراسية">مجاني / منحة وتكريم 🎁</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 7. Receipt Image (Optional) -->
+              <div class="form-group">
+                <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">صورة إيصال التحويل (اختياري) 🖼️:</label>
+                <input type="file" id="manual-sub-receipt-file" class="form-input" accept="image/*" style="width:100%;padding:8px;">
+                <div id="manual-sub-preview-container" style="margin-top:8px;display:none;">
+                  <img id="manual-sub-preview" src="" style="max-height:120px;border-radius:8px;border:1px solid var(--border-color);max-width:100%;">
+                </div>
+              </div>
+
+              <!-- 8. Notes -->
+              <div class="form-group">
+                <label style="font-size:0.85rem;font-weight:700;display:block;margin-bottom:6px;">ملاحظات إضافية (اختياري):</label>
+                <textarea id="manual-sub-notes" class="form-input" rows="2" style="width:100%;padding:10px;" placeholder="أي تفاصيل خاصة بالدفع أو رغبة الطالب..."></textarea>
+              </div>
+
+            </div>
+            <div class="modal-footer" style="padding-top:12px;border-top:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+              <button type="button" class="btn-secondary" id="cancel-manual-sub-btn">إلغاء</button>
+              <button type="submit" class="btn-primary" id="submit-manual-sub-btn" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981;font-weight:800;padding:10px 24px;">
+                <i data-lucide="check-circle" style="width:16px;height:16px;"></i> إنشاء وتفعيل الاشتراك فوراً ✅
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-manual-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-manual-sub-btn")?.addEventListener("click", closeModal);
+
+    // Dynamic Plan Change Update (Price & End Date)
+    const planSelect = document.getElementById("manual-sub-plan-select");
+    const amountInput = document.getElementById("manual-sub-amount");
+    const startDateInput = document.getElementById("manual-sub-start-date");
+    const endDateInput = document.getElementById("manual-sub-end-date");
+
+    const updatePlanCalculations = () => {
+      const selectedOption = planSelect.options[planSelect.selectedIndex];
+      if (!selectedOption) return;
+      const price = selectedOption.getAttribute("data-price") || "0";
+      const duration = parseInt(selectedOption.getAttribute("data-duration") || "30", 10);
+      amountInput.value = price;
+
+      const startDateVal = startDateInput.value ? new Date(startDateInput.value) : new Date();
+      const endCalculated = new Date(startDateVal.getTime() + duration * 24 * 60 * 60 * 1000);
+      endDateInput.value = endCalculated.toISOString().split("T")[0];
+    };
+
+    planSelect?.addEventListener("change", updatePlanCalculations);
+    startDateInput?.addEventListener("change", updatePlanCalculations);
+
+    // Student selection autofill level
+    const studentSelect = document.getElementById("manual-sub-student-select");
+    const levelInput = document.getElementById("manual-sub-level");
+    studentSelect?.addEventListener("change", () => {
+      const selectedStudent = studentSelect.options[studentSelect.selectedIndex];
+      const edu = selectedStudent?.getAttribute("data-education");
+      if (edu && !levelInput.value) {
+        levelInput.value = edu;
+      }
+    });
+
+    // Receipt File Preview
+    const fileInput = document.getElementById("manual-sub-receipt-file");
+    const previewContainer = document.getElementById("manual-sub-preview-container");
+    const previewImg = document.getElementById("manual-sub-preview");
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewContainer.style.display = "none";
+      }
+    });
+
+    // Form Submit
+    document.getElementById("manual-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-manual-sub-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "جاري الإنشاء والتفعيل...";
+
+      try {
+        let receiptUrl = null;
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+            },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          } else {
+            showToast("فشل رفع صورة الإيصال", "error");
+            submitBtn.disabled = false;
+            submitBtn.innerText = "إنشاء وتفعيل الاشتراك فوراً ✅";
+            return;
+          }
+        }
+
+        const studentId = document.getElementById("manual-sub-student-select").value;
+        const planId = document.getElementById("manual-sub-plan-select").value;
+        const teacherId = document.getElementById("manual-sub-teacher-select").value || null;
+        const subjectId = document.getElementById("manual-sub-subject").value || null;
+        const levelId = document.getElementById("manual-sub-level").value || null;
+        const startDate = document.getElementById("manual-sub-start-date").value;
+        const endDate = document.getElementById("manual-sub-end-date").value;
+        const amount = document.getElementById("manual-sub-amount").value;
+        const provider = document.getElementById("manual-sub-provider").value;
+        const notes = document.getElementById("manual-sub-notes").value;
+
+        const res = await apiFetch("/admin/subscriptions/manual-create", {
+          method: "POST",
+          body: JSON.stringify({
+            studentId,
+            planId,
+            teacherId,
+            subjectId,
+            levelId,
+            startDate,
+            endDate,
+            amount,
+            provider,
+            receiptUrl,
+            notes,
+            autoActivate: true
+          })
+        });
+
+        showToast(res.message || "تم إنشاء وتفعيل الاشتراك للطالب بنجاح 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل إنشاء الاشتراك", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "إنشاء وتفعيل الاشتراك فوراً ✅";
       }
     });
   },

@@ -933,6 +933,11 @@ export default class AdminView {
       });
     });
 
+    // Admin Open Manual Subscription Modal
+    this.container.querySelector("#admin-open-manual-sub-modal-btn")?.addEventListener("click", () => {
+      this.renderManualSubscriptionModal();
+    });
+
     // Admin Renew Subscription
     this.container.querySelectorAll(".admin-renew-sub-btn").forEach(btn => {
       btn.addEventListener("click", () => {

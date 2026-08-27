@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate, formatSessionDateTime, getTimezoneBadgeHTML } from "../../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate, formatSessionDateTime, getTimezoneBadgeHTML, getUserTimezone, getTimezoneInfo, TIMEZONE_MAP } from "../../app.js";
 
 export default class StudentView {
   constructor(container) {
@@ -95,6 +95,9 @@ export default class StudentView {
     // Private sessions summary
     const totalRemainingCredits = this.subscriptions.reduce((sum, s) => sum + (s.remainingCredits || 0), 0);
 
+    const userTz = getUserTimezone();
+    const tzInfo = getTimezoneInfo(userTz);
+
     this.container.innerHTML = `
       <div class="student-dashboard-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
         
@@ -134,20 +137,45 @@ export default class StudentView {
               </div>
             </div>
 
-            <!-- Right Shortcuts & Timezone -->
-            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
-              ${getTimezoneBadgeHTML()}
+            <!-- Right Live Date, Time & Action Studio Widget -->
+            <div class="glass-card student-live-clock-card" style="background:rgba(15, 15, 23, 0.55); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid rgba(99,102,241,0.3); border-radius:24px; padding:16px 20px; box-shadow:0 12px 32px rgba(0,0,0,0.25), inset 0 0 24px rgba(99,102,241,0.08); display:flex; flex-direction:column; gap:10px; min-width:290px;">
               
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                ${activeEnrollment?.course ? `
-                  <a href="#course/${activeEnrollment.course.id}" class="btn-primary" style="padding:10px 20px; font-weight:800; font-size:0.88rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 16px rgba(79,70,229,0.3);">
-                    <i data-lucide="play" style="width:16px;height:16px;"></i> متابعة آخر درس ▶
-                  </a>
-                ` : ''}
-                <a href="#student-private-sessions" class="btn-secondary" style="padding:10px 18px; font-weight:700; font-size:0.85rem; border-radius:30px; border-color:var(--primary); color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.6);">
-                  <i data-lucide="sparkles" style="width:15px;height:15px;"></i> حصصي الخاصة 🎯
-                </a>
+              <!-- Date & Day Header with Local Country Badge -->
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px; background:rgba(99,102,241,0.2); color:var(--primary);">
+                    <i data-lucide="calendar" style="width:13px;height:13px;"></i>
+                  </span>
+                  <span id="student-live-day" style="color:var(--primary); font-weight:800; font-size:0.9rem;">-</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span id="student-live-date" style="font-size:0.8rem; font-weight:700; color:var(--text-main);">-</span>
+                  <span class="tz-badge" style="display:inline-flex; align-items:center; gap:3px; font-size:0.72rem; font-weight:800; background:rgba(99,102,241,0.18); color:#a5b4fc; padding:2px 8px; border-radius:12px; border:1px solid rgba(99,102,241,0.3);">
+                    ${tzInfo.flag} ${tzInfo.name}
+                  </span>
+                </div>
               </div>
+
+              <!-- Live Clock & Status -->
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div style="display:flex; align-items:baseline; gap:6px;">
+                  <span id="student-live-time" style="font-family:'Outfit',monospace,sans-serif; font-size:1.75rem; font-weight:900; letter-spacing:1px; color:#ffffff; text-shadow:0 0 20px rgba(99,102,241,0.6);">
+                    00:00:00
+                  </span>
+                  <span id="student-live-ampm" style="font-size:0.75rem; font-weight:800; color:#a5b4fc; background:rgba(99,102,241,0.15); padding:2px 6px; border-radius:6px;">--</span>
+                </div>
+
+                <div style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.35); padding:4px 9px; border-radius:20px; font-size:0.72rem; font-weight:800; color:#10b981;">
+                  <span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 8px #10b981;"></span>
+                  <span>مباشر</span>
+                </div>
+              </div>
+
+              <!-- Prayer Times Trigger Button -->
+              <button id="student-open-prayer-btn" style="width:100%; margin-top:4px; padding:8px 14px; font-weight:800; font-size:0.8rem; border-radius:14px; border:1px solid rgba(16,185,129,0.35); color:#10b981; background:rgba(16,185,129,0.08); display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:all 0.2s;">
+                <i data-lucide="moon-star" style="width:15px;height:15px;"></i> مواقيت الصلاة لليوم 🕌
+              </button>
+
             </div>
 
           </div>
@@ -470,14 +498,95 @@ export default class StudentView {
 
     this.bindEvents();
     if (window.lucide) window.lucide.createIcons();
+    this.initLiveClock();
+  }
+
+  initLiveClock() {
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
+      this.clockInterval = null;
+    }
+
+    const userTz = getUserTimezone();
+
+    const updateClock = () => {
+      const now = new Date();
+      const dayElem = this.container.querySelector("#student-live-day");
+      const dateElem = this.container.querySelector("#student-live-date");
+      const timeElem = this.container.querySelector("#student-live-time");
+      const ampmElem = this.container.querySelector("#student-live-ampm");
+
+      if (!timeElem) return;
+
+      try {
+        // Date in local country timezone
+        const dateOptions = { timeZone: userTz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        const dateParts = new Intl.DateTimeFormat('ar-EG', dateOptions).formatToParts(now);
+        
+        let weekday = "";
+        let day = "";
+        let month = "";
+        let year = "";
+
+        dateParts.forEach(p => {
+          if (p.type === 'weekday') weekday = p.value;
+          if (p.type === 'day') day = p.value;
+          if (p.type === 'month') month = p.value;
+          if (p.type === 'year') year = p.value;
+        });
+
+        if (dayElem) dayElem.textContent = weekday || "اليوم";
+        if (dateElem) dateElem.textContent = `${day} ${month} ${year}`;
+
+        // Time in local country timezone
+        const timeOptions = { timeZone: userTz, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true };
+        const timeParts = new Intl.DateTimeFormat('en-US', timeOptions).formatToParts(now);
+
+        let h = "00";
+        let m = "00";
+        let s = "00";
+        let dayPeriod = "AM";
+
+        timeParts.forEach(p => {
+          if (p.type === 'hour') h = p.value.padStart(2, '0');
+          if (p.type === 'minute') m = p.value.padStart(2, '0');
+          if (p.type === 'second') s = p.value.padStart(2, '0');
+          if (p.type === 'dayPeriod') dayPeriod = p.value.toUpperCase();
+        });
+
+        const isColonVisible = now.getSeconds() % 2 === 0;
+        timeElem.innerHTML = `${h}<span style="opacity:${isColonVisible ? '1' : '0.25'}; transition:opacity 0.15s; color:var(--primary);">:</span>${m}<span style="opacity:${isColonVisible ? '1' : '0.25'}; transition:opacity 0.15s; color:var(--primary);">:</span>${s}`;
+        
+        if (ampmElem) {
+          ampmElem.textContent = dayPeriod === 'PM' ? 'مساءً' : 'صباحاً';
+        }
+      } catch (e) {
+        timeElem.innerHTML = now.toLocaleTimeString("ar-EG");
+      }
+    };
+
+    updateClock();
+    this.clockInterval = setInterval(updateClock, 1000);
   }
 
   filterTodaySessions(sessions) {
     const todayStr = new Date().toDateString();
+    const currentStudentId = state.user?.id;
+    const enrolledIds = new Set((this.enrollments || []).filter(e => e.status === "active").map(e => e.course?.id).filter(Boolean));
+
     return (sessions || []).filter(s => {
       if (!s.scheduledAt) return false;
       const d = new Date(s.scheduledAt).toDateString();
-      return d === todayStr;
+      if (d !== todayStr) return false;
+
+      // Ensure session strictly belongs to this student
+      if (s.student?.id) {
+        return s.student.id === currentStudentId;
+      }
+      if (s.course?.id) {
+        return enrolledIds.has(s.course.id);
+      }
+      return false;
     });
   }
 
@@ -536,6 +645,246 @@ export default class StudentView {
         this.renderDashboard();
       });
     });
+
+    // Prayer Times Modal Trigger
+    this.container.querySelector("#student-open-prayer-btn")?.addEventListener("click", () => {
+      this.renderPrayerTimesModal();
+    });
+  }
+
+  async renderPrayerTimesModal() {
+    let container = document.getElementById("student-prayer-modal-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "student-prayer-modal-container";
+      document.body.appendChild(container);
+    }
+
+    const userTz = getUserTimezone();
+    const tzInfo = getTimezoneInfo(userTz);
+
+    // Initial Loading State
+    container.innerHTML = `
+      <div class="modal-overlay" id="prayer-modal" style="display:flex; z-index:9999;">
+        <div class="modal-content" style="max-width:540px; background:var(--bg-card); border-radius:26px; border:1px solid rgba(16,185,129,0.3); box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+          <div class="modal-header" style="border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+            <h3 class="modal-title" style="display:flex; align-items:center; gap:8px; font-size:1.15rem; color:var(--text-main); margin:0;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:10px; background:rgba(16,185,129,0.15); color:#10b981;">
+                <i data-lucide="moon-star" style="width:18px;height:18px;"></i>
+              </span>
+              مواقيت الصلاة لليوم 🕌
+            </h3>
+            <span class="modal-close-btn" id="close-prayer-modal" style="font-size:1.5rem; cursor:pointer;">&times;</span>
+          </div>
+          <div class="modal-body" style="padding:30px 20px; text-align:center;">
+            <div class="spinner" style="width:36px; height:36px; border-width:3px; margin:0 auto 12px; border-color:#10b981 transparent #10b981 transparent;"></div>
+            <p style="color:var(--text-muted); font-size:0.9rem; font-weight:700; margin:0;">جاري استرداد مواقيت الصلاة الدقيقة لـ ${tzInfo.name}...</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-prayer-modal")?.addEventListener("click", closeModal);
+
+    try {
+      // Determine query: If Cairo/Egypt, fetch Cairo Egypt; otherwise fetch by local city/country
+      let apiUrl = "";
+      if (userTz.includes("Cairo") || userTz.includes("Egypt")) {
+        apiUrl = "https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5";
+      } else if (tzInfo.city && tzInfo.country && tzInfo.country !== "Global") {
+        apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(tzInfo.city)}&country=${encodeURIComponent(tzInfo.country)}&method=5`;
+      } else {
+        apiUrl = `https://api.aladhan.com/v1/timingsByAddress?address=${encodeURIComponent(userTz)}&method=5`;
+      }
+
+      // Fetch Live Prayer Timings
+      const res = await fetch(apiUrl);
+      let timings = null;
+      let hijri = null;
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.code === 200 && data.data) {
+          timings = data.data.timings;
+          hijri = data.data.date?.hijri;
+        }
+      }
+
+      // Fallback Timings if Offline / Network Failed
+      if (!timings) {
+        timings = {
+          Fajr: "04:50",
+          Sunrise: "06:15",
+          Dhuhr: "12:45",
+          Asr: "16:15",
+          Maghrib: "19:10",
+          Isha: "20:30"
+        };
+      }
+
+      const hijriStr = hijri ? `${hijri.day} ${hijri.month?.ar || ''} ${hijri.year} هـ` : 'التاريخ الهجري المعتمد';
+
+      // Parse and Calculate Next Prayer
+      const now = new Date();
+      const prayers = [
+        { key: "Fajr", name: "الفجر", icon: "sunrise", time: timings.Fajr },
+        { key: "Sunrise", name: "الشروق", icon: "sun", time: timings.Sunrise },
+        { key: "Dhuhr", name: "الظهر", icon: "sun-medium", time: timings.Dhuhr },
+        { key: "Asr", name: "العصر", icon: "cloud-sun", time: timings.Asr },
+        { key: "Maghrib", name: "المغرب", icon: "sunset", time: timings.Maghrib },
+        { key: "Isha", name: "العشاء", icon: "moon", time: timings.Isha }
+      ];
+
+      // Format Time to 12h Arabic
+      const formatPrayer12h = (time24) => {
+        if (!time24) return "-";
+        const clean = time24.split(" ")[0];
+        const [hStr, mStr] = clean.split(":");
+        let h = parseInt(hStr, 10);
+        const m = mStr;
+        const ampm = h >= 12 ? "م" : "ص";
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+      };
+
+      // Detect Next Prayer
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      let nextPrayer = null;
+      let remainingMinutes = 0;
+
+      for (const p of prayers) {
+        const clean = p.time.split(" ")[0];
+        const [h, m] = clean.split(":").map(Number);
+        const prayerMinutes = h * 60 + m;
+        if (prayerMinutes > currentMinutes) {
+          nextPrayer = p;
+          remainingMinutes = prayerMinutes - currentMinutes;
+          break;
+        }
+      }
+
+      // If all passed today, next is Fajr tomorrow
+      if (!nextPrayer) {
+        nextPrayer = prayers[0];
+        const [h, m] = nextPrayer.time.split(" ")[0].split(":").map(Number);
+        const fajrMinutes = h * 60 + m;
+        remainingMinutes = (24 * 60 - currentMinutes) + fajrMinutes;
+      }
+
+      const remHours = Math.floor(remainingMinutes / 60);
+      const remMins = remainingMinutes % 60;
+      const remainingCountdownStr = remHours > 0 ? `${remHours} ساعة و ${remMins} دقيقة` : `${remMins} دقيقة`;
+
+      // Render Completed Prayer Card Modal
+      container.innerHTML = `
+        <div class="modal-overlay" id="prayer-modal" style="display:flex; z-index:9999;">
+          <div class="modal-content" style="max-width:540px; max-height:90vh; overflow-y:auto; background:var(--bg-card); border-radius:26px; border:1.5px solid rgba(16,185,129,0.35); box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+            
+            <!-- Modal Header -->
+            <div class="modal-header" style="border-bottom:1px solid var(--border-color); padding:18px 24px;">
+              <div>
+                <h3 class="modal-title" style="display:flex; align-items:center; gap:8px; font-size:1.18rem; color:var(--text-main); margin:0 0 4px 0;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(16,185,129,0.15); color:#10b981;">
+                    <i data-lucide="moon-star" style="width:20px;height:20px;"></i>
+                  </span>
+                  مواقيت الصلاة 🕌
+                </h3>
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted);">
+                  <span>${tzInfo.flag} ${tzInfo.name}</span>
+                  <span>•</span>
+                  <span style="color:#10b981; font-weight:700;">${hijriStr}</span>
+                </div>
+              </div>
+              <span class="modal-close-btn" id="close-prayer-modal-btn" style="font-size:1.6rem; cursor:pointer; color:var(--text-muted);">&times;</span>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:18px;">
+              
+              <!-- Next Prayer Spotlight Card -->
+              <div style="background:linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(99,102,241,0.1) 100%); border:1.5px solid rgba(16,185,129,0.3); border-radius:18px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <div style="font-size:0.78rem; font-weight:800; color:#10b981; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span style="width:7px; height:7px; background:#10b981; border-radius:50%; box-shadow:0 0 8px #10b981;"></span>
+                    الصلاة القادمة
+                  </div>
+                  <div style="font-size:1.35rem; font-weight:900; color:var(--text-main);">
+                    صلاة ${nextPrayer.name}
+                  </div>
+                  <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
+                    المتبقي على الأذان: <strong style="color:#10b981;">${remainingCountdownStr}</strong> ⏳
+                  </div>
+                </div>
+
+                <div style="text-align:end;">
+                  <div style="font-family:'Outfit',monospace,sans-serif; font-size:1.6rem; font-weight:900; color:#10b981; text-shadow:0 0 16px rgba(16,185,129,0.4);">
+                    ${formatPrayer12h(nextPrayer.time)}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6 Prayers Grid -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+                ${prayers.map(p => {
+                  const isNext = p.key === nextPrayer.key;
+                  return `
+                    <div style="background:${isNext ? 'rgba(16,185,129,0.12)' : 'var(--bg-app)'}; border:1.5px solid ${isNext ? '#10b981' : 'var(--border-color)'}; border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; gap:8px; position:relative; overflow:hidden; transition:transform 0.15s;">
+                      ${isNext ? `
+                        <div style="position:absolute; top:8px; left:8px; width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981;"></div>
+                      ` : ''}
+                      
+                      <div style="display:flex; align-items:center; gap:6px; color:${isNext ? '#10b981' : 'var(--text-muted)'}; font-size:0.85rem; font-weight:800;">
+                        <i data-lucide="${p.icon}" style="width:16px;height:16px;"></i>
+                        <span>${p.name}</span>
+                      </div>
+
+                      <div style="font-family:'Outfit',monospace,sans-serif; font-size:1.15rem; font-weight:900; color:${isNext ? '#10b981' : 'var(--text-main)'};">
+                        ${formatPrayer12h(p.time)}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Quran Quote Banner -->
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:14px; padding:12px 16px; text-align:center; font-size:0.82rem; color:var(--text-muted);">
+                ✨ <strong>﴿إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَوْقُوتًا﴾</strong>
+              </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" style="border-top:1px solid var(--border-color); padding:14px 24px; display:flex; justify-content:center;">
+              <button type="button" class="btn-secondary" id="close-prayer-modal-footer-btn" style="padding:8px 24px; font-weight:700; border-radius:12px;">إغلاق</button>
+            </div>
+
+          </div>
+        </div>
+      `;
+
+      if (window.lucide) window.lucide.createIcons();
+
+      document.getElementById("close-prayer-modal-btn")?.addEventListener("click", closeModal);
+      document.getElementById("close-prayer-modal-footer-btn")?.addEventListener("click", closeModal);
+      document.getElementById("prayer-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "prayer-modal") closeModal();
+      });
+
+    } catch (err) {
+      console.error("Prayer times error:", err);
+      container.innerHTML = "";
+      showToast("تعذر جلب مواقيت الصلاة، يرجى التحقق من اتصال الإنترنت.", "error");
+    }
+  }
+
+  onDestroy() {
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
+      this.clockInterval = null;
+    }
   }
 }
 

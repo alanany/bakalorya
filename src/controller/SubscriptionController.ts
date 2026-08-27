@@ -8,6 +8,7 @@ import { User } from "../entity/User";
 import { Course } from "../entity/Course";
 import { AuditLog } from "../entity/AuditLog";
 import { AuthRequest } from "../middleware/auth";
+import { NotificationController } from "./NotificationController";
 
 export class SubscriptionController {
   // Get active plans (with optional courseId filtering)
@@ -351,6 +352,159 @@ export class SubscriptionController {
       return res.status(200).json({ subscription, payment });
     } catch (err) {
       console.error("Approve subscription error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Admin manually create & auto-approve subscription for a student
+  static async manualCreateSubscription(req: AuthRequest, res: Response) {
+    const {
+      studentId,
+      planId,
+      teacherId,
+      subjectId,
+      levelId,
+      startDate,
+      endDate,
+      amount,
+      currency,
+      provider,
+      receiptUrl,
+      notes,
+      autoActivate = true
+    } = req.body;
+
+    if (!studentId || !planId) {
+      return res.status(400).json({ error: "الرجاء تحديد الطالب وخطة الاشتراك." });
+    }
+
+    try {
+      const userRepository = AppDataSource.getRepository(User);
+      const planRepository = AppDataSource.getRepository(SubscriptionPlan);
+      const subscriptionRepository = AppDataSource.getRepository(Subscription);
+      const ledgerRepository = AppDataSource.getRepository(SessionCreditLedger);
+      const paymentRepository = AppDataSource.getRepository(Payment);
+      const auditRepository = AppDataSource.getRepository(AuditLog);
+
+      const student = await userRepository.findOneBy({ id: studentId, role: "student" });
+      if (!student) {
+        return res.status(404).json({ error: "حساب الطالب غير موجود." });
+      }
+
+      const plan = await planRepository.findOneBy({ id: planId });
+      if (!plan) {
+        return res.status(404).json({ error: "خطة الاشتراك غير موجودة." });
+      }
+
+      let teacher: User | null = null;
+      if (teacherId) {
+        teacher = await userRepository.findOneBy({ id: teacherId, role: "teacher" });
+        if (!teacher) {
+          return res.status(404).json({ error: "المعلم المحدد غير موجود." });
+        }
+      }
+
+      const start = startDate ? new Date(startDate) : new Date();
+      const end = endDate ? new Date(endDate) : new Date(start.getTime() + (plan.durationDays || 30) * 24 * 60 * 60 * 1000);
+
+      const subscription = new Subscription();
+      subscription.student = student;
+      if (teacher) subscription.teacher = teacher;
+      subscription.plan = plan;
+      subscription.subjectId = subjectId || (plan.course ? plan.course.category : "عام");
+      subscription.levelId = levelId || (plan.course ? plan.course.degree : student.education || "عام");
+      subscription.totalSessions = plan.sessionsCount;
+      subscription.startDate = start;
+      subscription.endDate = end;
+
+      if (autoActivate) {
+        // Auto activate: if teacher selected, schedule pending or active; otherwise teacher assignment pending
+        subscription.status = teacher ? "SCHEDULE_PENDING" : "TEACHER_ASSIGNMENT_PENDING";
+      } else {
+        subscription.status = "PENDING_PAYMENT";
+      }
+
+      await subscriptionRepository.save(subscription);
+
+      let payment: Payment | null = null;
+      let ledger: SessionCreditLedger | null = null;
+
+      if (autoActivate) {
+        // 1. Create successful payment record
+        payment = new Payment();
+        payment.student = student;
+        payment.subscription = subscription;
+        payment.amount = amount !== undefined ? Number(amount) : plan.price;
+        payment.currency = currency || plan.currency || "EGP";
+        payment.type = "SUBSCRIPTION";
+        payment.status = "SUCCESS";
+        payment.provider = provider || "manual_admin";
+        payment.receiptUrl = receiptUrl || null;
+        payment.notes = notes ? `اشتراك يدوي من الإدارة: ${notes}` : "اشتراك يدوي مباشر وتفعيل فوري من الإدارة";
+        await paymentRepository.save(payment);
+
+        // 2. Grant session credits in ledger immediately
+        ledger = new SessionCreditLedger();
+        ledger.subscription = subscription;
+        ledger.amount = plan.sessionsCount;
+        ledger.type = "SUBSCRIPTION_PURCHASE";
+        ledger.reason = `إيداع رصيد باقة يدوي بواسطة الإدارة (${plan.name} - ${plan.sessionsCount} حصص)`;
+        ledger.createdBy = { id: req.user!.id } as User;
+        await ledgerRepository.save(ledger);
+
+        // 3. Send instant notification to student
+        try {
+          await NotificationController.createNotification(
+            student.id,
+            "تفعيل اشتراك جديد 🎉",
+            `تم تفعيل اشتراكك في باقة "${plan.name}" بواسطة إدارة المنصة. رصيدك المتاح: ${plan.sessionsCount} حصة.`,
+            "success",
+            "#student-private-sessions"
+          );
+        } catch (e) {
+          console.warn("Failed to notify student:", e);
+        }
+
+        // 4. Send notification to teacher if assigned
+        if (teacher) {
+          try {
+            await NotificationController.createNotification(
+              teacher.id,
+              "إسناد طالب جديد 👨‍🏫",
+              `تم إسناد اشتراك الطالب "${student.name}" في باقة "${plan.name}" لك من قِبل الإدارة.`,
+              "info",
+              "#teacher-private-sessions"
+            );
+          } catch (e) {
+            console.warn("Failed to notify teacher:", e);
+          }
+        }
+      }
+
+      // Audit Log
+      const audit = new AuditLog();
+      audit.actor = { id: req.user!.id } as User;
+      audit.action = "SUBSCRIPTION_MANUAL_CREATED";
+      audit.entityType = "Subscription";
+      audit.entityId = subscription.id;
+      audit.metadata = JSON.stringify({
+        studentName: student.name,
+        studentId: student.id,
+        planName: plan.name,
+        teacherName: teacher ? teacher.name : "بدون معلم",
+        autoActivate,
+        paidAmount: amount !== undefined ? amount : plan.price
+      });
+      await auditRepository.save(audit);
+
+      return res.status(201).json({
+        message: "تم إنشاء وتفعيل الاشتراك للطالب بنجاح 🎉",
+        subscription,
+        payment,
+        ledger
+      });
+    } catch (err) {
+      console.error("manualCreateSubscription error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }

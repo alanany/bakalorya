@@ -10,22 +10,31 @@ class SessionController {
         try {
             const sessionRepository = data_source_1.AppDataSource.getRepository(Session_1.Session);
             const sessions = await sessionRepository.find({
-                relations: ["teacher", "course"],
+                relations: ["teacher", "course", "student"],
                 order: { scheduledAt: "ASC" }
             });
             let finalSessions = sessions;
             if (req.user && req.user.role === "student") {
                 const enrollmentRepository = data_source_1.AppDataSource.getRepository("Enrollment");
-                const enrollments = await enrollmentRepository.find({
-                    where: { student: { id: req.user.id }, status: "banned" },
+                const activeEnrollments = await enrollmentRepository.find({
+                    where: { student: { id: req.user.id }, status: "active" },
                     relations: ["course"]
                 });
-                const bannedCourseIds = enrollments.map(e => e.course.id);
+                const activeCourseIds = activeEnrollments.map(e => e.course?.id).filter(Boolean);
                 finalSessions = sessions.filter(session => {
-                    if (!session.course)
-                        return true;
-                    return !bannedCourseIds.includes(session.course.id);
+                    // 1. If assigned directly to this student
+                    if (session.student?.id) {
+                        return session.student.id === req.user.id;
+                    }
+                    // 2. If session belongs to a course, student must have an active enrollment
+                    if (session.course?.id) {
+                        return activeCourseIds.includes(session.course.id);
+                    }
+                    return false;
                 });
+            }
+            else if (req.user && req.user.role === "teacher") {
+                finalSessions = sessions.filter(session => session.teacher?.id === req.user.id);
             }
             return res.status(200).json(finalSessions);
         }

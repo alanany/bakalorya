@@ -11,20 +11,29 @@ export default class StudentGroupsView {
 
   async render() {
     try {
-      const [sessions] = await Promise.all([
-        apiFetch("/sessions")
+      const [sessions, enrollments] = await Promise.all([
+        apiFetch("/sessions").catch(() => []),
+        apiFetch("/student/enrollments").catch(() => [])
       ]);
 
       const rawSessions = sessions || [];
+      const currentStudentId = state.user?.id;
+      const enrolledCourseIds = new Set((enrollments || []).filter(e => e.status === "active").map(e => e.course?.id).filter(Boolean));
 
-      // Detect group sessions for this student
-      const isGroupSession = (s) =>
-        !!s.course ||
-        !s.student ||
-        (s.type && String(s.type).toLowerCase().includes("group")) ||
-        (s.title && String(s.title).includes("مجموعة"));
+      // Detect group sessions strictly for this student:
+      // 1. Session is directly assigned to this student (s.student?.id === currentStudentId)
+      // 2. OR session belongs to a course the student is actively enrolled in
+      const isGroupSessionForMe = (s) => {
+        if (s.student?.id) {
+          return s.student.id === currentStudentId;
+        }
+        if (s.course?.id) {
+          return enrolledCourseIds.has(s.course.id);
+        }
+        return false;
+      };
 
-      const myGroupSessions = rawSessions.filter(isGroupSession);
+      const myGroupSessions = rawSessions.filter(isGroupSessionForMe);
 
       // Group by title + teacher so each group appears once with all its dates
       const groupMap = {};

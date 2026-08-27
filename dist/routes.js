@@ -60,6 +60,21 @@ const uploadSingleFile = (req, res, next) => {
         next();
     });
 };
+const uploadSingleAvatar = (req, res, next) => {
+    upload.fields([{ name: "avatar", maxCount: 1 }, { name: "file", maxCount: 1 }])(req, res, (err) => {
+        if (err) {
+            console.error("Avatar upload error:", err);
+            return res.status(400).json({ error: `فشل رفع الصورة: ${err.message}` });
+        }
+        if (req.files && req.files.avatar && req.files.avatar[0]) {
+            req.file = req.files.avatar[0];
+        }
+        else if (req.files && req.files.file && req.files.file[0]) {
+            req.file = req.files.file[0];
+        }
+        next();
+    });
+};
 const router = (0, express_1.Router)();
 // Auth Routes
 router.post("/auth/register", AuthController_1.AuthController.register);
@@ -95,6 +110,7 @@ router.post("/subscriptions", auth_1.authMiddleware, SubscriptionController_1.Su
 router.get("/subscriptions/my", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getMySubscriptions);
 router.get("/subscriptions/teacher-assigned", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), SubscriptionController_1.SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.getAllSubscriptions);
+router.post("/admin/subscriptions/manual-create", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.manualCreateSubscription);
 router.patch("/admin/subscriptions/:id/assign-teacher", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.assignTeacher);
 router.patch("/admin/subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.approveSubscription);
 router.patch("/admin/subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.rejectSubscription);
@@ -132,7 +148,7 @@ router.get("/admin/earnings", auth_1.authMiddleware, (0, auth_1.requireRole)(["a
 // Uploads
 router.post("/upload", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), uploadSingleFile, UploadController_1.UploadController.uploadFile);
 // Live Sessions
-router.get("/sessions", SessionController_1.SessionController.getAll);
+router.get("/sessions", auth_1.optionalAuthMiddleware, SessionController_1.SessionController.getAll);
 router.post("/sessions", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), SessionController_1.SessionController.create);
 router.put("/sessions/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), SessionController_1.SessionController.update);
 router.delete("/sessions/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), SessionController_1.SessionController.delete);
@@ -161,6 +177,7 @@ router.post("/teacher-applications", TeacherApplicationController_1.TeacherAppli
 router.get("/teachers", UserController_1.UserController.getTeachers);
 router.get("/teachers/:id", UserController_1.UserController.getTeacherById);
 router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController.updateProfile);
+router.post("/users/avatar", auth_1.authMiddleware, uploadSingleAvatar, UserController_1.UserController.uploadAvatar);
 router.get("/users/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.getStudents);
 router.post("/teacher/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.addStudent);
 router.delete("/teacher/students/:studentId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.deleteStudent);

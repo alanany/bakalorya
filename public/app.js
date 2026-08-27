@@ -1505,14 +1505,30 @@ document.addEventListener("click", (e) => {
 // ── Universal Multi-Timezone Utilities ─────────────────────────────────────────
 
 export const TIMEZONE_MAP = {
-  "Asia/Riyadh": { name: "توقيت السعودية", flag: "🇸🇦", utcOffset: "+3" },
-  "Africa/Cairo": { name: "توقيت مصر", flag: "🇪🇬", utcOffset: "+3" },
-  "Asia/Dubai": { name: "توقيت الإمارات", flag: "🇦🇪", utcOffset: "+4" },
-  "Asia/Kuwait": { name: "توقيت الكويت", flag: "🇰🇼", utcOffset: "+3" },
-  "Asia/Qatar": { name: "توقيت قطر", flag: "🇶🇦", utcOffset: "+3" },
-  "Asia/Amman": { name: "توقيت الأردن", flag: "🇯🇴", utcOffset: "+3" },
-  "Asia/Baghdad": { name: "توقيت العراق", flag: "🇮🇶", utcOffset: "+3" },
-  "Europe/London": { name: "توقيت غرينتش", flag: "🇬🇧", utcOffset: "+0" }
+  "Africa/Cairo": { name: "توقيت القاهرة", flag: "🇪🇬", city: "Cairo", country: "Egypt", utcOffset: "+3" },
+  "Asia/Riyadh": { name: "توقيت مكة / الرياض", flag: "🇸🇦", city: "Riyadh", country: "Saudi Arabia", utcOffset: "+3" },
+  "Asia/Dubai": { name: "توقيت دبي / الإمارات", flag: "🇦🇪", city: "Dubai", country: "UAE", utcOffset: "+4" },
+  "Asia/Kuwait": { name: "توقيت الكويت", flag: "🇰🇼", city: "Kuwait", country: "Kuwait", utcOffset: "+3" },
+  "Asia/Qatar": { name: "توقيت قطر", flag: "🇶🇦", city: "Doha", country: "Qatar", utcOffset: "+3" },
+  "Asia/Amman": { name: "توقيت عمّان / الأردن", flag: "🇯🇴", city: "Amman", country: "Jordan", utcOffset: "+3" },
+  "Asia/Baghdad": { name: "توقيت بغداد / العراق", flag: "🇮🇶", city: "Baghdad", country: "Iraq", utcOffset: "+3" },
+  "Africa/Algiers": { name: "توقيت الجزائر", flag: "🇩🇿", city: "Algiers", country: "Algeria", utcOffset: "+1" },
+  "Africa/Casablanca": { name: "توقيت الرباط / المغرب", flag: "🇲🇦", city: "Casablanca", country: "Morocco", utcOffset: "+1" },
+  "Africa/Tunis": { name: "توقيت تونس", flag: "🇹🇳", city: "Tunis", country: "Tunisia", utcOffset: "+1" },
+  "Africa/Khartoum": { name: "توقيت الخرطوم / السودان", flag: "🇸🇩", city: "Khartoum", country: "Sudan", utcOffset: "+2" },
+  "Africa/Tripoli": { name: "توقيت طرابلس / ليبيا", flag: "🇱🇾", city: "Tripoli", country: "Libya", utcOffset: "+2" },
+  "Asia/Muscat": { name: "توقيت مسقط / عُمان", flag: "🇴🇲", city: "Muscat", country: "Oman", utcOffset: "+4" },
+  "Asia/Bahrain": { name: "توقيت المنامة / البحرين", flag: "🇧🇭", city: "Manama", country: "Bahrain", utcOffset: "+3" },
+  "Asia/Aden": { name: "توقيت صنعاء / اليمن", flag: "🇾🇪", city: "Aden", country: "Yemen", utcOffset: "+3" },
+  "Asia/Beirut": { name: "توقيت بيروت / لبنان", flag: "🇱🇧", city: "Beirut", country: "Lebanon", utcOffset: "+3" },
+  "Asia/Damascus": { name: "توقيت دمشق / سوريا", flag: "🇸🇾", city: "Damascus", country: "Syria", utcOffset: "+3" },
+  "Asia/Gaza": { name: "توقيت القدس / فلسطين", flag: "🇵🇸", city: "Gaza", country: "Palestine", utcOffset: "+3" },
+  "Asia/Hebron": { name: "توقيت القدس / فلسطين", flag: "🇵🇸", city: "Hebron", country: "Palestine", utcOffset: "+3" },
+  "Europe/London": { name: "توقيت لندن / غرينتش", flag: "🇬🇧", city: "London", country: "UK", utcOffset: "+0" },
+  "Europe/Paris": { name: "توقيت باريس", flag: "🇫🇷", city: "Paris", country: "France", utcOffset: "+2" },
+  "Europe/Berlin": { name: "توقيت برلين", flag: "🇩🇪", city: "Berlin", country: "Germany", utcOffset: "+2" },
+  "Europe/Istanbul": { name: "توقيت إسطنبول", flag: "🇹🇷", city: "Istanbul", country: "Turkey", utcOffset: "+3" },
+  "America/New_York": { name: "توقيت نيويورك", flag: "🇺🇸", city: "New York", country: "USA", utcOffset: "-4" }
 };
 
 export function getUserTimezone() {
@@ -1526,8 +1542,27 @@ export function getUserTimezone() {
   }
 }
 
+export function getTimezoneInfo(tz = getUserTimezone()) {
+  if (TIMEZONE_MAP[tz]) return TIMEZONE_MAP[tz];
+
+  // If in Cairo / Egypt
+  if (tz.includes("Cairo") || tz.includes("Egypt")) {
+    return TIMEZONE_MAP["Africa/Cairo"];
+  }
+
+  // Derive city name cleanly for any other world country
+  const parts = tz.split("/");
+  const cityName = parts.length > 1 ? parts[1].replace(/_/g, " ") : tz;
+  return {
+    name: `توقيت ${cityName}`,
+    flag: "🌐",
+    city: cityName,
+    country: parts[0] || "Global"
+  };
+}
+
 export function getTimezoneBadgeHTML(tz = getUserTimezone()) {
-  const info = TIMEZONE_MAP[tz] || { name: "التوقيت المحلي", flag: "🌐" };
+  const info = getTimezoneInfo(tz);
   return `<span class="tz-badge" style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.12); color:var(--primary); padding:2px 8px; border-radius:8px;">${info.flag} ${info.name}</span>`;
 }
 

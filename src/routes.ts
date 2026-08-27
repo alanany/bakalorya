@@ -61,6 +61,21 @@ const uploadSingleFile = (req: any, res: any, next: any) => {
   });
 };
 
+const uploadSingleAvatar = (req: any, res: any, next: any) => {
+  upload.fields([{ name: "avatar", maxCount: 1 }, { name: "file", maxCount: 1 }])(req, res, (err: any) => {
+    if (err) {
+      console.error("Avatar upload error:", err);
+      return res.status(400).json({ error: `فشل رفع الصورة: ${err.message}` });
+    }
+    if (req.files && req.files.avatar && req.files.avatar[0]) {
+      req.file = req.files.avatar[0];
+    } else if (req.files && req.files.file && req.files.file[0]) {
+      req.file = req.files.file[0];
+    }
+    next();
+  });
+};
+
 const router = Router();
 
 // Auth Routes
@@ -103,6 +118,7 @@ router.post("/subscriptions", authMiddleware, SubscriptionController.subscribe);
 router.get("/subscriptions/my", authMiddleware, SubscriptionController.getMySubscriptions);
 router.get("/subscriptions/teacher-assigned", authMiddleware, requireRole(["teacher"]), SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", authMiddleware, requireRole(["admin"]), SubscriptionController.getAllSubscriptions);
+router.post("/admin/subscriptions/manual-create", authMiddleware, requireRole(["admin"]), SubscriptionController.manualCreateSubscription);
 router.patch("/admin/subscriptions/:id/assign-teacher", authMiddleware, requireRole(["admin"]), SubscriptionController.assignTeacher);
 router.patch("/admin/subscriptions/:id/approve", authMiddleware, requireRole(["admin"]), SubscriptionController.approveSubscription);
 router.patch("/admin/subscriptions/:id/reject", authMiddleware, requireRole(["admin"]), SubscriptionController.rejectSubscription);
@@ -147,7 +163,7 @@ router.get("/admin/earnings", authMiddleware, requireRole(["admin"]), TeacherEar
 router.post("/upload", authMiddleware, requireRole(["teacher", "admin"]), uploadSingleFile, UploadController.uploadFile);
 
 // Live Sessions
-router.get("/sessions", SessionController.getAll);
+router.get("/sessions", optionalAuthMiddleware, SessionController.getAll);
 router.post("/sessions", authMiddleware, requireRole(["teacher", "admin"]), SessionController.create);
 router.put("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), SessionController.update);
 router.delete("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), SessionController.delete);
@@ -180,6 +196,7 @@ router.post("/teacher-applications", TeacherApplicationController.apply);
 router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
+router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
 router.get("/users/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.getStudents);
 router.post("/teacher/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.addStudent);
 router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["teacher", "admin"]), UserController.deleteStudent);
