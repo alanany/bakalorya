@@ -13,8 +13,10 @@ const routes_1 = __importDefault(require("./routes"));
 const PORT = process.env.PORT || 3000;
 async function startServer() {
     try {
-        // Ensure uploads directory exists
-        const uploadsDir = path_1.default.resolve(process.cwd(), "public/uploads");
+        // Ensure uploads directory exists (supports persistent UPLOADS_DIR environment variable)
+        const uploadsDir = process.env.UPLOADS_DIR
+            ? path_1.default.resolve(process.env.UPLOADS_DIR)
+            : path_1.default.resolve(process.cwd(), "public/uploads");
         if (!fs_1.default.existsSync(uploadsDir)) {
             fs_1.default.mkdirSync(uploadsDir, { recursive: true });
         }
@@ -27,6 +29,7 @@ async function startServer() {
         app.use("/api", routes_1.default);
         // Serve Uploads and Static Frontend Files
         app.use("/uploads", express_1.default.static(uploadsDir));
+        app.use("/public/uploads", express_1.default.static(uploadsDir));
         app.use(express_1.default.static(path_1.default.resolve(process.cwd(), "public")));
         // Fallback route to serve index.html for SPA router support
         app.get("*", (req, res) => {

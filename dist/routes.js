@@ -29,8 +29,10 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
-// Configure Multer for file uploads
-const uploadDir = path_1.default.resolve(process.cwd(), "public/uploads");
+// Configure Multer for file uploads (supports persistent UPLOADS_DIR)
+const uploadDir = process.env.UPLOADS_DIR
+    ? path_1.default.resolve(process.env.UPLOADS_DIR)
+    : path_1.default.resolve(process.cwd(), "public/uploads");
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         if (!fs_1.default.existsSync(uploadDir)) {
@@ -79,6 +81,10 @@ const router = (0, express_1.Router)();
 // Auth Routes
 router.post("/auth/register", AuthController_1.AuthController.register);
 router.post("/auth/login", AuthController_1.AuthController.login);
+router.post("/auth/student/login", AuthController_1.AuthController.studentLogin);
+router.post("/auth/student-login", AuthController_1.AuthController.studentLogin);
+router.post("/auth/staff/login", AuthController_1.AuthController.staffLogin);
+router.post("/auth/staff-login", AuthController_1.AuthController.staffLogin);
 router.get("/auth/me", auth_1.authMiddleware, AuthController_1.AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController_1.AdminTeacherController.acceptInvitation);
 // Public Platform Stats & Analytics
@@ -104,10 +110,13 @@ router.get("/admin/teachers", auth_1.authMiddleware, (0, auth_1.requireRole)(["a
 router.patch("/admin/teachers/:id/capabilities", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminTeacherController_1.AdminTeacherController.updateTeacherCapabilities);
 // Monthly Subscription Plans & Subscriptions
 router.get("/subscription-plans", SubscriptionController_1.SubscriptionController.getPlans);
+router.get("/courses/:courseId/subscription-plans", SubscriptionController_1.SubscriptionController.getPlans);
 router.post("/subscription-plans", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.createPlan);
 router.put("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.updatePlan);
 router.post("/subscriptions", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.subscribe);
 router.get("/subscriptions/my", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getMySubscriptions);
+router.get("/subscriptions/my/course/:courseId", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getCourseQuota);
+router.get("/courses/:courseId/my-quota", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getCourseQuota);
 router.get("/subscriptions/teacher-assigned", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher"]), SubscriptionController_1.SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.getAllSubscriptions);
 router.post("/admin/subscriptions/manual-create", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.manualCreateSubscription);

@@ -172,19 +172,27 @@ export class SubscriptionController {
     }
   }
 
-  // Student view active subscriptions & calculated ledger credits
+  // Student view active subscriptions & calculated ledger credits (with optional courseId filter)
   static async getMySubscriptions(req: AuthRequest, res: Response) {
     try {
       const subscriptionRepository = AppDataSource.getRepository(Subscription);
       const ledgerRepository = AppDataSource.getRepository(SessionCreditLedger);
+      const { courseId } = req.query;
 
       const subscriptions = await subscriptionRepository.find({
         where: { student: { id: req.user!.id } },
-        relations: ["teacher", "plan"],
+        relations: ["teacher", "plan", "plan.course"],
         order: { createdAt: "DESC" }
       });
 
-      const result = await Promise.all(subscriptions.map(async (sub) => {
+      const filteredSubscriptions = courseId
+        ? subscriptions.filter(sub => 
+            (sub.plan && (sub.plan.courseId === courseId || sub.plan.course?.id === courseId)) ||
+            (sub.subjectId === courseId)
+          )
+        : subscriptions;
+
+      const result = await Promise.all(filteredSubscriptions.map(async (sub) => {
         const ledgers = await ledgerRepository.find({
           where: { subscription: { id: sub.id } }
         });
@@ -199,6 +207,82 @@ export class SubscriptionController {
 
       return res.status(200).json(result);
     } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Student view subscription quota & balance for a specific course
+  static async getCourseQuota(req: AuthRequest, res: Response) {
+    const { courseId } = req.params;
+
+    if (!courseId) {
+      return res.status(400).json({ error: "الرجاء تحديد معرف الدورة (courseId)." });
+    }
+
+    try {
+      const subscriptionRepository = AppDataSource.getRepository(Subscription);
+      const planRepository = AppDataSource.getRepository(SubscriptionPlan);
+      const ledgerRepository = AppDataSource.getRepository(SessionCreditLedger);
+
+      // 1. Fetch available plans for this course
+      const availablePlans = await planRepository.find({
+        where: [
+          { course: { id: courseId }, isActive: true },
+          { courseId: courseId, isActive: true }
+        ],
+        order: { price: "ASC" }
+      });
+
+      const allActivePlans = availablePlans.length > 0 
+        ? availablePlans 
+        : await planRepository.find({ where: { isActive: true }, order: { price: "ASC" } });
+
+      // 2. Find student's subscription for this course
+      const subscriptions = await subscriptionRepository.find({
+        where: { student: { id: req.user!.id } },
+        relations: ["teacher", "plan", "plan.course"],
+        order: { createdAt: "DESC" }
+      });
+
+      const matchedSub = subscriptions.find(s => 
+        (s.plan && (s.plan.courseId === courseId || s.plan.course?.id === courseId)) ||
+        (s.subjectId === courseId)
+      ) || (subscriptions.length > 0 ? subscriptions[0] : null);
+
+      if (!matchedSub) {
+        return res.status(200).json({
+          hasActiveSubscription: false,
+          courseId,
+          subscription: null,
+          totalQuota: 0,
+          usedQuota: 0,
+          remainingQuota: 0,
+          availablePlans: allActivePlans
+        });
+      }
+
+      const ledgers = await ledgerRepository.find({
+        where: { subscription: { id: matchedSub.id } }
+      });
+      const remainingCredits = ledgers.reduce((sum, entry) => sum + entry.amount, 0);
+      const remainingQuota = Math.max(0, remainingCredits);
+      const usedQuota = Math.max(0, matchedSub.totalSessions - remainingQuota);
+
+      return res.status(200).json({
+        hasActiveSubscription: matchedSub.status === "ACTIVE",
+        courseId,
+        subscription: {
+          ...matchedSub,
+          remainingCredits: remainingQuota,
+          usedCredits: usedQuota
+        },
+        totalQuota: matchedSub.totalSessions,
+        usedQuota,
+        remainingQuota,
+        availablePlans: allActivePlans
+      });
+    } catch (err) {
+      console.error("getCourseQuota error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }

@@ -26,8 +26,10 @@ import path from "path";
 import crypto from "crypto";
 import fs from "fs";
 
-// Configure Multer for file uploads
-const uploadDir = path.resolve(process.cwd(), "public/uploads");
+// Configure Multer for file uploads (supports persistent UPLOADS_DIR)
+const uploadDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve(process.cwd(), "public/uploads");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -81,6 +83,10 @@ const router = Router();
 // Auth Routes
 router.post("/auth/register", AuthController.register);
 router.post("/auth/login", AuthController.login);
+router.post("/auth/student/login", AuthController.studentLogin);
+router.post("/auth/student-login", AuthController.studentLogin);
+router.post("/auth/staff/login", AuthController.staffLogin);
+router.post("/auth/staff-login", AuthController.staffLogin);
 router.get("/auth/me", authMiddleware, AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvitation);
 
@@ -111,11 +117,14 @@ router.patch("/admin/teachers/:id/capabilities", authMiddleware, requireRole(["a
 
 // Monthly Subscription Plans & Subscriptions
 router.get("/subscription-plans", SubscriptionController.getPlans);
+router.get("/courses/:courseId/subscription-plans", SubscriptionController.getPlans);
 router.post("/subscription-plans", authMiddleware, requireRole(["admin"]), SubscriptionController.createPlan);
 router.put("/subscription-plans/:id", authMiddleware, requireRole(["admin"]), SubscriptionController.updatePlan);
 
 router.post("/subscriptions", authMiddleware, SubscriptionController.subscribe);
 router.get("/subscriptions/my", authMiddleware, SubscriptionController.getMySubscriptions);
+router.get("/subscriptions/my/course/:courseId", authMiddleware, SubscriptionController.getCourseQuota);
+router.get("/courses/:courseId/my-quota", authMiddleware, SubscriptionController.getCourseQuota);
 router.get("/subscriptions/teacher-assigned", authMiddleware, requireRole(["teacher"]), SubscriptionController.getTeacherSubscriptions);
 router.get("/admin/subscriptions", authMiddleware, requireRole(["admin"]), SubscriptionController.getAllSubscriptions);
 router.post("/admin/subscriptions/manual-create", authMiddleware, requireRole(["admin"]), SubscriptionController.manualCreateSubscription);

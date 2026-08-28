@@ -3,12 +3,17 @@ import { apiFetch, setAuth, state, t, renderPhoneInputGroup, renderEducationSele
 export default class AuthView {
   constructor(container, mode) {
     this.container = container;
-    // mode can be 'signup' or 'login'
-    this.isRegisterMode = mode === "signup" || window.location.hash.includes("signup");
+    this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
+    this.isRegisterMode = !this.isStaffMode && (mode === "signup" || window.location.hash.includes("signup"));
     this.showPassword = false;
   }
 
   async render() {
+    this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
+    if (this.isStaffMode) {
+      this.isRegisterMode = false;
+    }
+
     if (state.user) {
       const targetHash = state.user.role === "admin" ? "#admin-dashboard" : state.user.role === "teacher" ? "#teacher-portal" : "#student-dashboard";
       if (window.location.hash !== targetHash) {
@@ -16,6 +21,18 @@ export default class AuthView {
       }
       return;
     }
+
+    const titleText = this.isStaffMode 
+      ? "بوابة المعلمين والإدارة 🛡️" 
+      : this.isRegisterMode 
+        ? "إنشاء حساب طالب جديد ✨" 
+        : "تسجيل دخول الطلاب 👨‍🎓";
+
+    const descText = this.isStaffMode
+      ? "تسجيل الدخول المخصص للمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
+      : this.isRegisterMode
+        ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
+        : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
 
     this.container.innerHTML = `
       <div class="auth-page-wrapper">
@@ -87,45 +104,69 @@ export default class AuthView {
             
             <div style="margin-bottom: 22px;">
               <h2 id="auth-header-title" style="font-size: 1.55rem; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
-                ${this.isRegisterMode ? "إنشاء حساب جديد ✨" : "تسجيل الدخول 👋"}
+                ${titleText}
               </h2>
               <p id="auth-header-desc" style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
-                ${this.isRegisterMode ? "انضم الآن إلى مجتمع انطلق وابدأ رحلة التفوق" : "مرحباً بك مجدداً، أدخل بياناتك للمتابعة"}
+                ${descText}
               </p>
             </div>
 
             <!-- Navigation Switcher Tabs -->
-            <div class="auth-tabs-nav">
-              <button id="tab-login" class="auth-tab-btn ${!this.isRegisterMode ? 'active' : ''}">
-                <i data-lucide="log-in" style="width:16px; height:16px;"></i>
-                <span>${t("auth.signIn") || "تسجيل الدخول"}</span>
-              </button>
-              <button id="tab-signup" class="auth-tab-btn ${this.isRegisterMode ? 'active' : ''}">
-                <i data-lucide="user-plus" style="width:16px; height:16px;"></i>
-                <span>${t("auth.register") || "حساب جديد"}</span>
-              </button>
-            </div>
+            ${this.isStaffMode ? `
+              <div class="auth-tabs-nav" style="grid-template-columns: 1fr;">
+                <button class="auth-tab-btn active" style="cursor:default;">
+                  <i data-lucide="shield-check" style="width:16px; height:16px; color:#10b981;"></i>
+                  <span>بوابة المعلمين والإشراف</span>
+                </button>
+              </div>
+            ` : `
+              <div class="auth-tabs-nav">
+                <button id="tab-login" class="auth-tab-btn ${!this.isRegisterMode ? 'active' : ''}">
+                  <i data-lucide="log-in" style="width:16px; height:16px;"></i>
+                  <span>دخول الطلاب</span>
+                </button>
+                <button id="tab-signup" class="auth-tab-btn ${this.isRegisterMode ? 'active' : ''}">
+                  <i data-lucide="user-plus" style="width:16px; height:16px;"></i>
+                  <span>حساب طالب جديد</span>
+                </button>
+              </div>
+            `}
 
             <!-- Form Container -->
             <div id="auth-form-card">
               ${this.getFormHTML()}
             </div>
 
+            <!-- Quick Switcher Link between Student & Staff Portals -->
+            <div style="margin-top: 18px; padding: 12px 16px; background: rgba(99,102,241,0.06); border: 1px dashed rgba(99,102,241,0.25); border-radius: 14px; text-align: center; font-size: 0.86rem;">
+              ${this.isStaffMode ? `
+                <span style="color:var(--text-muted);">هل أنت طالب؟</span>
+                <a href="#login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
+                  الانتقال لبوابة تسجيل دخول الطلاب 👨‍🎓 ↗
+                </a>
+              ` : `
+                <span style="color:var(--text-muted);">هل أنت معلم أو مشرف بالمنصة؟</span>
+                <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
+                  الدخول عبر بوابة المعلمين والإدارة 🛡️ ↗
+                </a>
+              `}
+            </div>
+
             <!-- Quick Demo Accounts Sandbox Box -->
-            <div class="auth-demo-box">
+            <div class="auth-demo-box" style="margin-top:16px;">
               <div class="auth-demo-title">
                 <i data-lucide="key-round" style="width:15px; height:15px; color:var(--primary);"></i>
                 <span>بيانات تجريبية للدخول السريع (Demo Access):</span>
               </div>
               <div class="auth-demo-grid">
+                <button class="auth-demo-btn" id="fill-student-btn" title="حساب طالب متفوق">
+                  <span>👨‍🎓 حساب طالب</span>
+                </button>
                 <button class="auth-demo-btn" id="fill-teacher-btn" title="حساب معلم دورات وبث مباشر">
                   <span>👨‍🏫 معلم دورات</span>
                 </button>
                 <button class="auth-demo-btn" id="fill-session-teacher-btn" title="حساب معلم حصص خاصة">
                   <span>⏱️ معلم حصص</span>
-                </button>
-                <button class="auth-demo-btn" id="fill-student-btn" title="حساب طالب متفوق">
-                  <span>👨‍🎓 حساب طالب</span>
                 </button>
                 <button class="auth-demo-btn" id="fill-admin-btn" title="حساب مشرف لوحة التحكم">
                   <span>🛡️ مشرف أدمن</span>
@@ -234,7 +275,7 @@ export default class AuthView {
           </div>
 
           <button type="submit" class="btn-primary auth-btn-submit" id="auth-submit-btn">
-            <span>${t("auth.login") || "تسجيل الدخول للمنصة"}</span>
+            <span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span>
             <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>
           </button>
         </form>
@@ -282,6 +323,8 @@ export default class AuthView {
 
     // Quick demo buttons
     document.getElementById("fill-teacher-btn")?.addEventListener("click", async () => {
+      window.location.hash = "#staff-login";
+      this.isStaffMode = true;
       this.isRegisterMode = false;
       await this.render();
       const email = document.getElementById("login-email");
@@ -293,6 +336,8 @@ export default class AuthView {
     });
 
     document.getElementById("fill-session-teacher-btn")?.addEventListener("click", async () => {
+      window.location.hash = "#staff-login";
+      this.isStaffMode = true;
       this.isRegisterMode = false;
       await this.render();
       const email = document.getElementById("login-email");
@@ -304,6 +349,8 @@ export default class AuthView {
     });
 
     document.getElementById("fill-student-btn")?.addEventListener("click", async () => {
+      window.location.hash = "#login";
+      this.isStaffMode = false;
       this.isRegisterMode = false;
       await this.render();
       const email = document.getElementById("login-email");
@@ -315,6 +362,8 @@ export default class AuthView {
     });
 
     document.getElementById("fill-admin-btn")?.addEventListener("click", async () => {
+      window.location.hash = "#staff-login";
+      this.isStaffMode = true;
       this.isRegisterMode = false;
       await this.render();
       const email = document.getElementById("login-email");
@@ -369,8 +418,10 @@ export default class AuthView {
       } else {
         const email = document.getElementById("login-email").value;
         const password = document.getElementById("login-password").value;
+        const loginEndpoint = this.isStaffMode ? "/auth/staff/login" : "/auth/student/login";
+
         try {
-          const data = await apiFetch("/auth/login", {
+          const data = await apiFetch(loginEndpoint, {
             method: "POST",
             body: JSON.stringify({ email, password })
           });
@@ -382,7 +433,7 @@ export default class AuthView {
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.style.opacity = "1";
-            submitBtn.innerHTML = `<span>${t("auth.login") || "تسجيل الدخول للمنصة"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+            submitBtn.innerHTML = `<span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
             if (window.lucide) window.lucide.createIcons();
           }
         }

@@ -1436,6 +1436,9 @@ export async function router() {
     case "#landing": ViewClass = LandingView; break;
     case "#login":
     case "#signup":
+    case "#staff-login":
+    case "#teacher-login":
+    case "#admin-login":
     case "#auth": ViewClass = AuthView; break;
     case "#student-dashboard": ViewClass = StudentView; break;
     case "#student-groups": ViewClass = StudentGroupsView; break;

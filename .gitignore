@@ -6,3 +6,6 @@ dist/
 *.sqlite
 database.sqlite
 bakalorya_db
+public/uploads/*
+!public/uploads/.gitkeep
+

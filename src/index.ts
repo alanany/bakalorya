@@ -10,8 +10,11 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // Ensure uploads directory exists
-    const uploadsDir = path.resolve(process.cwd(), "public/uploads");
+    // Ensure uploads directory exists (supports persistent UPLOADS_DIR environment variable)
+    const uploadsDir = process.env.UPLOADS_DIR 
+      ? path.resolve(process.env.UPLOADS_DIR) 
+      : path.resolve(process.cwd(), "public/uploads");
+
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
@@ -28,6 +31,7 @@ async function startServer() {
 
     // Serve Uploads and Static Frontend Files
     app.use("/uploads", express.static(uploadsDir));
+    app.use("/public/uploads", express.static(uploadsDir));
     app.use(express.static(path.resolve(process.cwd(), "public")));
 
     // Fallback route to serve index.html for SPA router support
