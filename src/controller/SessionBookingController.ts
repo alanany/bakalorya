@@ -820,20 +820,26 @@ export class SessionBookingController {
       let validCount = 0;
       let conflictCount = 0;
 
+      // Get IDs of this subscription's own sessions — these will be deleted on confirm,
+      // so they should NEVER count as conflicts during preview.
+      const ownSessionIds = existingSessions.map(s => s.id);
+
       for (let i = 0; i < candidateDates.length; i++) {
         const d = candidateDates[i];
         const dayNum = d.getDay();
 
         let conflictReason: string | null = null;
 
-        if (availability.length > 0 && !availDays.includes(dayNum)) {
-          conflictReason = `المعلم ${teacher.name} غير متاح يوم ${daysAr[dayNum]}.`;
-        }
+        // Use session-duration window to detect real time overlaps
+        const sessionDuration = subscription.plan?.sessionDurationMins || 60;
+        const windowStart = new Date(d.getTime() - sessionDuration * 60 * 1000);
+        const windowEnd = new Date(d.getTime() + sessionDuration * 60 * 1000);
 
-        const windowStart = new Date(d.getTime() - 45 * 60 * 1000);
-        const windowEnd = new Date(d.getTime() + 45 * 60 * 1000);
-
-        const conflictingSession = await sessionRepository.createQueryBuilder("session")
+        // Build query: find any session that overlaps this time slot
+        let qb = sessionRepository.createQueryBuilder("session")
+          .leftJoinAndSelect("session.teacher", "teacher")
+          .leftJoinAndSelect("session.student", "student")
+          .leftJoinAndSelect("session.subscription", "sub")
           .where("(session.teacherId = :teacherId OR session.studentId = :studentId)", {
             teacherId: teacher.id,
             studentId: subscription.student.id
@@ -841,16 +847,31 @@ export class SessionBookingController {
           .andWhere("session.status IN (:...activeStatuses)", {
             activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
           })
-          .andWhere("session.subscriptionId != :subId", { subId: subscription.id })
           .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
             windowStart, windowEnd
           })
-          .getOne();
+          // ALWAYS exclude this subscription's sessions (they get replaced on confirm)
+          .andWhere("(session.subscriptionId IS NULL OR session.subscriptionId != :subId)", { subId: subscription.id });
+
+        // Also exclude by individual IDs as extra safety
+        if (ownSessionIds.length > 0) {
+          qb = qb.andWhere("session.id NOT IN (:...ownIds)", { ownIds: ownSessionIds });
+        }
+
+        const conflictingSession = await qb.getOne();
 
         if (conflictingSession) {
-          conflictReason = conflictReason 
-            ? conflictReason + " وتوجد حصة أخرى محجوزة نفس الموعد."
-            : `تضارب مع موعد حصة أخرى محجوزة للأستاذ أو الطالب.`;
+          // Build a detailed reason so the admin knows exactly what's conflicting
+          const conflictTime = new Date(conflictingSession.scheduledAt);
+          const conflictTimeStr = conflictTime.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          const conflictTeacher = conflictingSession.teacher?.name || "غير محدد";
+          const conflictStudent = conflictingSession.student?.name || "غير محدد";
+
+          if (String(conflictingSession.teacher?.id) === String(teacher.id)) {
+            conflictReason = `المعلم "${conflictTeacher}" لديه حصة أخرى الساعة ${conflictTimeStr} مع طالب "${conflictStudent}".`;
+          } else {
+            conflictReason = `الطالب "${conflictStudent}" لديه حصة أخرى الساعة ${conflictTimeStr} مع المعلم "${conflictTeacher}".`;
+          }
         }
 
         const status = conflictReason ? "CONFLICT" : "VALID";
@@ -882,6 +903,119 @@ export class SessionBookingController {
     } catch (err) {
       console.error("previewPackageSchedule error:", err);
       return res.status(500).json({ error: "فشلت معاينة جدول الحصص." });
+    }
+  }
+
+  // Re-check conflicts for manually edited session times
+  static async recheckScheduleConflicts(req: AuthRequest, res: Response) {
+    const { subscriptionId, teacherId, sessions, isEditMode } = req.body;
+
+    if (!subscriptionId || !Array.isArray(sessions)) {
+      return res.status(400).json({ error: "بيانات ناقصة." });
+    }
+
+    try {
+      const subscriptionRepository = AppDataSource.getRepository(Subscription);
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const userRepository = AppDataSource.getRepository(User);
+
+      const subscription = await subscriptionRepository.findOne({
+        where: { id: subscriptionId },
+        relations: ["teacher", "plan", "student"]
+      });
+
+      if (!subscription) {
+        return res.status(404).json({ error: "الاشتراك غير موجود." });
+      }
+
+      let teacher: User | null = subscription.teacher;
+      if (teacherId) {
+        teacher = await userRepository.findOneBy({ id: teacherId, role: "teacher" });
+      }
+      if (!teacher) {
+        return res.status(400).json({ error: "يرجى تعيين معلم." });
+      }
+
+      // Get this subscription's own sessions to exclude from conflict check
+      const existingSessions = await sessionRepository.find({
+        where: { subscription: { id: subscription.id } }
+      });
+      const ownSessionIds = existingSessions.map(s => s.id);
+
+      const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const sessionDuration = subscription.plan?.sessionDurationMins || 60;
+      const items: any[] = [];
+      let validCount = 0;
+      let conflictCount = 0;
+
+      for (const session of sessions) {
+        const d = new Date(session.scheduledAt);
+        if (isNaN(d.getTime())) continue;
+
+        const dayNum = d.getDay();
+        let conflictReason: string | null = null;
+
+        const windowStart = new Date(d.getTime() - sessionDuration * 60 * 1000);
+        const windowEnd = new Date(d.getTime() + sessionDuration * 60 * 1000);
+
+        let qb = sessionRepository.createQueryBuilder("session")
+          .leftJoinAndSelect("session.teacher", "teacher")
+          .leftJoinAndSelect("session.student", "student")
+          .where("(session.teacherId = :teacherId OR session.studentId = :studentId)", {
+            teacherId: teacher.id,
+            studentId: subscription.student.id
+          })
+          .andWhere("session.status IN (:...activeStatuses)", {
+            activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+          })
+          .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+            windowStart, windowEnd
+          })
+          .andWhere("(session.subscriptionId IS NULL OR session.subscriptionId != :subId)", { subId: subscription.id });
+
+        if (ownSessionIds.length > 0) {
+          qb = qb.andWhere("session.id NOT IN (:...ownIds)", { ownIds: ownSessionIds });
+        }
+
+        const conflictingSession = await qb.getOne();
+
+        if (conflictingSession) {
+          const conflictTime = new Date(conflictingSession.scheduledAt);
+          const conflictTimeStr = conflictTime.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          const conflictTeacher = conflictingSession.teacher?.name || "غير محدد";
+          const conflictStudent = conflictingSession.student?.name || "غير محدد";
+
+          if (String(conflictingSession.teacher?.id) === String(teacher.id)) {
+            conflictReason = `المعلم "${conflictTeacher}" لديه حصة أخرى الساعة ${conflictTimeStr} مع طالب "${conflictStudent}".`;
+          } else {
+            conflictReason = `الطالب "${conflictStudent}" لديه حصة أخرى الساعة ${conflictTimeStr} مع المعلم "${conflictTeacher}".`;
+          }
+        }
+
+        const status = conflictReason ? "CONFLICT" : "VALID";
+        if (status === "VALID") validCount++; else conflictCount++;
+
+        items.push({
+          index: session.index,
+          scheduledAt: d.toISOString(),
+          dayName: daysAr[dayNum],
+          teacherId: teacher.id,
+          teacherName: teacher.name,
+          status,
+          conflictReason
+        });
+      }
+
+      return res.json({
+        countGenerated: items.length,
+        validCount,
+        conflictCount,
+        items
+      });
+
+    } catch (err) {
+      console.error("recheckScheduleConflicts error:", err);
+      return res.status(500).json({ error: "فشل فحص التعارضات." });
     }
   }
 
@@ -980,9 +1114,112 @@ export class SessionBookingController {
     }
   }
 
+  // POST /sessions/group-preview-conflicts — Preview conflicts for teacher and students before creating group sessions
+  static async previewGroupConflicts(req: AuthRequest, res: Response) {
+    const { teacherId, studentIds, scheduledDates, duration } = req.body;
+
+    if (!teacherId || !Array.isArray(scheduledDates) || scheduledDates.length === 0) {
+      return res.status(400).json({ error: "الرجاء تحديد المعلم وتواريخ الحصص." });
+    }
+
+    try {
+      const userRepository = AppDataSource.getRepository(User);
+      const sessionRepository = AppDataSource.getRepository(Session);
+
+      const teacher = await userRepository.findOneBy({ id: teacherId });
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم المحدد غير موجود." });
+      }
+
+      const validStudentIds: string[] = Array.isArray(studentIds) ? studentIds.map((id: any) => String(id).trim()).filter(id => id.length > 0) : [];
+      const sessionDuration = parseInt(duration) || 60;
+
+      const items: any[] = [];
+      let totalConflicts = 0;
+
+      for (let i = 0; i < scheduledDates.length; i++) {
+        const d = new Date(scheduledDates[i]);
+        if (isNaN(d.getTime())) continue;
+
+        const windowStart = new Date(d.getTime() - sessionDuration * 60 * 1000);
+        const windowEnd = new Date(d.getTime() + sessionDuration * 60 * 1000);
+
+        // 1. Check Teacher Conflicts
+        const teacherConflictSess = await sessionRepository.createQueryBuilder("session")
+          .leftJoinAndSelect("session.student", "student")
+          .where("session.teacherId = :teacherId", { teacherId: teacher.id })
+          .andWhere("session.status IN (:...activeStatuses)", {
+            activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+          })
+          .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+            windowStart, windowEnd
+          })
+          .getOne();
+
+        let teacherConflict: any = null;
+        if (teacherConflictSess) {
+          const tTime = new Date(teacherConflictSess.scheduledAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          teacherConflict = {
+            sessionId: teacherConflictSess.id,
+            title: teacherConflictSess.title,
+            time: tTime,
+            studentName: teacherConflictSess.student?.name || "طالب آخر"
+          };
+          totalConflicts++;
+        }
+
+        // 2. Check Student Conflicts
+        const studentConflicts: any[] = [];
+        if (validStudentIds.length > 0) {
+          const studentConflictSesses = await sessionRepository.createQueryBuilder("session")
+            .leftJoinAndSelect("session.student", "student")
+            .leftJoinAndSelect("session.teacher", "teacher")
+            .where("session.studentId IN (:...sIds)", { sIds: validStudentIds })
+            .andWhere("session.status IN (:...activeStatuses)", {
+              activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+            })
+            .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+              windowStart, windowEnd
+            })
+            .getMany();
+
+          for (const cs of studentConflictSesses) {
+            const sTime = new Date(cs.scheduledAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+            studentConflicts.push({
+              studentId: cs.student?.id,
+              studentName: cs.student?.name || "طالب",
+              sessionId: cs.id,
+              time: sTime,
+              title: cs.title,
+              teacherName: cs.teacher?.name || "معلم آخر"
+            });
+            totalConflicts++;
+          }
+        }
+
+        items.push({
+          index: i + 1,
+          date: d.toISOString(),
+          teacherConflict,
+          studentConflicts,
+          hasConflict: !!teacherConflict || studentConflicts.length > 0
+        });
+      }
+
+      return res.json({
+        items,
+        totalConflicts
+      });
+
+    } catch (err) {
+      console.error("previewGroupConflicts error:", err);
+      return res.status(500).json({ error: "فشل فحص تعارضات الحصص الجماعية." });
+    }
+  }
+
   // POST /sessions/group-schedule — Schedule multiple live sessions for a group of students with a teacher
   static async scheduleGroupSession(req: AuthRequest, res: Response) {
-    const { title, teacherId, studentIds, scheduledAt, scheduledDates, duration, meetingLink } = req.body;
+    const { title, teacherId, studentIds, scheduledAt, scheduledDates, duration, meetingLink, allowConflicts } = req.body;
 
     if (!title || !teacherId || !studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
       return res.status(400).json({ error: "الرجاء توفير عنوان الحصة والمعلم وقائمة الطلاب." });
@@ -1018,6 +1255,58 @@ export class SessionBookingController {
       }
 
       const sessionDuration = parseInt(duration) || 60;
+
+      // Conflict Prevention Check if allowConflicts is false
+      if (!allowConflicts) {
+        const conflictsList: string[] = [];
+
+        for (const scheduledDate of datesToSchedule) {
+          const windowStart = new Date(scheduledDate.getTime() - sessionDuration * 60 * 1000);
+          const windowEnd = new Date(scheduledDate.getTime() + sessionDuration * 60 * 1000);
+
+          // 1. Check Teacher Conflict
+          const tConflict = await sessionRepository.createQueryBuilder("session")
+            .where("session.teacherId = :teacherId", { teacherId: teacher.id })
+            .andWhere("session.status IN (:...activeStatuses)", {
+              activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+            })
+            .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+              windowStart, windowEnd
+            })
+            .getOne();
+
+          const dateStr = scheduledDate.toLocaleString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+          if (tConflict) {
+            conflictsList.push(`المعلم "${teacher.name}" لديه حصة أخرى في موعد ${dateStr}.`);
+          }
+
+          // 2. Check Students Conflict
+          const sConflicts = await sessionRepository.createQueryBuilder("session")
+            .leftJoinAndSelect("session.student", "student")
+            .where("session.studentId IN (:...sIds)", { sIds: students.map(s => s.id) })
+            .andWhere("session.status IN (:...activeStatuses)", {
+              activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+            })
+            .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+              windowStart, windowEnd
+            })
+            .getMany();
+
+          for (const sc of sConflicts) {
+            conflictsList.push(`الطالب "${sc.student?.name}" لديه حصة أخرى في موعد ${dateStr}.`);
+          }
+        }
+
+        if (conflictsList.length > 0) {
+          return res.status(409).json({
+            conflict: true,
+            error: "تم اكتشاف تعارض في مواعيد الحصص الجماعية مع مواعيد أخرى مسجلة.",
+            conflicts: conflictsList
+          });
+        }
+      }
+
       const createdSessions: Session[] = [];
 
       for (let i = 0; i < datesToSchedule.length; i++) {

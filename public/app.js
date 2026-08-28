@@ -951,12 +951,14 @@ export async function apiFetch(endpoint, options = {}) {
       if (response.status === 401 && endpoint !== "/auth/me") {
         clearAuth(true);
       }
-      throw new Error(data.error || "Something went wrong.");
+      const err = new Error(data.error || "Something went wrong.");
+      Object.assign(err, data);
+      throw err;
     }
     return data;
   } catch (error) {
     console.error(`API Fetch Error [${endpoint}]:`, error);
-    if (endpoint !== "/auth/me" && !isSilent) {
+    if (endpoint !== "/auth/me" && !isSilent && !options.silentError) {
       showToast(error.message, "error");
     }
     throw error;

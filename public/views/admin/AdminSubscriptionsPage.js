@@ -40,6 +40,18 @@ export const AdminSubscriptionsPage = {
     const childBorder = isChild ? 'border-inline-start:4px solid var(--primary);' : '';
     const studentIdAttr = s.studentId || s.student?.id || '';
 
+    const createdDate = s.createdAt ? new Date(s.createdAt) : null;
+    const updatedDate = s.updatedAt ? new Date(s.updatedAt) : null;
+
+    const createdStr = createdDate && !isNaN(createdDate.getTime())
+      ? createdDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '-';
+
+    const hasUpdatedDiff = updatedDate && createdDate && Math.abs(updatedDate.getTime() - createdDate.getTime()) > 60000;
+    const updatedStr = hasUpdatedDiff && !isNaN(updatedDate.getTime())
+      ? updatedDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : null;
+
     return `
     <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
@@ -61,6 +73,20 @@ export const AdminSubscriptionsPage = {
           ${s.isLowBalance ? `
             <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
               <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
+            </span>
+          ` : ''}
+        </div>
+      </td>
+      <td style="padding:12px;">
+        <div style="display:flex; flex-direction:column; gap:3px; font-size:0.78rem;">
+          <span style="color:var(--text-main); font-weight:700; display:inline-flex; align-items:center; gap:5px;" title="تاريخ إنشاء طلب الاشتراك">
+            <i data-lucide="calendar-plus" style="width:13px;height:13px;color:var(--primary);"></i>
+            ${createdStr}
+          </span>
+          ${updatedStr ? `
+            <span style="color:var(--text-muted); font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;" title="تاريخ آخر تحديث للاشتراك">
+              <i data-lucide="clock" style="width:11px;height:11px;color:#f59e0b;"></i>
+              تحديث: ${updatedStr}
             </span>
           ` : ''}
         </div>
@@ -227,6 +253,11 @@ export const AdminSubscriptionsPage = {
         `;
       }
 
+      const latestCreatedDate = latestSub.createdAt ? new Date(latestSub.createdAt) : null;
+      const latestCreatedStr = latestCreatedDate && !isNaN(latestCreatedDate.getTime())
+        ? latestCreatedDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
+        : '-';
+
       const summaryRow = `
         <tr class="admin-student-summary-row" data-student-id="${group.studentId}" style="border-bottom:1px solid var(--border-color); font-size:0.85rem; background:rgba(99,102,241,0.06); cursor:pointer;">
           <td style="padding:12px; color:var(--primary); font-weight:800;">
@@ -258,6 +289,12 @@ export const AdminSubscriptionsPage = {
                   <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> يوجد اشتراك برصيد منخفض
                 </span>
               ` : ''}
+            </div>
+          </td>
+          <td style="padding:12px; font-size:0.78rem; font-weight:600; color:var(--text-muted);">
+            <div style="display:flex; align-items:center; gap:4px;" title="تاريخ أحدث اشتراك للطالب">
+              <i data-lucide="calendar" style="width:13px;height:13px;color:var(--primary);"></i>
+              <span>${latestCreatedStr}</span>
             </div>
           </td>
           <td style="padding:12px; display:flex; flex-direction:column; gap:8px;">
@@ -339,11 +376,12 @@ export const AdminSubscriptionsPage = {
                 <th style="padding:12px;font-weight:700;">الخطة / الحصص</th>
                 <th style="padding:12px;font-weight:700;">المعلم المعين</th>
                 <th style="padding:12px;font-weight:700;">الحالة والتنبيهات</th>
+                <th style="padding:12px;font-weight:700;">تاريخ الطلب / التحديث</th>
                 <th style="padding:12px;font-weight:700;">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              ${renderedRowsHtml || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
+              ${renderedRowsHtml || `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1130,14 +1168,19 @@ export const AdminSubscriptionsPage = {
             <div id="step-content-3" style="display:none;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                 <h4 style="font-weight:800; font-size:1rem; margin:0;">جدول معاينة حصص الباقة</h4>
-                <span id="wiz-count-badge" class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-weight:700; padding:6px 12px;">-</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="wiz-count-badge" class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-weight:700; padding:6px 12px;">-</span>
+                  <button type="button" id="wiz-recheck-btn" class="btn-secondary" style="padding:5px 12px; font-size:0.78rem; font-weight:700; border-radius:8px; display:none;">
+                    🔄 إعادة فحص التعارضات
+                  </button>
+                </div>
               </div>
 
               <div id="wiz-conflict-banner" style="display:none; background:rgba(245,158,11,0.1); border:1px solid #f59e0b; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:0.83rem; color:#b45309; font-weight:600;">
-                ⚠️ تنبيه: تم اكتشاف تعارض أو عدم توفر في بعض المواعيد. يمكنك تعديل التاريخ/الوقت مباشرة في الجدول أدناه لكل حصة قبل الحفظ.
+                ⚠️ تنبيه: تم اكتشاف تعارض في بعض المواعيد. عدّل التاريخ أو الساعة ثم اضغط "إعادة فحص التعارضات" للتأكد.
               </div>
 
-              <div style="overflow-x:auto; max-height:280px; overflow-y:auto; border:1px solid var(--border-color); border-radius:12px; margin-bottom:16px;">
+              <div style="overflow-x:auto; max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:12px; margin-bottom:16px;">
                 <table style="width:100%; border-collapse:collapse; font-size:0.83rem;">
                   <thead style="position:sticky; top:0; background:var(--bg-app); border-bottom:1px solid var(--border-color); color:var(--text-muted);">
                     <tr>
@@ -1146,7 +1189,7 @@ export const AdminSubscriptionsPage = {
                       <th style="padding:10px 12px; text-align:start;">الوقت</th>
                       <th style="padding:10px 12px; text-align:start;">المعلم</th>
                       <th style="padding:10px 12px; text-align:start;">الحالة</th>
-                      <th style="padding:10px 12px; text-align:end;">تعديل الموعد يدويًا</th>
+                      <th style="padding:10px 12px; text-align:end;">تعديل الموعد</th>
                     </tr>
                   </thead>
                   <tbody id="wiz-preview-tbody"></tbody>
@@ -1269,57 +1312,208 @@ export const AdminSubscriptionsPage = {
       }
     });
 
+    const updateTeacherAvailabilityView = async (tId) => {
+      const availBox = document.getElementById("wiz-avail-badges");
+      if (!availBox) return;
+      try {
+        const avail = await apiFetch(`/teachers/${tId}/availability`).catch(() => []);
+        if (avail && avail.length > 0) {
+          const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+          availBox.innerHTML = avail.map(a => `<span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-size:0.78rem;">✓ ${daysAr[a.dayOfWeek]} (${a.startTime} - ${a.endTime})</span>`).join('');
+          
+          const availDayNums = avail.map(a => a.dayOfWeek);
+          document.querySelectorAll('input[name="wizDays"]').forEach(cb => {
+            cb.checked = availDayNums.includes(parseInt(cb.value, 10));
+          });
+          if (avail[0]?.startTime) {
+            const timeEl = document.getElementById("wiz-time-of-day");
+            if (timeEl) timeEl.value = avail[0].startTime;
+          }
+        } else {
+          availBox.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">لم يتم تسجيل جدول تفرغ محدد (متاح جميع الأيام).</span>';
+        }
+      } catch (e) {}
+    };
+
+    document.getElementById("wiz-teacher-select")?.addEventListener("change", (e) => {
+      const tId = e.target.value;
+      if (tId) updateTeacherAvailabilityView(tId);
+    });
+
+    if (activeTeacherId) {
+      updateTeacherAvailabilityView(activeTeacherId);
+    }
+
     const renderPreviewTable = (data) => {
       const tbody = document.getElementById("wiz-preview-tbody");
       const badge = document.getElementById("wiz-count-badge");
       const conflictBanner = document.getElementById("wiz-conflict-banner");
+      const recheckBtn = document.getElementById("wiz-recheck-btn");
 
       if (!tbody) return;
 
-      badge.textContent = `${data.validCount} / ${data.countGenerated} حصة جاهزة للجدولة`;
-      if (data.conflictCount > 0) {
-        conflictBanner.style.display = "block";
-      } else {
-        conflictBanner.style.display = "none";
+      const validCount = data.items ? data.items.filter(i => i.status === 'VALID').length : data.validCount;
+      const conflictCount = data.items ? data.items.filter(i => i.status === 'CONFLICT').length : data.conflictCount;
+      const modifiedCount = data.items ? data.items.filter(i => i.status === 'MODIFIED').length : 0;
+      data.validCount = validCount;
+      data.conflictCount = conflictCount;
+
+      badge.textContent = `${validCount} / ${data.countGenerated} حصة جاهزة للجدولة`;
+      conflictBanner.style.display = conflictCount > 0 ? "block" : "none";
+      if (recheckBtn) recheckBtn.style.display = modifiedCount > 0 ? "inline-flex" : "none";
+
+      // Build hour options (from 6 AM to 11 PM)
+      const hourOptions = [];
+      for (let h = 6; h <= 23; h++) {
+        const label = h < 12 ? `${h === 0 ? 12 : h}:00 ص` : `${h === 12 ? 12 : h - 12}:00 م`;
+        hourOptions.push({ value: h, label });
       }
 
       tbody.innerHTML = (data.items || []).map((item, idx) => {
         const d = new Date(item.scheduledAt);
         const dateStr = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+        const currentHour = d.getHours();
         const timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-        const isoLocal = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateVal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+        const hourSelectOptions = hourOptions.map(opt =>
+          `<option value="${opt.value}" ${opt.value === currentHour ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        let statusBadge = '';
+        if (item.status === 'VALID') {
+          statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981;">✓ جاهزة</span>';
+        } else if (item.status === 'MODIFIED') {
+          statusBadge = '<span class="badge" style="background:rgba(59,130,246,0.1); color:#3b82f6;">✎ معدّل</span>';
+        } else {
+          statusBadge = `<div>
+            <span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;">⚠️ تعارض</span>
+            ${item.conflictReason ? `<div style="font-size:0.72rem; color:#b45309; margin-top:4px; max-width:180px; line-height:1.4;">${item.conflictReason}</div>` : ''}
+          </div>`;
+        }
 
         return `
           <tr style="border-bottom:1px solid var(--border-color);" data-idx="${idx}">
             <td style="padding:10px 12px; font-weight:700;">#${item.index}</td>
-            <td style="padding:10px 12px; font-weight:700;">${item.dayName} ${dateStr}</td>
-            <td style="padding:10px 12px;">${timeStr}</td>
+            <td class="wiz-day-date" style="padding:10px 12px; font-weight:700;">${item.dayName} ${dateStr}</td>
+            <td class="wiz-time-cell" style="padding:10px 12px; font-weight:600; color:var(--primary);">${timeStr}</td>
             <td style="padding:10px 12px;">${item.teacherName}</td>
-            <td style="padding:10px 12px;">
-              ${item.status === 'VALID'
-            ? '<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981;">✓ جاهزة</span>'
-            : `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;" title="${item.conflictReason || ''}">⚠️ تعارض</span>`
-          }
+            <td class="wiz-status-cell" style="padding:10px 12px;">
+              ${statusBadge}
             </td>
             <td style="padding:10px 12px; text-align:end;">
-              <input type="datetime-local" class="form-input wiz-row-date" data-idx="${idx}" value="${isoLocal}" style="padding:4px 8px; font-size:0.8rem;" />
+              <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+                <input type="date" class="form-input wiz-row-date-part" data-idx="${idx}" value="${dateVal}" style="padding:4px 6px; font-size:0.8rem; border-radius:6px; width:130px;" />
+                <select class="form-select wiz-row-hour-part" data-idx="${idx}" style="padding:4px 6px; font-size:0.8rem; border-radius:6px; width:100px;">
+                  ${hourSelectOptions}
+                </select>
+              </div>
             </td>
           </tr>
         `;
       }).join("");
 
-      tbody.querySelectorAll(".wiz-row-date").forEach(input => {
-        input.addEventListener("change", (e) => {
-          const idx = parseInt(e.target.getAttribute("data-idx"), 10);
-          if (previewData && previewData.items[idx]) {
-            previewData.items[idx].scheduledAt = new Date(e.target.value).toISOString();
-            previewData.items[idx].status = "VALID";
-            previewData.items[idx].conflictReason = null;
-            renderPreviewTable(previewData);
-          }
+      // Helper: update a single row display after manual date/hour change
+      const handleRowChange = (idx) => {
+        if (!previewData || !previewData.items[idx]) return;
+
+        const row = tbody.querySelector(`tr[data-idx="${idx}"]`);
+        if (!row) return;
+
+        const dateInput = row.querySelector(".wiz-row-date-part");
+        const hourSelect = row.querySelector(".wiz-row-hour-part");
+        if (!dateInput || !hourSelect) return;
+
+        const selectedHour = parseInt(hourSelect.value, 10);
+        const newD = new Date(`${dateInput.value}T${String(selectedHour).padStart(2,'0')}:00:00`);
+        if (isNaN(newD.getTime())) return;
+
+        previewData.items[idx].scheduledAt = newD.toISOString();
+        previewData.items[idx].status = "MODIFIED";
+        previewData.items[idx].conflictReason = null;
+
+        // Update display cells in-place
+        const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        const dayName = daysAr[newD.getDay()];
+        previewData.items[idx].dayName = dayName;
+        const dStr = newD.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+        const tStr = newD.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
+        const dayDateEl = row.querySelector(".wiz-day-date");
+        if (dayDateEl) dayDateEl.textContent = `${dayName} ${dStr}`;
+
+        const timeCellEl = row.querySelector(".wiz-time-cell");
+        if (timeCellEl) timeCellEl.textContent = tStr;
+
+        const statusCellEl = row.querySelector(".wiz-status-cell");
+        if (statusCellEl) {
+          statusCellEl.innerHTML = '<span class="badge" style="background:rgba(59,130,246,0.1); color:#3b82f6;">✎ معدّل</span>';
+        }
+
+        // Show recheck button
+        if (recheckBtn) recheckBtn.style.display = "inline-flex";
+      };
+
+      // Attach change listeners
+      tbody.querySelectorAll(".wiz-row-date-part").forEach(input => {
+        input.addEventListener("change", () => {
+          handleRowChange(parseInt(input.getAttribute("data-idx"), 10));
+        });
+      });
+      tbody.querySelectorAll(".wiz-row-hour-part").forEach(sel => {
+        sel.addEventListener("change", () => {
+          handleRowChange(parseInt(sel.getAttribute("data-idx"), 10));
         });
       });
     };
+
+    // Re-check button: sends updated times to server for real conflict validation
+    document.getElementById("wiz-recheck-btn")?.addEventListener("click", async () => {
+      if (!previewData || !previewData.items) return;
+
+      const recheckBtn = document.getElementById("wiz-recheck-btn");
+      if (recheckBtn) { recheckBtn.disabled = true; recheckBtn.textContent = "⏳ جاري الفحص..."; }
+
+      try {
+        const teacherId = document.getElementById("wiz-teacher-select").value;
+        const payload = {
+          subscriptionId: subId,
+          teacherId,
+          sessions: previewData.items.map(item => ({
+            scheduledAt: item.scheduledAt,
+            index: item.index
+          })),
+          isEditMode
+        };
+
+        const result = await apiFetch("/sessions/recheck-schedule-conflicts", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        if (result && result.items) {
+          previewData.items = result.items;
+          previewData.validCount = result.validCount;
+          previewData.conflictCount = result.conflictCount;
+          previewData.countGenerated = result.items.length;
+        }
+
+        renderPreviewTable(previewData);
+        if (window.lucide) window.lucide.createIcons();
+
+        if (result.conflictCount === 0) {
+          showToast("✅ جميع المواعيد جاهزة بدون تعارض!", "success");
+        } else {
+          showToast(`⚠️ لا يزال هناك ${result.conflictCount} تعارض`, "warning");
+        }
+      } catch (err) {
+        showToast(err.message || "فشل فحص التعارضات", "error");
+      } finally {
+        if (recheckBtn) { recheckBtn.disabled = false; recheckBtn.textContent = "🔄 إعادة فحص التعارضات"; }
+      }
+    });
 
     confirmBtn.addEventListener("click", async () => {
       if (!previewData || !previewData.items || previewData.items.length === 0) {

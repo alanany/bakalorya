@@ -60,6 +60,10 @@ export const AdminPlansPage = {
                 <div style="font-size:0.85rem; font-weight:800;">${p.sessionsCount} حصة</div>
               </div>
             </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="calendar" style="width:12px;height:12px;color:var(--primary);"></i>
+              <span>تاريخ الإضافة: ${p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
+            </div>
             <div style="display:flex; gap:10px;">
               <button class="btn-secondary edit-plan-btn" data-id="${p.id}" style="flex:1; justify-content:center; font-size:0.82rem; border-color:var(--primary); color:var(--primary); font-weight:700;">
                 <i data-lucide="pencil" style="width:14px;height:14px;"></i> تعديل

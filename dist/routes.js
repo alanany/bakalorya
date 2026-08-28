@@ -135,10 +135,12 @@ router.delete("/teacher/availability/:id", auth_1.authMiddleware, (0, auth_1.req
 router.post("/sessions/book", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.bookSession);
 router.post("/sessions/batch-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.batchScheduleSessions);
 router.post("/sessions/group-schedule", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.scheduleGroupSession);
+router.post("/sessions/group-preview-conflicts", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.previewGroupConflicts);
 router.post("/admin/group-sessions/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.addStudentToGroupSession);
 router.post("/admin/group-sessions/remove-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.removeStudentFromGroupSession);
 router.get("/subscriptions/:id/schedule-details", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getSubscriptionScheduleDetails);
 router.post("/sessions/preview-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.previewPackageSchedule);
+router.post("/sessions/recheck-schedule-conflicts", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.recheckScheduleConflicts);
 router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.completeSession);
 router.post("/sessions/:id/cancel", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.cancelSession);
