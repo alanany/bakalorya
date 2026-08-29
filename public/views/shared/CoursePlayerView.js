@@ -62,10 +62,23 @@ export default class CoursePlayerView {
 
       const chapters = {};
       if (hasLessons) {
+        const orderedUnits = Array.isArray(this.course?.unitsOrder) ? [...this.course.unitsOrder] : [];
+        const allKnownUnits = Array.from(new Set([
+          ...orderedUnits,
+          ...allLessons.map(l => l.chapter || t("course.generalChapter"))
+        ])).filter(Boolean);
+
+        allKnownUnits.forEach(u => { chapters[u] = []; });
+
         allLessons.forEach(lesson => {
           const chName = lesson.chapter || t("course.generalChapter");
           if (!chapters[chName]) chapters[chName] = [];
           chapters[chName].push(lesson);
+        });
+
+        Object.keys(chapters).forEach(k => {
+          if (chapters[k].length === 0) delete chapters[k];
+          else chapters[k].sort((a, b) => (a.order || 0) - (b.order || 0));
         });
       }
 

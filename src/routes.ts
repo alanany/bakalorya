@@ -103,6 +103,11 @@ router.post("/courses/:id/submit-for-review", authMiddleware, requireCapability(
 router.post("/courses/:courseId/lessons", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.addLesson);
 router.put("/lessons/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.updateLesson);
 router.delete("/lessons/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.deleteLesson);
+router.post("/courses/:id/units", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.addUnit);
+router.put("/courses/:id/units/rename", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.renameUnit);
+router.delete("/courses/:id/units", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.deleteUnit);
+router.put("/courses/:id/units/reorder", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.reorderUnits);
+router.put("/courses/:id/lessons/reorder", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.reorderLessons);
 router.get("/courses/:id/enrollments", authMiddleware, requireRole(["teacher", "admin"]), CourseController.getCourseEnrollments);
 
 // Course Approvals (Admin)

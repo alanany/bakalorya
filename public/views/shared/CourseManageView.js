@@ -174,19 +174,35 @@ export default class CourseManageView {
     const lessons = this.course.lessons || [];
     const chaptersMap = {};
 
-    // Initialize custom empty units
-    (this.customUnits || []).forEach(unitName => {
-      if (!chaptersMap[unitName]) chaptersMap[unitName] = [];
+    // 1. Get ordered list of units based on course.unitsOrder
+    const orderedUnits = Array.isArray(this.course.unitsOrder) ? [...this.course.unitsOrder] : [];
+    
+    // Collect all units that exist in lessons or customUnits
+    const allKnownUnits = Array.from(new Set([
+      ...orderedUnits,
+      ...(this.customUnits || []),
+      ...lessons.map(l => l.chapter || "الوحدة العامة")
+    ])).filter(Boolean);
+
+    // Initialize all units in map
+    allKnownUnits.forEach(unitName => {
+      chaptersMap[unitName] = [];
     });
 
     lessons.forEach(l => {
-      const chName = l.chapter || "الوحدة العامة (General)";
+      const chName = l.chapter || "الوحدة العامة";
       if (!chaptersMap[chName]) chaptersMap[chName] = [];
       chaptersMap[chName].push(l);
     });
 
+    // Ensure lessons within each unit are sorted by order
+    Object.keys(chaptersMap).forEach(k => {
+      chaptersMap[k].sort((a, b) => (a.order || 0) - (b.order || 0));
+    });
+
+    const chapterNames = allKnownUnits;
+
     let chaptersHtml = "";
-    const chapterNames = Object.keys(chaptersMap);
 
     if (chapterNames.length === 0) {
       chaptersHtml = `
@@ -205,52 +221,117 @@ export default class CourseManageView {
         </div>
       `;
     } else {
-      chaptersHtml = chapterNames.map(chName => {
-        const chLessons = chaptersMap[chName];
+      chaptersHtml = chapterNames.map((chName, unitIdx) => {
+        const chLessons = chaptersMap[chName] || [];
+        const isFirstUnit = unitIdx === 0;
+        const isLastUnit = unitIdx === chapterNames.length - 1;
+
         return `
-          <div class="chapter-box">
-            <div class="chapter-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <i data-lucide="folder-open" style="width:20px;height:20px;color:var(--primary);"></i>
-                <span style="font-size:1.05rem; font-weight:800;">${chName}</span>
-                <span style="font-size:0.78rem; font-weight:700; background:var(--primary-glow); color:var(--primary); padding:3px 10px; border-radius:12px; margin-inline-start:6px;">
+          <div class="chapter-box" data-unit-name="${chName}" style="border:1px solid var(--border-color); border-radius:18px; background:var(--bg-card); margin-bottom:20px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.03);">
+            <div class="chapter-header" style="background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.05)); padding:16px 22px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border-color);">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="width:30px; height:30px; border-radius:8px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
+                  ${unitIdx + 1}
+                </span>
+                <i data-lucide="folder-open" style="width:20px; height:20px; color:var(--primary);"></i>
+                <span style="font-size:1.1rem; font-weight:800; color:var(--text-main);">${chName}</span>
+                <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800; padding:4px 10px; border-radius:12px;">
                   ${chLessons.length} دروس
                 </span>
               </div>
-              <button class="btn-secondary add-lesson-to-unit-btn" data-unit="${chName}" style="font-size:0.8rem; padding:6px 14px; border-radius:20px; font-weight:700;">
-                <i data-lucide="plus" style="width:14px;height:14px;"></i> إضافة درس في هذه الوحدة
-              </button>
-            </div>
-            <div>
-              ${chLessons.length === 0 ? `
-                <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem; font-style:italic;">
-                  لا توجد دروس في هذه الوحدة بعد. <button class="add-lesson-to-unit-btn" data-unit="${chName}" style="background:none; border:none; color:var(--primary); font-weight:700; cursor:pointer; text-decoration:underline;">إضافة أول درس لهذه الوحدة</button>
+
+              <!-- Unit Action Controls (Reorder, Rename, Delete, Add Lesson) -->
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <!-- Arrange Unit Buttons -->
+                <div style="display:inline-flex; background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:2px; margin-inline-end:4px;">
+                  <button type="button" class="btn-move-unit-up" data-unit="${chName}" ${isFirstUnit ? "disabled" : ""} title="تحريك الوحدة للأعلى (تقديم الترتيب)" style="background:none; border:none; padding:5px 8px; border-radius:6px; cursor:${isFirstUnit ? "not-allowed" : "pointer"}; opacity:${isFirstUnit ? "0.3" : "1"}; color:var(--text-main); display:flex; align-items:center;">
+                    <i data-lucide="arrow-up" style="width:15px; height:15px;"></i>
+                  </button>
+                  <button type="button" class="btn-move-unit-down" data-unit="${chName}" ${isLastUnit ? "disabled" : ""} title="تحريك الوحدة للأسفل (تأخير الترتيب)" style="background:none; border:none; padding:5px 8px; border-radius:6px; cursor:${isLastUnit ? "not-allowed" : "pointer"}; opacity:${isLastUnit ? "0.3" : "1"}; color:var(--text-main); display:flex; align-items:center;">
+                    <i data-lucide="arrow-down" style="width:15px; height:15px;"></i>
+                  </button>
                 </div>
-              ` : chLessons.map(l => `
-                <div class="lesson-item">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:32px; height:32px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
-                      ${l.order || 1}
-                    </div>
-                    <div>
-                      <div style="font-weight:700; color:var(--text-color); font-size:0.95rem;">${l.title}</div>
-                      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
-                        <i data-lucide="clock" style="width:12px;height:12px;vertical-align:middle;"></i> ${l.duration || 15} دقيقة
-                        ${l.videoUrl ? ` • <i data-lucide="video" style="width:12px;height:12px;vertical-align:middle;color:var(--primary);"></i> فيديو مرفق` : ''}
+
+                <!-- Rename Unit -->
+                <button type="button" class="btn-secondary btn-rename-unit" data-unit="${chName}" title="تعديل اسم الوحدة" style="padding:6px 12px; font-size:0.8rem; border-radius:10px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="edit-2" style="width:14px; height:14px; color:var(--primary);"></i> تعديل الوحدة
+                </button>
+
+                <!-- Delete Unit -->
+                <button type="button" class="btn-secondary btn-delete-unit" data-unit="${chName}" data-count="${chLessons.length}" title="حذف الوحدة" style="padding:6px 10px; font-size:0.8rem; border-radius:10px; color:var(--error); border-color:rgba(239,68,68,0.25); display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                </button>
+
+                <!-- Add Lesson To Unit -->
+                <button type="button" class="btn-primary add-lesson-to-unit-btn" data-unit="${chName}" style="font-size:0.8rem; padding:6px 14px; border-radius:10px; font-weight:800; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="plus" style="width:14px; height:14px;"></i> إضافة درس
+                </button>
+              </div>
+            </div>
+
+            <!-- Lessons in this unit -->
+            <div style="padding:8px;">
+              ${chLessons.length === 0 ? `
+                <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:0.88rem;">
+                  لا توجد دروس في هذه الوحدة حتى الآن. 
+                  <button class="add-lesson-to-unit-btn" data-unit="${chName}" style="background:none; border:none; color:var(--primary); font-weight:800; cursor:pointer; text-decoration:underline; margin-inline-start:4px;">
+                    إضافة أول درس لهذه الوحدة ➕
+                  </button>
+                </div>
+              ` : chLessons.map((l, lessonIdx) => {
+                const isFirstLesson = lessonIdx === 0;
+                const isLastLesson = lessonIdx === chLessons.length - 1;
+
+                return `
+                  <div class="lesson-item" style="padding:12px 18px; border-radius:12px; margin-bottom:6px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; transition:all 0.2s ease;">
+                    <div style="display:flex; align-items:center; gap:12px; min-width:240px; flex:1;">
+                      <div style="width:28px; height:28px; border-radius:50%; background:rgba(99,102,241,0.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem; flex-shrink:0;">
+                        ${lessonIdx + 1}
+                      </div>
+                      <div>
+                        <div style="font-weight:700; color:var(--text-main); font-size:0.92rem; display:flex; align-items:center; gap:6px;">
+                          ${l.title}
+                          ${l.isFree ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.68rem; font-weight:800; padding:2px 6px;">مجاني</span>` : ''}
+                        </div>
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:10px;">
+                          <span><i data-lucide="clock" style="width:12px;height:12px;vertical-align:middle;"></i> ${l.duration || '15:00'}</span>
+                          ${l.videoUrl ? `<span style="color:#2563eb; font-weight:700;"><i data-lucide="video" style="width:12px;height:12px;vertical-align:middle;"></i> فيديو</span>` : `<span style="color:var(--text-muted);">📄 ملخص/شرح</span>`}
+                          ${l.resourceUrl ? `<span style="color:var(--accent); font-weight:700;"><i data-lucide="paperclip" style="width:12px;height:12px;vertical-align:middle;"></i> مرفق</span>` : ''}
+                          ${l.questions && l.questions.length ? `<span style="color:#f59e0b; font-weight:700;">❓ ${l.questions.length} أسئلة</span>` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="lesson-actions" style="display:flex; gap:8px;">
-                    <button class="edit-lesson-btn" data-id="${l.id}" title="تعديل الدرس">
-                      <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
-                    </button>
-                    <button class="delete-lesson-btn" data-id="${l.id}" style="color:var(--error);" title="حذف الدرس">
-                      <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                    </button>
+                    <!-- Lesson Actions (Reorder within unit, Move to other unit, Edit, Delete) -->
+                    <div class="lesson-actions" style="display:flex; align-items:center; gap:6px;">
+                      <!-- Lesson Order Controls -->
+                      <div style="display:inline-flex; background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:2px;">
+                        <button type="button" class="btn-move-lesson-up" data-id="${l.id}" data-unit="${chName}" ${isFirstLesson ? "disabled" : ""} title="تحريك الدرس للأعلى" style="background:none; border:none; padding:4px 6px; border-radius:4px; cursor:${isFirstLesson ? "not-allowed" : "pointer"}; opacity:${isFirstLesson ? "0.3" : "1"}; color:var(--text-main); display:flex; align-items:center;">
+                          <i data-lucide="chevron-up" style="width:14px; height:14px;"></i>
+                        </button>
+                        <button type="button" class="btn-move-lesson-down" data-id="${l.id}" data-unit="${chName}" ${isLastLesson ? "disabled" : ""} title="تحريك الدرس للأسفل" style="background:none; border:none; padding:4px 6px; border-radius:4px; cursor:${isLastLesson ? "not-allowed" : "pointer"}; opacity:${isLastLesson ? "0.3" : "1"}; color:var(--text-main); display:flex; align-items:center;">
+                          <i data-lucide="chevron-down" style="width:14px; height:14px;"></i>
+                        </button>
+                      </div>
+
+                      <!-- Move Lesson To Another Unit -->
+                      <button type="button" class="btn-secondary btn-transfer-lesson-unit" data-id="${l.id}" data-unit="${chName}" data-title="${l.title}" title="نقل هذا الدرس إلى وحدة أخرى" style="padding:5px 8px; font-size:0.75rem; border-radius:8px; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="folder-symlink" style="width:13px; height:13px; color:var(--primary);"></i> نقل
+                      </button>
+
+                      <!-- Edit Lesson -->
+                      <button type="button" class="btn-secondary edit-lesson-btn" data-id="${l.id}" title="تعديل تفاصيل الدرس" style="padding:5px 8px; font-size:0.75rem; border-radius:8px;">
+                        <i data-lucide="edit-3" style="width:13px; height:13px;"></i>
+                      </button>
+
+                      <!-- Delete Lesson -->
+                      <button type="button" class="btn-secondary delete-lesson-btn" data-id="${l.id}" style="color:var(--error); border-color:rgba(239,68,68,0.25); padding:5px 8px; font-size:0.75rem; border-radius:8px;" title="حذف الدرس">
+                        <i data-lucide="trash-2" style="width:13px; height:13px;"></i>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              `).join("")}
+                `;
+              }).join("")}
             </div>
           </div>
         `;
@@ -258,16 +339,21 @@ export default class CourseManageView {
     }
 
     return `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:14px;">
         <div>
-          <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:4px;">منهج الدورة والدروس المسجلة</h3>
-          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة وتنسيق الوحدات الدراسية (Units) والدروس التابعة لكل وحدة</p>
+          <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:4px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            <i data-lucide="layers" style="color:var(--primary);"></i>
+            منهج الدورة وتنظيم الوحدات والدروس
+          </h3>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">
+            إدارة، ترتيب، وإعادة تسمية الوحدات الدراسية (Units) ونقل وترتيب الدروس بكل سهولة 🚀
+          </p>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn-secondary open-add-unit-modal-btn" style="padding:10px 18px; font-weight:800; border-color:var(--primary); color:var(--primary);">
-            <i data-lucide="folder-plus"></i> إضافة وحدة دراسية جديدة
+          <button class="btn-secondary open-add-unit-modal-btn" style="padding:10px 18px; font-weight:800; border-color:var(--primary); color:var(--primary); display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="folder-plus"></i> إضافة وحدة دراسية جديدة ➕
           </button>
-          <button class="btn-primary open-add-lesson-modal-btn" style="padding:10px 20px; font-weight:800;">
+          <button class="btn-primary open-add-lesson-modal-btn" style="padding:10px 20px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
             <i data-lucide="plus-circle"></i> إضافة درس جديد
           </button>
         </div>
@@ -723,7 +809,113 @@ export default class CourseManageView {
             <div class="modal-footer" style="padding:14px 20px;">
               <button type="button" class="btn-secondary" id="cancel-unit-modal">إلغاء</button>
               <button type="submit" class="btn-primary" style="font-weight:800;">
-                <i data-lucide="check"></i> إنشاء الوحدة
+                <i data-lucide="check"></i> إنشاء وحفظ الوحدة
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Rename Unit Modal -->
+      <div class="modal-overlay" id="rename-unit-modal" style="display:none;">
+        <div class="modal-content" style="max-width:480px;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="edit-3" style="color:var(--primary);"></i> تعديل اسم الوحدة الدراسية
+            </h3>
+            <span class="modal-close-btn" id="close-rename-unit-modal">&times;</span>
+          </div>
+          <form id="rename-unit-form">
+            <input type="hidden" id="rename-unit-old-name">
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:20px;">
+              <div class="form-group">
+                <label style="font-weight:700; margin-bottom:6px; display:block;">الاسم الجديد للوحدة <span style="color:var(--error);">*</span></label>
+                <input type="text" id="rename-unit-new-input" class="form-input" required style="padding:10px 14px;">
+              </div>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:0; line-height:1.5;">
+                ℹ️ سيتم تحديث هذا الاسم وتطبيقه على كافة الدروس التابعة لهذه الوحدة في المنهج تلقائياً.
+              </p>
+            </div>
+            <div class="modal-footer" style="padding:14px 20px; display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-rename-unit-modal">إلغاء</button>
+              <button type="submit" class="btn-primary" style="font-weight:800;">
+                <i data-lucide="check"></i> حفظ الاسم الجديد
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete Unit Modal -->
+      <div class="modal-overlay" id="delete-unit-modal" style="display:none;">
+        <div class="modal-content" style="max-width:500px;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; color:var(--error); display:flex; align-items:center; gap:8px;">
+              <i data-lucide="alert-triangle"></i> تأكيد حذف الوحدة الدراسية
+            </h3>
+            <span class="modal-close-btn" id="close-delete-unit-modal">&times;</span>
+          </div>
+          <form id="delete-unit-form">
+            <input type="hidden" id="delete-unit-target-name">
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:20px;">
+              <div id="delete-unit-message" style="font-size:0.92rem; color:var(--text-main); font-weight:700;"></div>
+              
+              <div id="delete-unit-options-container" style="display:none; flex-direction:column; gap:12px; background:var(--bg-app); padding:14px; border-radius:12px; border:1px solid var(--border-color);">
+                <div style="font-size:0.85rem; font-weight:800; color:var(--text-main);">اختر الإجراء المناسب للدروس داخل هذه الوحدة:</div>
+                <label style="display:flex; align-items:flex-start; gap:8px; font-size:0.88rem; cursor:pointer;">
+                  <input type="radio" name="delete_unit_action" value="move_lessons" checked style="margin-top:3px;">
+                  <div style="flex:1;">
+                    <strong>نقل جميع الدروس إلى وحدة أخرى</strong>
+                    <div style="margin-top:6px;">
+                      <select id="delete-unit-destination-select" class="form-select" style="padding:6px 10px; font-size:0.82rem; width:100%;">
+                        ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join("")}
+                      </select>
+                    </div>
+                  </div>
+                </label>
+                <label style="display:flex; align-items:flex-start; gap:8px; font-size:0.88rem; cursor:pointer; color:var(--error);">
+                  <input type="radio" name="delete_unit_action" value="delete_lessons" style="margin-top:3px;">
+                  <div>
+                    <strong>حذف الوحدة وجميع الدروس التابعة لها نهائياً</strong>
+                    <div style="font-size:0.78rem; opacity:0.8;">تحذير: لا يمكن استرجاع الدروس المحذوفة.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div class="modal-footer" style="padding:14px 20px; display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-delete-unit-modal">إلغاء</button>
+              <button type="submit" class="btn-primary" style="background:var(--error); border-color:var(--error); font-weight:800;">
+                <i data-lucide="trash-2"></i> تأكيد الحذف
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Transfer Lesson to Unit Modal -->
+      <div class="modal-overlay" id="transfer-lesson-modal" style="display:none;">
+        <div class="modal-content" style="max-width:460px;">
+          <div class="modal-header">
+            <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="folder-symlink" style="color:var(--primary);"></i> نقل الدرس إلى وحدة أخرى
+            </h3>
+            <span class="modal-close-btn" id="close-transfer-lesson-modal">&times;</span>
+          </div>
+          <form id="transfer-lesson-form">
+            <input type="hidden" id="transfer-lesson-id">
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:20px;">
+              <div style="font-size:0.9rem; font-weight:700; color:var(--text-main);" id="transfer-lesson-title-display"></div>
+              <div class="form-group">
+                <label style="font-weight:700; margin-bottom:6px; display:block;">اختر الوحدة الدراسية الجديدة <span style="color:var(--error);">*</span></label>
+                <select id="transfer-lesson-unit-select" class="form-select" style="padding:10px 14px;">
+                  ${existingUnits.map(u => `<option value="${u}">${u}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer" style="padding:14px 20px; display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-transfer-lesson-modal">إلغاء</button>
+              <button type="submit" class="btn-primary" style="font-weight:800;">
+                <i data-lucide="check"></i> نقل الدرس
               </button>
             </div>
           </form>
@@ -1087,10 +1279,13 @@ export default class CourseManageView {
     if (this.activeTab === "curriculum") {
       const lessonModal = document.getElementById("lesson-modal");
       const unitModal = document.getElementById("unit-modal");
+      const renameUnitModal = document.getElementById("rename-unit-modal");
+      const deleteUnitModal = document.getElementById("delete-unit-modal");
+      const transferLessonModal = document.getElementById("transfer-lesson-modal");
       const chapterSelect = document.getElementById("lesson-chapter-select");
       const customChapterInput = document.getElementById("lesson-chapter-custom");
 
-      // Unit Modal Open & Close
+      // 1. Add Unit Modal Open & Close & Submit
       this.container.querySelectorAll(".open-add-unit-modal-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           document.getElementById("unit-form")?.reset();
@@ -1101,28 +1296,300 @@ export default class CourseManageView {
       document.getElementById("close-unit-modal")?.addEventListener("click", () => { if (unitModal) unitModal.style.display = "none"; });
       document.getElementById("cancel-unit-modal")?.addEventListener("click", () => { if (unitModal) unitModal.style.display = "none"; });
 
-      // Unit Form Submit
-      document.getElementById("unit-form")?.addEventListener("submit", (e) => {
+      document.getElementById("unit-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const unitName = document.getElementById("unit-name-input").value.trim();
+        const submitBtn = e.target.querySelector("button[type='submit']");
+        const unitName = document.getElementById("unit-name-input")?.value.trim();
         if (!unitName) return;
 
-        if (!this.customUnits.includes(unitName)) {
-          this.customUnits.push(unitName);
-        }
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          const res = await apiFetch(`/courses/${this.courseId}/units`, {
+            method: "POST",
+            body: JSON.stringify({ unitName })
+          });
 
-        if (unitModal) unitModal.style.display = "none";
-        showToast(`تم إنشاء "${unitName}" بنجاح! يمكنك الآن إضافة أول درس بها. ✅`, "success");
-
-        // Re-render and open add-lesson modal for this new unit!
-        this.render().then(() => {
-          const newLessonModal = document.getElementById("lesson-modal");
-          const newSelect = document.getElementById("lesson-chapter-select");
-          if (newSelect) {
-            newSelect.value = unitName;
+          if (!this.customUnits.includes(unitName)) {
+            this.customUnits.push(unitName);
           }
-          if (newLessonModal) newLessonModal.style.display = "flex";
+          if (res && res.unitsOrder) {
+            this.course.unitsOrder = res.unitsOrder;
+          }
+
+          if (unitModal) unitModal.style.display = "none";
+          showToast(`تم إنشاء وحفظ "${unitName}" بنجاح! 🎉`, "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل إنشاء الوحدة الدراسية", "error");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+
+      // 2. Rename Unit Modal & Handlers
+      this.container.querySelectorAll(".btn-rename-unit").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const unitName = btn.getAttribute("data-unit");
+          const oldInput = document.getElementById("rename-unit-old-name");
+          const newInput = document.getElementById("rename-unit-new-input");
+          if (oldInput) oldInput.value = unitName;
+          if (newInput) newInput.value = unitName;
+          if (renameUnitModal) renameUnitModal.style.display = "flex";
+          setTimeout(() => newInput?.focus(), 50);
         });
+      });
+
+      document.getElementById("close-rename-unit-modal")?.addEventListener("click", () => { if (renameUnitModal) renameUnitModal.style.display = "none"; });
+      document.getElementById("cancel-rename-unit-modal")?.addEventListener("click", () => { if (renameUnitModal) renameUnitModal.style.display = "none"; });
+
+      document.getElementById("rename-unit-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector("button[type='submit']");
+        const oldName = document.getElementById("rename-unit-old-name")?.value;
+        const newName = document.getElementById("rename-unit-new-input")?.value.trim();
+        if (!oldName || !newName) return;
+
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          const res = await apiFetch(`/courses/${this.courseId}/units/rename`, {
+            method: "PUT",
+            body: JSON.stringify({ oldName, newName })
+          });
+
+          if (res && res.unitsOrder) {
+            this.course.unitsOrder = res.unitsOrder;
+          }
+          if (renameUnitModal) renameUnitModal.style.display = "none";
+          showToast(res?.message || `تم تعديل اسم الوحدة بنجاح إلى "${newName}"! ✏️`, "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل تعديل اسم الوحدة", "error");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+
+      // 3. Delete Unit Modal & Handlers
+      this.container.querySelectorAll(".btn-delete-unit").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const unitName = btn.getAttribute("data-unit");
+          const count = parseInt(btn.getAttribute("data-count") || "0", 10);
+          const targetNameInput = document.getElementById("delete-unit-target-name");
+          const msgEl = document.getElementById("delete-unit-message");
+          const optsContainer = document.getElementById("delete-unit-options-container");
+          const destSelect = document.getElementById("delete-unit-destination-select");
+
+          if (targetNameInput) targetNameInput.value = unitName;
+
+          if (count === 0) {
+            if (msgEl) msgEl.textContent = `هل أنت متأكد من حذف الوحدة الدراسية "${unitName}"؟ (الوحدة لا تحتوي على دروس حالياً).`;
+            if (optsContainer) optsContainer.style.display = "none";
+          } else {
+            if (msgEl) msgEl.textContent = `تنبيه: الوحدة "${unitName}" تحتوي على ${count} درس.`;
+            if (optsContainer) optsContainer.style.display = "flex";
+            if (destSelect) {
+              // Exclude current unit from destinations
+              Array.from(destSelect.options).forEach(opt => {
+                opt.style.display = opt.value === unitName ? "none" : "";
+                if (opt.value !== unitName && !destSelect.value) destSelect.value = opt.value;
+              });
+            }
+          }
+
+          if (deleteUnitModal) deleteUnitModal.style.display = "flex";
+        });
+      });
+
+      document.getElementById("close-delete-unit-modal")?.addEventListener("click", () => { if (deleteUnitModal) deleteUnitModal.style.display = "none"; });
+      document.getElementById("cancel-delete-unit-modal")?.addEventListener("click", () => { if (deleteUnitModal) deleteUnitModal.style.display = "none"; });
+
+      document.getElementById("delete-unit-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector("button[type='submit']");
+        const unitName = document.getElementById("delete-unit-target-name")?.value;
+        if (!unitName) return;
+
+        const actionRadio = document.querySelector("input[name='delete_unit_action']:checked");
+        const action = actionRadio ? actionRadio.value : "delete_lessons";
+        const targetUnit = document.getElementById("delete-unit-destination-select")?.value;
+
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          const res = await apiFetch(`/courses/${this.courseId}/units`, {
+            method: "DELETE",
+            body: JSON.stringify({ unitName, action, targetUnit })
+          });
+
+          if (res && res.unitsOrder) {
+            this.course.unitsOrder = res.unitsOrder;
+          }
+          if (this.customUnits) {
+            this.customUnits = this.customUnits.filter(u => u !== unitName);
+          }
+
+          if (deleteUnitModal) deleteUnitModal.style.display = "none";
+          showToast(res?.message || "تم حذف الوحدة بنجاح.", "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الوحدة", "error");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+
+      // 4. Move Unit Up / Down (Arrange Units)
+      const handleMoveUnit = async (unitName, direction) => {
+        const orderedUnits = Array.isArray(this.course.unitsOrder) && this.course.unitsOrder.length > 0
+          ? [...this.course.unitsOrder]
+          : Array.from(new Set([
+              ...(this.customUnits || []),
+              ...(this.course.lessons || []).map(l => l.chapter || "الوحدة العامة")
+            ])).filter(Boolean);
+
+        // Ensure unit is in list
+        if (!orderedUnits.includes(unitName)) orderedUnits.push(unitName);
+
+        const idx = orderedUnits.indexOf(unitName);
+        if (idx === -1) return;
+
+        const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= orderedUnits.length) return;
+
+        // Swap
+        const temp = orderedUnits[idx];
+        orderedUnits[idx] = orderedUnits[targetIdx];
+        orderedUnits[targetIdx] = temp;
+
+        try {
+          const res = await apiFetch(`/courses/${this.courseId}/units/reorder`, {
+            method: "PUT",
+            body: JSON.stringify({ unitsOrder: orderedUnits })
+          });
+
+          this.course.unitsOrder = orderedUnits;
+          showToast(`تم تحديث ترتيب الوحدات بنجاح! ↕️`, "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل تحديث ترتيب الوحدات", "error");
+        }
+      };
+
+      this.container.querySelectorAll(".btn-move-unit-up").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const unit = btn.getAttribute("data-unit");
+          if (unit) handleMoveUnit(unit, "up");
+        });
+      });
+
+      this.container.querySelectorAll(".btn-move-unit-down").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const unit = btn.getAttribute("data-unit");
+          if (unit) handleMoveUnit(unit, "down");
+        });
+      });
+
+      // 5. Move Lesson Up / Down within unit (Arrange Lessons)
+      const handleMoveLesson = async (lessonId, unitName, direction) => {
+        const unitLessons = (this.course.lessons || [])
+          .filter(l => (l.chapter || "الوحدة العامة") === unitName)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const idx = unitLessons.findIndex(l => l.id === lessonId);
+        if (idx === -1) return;
+
+        const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= unitLessons.length) return;
+
+        const currentLesson = unitLessons[idx];
+        const targetLesson = unitLessons[targetIdx];
+
+        // Swap their order numbers
+        const currentOrder = currentLesson.order || (idx + 1);
+        const targetOrder = targetLesson.order || (targetIdx + 1);
+
+        const newCurrentOrder = currentOrder === targetOrder ? (direction === "up" ? targetOrder - 1 : targetOrder + 1) : targetOrder;
+        const newTargetOrder = currentOrder;
+
+        try {
+          await apiFetch(`/courses/${this.courseId}/lessons/reorder`, {
+            method: "PUT",
+            body: JSON.stringify({
+              lessons: [
+                { id: currentLesson.id, order: newCurrentOrder },
+                { id: targetLesson.id, order: newTargetOrder }
+              ]
+            })
+          });
+
+          showToast("تم تحديث ترتيب الدرس بنجاح! ↕️", "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل تحديث ترتيب الدرس", "error");
+        }
+      };
+
+      this.container.querySelectorAll(".btn-move-lesson-up").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const unit = btn.getAttribute("data-unit");
+          if (id && unit) handleMoveLesson(id, unit, "up");
+        });
+      });
+
+      this.container.querySelectorAll(".btn-move-lesson-down").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const unit = btn.getAttribute("data-unit");
+          if (id && unit) handleMoveLesson(id, unit, "down");
+        });
+      });
+
+      // 6. Transfer Lesson to Another Unit
+      this.container.querySelectorAll(".btn-transfer-lesson-unit").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const currentUnit = btn.getAttribute("data-unit");
+          const title = btn.getAttribute("data-title");
+
+          const idInput = document.getElementById("transfer-lesson-id");
+          const titleDisplay = document.getElementById("transfer-lesson-title-display");
+          const unitSelect = document.getElementById("transfer-lesson-unit-select");
+
+          if (idInput) idInput.value = id;
+          if (titleDisplay) titleDisplay.textContent = `الدرس: ${title || ''} (الوحدة الحالية: ${currentUnit || ''})`;
+          if (unitSelect && currentUnit) {
+            unitSelect.value = currentUnit;
+          }
+
+          if (transferLessonModal) transferLessonModal.style.display = "flex";
+        });
+      });
+
+      document.getElementById("close-transfer-lesson-modal")?.addEventListener("click", () => { if (transferLessonModal) transferLessonModal.style.display = "none"; });
+      document.getElementById("cancel-transfer-lesson-modal")?.addEventListener("click", () => { if (transferLessonModal) transferLessonModal.style.display = "none"; });
+
+      document.getElementById("transfer-lesson-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector("button[type='submit']");
+        const lessonId = document.getElementById("transfer-lesson-id")?.value;
+        const newChapter = document.getElementById("transfer-lesson-unit-select")?.value;
+        if (!lessonId || !newChapter) return;
+
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          await apiFetch(`/lessons/${lessonId}`, {
+            method: "PUT",
+            body: JSON.stringify({ chapter: newChapter })
+          });
+
+          if (transferLessonModal) transferLessonModal.style.display = "none";
+          showToast(`تم نقل الدرس إلى "${newChapter}" بنجاح! 📂`, "success");
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل نقل الدرس", "error");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
       });
 
       // Chapter Select Toggle Custom Input

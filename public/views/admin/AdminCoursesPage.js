@@ -613,11 +613,22 @@ export const AdminCoursesPage = {
     const coursePlans = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id);
     const lessons = course.lessons || [];
 
+    const orderedUnits = Array.isArray(course.unitsOrder) ? [...course.unitsOrder] : [];
+    const allKnownUnits = Array.from(new Set([
+      ...orderedUnits,
+      ...lessons.map(l => l.chapter || "الوحدة العامة")
+    ])).filter(Boolean);
+
     const unitsMap = {};
+    allKnownUnits.forEach(u => { unitsMap[u] = []; });
     lessons.forEach(l => {
       const chName = l.chapter || "الوحدة العامة";
       if (!unitsMap[chName]) unitsMap[chName] = [];
       unitsMap[chName].push(l);
+    });
+    // Sort lessons by order
+    Object.keys(unitsMap).forEach(k => {
+      unitsMap[k].sort((a, b) => (a.order || 0) - (b.order || 0));
     });
     const unitsCount = Object.keys(unitsMap).length;
 
@@ -756,22 +767,33 @@ export const AdminCoursesPage = {
               <h4 style="font-weight:800; margin:0; color:var(--text-main); font-size:1rem; display:flex; align-items:center; gap:8px;">
                 📂 الوحدات والدروس المرتبطة بالمنهج (${unitsCount} وحدة دراسية • ${lessons.length} درس)
               </h4>
-              <button id="modal-admin-add-lesson-btn" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius:10px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; font-weight:800;">
-                <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> إضافة درس جديد لهذا الكورس ➕
-              </button>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="#manage-course/${course.id}" class="btn-secondary" style="padding:6px 14px; font-size:0.8rem; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:800; border-color:var(--primary); color:var(--primary);">
+                  <i data-lucide="layers" style="width:14px;height:14px;"></i> استوديو تنظيم وترتيب المنهج 📚
+                </a>
+                <button id="modal-admin-add-lesson-btn" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius:10px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; font-weight:800;">
+                  <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> إضافة درس جديد لهذا الكورس ➕
+                </button>
+              </div>
             </div>
 
             ${unitsCount > 0 ? `
               <div style="display:flex; flex-direction:column; gap:14px;">
                 ${Object.keys(unitsMap).map((unitName, unitIdx) => `
                   <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; overflow:hidden;">
-                    <div style="background:rgba(99,102,241,0.06); padding:12px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color);">
+                    <div style="background:rgba(99,102,241,0.06); padding:12px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); flex-wrap:wrap; gap:8px;">
                       <span style="font-weight:800; font-size:0.92rem; color:var(--primary); display:flex; align-items:center; gap:8px;">
+                        <span style="background:var(--primary-glow); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.75rem;">${unitIdx + 1}</span>
                         <i data-lucide="folder-open" style="width:16px; height:16px;"></i> ${unitName}
                       </span>
-                      <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800;">
-                        ${unitsMap[unitName].length} دروس
-                      </span>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800;">
+                          ${unitsMap[unitName].length} دروس
+                        </span>
+                        <a href="#manage-course/${course.id}" title="ترتيب وتعديل هذه الوحدة في استوديو المنهج" style="font-size:0.75rem; color:var(--primary); font-weight:700; text-decoration:none; padding:3px 8px; border-radius:6px; background:var(--bg-app); border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="edit" style="width:12px;height:12px;"></i> إدارة وتعديل
+                        </a>
+                      </div>
                     </div>
                     <div style="padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
                       ${unitsMap[unitName].map((lesson, lessonIdx) => `

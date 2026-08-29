@@ -53,6 +53,9 @@ export class Course {
   @ManyToOne(() => User, { nullable: true, eager: true, onDelete: "SET NULL" })
   teacher: User | null;
 
+  @Column("simple-json", { nullable: true })
+  unitsOrder: string[];
+
   @OneToMany(() => Lesson, lesson => lesson.course, { cascade: true })
   lessons: Lesson[];
 

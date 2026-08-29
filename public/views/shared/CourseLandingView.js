@@ -42,6 +42,14 @@ export default class CourseLandingView {
       const chaptersMap = {};
       let totalDuration = 0;
       if (hasLessons) {
+        const orderedUnits = Array.isArray(this.course?.unitsOrder) ? [...this.course.unitsOrder] : [];
+        const allKnownUnits = Array.from(new Set([
+          ...orderedUnits,
+          ...this.course.lessons.map(l => l.chapter || "General")
+        ])).filter(Boolean);
+
+        allKnownUnits.forEach(u => { chaptersMap[u] = []; });
+
         this.course.lessons.forEach(l => {
           const chName = l.chapter || "General";
           if (!chaptersMap[chName]) chaptersMap[chName] = [];
@@ -54,6 +62,11 @@ export default class CourseLandingView {
           } else {
             totalDuration += 600; // default 10 mins
           }
+        });
+
+        Object.keys(chaptersMap).forEach(k => {
+          if (chaptersMap[k].length === 0) delete chaptersMap[k];
+          else chaptersMap[k].sort((a, b) => (a.order || 0) - (b.order || 0));
         });
       }
 
