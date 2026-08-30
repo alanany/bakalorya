@@ -10,8 +10,8 @@ export class SessionController {
     try {
       const sessionRepository = AppDataSource.getRepository(Session);
       const sessions = await sessionRepository.find({
-        relations: ["teacher", "course", "student"],
-        order: { scheduledAt: "ASC" }
+        relations: ["teacher", "course", "student", "subscription"],
+        order: { scheduledAt: "DESC" }
       });
 
       let finalSessions = sessions;

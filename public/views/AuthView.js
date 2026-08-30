@@ -29,7 +29,7 @@ export default class AuthView {
         : "تسجيل دخول الطلاب 👨‍🎓";
 
     const descText = this.isStaffMode
-      ? "تسجيل الدخول المخصص للمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
+      ? "تسجيل الدخول الموحد للأساتذة والمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
       : this.isRegisterMode
         ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
         : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
@@ -52,7 +52,9 @@ export default class AuthView {
               </a>
               <h2 class="auth-showcase-title">أكاديمية انطلق التعليمية</h2>
               <p class="auth-showcase-subtitle">
-                بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة.
+                ${this.isStaffMode 
+                  ? "البوابة الموحدة للكادر التعليمي والإداري لإدارة المحتوى، الجلسات التفاعلية، والتقارير الأكاديمية."
+                  : "بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة."}
               </p>
             </div>
 
@@ -63,8 +65,8 @@ export default class AuthView {
                   <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>شروحات ومراجعات مكثفة</h4>
-                  <p>دورات متكاملة تغطي كافة المناهج بأسلوب تدريس مبتكر ومبسط.</p>
+                  <h4>${this.isStaffMode ? "إدارة الكورسات والمحتوى" : "شروحات ومراجعات مكثفة"}</h4>
+                  <p>${this.isStaffMode ? "رفع الحصص، تنظيم بنوك الأسئلة، ومتابعة تسليمات الواجبات." : "دورات متكاملة تغطي كافة المناهج بأسلوب تدريس مبتكر ومبسط."}</p>
                 </div>
               </div>
 
@@ -73,8 +75,8 @@ export default class AuthView {
                   <i data-lucide="video" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>بث مباشر وفصول تفاعلية</h4>
-                  <p>تفاعل لحظي مع الأساتذة مع حل التمارين والرد الفوري على الأسئلة.</p>
+                  <h4>${this.isStaffMode ? "البث المباشر والحصص الخاصة" : "بث مباشر وفصول تفاعلية"}</h4>
+                  <p>${this.isStaffMode ? "إطلاق الغرف الافتراضية والسبورة الذكية وجدولة المواعيد المتاحة." : "تفاعل لحظي مع الأساتذة مع حل التمارين والرد الفوري على الأسئلة."}</p>
                 </div>
               </div>
 
@@ -83,8 +85,8 @@ export default class AuthView {
                   <i data-lucide="award" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>تقارير أداء ومتابعة دورية</h4>
-                  <p>اختبارات ذكية وتقارير فورية للدرجات مع إشعارات مباشرة لولي الأمر.</p>
+                  <h4>${this.isStaffMode ? "إحصائيات وتقارير تفصيلية" : "تقارير أداء ومتابعة دورية"}</h4>
+                  <p>${this.isStaffMode ? "متابعة دقيقة للأرباح والاشتراكات ومعدلات حضور الطلاب." : "اختبارات ذكية وتقارير فورية للدرجات مع إشعارات مباشرة لولي الأمر."}</p>
                 </div>
               </div>
             </div>
@@ -92,8 +94,8 @@ export default class AuthView {
             <!-- Trust Badge Footer -->
             <div class="auth-showcase-footer">
               <div class="auth-trust-badge">
-                <i data-lucide="check-circle-2" style="width:16px; height:16px;"></i>
-                <span>منصة تعليمية معتمدة وموثوقة</span>
+                <i data-lucide="${this.isStaffMode ? 'shield-check' : 'check-circle-2'}" style="width:16px; height:16px;"></i>
+                <span>${this.isStaffMode ? "بوابة الكادر الإداري والأكاديمي المعتمدة" : "منصة تعليمية معتمدة وموثوقة"}</span>
               </div>
               <span style="font-weight:600;">© 2026 Entlq Platform</span>
             </div>
@@ -116,7 +118,7 @@ export default class AuthView {
               <div class="auth-tabs-nav" style="grid-template-columns: 1fr;">
                 <button class="auth-tab-btn active" style="cursor:default;">
                   <i data-lucide="shield-check" style="width:16px; height:16px; color:#10b981;"></i>
-                  <span>بوابة المعلمين والإشراف</span>
+                  <span>بوابة المعلمين والإدارة</span>
                 </button>
               </div>
             ` : `
@@ -137,42 +139,47 @@ export default class AuthView {
               ${this.getFormHTML()}
             </div>
 
-            <!-- Quick Switcher Link between Student & Staff Portals -->
-            <div style="margin-top: 18px; padding: 12px 16px; background: rgba(99,102,241,0.06); border: 1px dashed rgba(99,102,241,0.25); border-radius: 14px; text-align: center; font-size: 0.86rem;">
-              ${this.isStaffMode ? `
-                <span style="color:var(--text-muted);">هل أنت طالب؟</span>
+            ${this.isStaffMode ? `
+              <!-- Quick Switcher back to Student Portal on Staff page only -->
+              <div style="margin-top: 18px; padding: 11px 16px; background: rgba(99,102,241,0.05); border: 1px dashed rgba(99,102,241,0.22); border-radius: 12px; text-align: center; font-size: 0.86rem;">
+                <span style="color:var(--text-muted);">هل أنت طالب بالمنصة؟</span>
                 <a href="#login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
                   الانتقال لبوابة تسجيل دخول الطلاب 👨‍🎓 ↗
                 </a>
-              ` : `
-                <span style="color:var(--text-muted);">هل أنت معلم أو مشرف بالمنصة؟</span>
-                <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
-                  الدخول عبر بوابة المعلمين والإدارة 🛡️ ↗
-                </a>
-              `}
-            </div>
+              </div>
 
-            <!-- Quick Demo Accounts Sandbox Box -->
-            <div class="auth-demo-box" style="margin-top:16px;">
-              <div class="auth-demo-title">
-                <i data-lucide="key-round" style="width:15px; height:15px; color:var(--primary);"></i>
-                <span>بيانات تجريبية للدخول السريع (Demo Access):</span>
+              <!-- Staff Demo Accounts Box -->
+              <div class="auth-demo-box" style="margin-top:16px;">
+                <div class="auth-demo-title">
+                  <i data-lucide="shield-check" style="width:15px; height:15px; color:var(--primary);"></i>
+                  <span>حسابات تجريبية للدخول السريع (كادر المنصة):</span>
+                </div>
+                <div class="auth-demo-grid">
+                  <button class="auth-demo-btn" id="fill-teacher-btn" title="حساب معلم دورات وبث مباشر">
+                    <span>👨‍🏫 معلم دورات</span>
+                  </button>
+                  <button class="auth-demo-btn" id="fill-session-teacher-btn" title="حساب معلم حصص خاصة">
+                    <span>⏱️ معلم حصص</span>
+                  </button>
+                  <button class="auth-demo-btn" id="fill-admin-btn" title="حساب مشرف لوحة التحكم">
+                    <span>🛡️ مشرف أدمن</span>
+                  </button>
+                </div>
               </div>
-              <div class="auth-demo-grid">
-                <button class="auth-demo-btn" id="fill-student-btn" title="حساب طالب متفوق">
-                  <span>👨‍🎓 حساب طالب</span>
-                </button>
-                <button class="auth-demo-btn" id="fill-teacher-btn" title="حساب معلم دورات وبث مباشر">
-                  <span>👨‍🏫 معلم دورات</span>
-                </button>
-                <button class="auth-demo-btn" id="fill-session-teacher-btn" title="حساب معلم حصص خاصة">
-                  <span>⏱️ معلم حصص</span>
-                </button>
-                <button class="auth-demo-btn" id="fill-admin-btn" title="حساب مشرف لوحة التحكم">
-                  <span>🛡️ مشرف أدمن</span>
-                </button>
+            ` : `
+              <!-- Student Demo Account Box -->
+              <div class="auth-demo-box" style="margin-top:16px;">
+                <div class="auth-demo-title">
+                  <i data-lucide="key-round" style="width:15px; height:15px; color:var(--primary);"></i>
+                  <span>تجربة سريعة بحساب طالب جاهز:</span>
+                </div>
+                <div class="auth-demo-grid" style="grid-template-columns: 1fr;">
+                  <button class="auth-demo-btn" id="fill-student-btn" title="تسجيل الدخول بحساب طالب تجريبي">
+                    <span>👨‍🎓 تجربة بحساب طالب (student@bakalorya.com)</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            `}
 
           </div>
 

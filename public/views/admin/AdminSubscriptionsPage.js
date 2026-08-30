@@ -52,6 +52,41 @@ export const AdminSubscriptionsPage = {
       ? updatedDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : null;
 
+    // Nearest upcoming session badge
+    let nextSessionBadgeHtml = '';
+    if (s.nextSession && s.nextSession.scheduledAt) {
+      const now = new Date();
+      const nextDate = new Date(s.nextSession.scheduledAt);
+      const isToday = nextDate.toDateString() === now.toDateString();
+      const tomorrowDate = new Date(now);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const isTomorrow = nextDate.toDateString() === tomorrowDate.toDateString();
+
+      const timeFormatted = nextDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      const dateFormatted = nextDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+
+      if (isToday) {
+        nextSessionBadgeHtml = `
+          <div style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.35); padding:3px 8px; border-radius:10px; font-weight:800; font-size:0.73rem; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:#ef4444; box-shadow:0 0 6px #ef4444;"></span>
+            🔴 الحصة اليوم (${timeFormatted})
+          </div>
+        `;
+      } else if (isTomorrow) {
+        nextSessionBadgeHtml = `
+          <div style="background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.35); padding:3px 8px; border-radius:10px; font-weight:800; font-size:0.73rem; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">
+            🟡 الحصة غداً (${timeFormatted})
+          </div>
+        `;
+      } else {
+        nextSessionBadgeHtml = `
+          <div style="background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.25); padding:3px 8px; border-radius:10px; font-weight:700; font-size:0.73rem; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">
+            <i data-lucide="clock" style="width:12px;height:12px;"></i> الحصة القادمة: ${dateFormatted} (${timeFormatted})
+          </div>
+        `;
+      }
+    }
+
     return `
     <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
@@ -63,6 +98,7 @@ export const AdminSubscriptionsPage = {
         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
           ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
         </div>
+        ${nextSessionBadgeHtml}
       </td>
       <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
       <td style="padding:12px;">
@@ -153,17 +189,42 @@ export const AdminSubscriptionsPage = {
   renderSubscriptionsTab() {
     const allSubs = this.subscriptions || [];
     const allSessions = this.allSessions || [];
+    const now = new Date();
 
-    // Map metrics for all subscriptions
+    // Map metrics and nearest upcoming session for all subscriptions
     const subsWithMetrics = allSubs.map(s => {
       const totalSessions = s.totalSessions || s.plan?.sessionsCount || 0;
-      const subSessions = allSessions.filter(sess => sess.subscription?.id === s.id);
-      const completedSessions = subSessions.filter(sess => sess.status === 'COMPLETED' || sess.status === 'completed').length;
-      const scheduledSessions = subSessions.filter(sess => sess.status === 'SCHEDULED' || sess.status === 'scheduled' || sess.status === 'RESCHEDULED').length;
+      const subSessions = allSessions.filter(sess => {
+        if (sess.subscription && String(sess.subscription.id) === String(s.id)) return true;
+        if (sess.subscriptionId && String(sess.subscriptionId) === String(s.id)) return true;
+        if (s.student?.id && sess.student?.id && String(sess.student.id) === String(s.student.id)) {
+          if (!sess.course && s.teacher?.id && sess.teacher?.id && String(sess.teacher.id) === String(s.teacher.id)) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      const completedSessions = subSessions.filter(sess => (sess.status || '').toLowerCase() === 'completed').length;
+      const scheduledSessions = subSessions.filter(sess => {
+        const st = (sess.status || '').toLowerCase();
+        return st === 'scheduled' || st === 'rescheduled' || st === 'live';
+      }).length;
       const totalBooked = completedSessions + scheduledSessions;
       const remainingToBook = Math.max(0, totalSessions - totalBooked);
       const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
       const isLowBalance = (s.status === 'ACTIVE' || s.status === 'TEACHER_ASSIGNMENT_PENDING') && remainingSessionsInPackage < 3;
+
+      // Find nearest upcoming scheduled session (Today, Tomorrow, or nearest future date)
+      const upcomingSessions = subSessions.filter(sess => {
+        if (!sess.scheduledAt) return false;
+        const time = new Date(sess.scheduledAt).getTime();
+        const st = (sess.status || '').toLowerCase();
+        return time >= (now.getTime() - 2 * 60 * 60 * 1000) && !st.includes('cancel') && st !== 'completed';
+      }).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+      const nextSession = upcomingSessions[0] || null;
+      const nextSessionTime = nextSession ? new Date(nextSession.scheduledAt).getTime() : null;
 
       return {
         ...s,
@@ -173,12 +234,23 @@ export const AdminSubscriptionsPage = {
         totalBooked,
         remainingToBook,
         remainingSessionsInPackage,
-        isLowBalance
+        isLowBalance,
+        nextSession,
+        nextSessionTime
       };
     });
 
     const lowBalanceCount = subsWithMetrics.filter(s => s.isLowBalance).length;
     const pendingCount = subsWithMetrics.filter(s => s.status === 'PENDING_PAYMENT').length;
+
+    // Helper to calculate sorting priority (Nearest session date/time comes FIRST)
+    const getSubSortScore = (s) => {
+      if (s.nextSessionTime) {
+        return s.nextSessionTime; // earliest upcoming session timestamp (e.g. today < tomorrow < next week)
+      }
+      const createdTime = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+      return 10000000000000 - createdTime; // fallback after all upcoming sessions
+    };
 
     // Apply Filter
     const filter = this.subFilter || "all";
@@ -206,6 +278,18 @@ export const AdminSubscriptionsPage = {
       studentGroups[studentKey].subs.push(s);
     });
 
+    // Sort subscriptions inside each student group by nearest session first (Near to day)
+    groupedSubsList.forEach(grp => {
+      grp.subs.sort((a, b) => getSubSortScore(a) - getSubSortScore(b));
+    });
+
+    // Sort student groups list by the nearest upcoming session of any subscription in that group
+    groupedSubsList.sort((a, b) => {
+      const scoreA = Math.min(...a.subs.map(s => getSubSortScore(s)));
+      const scoreB = Math.min(...b.subs.map(s => getSubSortScore(s)));
+      return scoreA - scoreB;
+    });
+
     const renderedRowsHtml = groupedSubsList.map(group => {
       if (group.subs.length === 1) {
         return this.renderSingleSubRow(group.subs[0]);
@@ -223,6 +307,45 @@ export const AdminSubscriptionsPage = {
       const activeCountGroup = group.subs.filter(item => item.status === 'ACTIVE').length;
       const teachersList = [...new Set(group.subs.map(item => item.teacher?.name).filter(Boolean))].join('، ') || 'في الانتظار';
       const isExpanded = this.expandedStudents ? this.expandedStudents.has(group.studentId) : false;
+
+      // Group nearest upcoming session badge
+      const groupNextSession = group.subs.map(s => s.nextSession).filter(Boolean).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0] || null;
+      let groupNextSessionBadge = '';
+      if (groupNextSession && groupNextSession.scheduledAt) {
+        const nextDate = new Date(groupNextSession.scheduledAt);
+        const isToday = nextDate.toDateString() === now.toDateString();
+        const tomorrowDate = new Date(now);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const isTomorrow = nextDate.toDateString() === tomorrowDate.toDateString();
+        const timeFormatted = nextDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        const dateFormatted = nextDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+
+        if (isToday) {
+          groupNextSessionBadge = `
+            <div style="margin-top:4px;">
+              <span style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.35); padding:3px 8px; border-radius:10px; font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
+                🔴 حصة اليوم (${timeFormatted})
+              </span>
+            </div>
+          `;
+        } else if (isTomorrow) {
+          groupNextSessionBadge = `
+            <div style="margin-top:4px;">
+              <span style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); padding:3px 8px; border-radius:10px; font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
+                🟡 حصة غداً (${timeFormatted})
+              </span>
+            </div>
+          `;
+        } else {
+          groupNextSessionBadge = `
+            <div style="margin-top:4px;">
+              <span style="background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.25); padding:3px 8px; border-radius:10px; font-weight:700; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
+                📅 القادمة: ${dateFormatted} (${timeFormatted})
+              </span>
+            </div>
+          `;
+        }
+      }
 
       const latestSub = group.subs[0];
       let primaryActionBtnHtml = '';
@@ -277,6 +400,7 @@ export const AdminSubscriptionsPage = {
             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
               إجمالي التكلفة: ${totalPriceSum} ج.م
             </div>
+            ${groupNextSessionBadge}
           </td>
           <td style="padding:12px; font-weight:600; font-size:0.82rem;">${teachersList}</td>
           <td style="padding:12px;">
@@ -1043,10 +1167,12 @@ export const AdminSubscriptionsPage = {
     const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
     const availDaysList = availability.map(a => `${daysAr[a.dayOfWeek]} (${a.startTime} - ${a.endTime})`);
 
-    const now = new Date();
-    const nextSaturday = new Date();
-    nextSaturday.setDate(now.getDate() + ((6 - now.getDay() + 7) % 7 || 7));
-    const defaultStartDateStr = nextSaturday.toISOString().slice(0, 10);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(tomorrow.getDate()).padStart(2, '0');
+    const defaultStartDateStr = `${y}-${m}-${d}`;
 
     container.innerHTML = `
       <div class="modal-overlay" id="package-wizard-modal" style="display:flex;">

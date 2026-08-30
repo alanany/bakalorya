@@ -194,6 +194,13 @@ export const AdminSessionsPage = {
       allSessions = allSessions.filter(s => String(s.subscription?.id) === String(filterSubId));
     }
 
+    // Sort all sessions by newest date first (Newest First DESC)
+    allSessions = [...allSessions].sort((a, b) => {
+      const timeA = new Date(a.scheduledAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.scheduledAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
     this.sessionTimeFilter = this.sessionTimeFilter || 'all';
     this.sessionViewMode = this.sessionViewMode || 'list';
     this.sessionCustomDate = this.sessionCustomDate || '';
@@ -689,10 +696,12 @@ export const AdminSessionsPage = {
     const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
     const students = (this.allMembers || []).filter(u => u.role === "student");
 
-    const now = new Date();
-    const nextSaturday = new Date();
-    nextSaturday.setDate(now.getDate() + ((6 - now.getDay() + 7) % 7 || 7));
-    const defaultStartDateStr = nextSaturday.toISOString().slice(0, 10);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(tomorrow.getDate()).padStart(2, '0');
+    const defaultStartDateStr = `${y}-${m}-${d}`;
     const defaultTimeStr = "18:00";
 
     let currentStep = 1;

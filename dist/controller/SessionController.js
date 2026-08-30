@@ -10,8 +10,8 @@ class SessionController {
         try {
             const sessionRepository = data_source_1.AppDataSource.getRepository(Session_1.Session);
             const sessions = await sessionRepository.find({
-                relations: ["teacher", "course", "student"],
-                order: { scheduledAt: "ASC" }
+                relations: ["teacher", "course", "student", "subscription"],
+                order: { scheduledAt: "DESC" }
             });
             let finalSessions = sessions;
             if (req.user && req.user.role === "student") {

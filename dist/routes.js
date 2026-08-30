@@ -24,6 +24,7 @@ const SubscriptionController_1 = require("./controller/SubscriptionController");
 const TeacherAvailabilityController_1 = require("./controller/TeacherAvailabilityController");
 const SessionBookingController_1 = require("./controller/SessionBookingController");
 const TeacherEarningController_1 = require("./controller/TeacherEarningController");
+const PlatformSettingController_1 = require("./controller/PlatformSettingController");
 const auth_1 = require("./middleware/auth");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
@@ -87,8 +88,12 @@ router.post("/auth/staff/login", AuthController_1.AuthController.staffLogin);
 router.post("/auth/staff-login", AuthController_1.AuthController.staffLogin);
 router.get("/auth/me", auth_1.authMiddleware, AuthController_1.AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController_1.AdminTeacherController.acceptInvitation);
-// Public Platform Stats & Analytics
+// Public Platform Stats & Settings
 router.get("/public/stats", AdminController_1.AdminController.getPublicStats);
+router.get("/public/settings", PlatformSettingController_1.PlatformSettingController.getPublicSettings);
+// Admin Platform Settings
+router.get("/admin/settings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), PlatformSettingController_1.PlatformSettingController.getAdminSettings);
+router.put("/admin/settings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), PlatformSettingController_1.PlatformSettingController.updateSettings);
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController_1.CourseController.getAll);
 router.get("/courses/:id", CourseController_1.CourseController.getOne);
@@ -99,6 +104,11 @@ router.post("/courses/:id/submit-for-review", auth_1.authMiddleware, (0, auth_1.
 router.post("/courses/:courseId/lessons", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.addLesson);
 router.put("/lessons/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.updateLesson);
 router.delete("/lessons/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.deleteLesson);
+router.post("/courses/:id/units", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.addUnit);
+router.put("/courses/:id/units/rename", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.renameUnit);
+router.delete("/courses/:id/units", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.deleteUnit);
+router.put("/courses/:id/units/reorder", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.reorderUnits);
+router.put("/courses/:id/lessons/reorder", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.reorderLessons);
 router.get("/courses/:id/enrollments", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.getCourseEnrollments);
 // Course Approvals (Admin)
 router.get("/admin/courses/pending-review", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.getPendingCourses);

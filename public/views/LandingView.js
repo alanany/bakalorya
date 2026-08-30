@@ -628,17 +628,50 @@ export default class LandingView {
               <div>
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">للمعلمين والمدارس</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
-                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">👨‍🏫 للمعلمين والأساتذة</a></li>
-                  <li><a href="#teacher-apply" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">🏫 للمدارس والمؤسسات</a></li>
-                  <li><a href="#contact" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">💬 تواصل معنا</a></li>
+                  <li>
+                    <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="shield-check" style="width:16px; height:16px;"></i> بوابة المعلمين والإدارة 🛡️
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#teacher-apply" style="color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      👨‍🏫 انضم كمعلم أو محاضر
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#teacher-apply" style="color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      🏫 للمدارس والمؤسسات
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#contact" style="color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      💬 تواصل معنا
+                    </a>
+                  </li>
                 </ul>
               </div>
 
               <div>
                 <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">الدعم والتواصل</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:12px; font-size:0.85rem;">
-                  <li style="display:flex; align-items:center; gap:8px;"><i data-lucide="mail" style="color:var(--primary); width:16px; height:16px;"></i> support@entlqedu.com</li>
-                  <li style="display:flex; align-items:center; gap:8px;"><i data-lucide="phone" style="color:var(--primary); width:16px; height:16px;"></i> +213 555 123 456</li>
+                  <li style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="mail" style="color:var(--primary); width:16px; height:16px;"></i>
+                    <a href="mailto:${state.platformSettings?.contactEmail || 'support@entlqedu.com'}" style="color:inherit; text-decoration:none;">
+                      ${state.platformSettings?.contactEmail || 'support@entlqedu.com'}
+                    </a>
+                  </li>
+                  <li style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="phone" style="color:var(--primary); width:16px; height:16px;"></i>
+                    <a href="tel:${state.platformSettings?.contactPhone || '+213 555 123 456'}" style="color:inherit; text-decoration:none;">
+                      ${state.platformSettings?.contactPhone || '+213 555 123 456'}
+                    </a>
+                  </li>
+                  <li style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="message-circle" style="color:#10b981; width:16px; height:16px;"></i>
+                    <a href="${state.platformSettings?.whatsappUrl || 'https://wa.me/213555123456'}" target="_blank" style="color:#10b981; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                      واتساب: ${state.platformSettings?.whatsappNumber || '+213 555 123 456'} ↗
+                    </a>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -647,6 +680,9 @@ export default class LandingView {
               <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية</div>
               
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <a href="#staff-login" style="color:var(--primary); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(99,102,241,0.18)';" onmouseleave="this.style.background='rgba(99,102,241,0.08)';">
+                  <i data-lucide="shield-check" style="width:14px; height:14px; color:var(--primary);"></i> بوابة المعلمين والإدارة
+                </a>
                 <a href="#about" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--primary)';" onmouseleave="this.style.borderColor='var(--border-color)';">
                   <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i> عن المنصة
                 </a>

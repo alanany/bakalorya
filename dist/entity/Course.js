@@ -31,6 +31,7 @@ let Course = class Course {
     approvedAt;
     rejectionReason;
     teacher;
+    unitsOrder;
     lessons;
     enrollments;
     createdAt;
@@ -102,6 +103,10 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, eager: true, onDelete: "SET NULL" }),
     __metadata("design:type", Object)
 ], Course.prototype, "teacher", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Array)
+], Course.prototype, "unitsOrder", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Lesson_1.Lesson, lesson => lesson.course, { cascade: true }),
     __metadata("design:type", Array)

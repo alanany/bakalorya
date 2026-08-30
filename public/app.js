@@ -398,8 +398,31 @@ export const state = {
   currentViewInstance: null,
   theme: localStorage.getItem("theme") || "light",
   language: localStorage.getItem("language") || "ar",
-  translations: {}
+  translations: {},
+  platformSettings: {
+    whatsappNumber: "+213 555 123 456",
+    cleanWhatsApp: "213555123456",
+    whatsappUrl: "https://wa.me/213555123456",
+    contactPhone: "+213 555 123 456",
+    contactEmail: "support@entlqedu.com"
+  }
 };
+
+export async function loadPlatformSettings() {
+  try {
+    const data = await apiFetch("/public/settings");
+    if (data) {
+      state.platformSettings = { ...state.platformSettings, ...data };
+      const floatingWa = document.querySelector(".floating-whatsapp");
+      if (floatingWa && data.whatsappUrl) {
+        floatingWa.setAttribute("href", data.whatsappUrl);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load platform settings:", err);
+  }
+  return state.platformSettings;
+}
 
 // ─── Translation helpers ───────────────────────────────────────────────────────
 
@@ -439,8 +462,11 @@ async function initApp() {
     setupEventListeners();
     window.addEventListener("hashchange", router);
 
-    // MUST await translations BEFORE running router to ensure 100% Arabic strings on first load
-    await loadTranslations(state.language);
+    // MUST await translations and platform settings BEFORE running router
+    await Promise.all([
+      loadTranslations(state.language),
+      loadPlatformSettings()
+    ]);
     checkAuth().then(() => updateHeader()).catch(() => {});
     await router();
   } catch (err) {
@@ -685,6 +711,9 @@ export function updateHeader() {
           <a href="#admin-dashboard/plans" class="sidebar-nav-item">
             <i data-lucide="sparkles"></i> خطط الاشتراكات
           </a>
+          <a href="#admin-dashboard/settings" class="sidebar-nav-item">
+            <i data-lucide="settings"></i> ⚙️ إعدادات المنصة والواتساب
+          </a>
           <a href="#admin-dashboard/earnings" class="sidebar-nav-item">
             <i data-lucide="wallet"></i> أرباح المعلمين
           </a>
@@ -804,7 +833,10 @@ export function updateHeader() {
             <i data-lucide="user-plus"></i> إنشاء حساب جديد
           </a>
           <a href="#login" class="btn-secondary" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="log-in"></i> ${t("nav.login")}
+            <i data-lucide="log-in"></i> ${t("nav.login") || "تسجيل دخول الطلاب"}
+          </a>
+          <a href="#staff-login" style="margin-top:4px; color:var(--text-muted); font-size:0.83rem; font-weight:700; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; padding:6px 10px; border-radius:8px; background:var(--bg-app); border:1px dashed var(--border-color);">
+            <i data-lucide="shield-check" style="width:15px;height:15px;color:var(--primary);"></i> بوابة المعلمين والإدارة
           </a>
         </div>
       `;

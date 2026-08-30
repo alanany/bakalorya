@@ -1,4 +1,4 @@
-import { apiFetch, showToast, t, renderPhoneInputGroup } from "../app.js";
+import { apiFetch, showToast, t, renderPhoneInputGroup, state } from "../app.js";
 
 export default class ContactView {
   constructor(container) {
@@ -6,6 +6,16 @@ export default class ContactView {
   }
 
   async render() {
+    const waUrl = state.platformSettings?.whatsappUrl || "https://wa.me/213555123456";
+    const waNumber = state.platformSettings?.whatsappNumber || "+213 555 123 456";
+    const contactEmail = state.platformSettings?.contactEmail || "support@entlqedu.com";
+    const contactEmail2 = state.platformSettings?.contactEmail2 || "info@entlqedu.com";
+    const contactPhone = state.platformSettings?.contactPhone || "+213 555 123 456 / +20 100 000 0000";
+    const workingHours = state.platformSettings?.workingHours || "الأحد - الخميس (09:00 ص - 06:00 م)";
+    const contactTitle = state.platformSettings?.contactTitle || "نحن هنا لدعمك وإجابة استفساراتك 💬";
+    const contactSubtitle = state.platformSettings?.contactSubtitle || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.";
+    const contactAddress = state.platformSettings?.contactAddress || "الجزائر العاصمة / القاهرة";
+
     this.container.innerHTML = `
       <div style="max-width:1200px; margin:0 auto; padding:40px 24px 80px; display:flex; flex-direction:column; gap:36px;">
         
@@ -14,9 +24,9 @@ export default class ContactView {
           <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,86,210,0.12); color:var(--primary); font-size:0.8rem; font-weight:800; padding:6px 18px; border-radius:30px; margin-bottom:14px;">
             <i data-lucide="headphones" style="width:14px; height:14px;"></i> تواصل معنا
           </div>
-          <h1 style="font-size:2.2rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">نحن هنا لدعمك وإجابة استفساراتك 💬</h1>
+          <h1 style="font-size:2.2rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">${contactTitle}</h1>
           <p style="font-size:0.98rem; color:var(--text-muted); max-width:600px; margin:0 auto; line-height:1.6;">
-            سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.
+            ${contactSubtitle}
           </p>
         </div>
 
@@ -32,8 +42,8 @@ export default class ContactView {
               </div>
               <div>
                 <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-color); margin:0 0 4px 0;">الدعم المباشر عبر الواتساب</h4>
-                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 10px 0;">تواصل فورياً مع فريق خدمة العملاء والاستفسارات</p>
-                <a href="https://wa.me/213555123456" target="_blank" class="btn-secondary" style="padding:6px 16px; font-size:0.82rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 10px 0;">تواصل فورياً مع فريق خدمة العملاء والاستفسارات (${waNumber})</p>
+                <a href="${waUrl}" target="_blank" class="btn-secondary" style="padding:6px 16px; font-size:0.82rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                   💬 بدء محادثة واتساب
                 </a>
               </div>
@@ -45,8 +55,8 @@ export default class ContactView {
               </div>
               <div>
                 <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-color); margin:0 0 4px 0;">البريد الإلكتروني الرسمي</h4>
-                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 6px 0;">support@bakalorya.com</p>
-                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">info@bakalorya.com</p>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 6px 0;"><a href="mailto:${contactEmail}" style="color:inherit; text-decoration:none;">${contactEmail}</a></p>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0;"><a href="mailto:${contactEmail2}" style="color:inherit; text-decoration:none;">${contactEmail2}</a></p>
               </div>
             </div>
 
@@ -56,8 +66,18 @@ export default class ContactView {
               </div>
               <div>
                 <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-color); margin:0 0 4px 0;">الاتصال الهاتفي ورعاية المشتركين</h4>
-                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 6px 0;">+213 555 123 456 / +20 100 000 0000</p>
-                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">ساعات العمل: الأحد - الخميس (09:00 ص - 06:00 م)</span>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 6px 0;">${contactPhone}</p>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">ساعات العمل: ${workingHours}</span>
+              </div>
+            </div>
+
+            <div class="glass-card" style="padding:20px 24px; border-radius:20px; border:1px solid var(--border-color); display:flex; align-items:center; gap:16px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="map-pin" style="width:20px; height:20px;"></i>
+              </div>
+              <div>
+                <h4 style="font-size:0.95rem; font-weight:800; color:var(--text-color); margin:0 0 2px 0;">المقر والتواجد</h4>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">${contactAddress}</p>
               </div>
             </div>
 

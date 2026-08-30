@@ -9,6 +9,7 @@ import { AdminSubscriptionsPage }  from './AdminSubscriptionsPage.js';
 import { AdminReportsPage }        from './AdminReportsPage.js';
 import { AdminEarningsPage }       from './AdminEarningsPage.js';
 import { AdminPlansPage }          from './AdminPlansPage.js';
+import { AdminSettingsPage }       from './AdminSettingsPage.js';
 
 export default class AdminView {
 
@@ -25,6 +26,7 @@ export default class AdminView {
     this.subscriptions = [];
     this.adminEarnings = null;
     this.allPlans = [];
+    this.platformSettings = null;
     this.subFilter = "all";
     this.expandedStudents = new Set();
   }
@@ -373,10 +375,14 @@ export default class AdminView {
               إدارة الاشتراكات
               <span class="admin-nav-badge" id="admin-badge-subscriptions">0</span>
             </button>
-            <button class="admin-nav-btn ${this.activeTab === "plans" || this.activeTab === "settings" ? "active" : ""}" data-tab="plans">
-              <i data-lucide="settings"></i>
-              ⚙️ الإعدادات وخطط الباقات
+            <button class="admin-nav-btn ${this.activeTab === "plans" ? "active" : ""}" data-tab="plans">
+              <i data-lucide="sparkles"></i>
+              خطط وباقات الاشتراكات
               <span class="admin-nav-badge" id="admin-badge-plans">0</span>
+            </button>
+            <button class="admin-nav-btn ${this.activeTab === "settings" ? "active" : ""}" data-tab="settings">
+              <i data-lucide="settings"></i>
+              ⚙️ إعدادات المنصة والواتساب
             </button>
             <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
               <i data-lucide="dollar-sign"></i>
@@ -478,7 +484,7 @@ export default class AdminView {
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -489,7 +495,8 @@ export default class AdminView {
         apiFetch("/admin/subscriptions").catch(() => []),
         apiFetch("/admin/earnings").catch(() => null),
         apiFetch("/subscription-plans").catch(() => []),
-        apiFetch("/admin/enrollments").catch(() => [])
+        apiFetch("/admin/enrollments").catch(() => []),
+        apiFetch("/admin/settings").catch(() => ({}))
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -502,6 +509,10 @@ export default class AdminView {
       this.subscriptions = subscriptions || [];
       this.adminEarnings = earnings || null;
       this.enrollments = enrollments || [];
+      if (settings) {
+        this.platformSettings = settings;
+        state.platformSettings = { ...state.platformSettings, ...settings };
+      }
       this.updateAddCourseModalTeachers();
     } catch (err) {
       console.error("loadAllData error:", err);
@@ -569,8 +580,8 @@ export default class AdminView {
     members: { heading: "🛡️ جميع الأعضاء", sub: "عرض وإدارة جميع مستخدمي المنصة" },
     subscriptions: { heading: "📅 إدارة الاشتراكات", sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
-    plans: { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
-    settings: { heading: "⚙️ إعدادات المنصة وخطط الباقات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، والخصائص الحصرية" },
+    plans: { heading: "✨ خطط وباقات الاشتراكات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، وتخصيص الباقات لكل كورس" },
+    settings: { heading: "⚙️ إعدادات المنصة ورقم الواتساب", sub: "إدارة رقم الواتساب الرسمي، أرقام الدعم الهاتفي، والبريد الإلكتروني للواجهة الرئيسية" },
   };
 
   renderTab(tab, args = null) {
@@ -600,7 +611,8 @@ export default class AdminView {
     else if (tab === "reports") content.innerHTML = this.renderReportsTab();
     else if (tab === "subscriptions") content.innerHTML = this.renderSubscriptionsTab();
     else if (tab === "earnings") content.innerHTML = this.renderEarningsTab();
-    else if (tab === "plans" || tab === "settings") content.innerHTML = this.renderPlansTab();
+    else if (tab === "plans") content.innerHTML = this.renderPlansTab();
+    else if (tab === "settings") content.innerHTML = this.renderSettingsTab();
 
     // Always keep sidebar badges fresh
     this.updateBadges();
@@ -885,9 +897,37 @@ export default class AdminView {
 
     // Admin Approve Course Enrollment
     this.container.querySelectorAll(".admin-approve-enrollment-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
-        this.renderApproveEnrollmentModal(id);
+        const isFreeAttr = btn.getAttribute("data-free") === "true";
+        const enrollment = (this.enrollments || []).find(e => e.id === id);
+        const isFree = isFreeAttr || Boolean(enrollment?.course?.isFree || !enrollment?.course?.price || Number(enrollment?.course?.price) === 0);
+
+        if (isFree) {
+          const studentName = enrollment?.student?.name || "الطالب";
+          const courseTitle = enrollment?.course?.title || "الدورة";
+          const confirmed = await confirmDialog(`هل تريد قبول واعتماد تسجيل "${studentName}" في الدورة المجانية "${courseTitle}" مباشرة؟ 🎁`);
+          if (!confirmed) return;
+
+          try {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner" style="width:12px;height:12px;display:inline-block;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></span> جاري الاعتماد...`;
+            const res = await apiFetch(`/admin/enrollments/${id}/approve`, {
+              method: "POST",
+              body: JSON.stringify({ amount: 0, provider: "Free Course", notes: "دورة مجانية - قبول فوري ومباشر" })
+            });
+            showToast(res.message || "تم قبول تسجيل الطالب في الدورة المجانية بنجاح! 🎁✅", "success");
+            await this.loadAllData();
+            this.renderTab("enrollments");
+          } catch (err) {
+            showToast(err.message || "فشل اعتماد تسجيل الدورة المجانية", "error");
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول مباشر (مجاني) ✅`;
+            if (window.lucide) window.lucide.createIcons();
+          }
+        } else {
+          this.renderApproveEnrollmentModal(id);
+        }
       });
     });
 
@@ -1359,6 +1399,65 @@ export default class AdminView {
         }
       });
     });
+
+    // Platform & WhatsApp Settings Form Handler
+    document.getElementById("admin-platform-settings-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("save-platform-settings-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div> <span>جاري الحفظ...</span>`;
+      }
+
+      const whatsappNumber = document.getElementById("setting-whatsapp-number")?.value.trim();
+      const contactPhone = document.getElementById("setting-contact-phone")?.value.trim();
+      const contactEmail = document.getElementById("setting-contact-email")?.value.trim();
+      const contactEmail2 = document.getElementById("setting-contact-email2")?.value.trim();
+      const workingHours = document.getElementById("setting-working-hours")?.value.trim();
+      const contactTitle = document.getElementById("setting-contact-title")?.value.trim();
+      const contactSubtitle = document.getElementById("setting-contact-subtitle")?.value.trim();
+      const contactAddress = document.getElementById("setting-contact-address")?.value.trim();
+
+      try {
+        const res = await apiFetch("/admin/settings", {
+          method: "PUT",
+          body: JSON.stringify({
+            whatsappNumber,
+            contactPhone,
+            contactEmail,
+            contactEmail2,
+            workingHours,
+            contactTitle,
+            contactSubtitle,
+            contactAddress
+          })
+        });
+
+        if (res && res.settings) {
+          this.platformSettings = res.settings;
+          state.platformSettings = { ...state.platformSettings, ...res.settings };
+          showToast(res.message || "تم حفظ كافة إعدادات المنصة وبيانات التواصل بنجاح! ✅", "success");
+
+          // Update preview link & floating whatsapp button
+          const previewLink = document.getElementById("admin-preview-wa-link");
+          if (previewLink && res.settings.whatsappUrl) {
+            previewLink.href = res.settings.whatsappUrl;
+          }
+          const floatingWa = document.querySelector(".floating-whatsapp");
+          if (floatingWa && res.settings.whatsappUrl) {
+            floatingWa.setAttribute("href", res.settings.whatsappUrl);
+          }
+        }
+      } catch (err) {
+        showToast(err.message || "فشل حفظ إعدادات المنصة.", "error");
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width:18px; height:18px;"></i> <span>حفظ إعدادات الواتساب والتواصل 💾</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    });
   }
 
   // ── Render Category Modal (Create / Edit) ──────────────────────────────────
@@ -1381,3 +1480,4 @@ Object.assign(AdminView.prototype, AdminSubscriptionsPage);
 Object.assign(AdminView.prototype, AdminReportsPage);
 Object.assign(AdminView.prototype, AdminEarningsPage);
 Object.assign(AdminView.prototype, AdminPlansPage);
+Object.assign(AdminView.prototype, AdminSettingsPage);

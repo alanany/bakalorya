@@ -8,6 +8,7 @@ import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { Lesson } from "../entity/Lesson";
 import { AuthRequest } from "../middleware/auth";
+import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
 
 export class AdminController {
@@ -472,7 +473,7 @@ export class AdminController {
   // POST /admin/enrollments/:id/approve — Admin approves course enrollment
   static async approveEnrollment(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { amount, receiptUrl, notes } = req.body;
+    const { amount, receiptUrl, notes, provider } = req.body;
 
     try {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
@@ -487,19 +488,16 @@ export class AdminController {
         return res.status(404).json({ error: "طلب التسجيل غير موجود." });
       }
 
-      enrollment.status = "active";
-
       // Create or update Payment record
       let payment = enrollment.payment;
       if (!payment) {
-        payment = new Payment();
-        payment.student = enrollment.student;
-        payment.type = "COURSE_ENROLLMENT";
-        payment.courseEnrollment = enrollment;
+        payment = await paymentRepo.findOne({
+          where: { courseEnrollment: { id: enrollment.id } }
+        }) || new Payment();
       }
 
-      const { amount, receiptUrl, notes, provider } = req.body;
-
+      payment.student = enrollment.student;
+      payment.type = "COURSE_ENROLLMENT";
       payment.amount = amount !== undefined ? Number(amount) : (payment.amount || 0);
       payment.currency = "EGP";
       payment.status = "SUCCESS";
@@ -508,13 +506,30 @@ export class AdminController {
       if (notes) payment.notes = notes;
 
       const savedPayment = await paymentRepo.save(payment);
+
+      enrollment.status = "active";
       enrollment.payment = savedPayment;
       await enrollmentRepo.save(enrollment);
 
+      // Create in-app notification for the student
+      if (enrollment.student) {
+        try {
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "تم تفعيل اشتراكك بالدورة بنجاح! 🎉",
+            `تهانينا! تم قبول واعتماد تسجيلك في دورة "${enrollment.course?.title || 'الدورة التعليمية'}". يمكنك الآن بدء المشاهدة والمتابعة.`,
+            "success",
+            "#courses"
+          );
+        } catch (notifErr) {
+          console.error("Error creating student enrollment notification:", notifErr);
+        }
+      }
+
       return res.json({ message: "تم قبول واعتماد تسجيل الطالب في الدورة بنجاح! ✅", enrollment });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Admin approveEnrollment error:", err);
-      return res.status(500).json({ error: "فشل اعتماد التسجيل." });
+      return res.status(500).json({ error: err.message || "فشل اعتماد التسجيل." });
     }
   }
 

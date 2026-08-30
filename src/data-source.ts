@@ -28,6 +28,7 @@ import { SessionAttendance } from "./entity/SessionAttendance";
 import { TeacherEarning } from "./entity/TeacherEarning";
 import { Payment } from "./entity/Payment";
 import { AuditLog } from "./entity/AuditLog";
+import { PlatformSetting } from "./entity/PlatformSetting";
 
 export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
@@ -35,7 +36,7 @@ export const allEntities = [
   TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
   QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
   SessionCreditLedger, TeacherAvailability, SessionAttendance,
-  TeacherEarning, Payment, AuditLog
+  TeacherEarning, Payment, AuditLog, PlatformSetting
 ];
 
 export function getDataSourceOptions(): DataSourceOptions {

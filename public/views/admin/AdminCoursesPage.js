@@ -116,6 +116,7 @@ export const AdminCoursesPage = {
       };
       const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
       const receiptUrl = e.payment?.receiptUrl;
+      const isFree = Boolean(e.course?.isFree || !e.course?.price || Number(e.course?.price) === 0);
 
       return `
                   <tr style="border-bottom:1px solid var(--border-color); font-size:0.88rem;">
@@ -125,10 +126,21 @@ export const AdminCoursesPage = {
                     </td>
                     <td style="padding:14px 16px;">
                       <div style="font-weight:700;">${e.course?.title || 'دورة'}</div>
-                      <div style="font-size:0.78rem; color:var(--primary);">${e.course?.category || ''}</div>
+                      <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                        <span style="font-size:0.75rem; color:var(--primary);">${e.course?.category || ''}</span>
+                        ${isFree ? `
+                          <span style="font-size:0.72rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:2px 8px; border-radius:10px;">🎁 مجاني</span>
+                        ` : `
+                          <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); background:var(--bg-app); padding:2px 8px; border-radius:10px;">${e.course?.price} ${e.course?.currency || 'EGP'}</span>
+                        `}
+                      </div>
                     </td>
                     <td style="padding:14px 16px;">
-                      ${receiptUrl ? `
+                      ${isFree ? `
+                        <span style="font-size:0.78rem; color:#10b981; font-weight:700; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="gift" style="width:13px;height:13px;"></i> دورة مجانية (بدون دفع)
+                        </span>
+                      ` : receiptUrl ? `
                         <a href="${receiptUrl}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary);">
                           <i data-lucide="file-text" style="width:12px;height:12px;"></i> عرض إيصال التحويل 📄
                         </a>
@@ -147,8 +159,8 @@ export const AdminCoursesPage = {
                     <td style="padding:14px 16px;">
                       <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         ${e.status !== 'active' ? `
-                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" style="padding:6px 12px; font-size:0.78rem; background:#10b981; border-color:#10b981; font-weight:800;">
-                            <i data-lucide="check" style="width:14px;height:14px;"></i> قبول واعتماد ✅
+                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" data-free="${isFree}" style="padding:6px 12px; font-size:0.78rem; background:#10b981; border-color:#10b981; font-weight:800;" title="${isFree ? 'قبول مباشر وفوري للدورة المجانية' : 'قبول واعتماد إيصال الدفع'}">
+                            <i data-lucide="${isFree ? 'check-circle' : 'check'}" style="width:14px;height:14px;"></i> ${isFree ? 'قبول مباشر (مجاني) ✅' : 'قبول واعتماد ✅'}
                           </button>
                         ` : ''}
                         ${e.status !== 'rejected' ? `

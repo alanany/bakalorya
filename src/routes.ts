@@ -20,6 +20,7 @@ import { SubscriptionController } from "./controller/SubscriptionController";
 import { TeacherAvailabilityController } from "./controller/TeacherAvailabilityController";
 import { SessionBookingController } from "./controller/SessionBookingController";
 import { TeacherEarningController } from "./controller/TeacherEarningController";
+import { PlatformSettingController } from "./controller/PlatformSettingController";
 import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability } from "./middleware/auth";
 import multer from "multer";
 import path from "path";
@@ -90,8 +91,13 @@ router.post("/auth/staff-login", AuthController.staffLogin);
 router.get("/auth/me", authMiddleware, AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvitation);
 
-// Public Platform Stats & Analytics
+// Public Platform Stats & Settings
 router.get("/public/stats", AdminController.getPublicStats);
+router.get("/public/settings", PlatformSettingController.getPublicSettings);
+
+// Admin Platform Settings
+router.get("/admin/settings", authMiddleware, requireRole(["admin"]), PlatformSettingController.getAdminSettings);
+router.put("/admin/settings", authMiddleware, requireRole(["admin"]), PlatformSettingController.updateSettings);
 
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController.getAll);

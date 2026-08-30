@@ -9,6 +9,7 @@ export const AdminPlansPage = {
     const plans = this.allPlans || [];
 
     return `
+      <!-- Subscription Plans Section -->
       <div style="margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>
           <h3 style="font-size:1.2rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">✨ إدارة خطط الاشتراكات الشهرية لكافة الكورسات</h3>

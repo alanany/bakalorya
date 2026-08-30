@@ -348,6 +348,256 @@ class CourseController {
             return res.status(500).json({ error: "Failed to delete course." });
         }
     }
+    // Add / register a unit
+    static async addUnit(req, res) {
+        const { id } = req.params;
+        const { unitName } = req.body;
+        if (!unitName || !unitName.trim()) {
+            return res.status(400).json({ error: "اسم الوحدة مطلوب." });
+        }
+        const trimmedName = unitName.trim();
+        try {
+            const courseRepo = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const course = await courseRepo.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "Course not found." });
+            if (course.teacher && course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "Forbidden." });
+            }
+            let unitsOrder = Array.isArray(course.unitsOrder) ? [...course.unitsOrder] : [];
+            if (!unitsOrder.includes(trimmedName)) {
+                unitsOrder.push(trimmedName);
+            }
+            course.unitsOrder = unitsOrder;
+            await courseRepo.save(course);
+            return res.status(200).json({ message: "تمت إضافة الوحدة بنجاح.", unitsOrder: course.unitsOrder });
+        }
+        catch (err) {
+            console.error("addUnit error:", err);
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Rename a unit across course.unitsOrder and all its lessons
+    static async renameUnit(req, res) {
+        const { id } = req.params;
+        const { oldName, newName } = req.body;
+        if (!oldName || !newName || !newName.trim()) {
+            return res.status(400).json({ error: "الاسم القديم والاسم الجديد مطلوبان." });
+        }
+        const trimmedOld = oldName.trim();
+        const trimmedNew = newName.trim();
+        try {
+            const courseRepo = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const lessonRepo = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
+            const course = await courseRepo.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "Course not found." });
+            if (course.teacher && course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "Forbidden." });
+            }
+            // Update unitsOrder
+            let unitsOrder = Array.isArray(course.unitsOrder) ? [...course.unitsOrder] : [];
+            const unitIdx = unitsOrder.indexOf(trimmedOld);
+            if (unitIdx !== -1) {
+                unitsOrder[unitIdx] = trimmedNew;
+            }
+            else {
+                unitsOrder.push(trimmedNew);
+            }
+            // Remove duplicates
+            course.unitsOrder = Array.from(new Set(unitsOrder));
+            await courseRepo.save(course);
+            // Update all lessons with chapter == trimmedOld
+            const lessons = await lessonRepo.find({
+                where: { course: { id } }
+            });
+            for (const lesson of lessons) {
+                if (lesson.chapter === trimmedOld || (!lesson.chapter && (trimmedOld === "General" || trimmedOld === "الوحدة العامة (General)" || trimmedOld === "الوحدة العامة"))) {
+                    lesson.chapter = trimmedNew;
+                    await lessonRepo.save(lesson);
+                }
+            }
+            return res.status(200).json({
+                message: "تم تعديل اسم الوحدة وتحديث كافة الدروس التابعة لها بنجاح.",
+                unitsOrder: course.unitsOrder
+            });
+        }
+        catch (err) {
+            console.error("renameUnit error:", err);
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Delete a unit (with options to delete or transfer lessons)
+    static async deleteUnit(req, res) {
+        const { id } = req.params;
+        const { unitName, action, targetUnit } = req.body;
+        if (!unitName) {
+            return res.status(400).json({ error: "اسم الوحدة المراد حذفها مطلوب." });
+        }
+        const trimmedUnit = unitName.trim();
+        try {
+            const courseRepo = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const lessonRepo = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
+            const course = await courseRepo.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "Course not found." });
+            if (course.teacher && course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "Forbidden." });
+            }
+            // Find lessons in this unit
+            const lessons = await lessonRepo.find({
+                where: { course: { id } }
+            });
+            const unitLessons = lessons.filter(l => l.chapter === trimmedUnit || (!l.chapter && (trimmedUnit === "General" || trimmedUnit === "الوحدة العامة (General)" || trimmedUnit === "الوحدة العامة")));
+            if (action === "delete_lessons") {
+                for (const l of unitLessons) {
+                    await lessonRepo.remove(l);
+                }
+            }
+            else if (action === "move_lessons" || action === "move_to_unit") {
+                const destUnit = targetUnit && targetUnit.trim() ? targetUnit.trim() : "الوحدة العامة";
+                for (const l of unitLessons) {
+                    l.chapter = destUnit;
+                    await lessonRepo.save(l);
+                }
+            }
+            else if (unitLessons.length > 0) {
+                return res.status(400).json({
+                    error: `الوحدة تحتوي على ${unitLessons.length} دروس. يرجى تحديد نقل الدروس أو حذفها.`,
+                    hasLessons: true,
+                    lessonsCount: unitLessons.length
+                });
+            }
+            // Remove from unitsOrder
+            if (Array.isArray(course.unitsOrder)) {
+                course.unitsOrder = course.unitsOrder.filter(u => u !== trimmedUnit);
+                await courseRepo.save(course);
+            }
+            return res.status(200).json({
+                message: "تم حذف الوحدة بنجاح.",
+                unitsOrder: course.unitsOrder || []
+            });
+        }
+        catch (err) {
+            console.error("deleteUnit error:", err);
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Reorder units and re-sequence lessons
+    static async reorderUnits(req, res) {
+        const { id } = req.params;
+        const { unitsOrder } = req.body;
+        if (!Array.isArray(unitsOrder)) {
+            return res.status(400).json({ error: "قائمة ترتيب الوحدات غير صحيحة." });
+        }
+        try {
+            const courseRepo = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const lessonRepo = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
+            const course = await courseRepo.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "Course not found." });
+            if (course.teacher && course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "Forbidden." });
+            }
+            course.unitsOrder = unitsOrder;
+            await courseRepo.save(course);
+            // Re-number lessons to follow the new units order sequence
+            const lessons = await lessonRepo.find({
+                where: { course: { id } },
+                order: { order: "ASC" }
+            });
+            const map = {};
+            lessons.forEach(l => {
+                const ch = l.chapter || "الوحدة العامة";
+                if (!map[ch])
+                    map[ch] = [];
+                map[ch].push(l);
+            });
+            let currentOrder = 1;
+            for (const unitName of unitsOrder) {
+                if (map[unitName]) {
+                    for (const l of map[unitName]) {
+                        l.order = currentOrder++;
+                        await lessonRepo.save(l);
+                    }
+                    delete map[unitName];
+                }
+            }
+            for (const unlistedUnit of Object.keys(map)) {
+                for (const l of map[unlistedUnit]) {
+                    l.order = currentOrder++;
+                    await lessonRepo.save(l);
+                }
+            }
+            return res.status(200).json({
+                message: "تم حفظ الترتيب الجديد للوحدات والدروس بنجاح.",
+                unitsOrder: course.unitsOrder
+            });
+        }
+        catch (err) {
+            console.error("reorderUnits error:", err);
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
+    // Reorder lessons in bulk
+    static async reorderLessons(req, res) {
+        const { id } = req.params;
+        const { lessons } = req.body;
+        if (!Array.isArray(lessons)) {
+            return res.status(400).json({ error: "قائمة ترتيب الدروس غير صحيحة." });
+        }
+        try {
+            const courseRepo = data_source_1.AppDataSource.getRepository(Course_1.Course);
+            const lessonRepo = data_source_1.AppDataSource.getRepository(Lesson_1.Lesson);
+            const course = await courseRepo.findOne({
+                where: { id },
+                relations: ["teacher"]
+            });
+            if (!course)
+                return res.status(404).json({ error: "Course not found." });
+            if (course.teacher && course.teacher.id !== req.user.id && req.user.role !== "admin") {
+                return res.status(403).json({ error: "Forbidden." });
+            }
+            for (const item of lessons) {
+                if (item.id) {
+                    const l = await lessonRepo.findOne({
+                        where: { id: item.id, course: { id } }
+                    });
+                    if (l) {
+                        if (typeof item.order === "number")
+                            l.order = item.order;
+                        if (item.chapter)
+                            l.chapter = item.chapter;
+                        await lessonRepo.save(l);
+                    }
+                }
+            }
+            const updatedLessons = await lessonRepo.find({
+                where: { course: { id } },
+                order: { order: "ASC" }
+            });
+            return res.status(200).json({
+                message: "تم تحديث ترتيب الدروس بنجاح.",
+                lessons: updatedLessons
+            });
+        }
+        catch (err) {
+            console.error("reorderLessons error:", err);
+            return res.status(500).json({ error: "Internal server error." });
+        }
+    }
     static async getEnrollmentRequests(req, res) {
         try {
             let requests = [];
