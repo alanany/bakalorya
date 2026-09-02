@@ -1,4 +1,4 @@
-import { apiFetch, state, t, renderCourseCard } from "../app.js";
+import { apiFetch, state, t, renderCourseCard, showToast } from "../app.js";
 
 export default class LandingView {
   constructor(container) {
@@ -9,6 +9,14 @@ export default class LandingView {
     this.platformStats = null;
     this.chartInstance = null;
     this.currentChartType = "growth";
+
+    // Curriculum & Groups Explorer State
+    this.explorerStage = "PRIMARY";
+    this.explorerGradeId = null;
+    this.explorerSubjectId = null;
+    this.explorerDays = [];
+    this.daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+    this.allGradesData = [];
   }
 
   async render() {
@@ -74,6 +82,56 @@ export default class LandingView {
             <span class="hero-dot active" style="width:28px; height:8px; border-radius:4px; background:var(--primary); cursor:pointer;"></span>
             <span class="hero-dot" style="width:10px; height:8px; border-radius:4px; background:var(--border-color); cursor:pointer;"></span>
             <span class="hero-dot" style="width:10px; height:8px; border-radius:4px; background:var(--border-color); cursor:pointer;"></span>
+          </div>
+        </section>
+
+
+        <!-- 🌟 CREATIVE CURRICULUM EXPLORER (HERO STAGE, GRADE & SUBJECTS SELECTOR) -->
+        <section id="interactive-curriculum-explorer" style="max-width:1280px; margin:0 auto; padding:20px 24px 44px 24px;">
+          <div class="glass-card curriculum-explorer-box" style="
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(24, 24, 27, 0.02) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 32px;
+            padding: 44px 36px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+          ">
+            
+            <!-- BACKGROUND AMBIENT GLOW EFFECTS -->
+            <div style="position:absolute; top:-100px; right:-100px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(229,29,116,0.12) 0%, transparent 70%); pointer-events:none;"></div>
+            <div style="position:absolute; bottom:-100px; left:-100px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.1) 0%, transparent 70%); pointer-events:none;"></div>
+
+        <!-- SECTION 1: INTERACTIVE ACCORDION CURRICULUM EXPLORER (WIDE & EXPANSIVE) -->
+        <section style="max-width:1400px; width:100%; margin:0 auto; padding:36px 16px 24px 16px; direction:rtl;">
+          
+          <div style="background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:28px; padding:36px 18px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden;">
+            
+            <!-- Floating Decorative Background Glows -->
+            <div style="position:absolute; top:-60px; right:-60px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.12) 0%, transparent 70%); pointer-events:none;"></div>
+            <div style="position:absolute; bottom:-60px; left:-60px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%); pointer-events:none;"></div>
+
+            <!-- SECTION HEADER (CENTERED) -->
+            <div style="text-align:center; max-width:820px; margin:0 auto 36px auto; position:relative; z-index:1;">
+              <span style="font-size:0.85rem; font-weight:900; background:rgba(0,86,210,0.08); color:var(--primary); padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;">
+                <i data-lucide="compass" style="width:15px;height:15px;"></i> استكشف المناهج والمجموعات الدراسية
+              </span>
+              <h2 style="font-size:clamp(1.7rem, 3.5vw, 2.4rem); font-weight:900; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
+                اختر مرحلتك وصفك الدراسي 🎯
+              </h2>
+              <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0 auto; max-width:680px;">
+                افتح مرحلتك الدراسية لرؤية الصفوف والمواد المقررة، واستعراض الحصص والمجموعات المتاحة فوراً مع نخبة الأساتذة.
+              </p>
+            </div>
+
+            <!-- WIDE ACCORDION CONTAINER -->
+            <div id="curriculum-accordion-container" style="max-width:100%; margin:0 auto; position:relative; z-index:1;">
+              <div style="text-align:center; padding:40px 0; color:var(--text-muted);">
+                <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px;border-width:3px;"></div>
+                <p style="font-weight:700; font-size:0.9rem;">جاري تحميل المراحل والمواد الدراسية...</p>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -727,9 +785,396 @@ export default class LandingView {
       this.renderFilteredCourses();
       this.renderPlatformStats(this.platformStats);
       this.initLiveChart(this.platformStats, this.currentChartType);
+      await this.initCurriculumExplorerAsync();
       if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.error("Failed to load data for landing page", e);
+    }
+  }
+
+  // ─── Interactive Curriculum Accordion Explorer Logic (Centered) ───────────────────
+  getSubjectTheme(name) {
+    const n = String(name || "").toLowerCase();
+    if (n.includes("عرب") || n.includes("arabic")) {
+      return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+    }
+    if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
+      return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
+    }
+    if (n.includes("رياض") || n.includes("math")) {
+      return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
+    }
+    if (n.includes("فيزي") || n.includes("physic")) {
+      return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
+    }
+    if (n.includes("كيمي") || n.includes("chem")) {
+      return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🧪" };
+    }
+    if (n.includes("أحيا") || n.includes("bio") || n.includes("علوم") || n.includes("scien")) {
+      return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧬" };
+    }
+    if (n.includes("تاريخ") || n.includes("جغراف") || n.includes("دراسات") || n.includes("فلسف")) {
+      return { gradient: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)", color: "#4f46e5", icon: "🏛️" };
+    }
+    if (n.includes("ict") || n.includes("حاسب") || n.includes("برمج") || n.includes("معلومات")) {
+      return { gradient: "linear-gradient(135deg, #0891b2 0%, #164e63 100%)", color: "#0891b2", icon: "💻" };
+    }
+    return { gradient: "linear-gradient(135deg, #e51d74 0%, #831843 100%)", color: "#e51d74", icon: "📚" };
+  }
+
+  async initCurriculumExplorerAsync() {
+    try {
+      const accordionContainer = document.getElementById("curriculum-accordion-container");
+      if (!accordionContainer) return;
+
+      const grades = await apiFetch("/curriculum/grades");
+      if (Array.isArray(grades) && grades.length > 0) {
+        this.allGradesData = grades;
+      }
+
+      if (!this.allGradesData || this.allGradesData.length === 0) {
+        accordionContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:20px;">لا توجد بيانات مناهج متاحة حالياً.</p>`;
+        return;
+      }
+
+      const stages = [
+        {
+          key: "PRIMARY",
+          name: "المرحلة الابتدائية (Primary)",
+          subtitle: "من الصف الأول حتى الصف السادس الابتدائي واللغات",
+          icon: "🎒",
+          color: "#10b981",
+          gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          glow: "rgba(16,185,129,0.15)"
+        },
+        {
+          key: "PREPARATORY",
+          name: "المرحلة الإعدادية والمتوسطة (Prep)",
+          subtitle: "الصفوف من الأول الإعدادي حتى الثالث الإعدادي (الشهادة الإعدادية)",
+          icon: "📚",
+          color: "#3b82f6",
+          gradient: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+          glow: "rgba(59,130,246,0.15)"
+        },
+        {
+          key: "SECONDARY",
+          name: "المرحلة الثانوية والبكالوريا (Secondary)",
+          subtitle: "الصفوف الأول والثاني والثالث الثانوي (انطلق 1، 2، 3 - BAC)",
+          icon: "🎓",
+          color: "#e51d74",
+          gradient: "linear-gradient(135deg, #e51d74 0%, #be123c 100%)",
+          glow: "rgba(229,29,116,0.15)"
+        }
+      ];
+
+      if (!this.explorerStage) this.explorerStage = "PRIMARY";
+
+      const renderAccordion = () => {
+        accordionContainer.innerHTML = stages.map(stage => {
+          const isOpen = this.explorerStage === stage.key;
+          const stageGrades = this.allGradesData.filter(g => g.stage === stage.key);
+          
+          if (isOpen && (!this.explorerGradeId || !stageGrades.some(g => g.id === this.explorerGradeId))) {
+            this.explorerGradeId = stageGrades[0]?.id || null;
+          }
+
+          const currentGrade = stageGrades.find(g => g.id === this.explorerGradeId) || stageGrades[0];
+
+          return `
+            <div class="curriculum-accordion-item ${isOpen ? 'open' : ''}" style="
+              background: var(--bg-card);
+              border: 2px solid ${isOpen ? stage.color : 'var(--border-color)'};
+              border-radius: 24px;
+              margin-bottom: 16px;
+              overflow: hidden;
+              box-shadow: ${isOpen ? `0 12px 32px ${stage.glow}` : '0 4px 14px rgba(0,0,0,0.02)'};
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            ">
+              <!-- Header Button -->
+              <button type="button" class="accordion-header-btn" data-stage="${stage.key}" style="
+                width: 100%;
+                background: ${isOpen ? 'rgba(0,0,0,0.015)' : 'transparent'};
+                border: none;
+                padding: 16px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                text-align: right;
+                gap: 14px;
+                transition: background 0.2s;
+              ">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <div style="
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 16px;
+                    background: ${stage.gradient};
+                    color: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.7rem;
+                    box-shadow: 0 6px 16px ${stage.color}40;
+                    flex-shrink: 0;
+                  ">
+                    ${stage.icon}
+                  </div>
+                  <div>
+                    <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-color); margin:0 0 3px 0;">${stage.name}</h3>
+                    <p style="font-size:0.82rem; font-weight:700; color:var(--text-muted); margin:0;">${stage.subtitle}</p>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:0.78rem; font-weight:800; padding:4px 12px; border-radius:14px; background:${isOpen ? stage.color : 'var(--bg-app)'}; color:${isOpen ? '#fff' : 'var(--text-muted)'};">
+                    ${stageGrades.length} صفوف
+                  </span>
+                  <div style="
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 50%;
+                    background: var(--bg-app);
+                    border: 1px solid var(--border-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: ${isOpen ? stage.color : 'var(--text-muted)'};
+                    transform: rotate(${isOpen ? '180deg' : '0deg'});
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                  ">
+                    <i data-lucide="chevron-down" style="width:18px;height:18px;"></i>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Accordion Body -->
+              ${isOpen ? `
+                <div class="accordion-body-content" style="
+                  padding: 22px 12px 28px;
+                  border-top: 1px solid var(--border-color);
+                  background: linear-gradient(180deg, rgba(0,0,0,0.01) 0%, rgba(0,0,0,0.025) 100%);
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  text-align: center;
+                ">
+                  
+                  <!-- Centered Grade Tabs -->
+                  <div style="margin-bottom: 24px; width: 100%; text-align: center;">
+                    <span style="font-size:0.86rem; font-weight:900; color:var(--text-color); margin-bottom:12px; display:block;">
+                      حدد الصف الدراسي لاستعراض المواد والمجموعات:
+                    </span>
+                    <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">
+                      ${stageGrades.map((grade, idx) => {
+                        const isGradeSel = grade.id === currentGrade?.id;
+                        return `
+                          <button type="button" class="accordion-grade-chip-btn ${isGradeSel ? 'active' : ''}" data-grade-id="${grade.id}" style="
+                            padding: 8px 16px;
+                            border-radius: 14px;
+                            font-weight: 800;
+                            font-size: 0.86rem;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 6px;
+                            border: 1.5px solid ${isGradeSel ? stage.color : 'var(--border-color)'};
+                            background: ${isGradeSel ? stage.color : 'var(--bg-card)'};
+                            color: ${isGradeSel ? '#ffffff' : 'var(--text-color)'};
+                            box-shadow: ${isGradeSel ? `0 6px 14px ${stage.color}35` : '0 2px 6px rgba(0,0,0,0.02)'};
+                          ">
+                            <span style="background:${isGradeSel ? 'rgba(255,255,255,0.25)' : 'var(--bg-app)'}; padding:2px 6px; border-radius:6px; font-size:0.72rem; font-weight:900;">
+                              ${idx + 1}
+                            </span>
+                            <span>${grade.name}</span>
+                          </button>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+
+                  <!-- Centered Section Label -->
+                  <div style="margin-bottom: 18px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
+                    <span style="font-size:1.05rem; font-weight:900; color:var(--text-color);">
+                      المواد المقررة لـ <span style="color:${stage.color};">${currentGrade ? currentGrade.name : ''}</span> 🎯
+                    </span>
+                    <span style="font-size:0.75rem; font-weight:800; background:${stage.color}15; color:${stage.color}; padding:2px 10px; border-radius:12px; border:1px solid ${stage.color}30;">
+                      ${currentGrade?.subjects?.length || 0} مواد متاحة
+                    </span>
+                  </div>
+
+                  <!-- Centered Creative Circle Cards Grid (Wide) -->
+                  <div style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    gap: 16px;
+                    width: 100%;
+                    max-width: 100%;
+                    margin: 0 auto;
+                  ">
+                    ${(!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) ? `
+                      <p style="color:var(--text-muted); font-size:0.9rem; padding:20px;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>
+                    ` : currentGrade.subjects.map(subject => {
+                      const theme = this.getSubjectTheme(subject.name);
+                      const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+
+                      return `
+                        <a href="#subject-groups/${subject.id}" class="creative-circle-subject-card" style="
+                          width: 140px;
+                          background: var(--bg-card);
+                          border: 1.5px solid var(--border-color);
+                          border-radius: 24px;
+                          padding: 18px 12px 16px;
+                          text-decoration: none;
+                          display: flex;
+                          flex-direction: column;
+                          align-items: center;
+                          text-align: center;
+                          position: relative;
+                          overflow: hidden;
+                          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                          box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+                          cursor: pointer;
+                        " onmouseenter="
+                            this.style.transform='translateY(-6px) scale(1.04)';
+                            this.style.borderColor='${theme.color}';
+                            this.style.boxShadow='0 12px 26px ${theme.color}25, 0 0 0 2px ${theme.color}33';
+                            this.querySelector('.circle-icon-inner').style.transform='scale(1.1) rotate(6deg)';
+                            this.querySelector('.circle-glow-bg').style.opacity='0.6';
+                          " 
+                          onmouseleave="
+                            this.style.transform='translateY(0) scale(1)';
+                            this.style.borderColor='var(--border-color)';
+                            this.style.boxShadow='0 4px 14px rgba(0,0,0,0.03)';
+                            this.querySelector('.circle-icon-inner').style.transform='scale(1) rotate(0deg)';
+                            this.querySelector('.circle-glow-bg').style.opacity='0';
+                          ">
+                          
+                          <!-- Subtle Glow Backdrop on Hover -->
+                          <div class="circle-glow-bg" style="
+                            position: absolute;
+                            top: 10px;
+                            width: 65px;
+                            height: 65px;
+                            border-radius: 50%;
+                            background: ${theme.color};
+                            filter: blur(18px);
+                            opacity: 0;
+                            transition: opacity 0.3s ease;
+                            pointer-events: none;
+                          "></div>
+
+                          <!-- Circular Creative Icon -->
+                          <div class="circle-icon-inner" style="
+                            width: 62px;
+                            height: 62px;
+                            border-radius: 50%;
+                            background: ${theme.gradient};
+                            color: #ffffff;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 1.8rem;
+                            font-weight: 900;
+                            box-shadow: 0 6px 16px ${theme.color}40, inset 0 2px 4px rgba(255,255,255,0.35);
+                            margin-bottom: 10px;
+                            position: relative;
+                            z-index: 2;
+                            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                            border: 2.5px solid rgba(255,255,255,0.85);
+                          ">
+                            ${iconToDisplay}
+                          </div>
+
+                          <!-- Subject Name -->
+                          <h4 style="
+                            font-size: 0.92rem;
+                            font-weight: 900;
+                            color: var(--text-color);
+                            margin: 0 0 5px 0;
+                            line-height: 1.25;
+                            width: 100%;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                          " title="${subject.name}">
+                            ${subject.name}
+                          </h4>
+
+                          <!-- Mini Track Tag -->
+                          <span style="
+                            font-size: 0.66rem;
+                            font-weight: 800;
+                            padding: 2px 7px;
+                            border-radius: 10px;
+                            background: ${subject.isLanguageTrack ? "rgba(59,130,246,0.1)" : "rgba(16,185,129,0.1)"};
+                            color: ${subject.isLanguageTrack ? "#2563eb" : "#059669"};
+                            border: 1px solid ${subject.isLanguageTrack ? "rgba(59,130,246,0.2)" : "rgba(16,185,129,0.2)"};
+                            margin-bottom: 8px;
+                          ">
+                            ${subject.isLanguageTrack ? "لغات 🌐" : "عام 🇪🇬"}
+                          </span>
+
+                          <!-- Action Link -->
+                          <div style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 3px;
+                            font-size: 0.7rem;
+                            font-weight: 800;
+                            color: ${theme.color};
+                            background: var(--bg-app);
+                            padding: 3px 9px;
+                            border-radius: 20px;
+                            border: 1px solid var(--border-color);
+                          ">
+                            <span>المجموعات</span>
+                            <i data-lucide="arrow-left" style="width:10px; height:10px;"></i>
+                          </div>
+
+                        </a>
+                      `;
+                    }).join('')}
+                  </div>
+
+                </div>
+              ` : ''}
+
+            </div>
+          `;
+        }).join('');
+
+        if (window.lucide) window.lucide.createIcons();
+
+        // Bind Accordion Header Clicks
+        accordionContainer.querySelectorAll(".accordion-header-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const stage = btn.getAttribute("data-stage");
+            if (this.explorerStage === stage) {
+              this.explorerStage = null; // Toggle close if clicked again
+            } else {
+              this.explorerStage = stage;
+              this.explorerGradeId = null;
+            }
+            renderAccordion();
+          });
+        });
+
+        // Bind Grade Chip clicks
+        accordionContainer.querySelectorAll(".accordion-grade-chip-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.explorerGradeId = btn.getAttribute("data-grade-id");
+            renderAccordion();
+          });
+        });
+      };
+
+      renderAccordion();
+    } catch (err) {
+      console.error("Error loading curriculum explorer:", err);
     }
   }
 

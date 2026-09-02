@@ -87,21 +87,23 @@ export const AdminCoursesPage = {
     return `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
         <div>
-          <h3 style="font-weight:800; font-size:1.3rem;">🎓 طلبات وتسجيلات الكورسات (${enrollments.length})</h3>
-          <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات</p>
+          <h3 style="font-weight:800; font-size:1.3rem;">🎓 طلبات وتسجيلات المجموعات والكورسات (${enrollments.length})</h3>
+          <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">مراجعة واعتماد إيصالات الدفع والتحويل المالي لتسجيل الطلاب في المجموعات والكورسات</p>
         </div>
       </div>
 
       ${enrollments.length === 0 ? `
-        <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">لا توجد طلبات تسجيل في الكورسات حالياً.</div>
+        <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">لا توجد طلبات تسجيل أو تحويلات مالية حالياً.</div>
       ` : `
         <div class="glass-card" style="padding:0; overflow:hidden;">
           <table style="width:100%; border-collapse:collapse; text-align:start;">
             <thead>
               <tr style="background:var(--bg-app); border-bottom:1px solid var(--border-color); font-size:0.82rem; color:var(--text-muted);">
                 <th style="padding:14px 16px;">الطالب</th>
-                <th style="padding:14px 16px;">الدورة التعليمية</th>
-                <th style="padding:14px 16px;">إيصال التحويل والدفع</th>
+                <th style="padding:14px 16px;">المقرر والمجموعة</th>
+                <th style="padding:14px 16px;">المعلم</th>
+                <th style="padding:14px 16px;">المبلغ وطريقة الدفع</th>
+                <th style="padding:14px 16px;">إيصال التحويل</th>
                 <th style="padding:14px 16px;">الحالة</th>
                 <th style="padding:14px 16px;">تاريخ الطلب</th>
                 <th style="padding:14px 16px;">الإجراءات</th>
@@ -110,61 +112,117 @@ export const AdminCoursesPage = {
             <tbody>
               ${enrollments.map(e => {
       const stMap = {
-        'active': { label: 'مقبول ونشط ✅', bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
+        'active': { label: 'معتمد ونشط ✅', bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
         'rejected': { label: 'مرفوض ❌', bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
+        'pending': { label: 'في انتظار الاعتماد ⏳', bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },
         'PENDING': { label: 'في انتظار الاعتماد ⏳', bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
       };
       const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
       const receiptUrl = e.payment?.receiptUrl;
-      const isFree = Boolean(e.course?.isFree || !e.course?.price || Number(e.course?.price) === 0);
+      const isFree = Boolean(e.course?.isFree || (!e.course?.price && !e.group?.sessionPrice && !e.group?.monthlyPrice));
+      const paymentAmount = e.payment?.amount !== undefined ? e.payment.amount : (e.group?.monthlyPrice || e.course?.price || 0);
+      const providerLabel = e.payment?.provider === 'vodafone_cash' ? '📱 فودافون كاش' :
+                            e.payment?.provider === 'instapay' ? '⚡ إنستاباي' :
+                            e.payment?.provider === 'bank_transfer' ? '🏦 تحويل بنكي' :
+                            (e.payment?.provider || 'تحويل مالي');
+
+      const rawStudentPhone = e.student?.phone || e.payment?.providerTransactionId || '';
+      const cleanPhone = rawStudentPhone ? rawStudentPhone.replace(/[^\d+]/g, '') : '';
+      const cleanPhoneWa = rawStudentPhone ? getCleanWhatsAppNumber(rawStudentPhone) : '';
+      const courseOrGroupTitle = e.group ? `مجموعة ${e.group.name}` : `دورة ${e.course?.title || 'الدورة'}`;
+      const defaultWaMsg = encodeURIComponent(`مرحباً ${e.student?.name || 'طالبنا العزيز'}، نتواصل معك من منصة انطلق بخصوص طلب اشتراكك في ${courseOrGroupTitle}.`);
 
       return `
                   <tr style="border-bottom:1px solid var(--border-color); font-size:0.88rem;">
                     <td style="padding:14px 16px;">
-                      <div style="font-weight:700; color:var(--text-main);">${e.student?.name || 'طالب'}</div>
-                      <div style="font-size:0.78rem; color:var(--text-muted);">${e.student?.email || ''}</div>
+                      <div style="font-weight:800; color:var(--text-main); font-size:0.95rem;">${e.student?.name || 'طالب'}</div>
+                      <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">${e.student?.email || ''}</div>
+                      ${rawStudentPhone ? `
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                          <a href="https://wa.me/${cleanPhoneWa}?text=${defaultWaMsg}" target="_blank" 
+                             class="btn-secondary" 
+                             style="padding:3px 10px; font-size:0.74rem; font-weight:800; border-radius:12px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px;" 
+                             title="مراسلة الطالب عبر الواتساب">
+                            💬 واتساب (${rawStudentPhone})
+                          </a>
+                          <a href="tel:${cleanPhone}" 
+                             class="btn-secondary" 
+                             style="padding:3px 9px; font-size:0.74rem; font-weight:800; border-radius:12px; color:var(--primary); border-color:var(--primary); background:rgba(99,102,241,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px;" 
+                             title="اتصال هاتفي مباشر">
+                            <i data-lucide="phone-call" style="width:12px;height:12px;"></i> اتصال
+                          </a>
+                        </div>
+                      ` : ''}
                     </td>
+
                     <td style="padding:14px 16px;">
-                      <div style="font-weight:700;">${e.course?.title || 'دورة'}</div>
-                      <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
-                        <span style="font-size:0.75rem; color:var(--primary);">${e.course?.category || ''}</span>
-                        ${isFree ? `
-                          <span style="font-size:0.72rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:2px 8px; border-radius:10px;">🎁 مجاني</span>
-                        ` : `
-                          <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); background:var(--bg-app); padding:2px 8px; border-radius:10px;">${e.course?.price} ${e.course?.currency || 'EGP'}</span>
-                        `}
-                      </div>
+                      <div style="font-weight:800; color:var(--text-main);">${e.course?.title || 'دورة'}</div>
+                      ${e.group ? `
+                        <div style="margin-top:3px;">
+                          <span style="font-size:0.75rem; font-weight:800; background:rgba(79,70,229,0.1); color:var(--primary); padding:2px 8px; border-radius:8px;">
+                            👥 ${e.group.name}
+                          </span>
+                        </div>
+                      ` : ''}
                     </td>
+
+                    <td style="padding:14px 16px; font-size:0.85rem; font-weight:700; color:var(--text-main);">
+                      ${e.course?.teacher?.name || e.group?.teacher?.name || '—'}
+                    </td>
+
                     <td style="padding:14px 16px;">
                       ${isFree ? `
-                        <span style="font-size:0.78rem; color:#10b981; font-weight:700; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
-                          <i data-lucide="gift" style="width:13px;height:13px;"></i> دورة مجانية (بدون دفع)
-                        </span>
-                      ` : receiptUrl ? `
-                        <a href="${receiptUrl}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary);">
-                          <i data-lucide="file-text" style="width:12px;height:12px;"></i> عرض إيصال التحويل 📄
-                        </a>
+                        <span style="font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:3px 10px; border-radius:10px;">🎁 مجاني</span>
                       ` : `
-                        <span style="font-size:0.78rem; color:var(--text-muted);">لا يوجد إيصال مرفق</span>
+                        <div>
+                          <strong style="font-size:0.95rem; font-weight:900; color:#10b981;">${paymentAmount} ج.م.</strong>
+                          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${providerLabel}</div>
+                        </div>
                       `}
                     </td>
+
+                    <td style="padding:14px 16px;">
+                      ${isFree ? `
+                        <span style="font-size:0.75rem; color:#10b981; font-weight:700;">🎁 لا يتطلب إيصال</span>
+                      ` : receiptUrl ? `
+                        <a href="${receiptUrl}" target="_blank" class="btn-secondary" style="padding:5px 12px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:var(--primary); border-color:var(--primary); border-radius:12px; font-weight:800;">
+                          <i data-lucide="file-text" style="width:13px;height:13px;"></i> عرض الإيصال 📄
+                        </a>
+                      ` : (e.notes?.includes("واتساب") || e.notes?.includes("WhatsApp") || e.payment?.notes?.includes("واتساب")) ? `
+                        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                          <span style="font-size:0.75rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:3px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:4px;">
+                            💬 عبر الواتساب
+                          </span>
+                          ${(e.student?.phone || e.payment?.providerTransactionId) ? `
+                            <a href="https://wa.me/${getCleanWhatsAppNumber(e.payment?.providerTransactionId || e.student?.phone)}" target="_blank" class="btn-secondary" style="padding:3px 8px; font-size:0.72rem; color:#10b981; border-color:#10b981; text-decoration:none; border-radius:8px; font-weight:700;">
+                              محادثة الطالب 💬
+                            </a>
+                          ` : ''}
+                        </div>
+                      ` : `
+                        <span style="font-size:0.75rem; color:var(--text-muted);">لا يوجد إيصال مرفق</span>
+                      `}
+                    </td>
+
                     <td style="padding:14px 16px;">
                       <span style="font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:14px; background:${st.bg}; color:${st.color};">
                         ${st.label}
                       </span>
                     </td>
+
                     <td style="padding:14px 16px; font-size:0.8rem; color:var(--text-muted);">
                       ${new Date(e.createdAt).toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
+
                     <td style="padding:14px 16px;">
                       <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         ${e.status !== 'active' ? `
-                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" data-free="${isFree}" style="padding:6px 12px; font-size:0.78rem; background:#10b981; border-color:#10b981; font-weight:800;" title="${isFree ? 'قبول مباشر وفوري للدورة المجانية' : 'قبول واعتماد إيصال الدفع'}">
-                            <i data-lucide="${isFree ? 'check-circle' : 'check'}" style="width:14px;height:14px;"></i> ${isFree ? 'قبول مباشر (مجاني) ✅' : 'قبول واعتماد ✅'}
+                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" data-free="${isFree}" style="padding:6px 14px; font-size:0.8rem; background:#10b981; border-color:#10b981; font-weight:800; border-radius:14px;" title="قبول واعتماد إيصال الدفع">
+                            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> اعتماد وقبول ✅
                           </button>
                         ` : ''}
                         ${e.status !== 'rejected' ? `
-                          <button class="btn-secondary admin-reject-enrollment-btn" data-id="${e.id}" style="padding:6px 12px; font-size:0.78rem; color:#ef4444; border-color:#ef4444; font-weight:700;">
+                          <button class="btn-secondary admin-reject-enrollment-btn" data-id="${e.id}" style="padding:6px 12px; font-size:0.8rem; color:#ef4444; border-color:#ef4444; font-weight:700; border-radius:14px;">
                             <i data-lucide="x" style="width:14px;height:14px;"></i> رفض ❌
                           </button>
                         ` : ''}
@@ -211,20 +269,59 @@ export const AdminCoursesPage = {
             <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px; max-height:75vh; overflow-y:auto;">
               
               <!-- Info Box -->
-              <div style="background:var(--bg-app); padding:14px 16px; border-radius:14px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px; font-size:0.86rem;">
-                <div style="display:flex; justify-content:space-between;">
-                  <span style="color:var(--text-muted);">👨‍🎓 الطالب:</span>
-                  <span style="font-weight:800; color:var(--text-main);">${enrollment.student?.name || 'طالب'} (${enrollment.student?.email || ''})</span>
-                </div>
-                <div style="display:flex; justify-content:space-between;">
-                  <span style="color:var(--text-muted);">📚 الدورة التعليمية:</span>
-                  <span style="font-weight:800; color:var(--primary);">${enrollment.course?.title || 'دورة'}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between;">
-                  <span style="color:var(--text-muted);">🏷️ سعر الدورة المعتمد:</span>
-                  <span style="font-weight:800; color:#10b981;">${enrollment.course?.isFree ? 'دورة مجانية 🎁' : `${enrollment.course?.price || 0} ${enrollment.course?.currency || 'EGP'}`}</span>
-                </div>
-              </div>
+              ${(() => {
+                const modalPhone = enrollment.student?.phone || enrollment.payment?.providerTransactionId || '';
+                const modalCleanPhone = modalPhone ? modalPhone.replace(/[^\d+]/g, '') : '';
+                const modalCleanWa = modalPhone ? getCleanWhatsAppNumber(modalPhone) : '';
+                const targetTitle = enrollment.group ? `مجموعة ${enrollment.group.name}` : `دورة ${enrollment.course?.title || ''}`;
+                const waText = encodeURIComponent(`مرحباً ${enrollment.student?.name || 'طالبنا العزيز'}، نتواصل معك بخصوص مراجعة وتأكيد اشتراكك في ${targetTitle}.`);
+
+                return `
+                  <div style="background:var(--bg-app); padding:16px 18px; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:9px; font-size:0.86rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                      <span style="color:var(--text-muted);">👨‍🎓 الطالب:</span>
+                      <div style="text-align:left;">
+                        <span style="font-weight:800; color:var(--text-main);">${enrollment.student?.name || 'طالب'}</span>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${enrollment.student?.email || ''}</div>
+                      </div>
+                    </div>
+
+                    ${modalPhone ? `
+                      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:6px 10px; background:rgba(16,185,129,0.06); border-radius:10px; border:1px dashed rgba(16,185,129,0.25);">
+                        <span style="color:#059669; font-weight:700;">📞 هاتف الطالب / المحول:</span>
+                        <div style="display:inline-flex; align-items:center; gap:6px;">
+                          <strong style="color:var(--text-main); font-size:0.88rem;">${modalPhone}</strong>
+                          <a href="https://wa.me/${modalCleanWa}?text=${waText}" target="_blank" class="btn-secondary" style="padding:2px 8px; font-size:0.72rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+                            💬 واتساب
+                          </a>
+                          <a href="tel:${modalCleanPhone}" class="btn-secondary" style="padding:2px 8px; font-size:0.72rem; font-weight:800; border-radius:8px; color:var(--primary); border-color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+                            <i data-lucide="phone-call" style="width:11px;height:11px;"></i> اتصال
+                          </a>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    <div style="display:flex; justify-content:space-between;">
+                      <span style="color:var(--text-muted);">📚 المقرر والمادة:</span>
+                      <span style="font-weight:800; color:var(--primary);">${enrollment.course?.title || 'دورة'}</span>
+                    </div>
+                    ${enrollment.group ? `
+                      <div style="display:flex; justify-content:space-between;">
+                        <span style="color:var(--text-muted);">👥 المجموعة الدراسية:</span>
+                        <span style="font-weight:900; color:var(--primary);">${enrollment.group.name} (${enrollment.group.scheduleDays || ''} ${enrollment.group.scheduleTime || ''})</span>
+                      </div>
+                    ` : ''}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span style="color:var(--text-muted);">👨‍🏫 المعلم المسؤول:</span>
+                      <span style="font-weight:800; color:var(--text-main);">${enrollment.course?.teacher?.name || enrollment.group?.teacher?.name || '—'}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                      <span style="color:var(--text-muted);">🏷️ المبلغ المطلوب:</span>
+                      <span style="font-weight:900; color:#10b981;">${defaultAmount} EGP</span>
+                    </div>
+                  </div>
+                `;
+              })()}
 
               <!-- Paid Amount & Provider -->
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -235,23 +332,28 @@ export const AdminCoursesPage = {
                 <div class="form-group" style="margin:0;">
                   <label for="approve-enrollment-provider" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">طريقة التحويل والدفع</label>
                   <select id="approve-enrollment-provider" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.88rem;">
-                    <option value="Vodafone Cash">Vodafone Cash (فودافون كاش)</option>
-                    <option value="InstaPay">InstaPay (إنستاباي)</option>
-                    <option value="Bank Transfer">تحويل بنكي (Bank Transfer)</option>
-                    <option value="Cash">نقداً باليد (Cash)</option>
-                    <option value="Online Gateway">بوابة دفع إلكتروني (Card / Gateway)</option>
-                    <option value="Other">أخرى (Other)</option>
+                    <option value="vodafone_cash" ${enrollment.payment?.provider === 'vodafone_cash' ? 'selected' : ''}>Vodafone Cash (فودافون كاش)</option>
+                    <option value="instapay" ${enrollment.payment?.provider === 'instapay' ? 'selected' : ''}>InstaPay (إنستاباي)</option>
+                    <option value="bank_transfer" ${enrollment.payment?.provider === 'bank_transfer' ? 'selected' : ''}>تحويل بنكي (Bank Transfer)</option>
+                    <option value="orange_cash" ${enrollment.payment?.provider === 'orange_cash' ? 'selected' : ''}>أورنج كاش (Orange Cash)</option>
+                    <option value="etisalat_cash" ${enrollment.payment?.provider === 'etisalat_cash' ? 'selected' : ''}>اتصالات كاش (Etisalat Cash)</option>
+                    <option value="cash" ${enrollment.payment?.provider === 'cash' ? 'selected' : ''}>نقداً باليد (Cash)</option>
+                    <option value="other" ${enrollment.payment?.provider === 'other' ? 'selected' : ''}>أخرى (Other)</option>
                   </select>
                 </div>
               </div>
 
               <!-- Receipt Upload & Preview -->
-              <div class="form-group" style="margin:0;">
-                <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>🖼️ صورة إيصال التحويل والدفع:</span>
-                  ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none; font-weight:700;">عرض الإيصال الحالي ↗</a>` : ''}
+              <div class="form-group" style="margin:0; background:rgba(79,70,229,0.03); border:1px dashed var(--border-color); border-radius:14px; padding:12px 14px;">
+                <label style="font-weight:800; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>🖼️ صورة إيصال التحويل (رفع من محادثة الواتساب أو الجهاز):</span>
+                  ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none; font-weight:700;">عرض الإيصال المرفق ↗</a>` : ''}
                 </label>
                 
+                <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 8px 0;">
+                  إذا استلمت إيصال التحويل من الطالب عبر الواتساب، يمكنك حفظه ورفعه هنا ليتم توثيقه وأرشفته رسمياً في سجل الطالب بالمنصة.
+                </p>
+
                 <input type="file" id="approve-enrollment-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
                 
                 <div id="enrollment-receipt-preview-container" style="${existingReceipt ? 'display:block;' : 'display:none;'} margin-top:10px; text-align:center;">

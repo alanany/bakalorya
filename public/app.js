@@ -14,6 +14,7 @@ import SettingsView from "./views/SettingsView.js";
 import RequestsView from "./views/RequestsView.js";
 import TestsView from "./views/TestsView.js";
 import BlogDetailsView from "./views/BlogDetailsView.js";
+import SubjectGroupsView from "./views/SubjectGroupsView.js";
 
 // ── Admin Views ───────────────────────────────────────────────────────────────
 import AdminView from "./views/admin/AdminView.js";
@@ -29,6 +30,7 @@ import TeacherApplyView from "./views/teacher/TeacherApplyView.js";
 // ── Student Views ─────────────────────────────────────────────────────────────
 import StudentView from "./views/student/StudentView.js";
 import StudentGroupsView from "./views/student/StudentGroupsView.js";
+import StudentSubscriptionsView from "./views/student/StudentSubscriptionsView.js";
 import StudentPrivateSessionsView from "./views/student/StudentPrivateSessionsView.js";
 import SubscriptionSessionsView from "./views/student/SubscriptionSessionsView.js";
 
@@ -118,81 +120,224 @@ export function getCleanWhatsAppNumber(phone) {
 }
 
 export function renderEducationSelectHTML({ id = "education-select", selectedValue = "Entlq 3", required = true, style = "" } = {}) {
-  const isSel = (val) => String(selectedValue).toLowerCase() === String(val).toLowerCase() ? "selected" : "";
+  const norm = (v) => String(v || "").toLowerCase().trim();
+  const current = norm(selectedValue);
+
+  const isSel = (...keys) => {
+    return keys.some(k => {
+      const nk = norm(k);
+      return current === nk || current.includes(nk) || nk.includes(current);
+    }) ? "selected" : "";
+  };
 
   const options = `
-    <option value="" ${!selectedValue ? "selected" : ""} disabled>-- اختر المستوى الدراسي --</option>
-    <optgroup label="التعليم الابتدائي والإعدادي">
-      <option value="Grade 1 (Prep)" ${isSel("Grade 1 (Prep)")}>الصف 1 ابتدائي (Grade 1)</option>
-      <option value="Grade 2 (Prep)" ${isSel("Grade 2 (Prep)")}>الصف 2 ابتدائي (Grade 2)</option>
-      <option value="Grade 3 (Prep)" ${isSel("Grade 3 (Prep)")}>الصف 3 ابتدائي (Grade 3)</option>
-      <option value="Grade 4 (Prep)" ${isSel("Grade 4 (Prep)")}>الصف 4 ابتدائي (Grade 4)</option>
-      <option value="Grade 5 (Prep)" ${isSel("Grade 5 (Prep)")}>الصف 5 ابتدائي (Grade 5)</option>
-      <option value="Grade 6 (Prep)" ${isSel("Grade 6 (Prep)")}>الصف 6 إعدادي (Grade 6)</option>
+    <option value="" ${!selectedValue ? "selected" : ""} disabled>-- اختر المرحلة والصف الدراسي --</option>
+    
+    <optgroup label="المرحلة الابتدائية (Primary Stage)">
+      <option value="Grade 1 (Primary)" ${isSel("Grade 1 (Primary)", "Grade 1", "1 ابتدائي", "pri_1")}>الصف الأول الابتدائي (Grade 1)</option>
+      <option value="Grade 2 (Primary)" ${isSel("Grade 2 (Primary)", "Grade 2", "2 ابتدائي", "pri_2")}>الصف الثاني الابتدائي (Grade 2)</option>
+      <option value="Grade 3 (Primary)" ${isSel("Grade 3 (Primary)", "Grade 3", "3 ابتدائي", "pri_3")}>الصف الثالث الابتدائي (Grade 3)</option>
+      <option value="Grade 4 (Primary)" ${isSel("Grade 4 (Primary)", "Grade 4", "4 ابتدائي", "pri_4")}>الصف الرابع الابتدائي (Grade 4)</option>
+      <option value="Grade 5 (Primary)" ${isSel("Grade 5 (Primary)", "Grade 5", "5 ابتدائي", "pri_5")}>الصف الخامس الابتدائي (Grade 5)</option>
+      <option value="Grade 6 (Primary)" ${isSel("Grade 6 (Primary)", "Grade 6 (Prep)", "Grade 6", "6 ابتدائي", "سادس ابتدائي", "pri_6")}>الصف السادس الابتدائي (Grade 6)</option>
     </optgroup>
-    <optgroup label="التعليم المتوسط">
-      <option value="Grade 7 (Intermediate)" ${isSel("Grade 7 (Intermediate)")}>الصف 7 متوسط (Grade 7)</option>
-      <option value="Grade 8 (Intermediate)" ${isSel("Grade 8 (Intermediate)")}>الصف 8 متوسط (Grade 8)</option>
-      <option value="Grade 9 (Intermediate)" ${isSel("Grade 9 (Intermediate)")}>الصف 9 متوسط (Grade 9 BEM)</option>
+
+    <optgroup label="المرحلة الإعدادية والمتوسطة (Preparatory / Intermediate)">
+      <option value="Grade 7 (Prep 1)" ${isSel("Grade 7 (Prep 1)", "Grade 7 (Intermediate)", "Grade 7", "1 إعدادي", "أول إعدادي", "7 متوسط", "prep_1")}>الصف الأول الإعدادي / 7 متوسط (Grade 7)</option>
+      <option value="Grade 8 (Prep 2)" ${isSel("Grade 8 (Prep 2)", "Grade 8 (Intermediate)", "Grade 8", "2 إعدادي", "ثاني إعدادي", "8 متوسط", "prep_2")}>الصف الثاني الإعدادي / 8 متوسط (Grade 8)</option>
+      <option value="Grade 9 (Prep 3 / BEM)" ${isSel("Grade 9 (Prep 3 / BEM)", "Grade 9 (Intermediate)", "Grade 9", "3 إعدادي", "ثالث إعدادي", "9 متوسط", "bem", "prep_3")}>الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)</option>
     </optgroup>
-    <optgroup label="التعليم الثانوي والانطلق">
-      <option value="Entlq 1" ${isSel("Entlq 1")}>انطلق 1 (1ث - Entlq 1)</option>
-      <option value="Entlq 2" ${isSel("Entlq 2")}>انطلق 2 (2ث - Entlq 2)</option>
-      <option value="Entlq 3" ${isSel("Entlq 3") || isSel("BAC") ? "selected" : ""}>انطلق 3 (3ث - Entlq 3 BAC)</option>
+
+    <optgroup label="المرحلة الثانوية والبكالوريا (Secondary Stage / Entlq)">
+      <option value="Entlq 1" ${isSel("Entlq 1", "1ث", "أولى ثانوي", "sec_1", "grade 10")}>الصف الأول الثانوي (انطلق 1 - Sec 1)</option>
+      <option value="Entlq 2" ${isSel("Entlq 2", "2ث", "ثانية ثانوي", "sec_2", "grade 11")}>الصف الثاني الثانوي (انطلق 2 - Sec 2)</option>
+      <option value="Entlq 3" ${isSel("Entlq 3", "BAC", "3ث", "ثالثة ثانوي", "sec_3", "grade 12")}>الصف الثالث الثانوي (انطلق 3 - BAC)</option>
     </optgroup>
-    <optgroup label="مستوى آخر">
-      <option value="Other" ${isSel("Other")}>آخر (Other)</option>
+
+    <optgroup label="مستوى تعليمي آخر">
+      <option value="Other" ${isSel("Other", "آخر")}>مستوى آخر (Other)</option>
     </optgroup>
   `;
 
   return `<select id="${id}" class="form-select" ${required ? "required" : ""} style="${style}">${options}</select>`;
 }
 
-// ─── Session Join Permission Helper (30-min restriction) ───────────────────────
+// ─── Session Join Permission Helper (30-min restriction for students, 1-hour for teachers) ───
 export function canJoinSession(session) {
   if (!session) return false;
-  if (session.status === "live" || session.status === "active") return true;
-  if (session.status === "completed") return false;
+  if (session.status === "COMPLETED" || session.status === "completed" || session.status?.includes("CANCELLED")) return false;
+  if (session.status === "live" || session.status === "active" || session.status === "LIVE") return true;
   if (!session.scheduledAt) return false;
 
+  const isTeacher = state.user?.role === "teacher" || state.user?.role === "admin";
   const scheduledTime = new Date(session.scheduledAt).getTime();
+  if (isNaN(scheduledTime)) return false;
   const now = Date.now();
-  const diffMs = scheduledTime - now;
-  const thirtyMinutesMs = 30 * 60 * 1000;
+  const durationMs = (session.duration || 60) * 60 * 1000;
+  const windowEnd = scheduledTime + durationMs + (30 * 60 * 1000);
 
-  return diffMs <= thirtyMinutesMs;
+  // If session is expired past its duration, nobody can join
+  if (now > windowEnd) return false;
+
+  // Teacher can join starting 1 hour (60 mins) before start time
+  if (isTeacher) {
+    const teacherWindowStart = scheduledTime - (60 * 60 * 1000);
+    return now >= teacherWindowStart;
+  }
+
+  // Students can strictly only enter within 30 minutes before start time
+  const studentWindowStart = scheduledTime - (30 * 60 * 1000);
+  return now >= studentWindowStart;
 }
 
 export function getSessionJoinInfo(session) {
   if (!session) return { canJoin: false, text: "غير متاح" };
-  if (session.status === "live" || session.status === "active") {
-    return { canJoin: true, text: "دخول البث المباشر الآن 🔴" };
-  }
-  if (session.status === "completed") {
+  if (session.status === "COMPLETED" || session.status === "completed" || session.status?.includes("CANCELLED")) {
     return { canJoin: false, text: "انتهت الجلسة" };
+  }
+  if (session.status === "live" || session.status === "active" || session.status === "LIVE") {
+    return { canJoin: true, text: "دخول البث المباشر الآن 🔴" };
   }
 
   const scheduledTime = new Date(session.scheduledAt).getTime();
+  if (isNaN(scheduledTime)) return { canJoin: false, text: "غير متاح" };
   const now = Date.now();
-  const diffMs = scheduledTime - now;
-  const thirtyMinutesMs = 30 * 60 * 1000;
+  const durationMs = (session.duration || 60) * 60 * 1000;
+  const windowStart = scheduledTime - (30 * 60 * 1000);
+  const windowEnd = scheduledTime + durationMs + (30 * 60 * 1000);
 
-  if (diffMs <= thirtyMinutesMs) {
-    return { canJoin: true, text: "الانضمام للبث المباشر 🎥" };
-  } else {
-    const minutesLeft = Math.ceil(diffMs / (60 * 1000));
-    let timeText = `${minutesLeft} دقيقة`;
-    if (minutesLeft >= 60) {
-      const hours = Math.floor(minutesLeft / 60);
-      const mins = minutesLeft % 60;
-      timeText = `${hours} ساعة ${mins > 0 ? `و ${mins}د` : ''}`;
-    }
-    return {
-      canJoin: false,
-      text: `متاح الانضمام قبل الموعد بـ 30 دقيقة فقط`
-    };
+  if (now > windowEnd) {
+    return { canJoin: false, isPast: true, text: "انتهى موعد الحصة" };
   }
+  if (now >= windowStart && now <= windowEnd) {
+    return { canJoin: true, isPast: false, text: "الانضمام للبث المباشر 🎥" };
+  }
+
+  const diffMs = scheduledTime - now;
+  const minutesLeft = Math.ceil(diffMs / (60 * 1000));
+  let timeText = `${minutesLeft} دقيقة`;
+  if (minutesLeft >= 60) {
+    const hours = Math.floor(minutesLeft / 60);
+    const mins = minutesLeft % 60;
+    timeText = `${hours} ساعة ${mins > 0 ? `و ${mins}د` : ''}`;
+  }
+  return {
+    canJoin: false,
+    isPast: false,
+    text: `متاح الانضمام قبل الموعد بـ 30 دقيقة فقط`
+  };
 }
+
+// ─── Global End Session & Report Modal (Settles credits & adds teacher earnings) ───
+export function showEndSessionReportModal(sessionId, onSuccess) {
+  const modalId = 'teacher-end-session-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = modalId;
+  overlay.style.display = 'flex';
+  overlay.style.backdropFilter = 'blur(8px)';
+  overlay.style.background = 'rgba(0,0,0,0.65)';
+  overlay.style.zIndex = '10000';
+
+  overlay.innerHTML = `
+    <div class="modal-content" style="max-width:560px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:48px; height:48px; border-radius:16px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="check-circle-2" style="width:26px; height:26px;"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" style="font-size:1.25rem; font-weight:900; margin:0 0 3px 0; color:var(--text-main);">توثيق التقرير وإنهاء الحصة 🎓</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">سيتم خصم رصيد الطلاب الحاضرين وإيداع المستحقات في محفظتك</p>
+          </div>
+        </div>
+        <span class="modal-close-btn" id="close-${modalId}" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+      </div>
+      <div class="modal-body" style="padding:26px 28px; background:var(--bg-app);">
+        <form id="end-session-report-form" style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:800; display:block; margin-bottom:6px;">ما تم شرحه وإنجازه في الحصة <span style="color:var(--error);">*</span></label>
+            <textarea id="report-covered" class="form-input" required rows="3" style="width:100%; padding:10px 12px; resize:vertical; font-size:0.88rem;" placeholder="اكتب ملخصاً لما تم إنجازه وشرحه خلال هذه الحصة..."></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:800; display:block; margin-bottom:6px;">تقييم أداء الطلاب والتفاعل <span style="color:var(--error);">*</span></label>
+            <select id="report-performance" class="form-input" required style="width:100%; padding:10px 12px; font-size:0.88rem;">
+              <option value="Excellent">ممتاز 🌟</option>
+              <option value="Good">جيد جداً 👍</option>
+              <option value="Average">متوسط ⚖️</option>
+              <option value="Needs Improvement">يحتاج إلى متابعة وتحسين ⚠️</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:800; display:block; margin-bottom:6px;">الواجب والتكليفات المنزلية (Homework)</label>
+            <input type="text" id="report-homework" class="form-input" style="width:100%; padding:10px 12px; font-size:0.88rem;" placeholder="مثال: حل تدريبات الدرس من صفحة 20 إلى 25...">
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:800; display:block; margin-bottom:6px;">ملاحظات المعلم وتوصياته للأهل والطلاب</label>
+            <textarea id="report-notes" class="form-input" rows="2" style="width:100%; padding:10px 12px; resize:vertical; font-size:0.88rem;" placeholder="ملاحظات وتوجيهات إضافية..."></textarea>
+          </div>
+          
+          <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:12px 16px; font-size:0.82rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            <i data-lucide="wallet" style="width:18px;height:18px;color:#10b981;flex-shrink:0;"></i>
+            <span>تأكيد إنهاء الحصة يقوم فوراً بخصم الحصة من رصيد الطلاب الحاضرين وإضافة أجر الحصة لرصيدك المكتسب.</span>
+          </div>
+
+          <div style="display:flex; gap:12px; margin-top:8px; justify-content:flex-end;">
+              <button type="button" class="btn-secondary" id="cancel-${modalId}" style="padding:10px 20px; font-weight:700;">إلغاء</button>
+              <button type="submit" id="submit-report-btn" class="btn-primary" style="background:linear-gradient(135deg,#10b981,#059669); border-color:#10b981; padding:10px 24px; font-weight:800; box-shadow:0 4px 14px rgba(16,185,129,0.35);">
+                إنهاء الحصة واعتماد الأرصدة ✅
+              </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons();
+
+  const closeModal = () => { overlay.remove(); };
+  document.getElementById(`close-${modalId}`)?.addEventListener("click", closeModal);
+  document.getElementById(`cancel-${modalId}`)?.addEventListener("click", closeModal);
+
+  document.getElementById("end-session-report-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById("submit-report-btn");
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:14px;height:14px;"></i> جاري الحفظ...`;
+    if (window.lucide) window.lucide.createIcons();
+
+    const payload = {
+      whatWasCovered: document.getElementById("report-covered").value.trim(),
+      topic: document.getElementById("report-covered").value.trim(),
+      studentPerformance: document.getElementById("report-performance").value,
+      homework: document.getElementById("report-homework").value.trim(),
+      teacherNotes: document.getElementById("report-notes").value.trim()
+    };
+
+    try {
+      const res = await apiFetch(`/sessions/${sessionId}/complete`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      showToast(res.message || "تم إتمام الحصة بنجاح وخصم الرصيد وإيداع المستحقات! ✅", "success");
+      closeModal();
+      if (typeof onSuccess === 'function') {
+        onSuccess();
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `إنهاء الحصة واعتماد الأرصدة ✅`;
+      showToast(err.message || "فشل إنهاء الجلسة وحفظ التقرير", "error");
+    }
+  });
+}
+window.showEndSessionReportModal = showEndSessionReportModal;
 
 /**
  * Validate that a session scheduled date is at least 1 hour in the future.
@@ -320,7 +465,15 @@ export function renderCourseCard(course, { enrollmentStatus = null, isBanned = f
 
 // ─── Custom Confirmation Dialog ──────────────────────────────────────────────
 
-export function confirmDialog({ title, message, confirmText, cancelText, danger = false } = {}) {
+export function confirmDialog(options = {}) {
+  let opts = options;
+  if (typeof options === "string") {
+    opts = { message: options };
+  } else if (!options || typeof options !== "object") {
+    opts = {};
+  }
+  const { title, message, confirmText, cancelText, danger = false } = opts;
+
   return new Promise((resolve) => {
     // Remove any existing dialog
     document.getElementById("confirm-dialog-overlay")?.remove();
@@ -328,11 +481,14 @@ export function confirmDialog({ title, message, confirmText, cancelText, danger 
     const overlay = document.createElement("div");
     overlay.id = "confirm-dialog-overlay";
     overlay.style.cssText = `
-      position:fixed;inset:0;z-index:9999;
+      position:fixed;inset:0;z-index:99999;
       display:flex;align-items:center;justify-content:center;
-      background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);
+      background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);
       animation:fadeIn 0.15s ease;
     `;
+
+    const displayTitle = title || (danger ? "تأكيد الحذف والإجراء ⚠️" : t("dialog.title") || "تأكيد الإجراء");
+    const displayMessage = message || (typeof opts === 'string' ? opts : '');
 
     overlay.innerHTML = `
       <div id="confirm-dialog-box" style="
@@ -340,21 +496,21 @@ export function confirmDialog({ title, message, confirmText, cancelText, danger 
         border:1px solid var(--border-focus);
         border-radius:24px;
         padding:32px;
-        max-width:420px;
+        max-width:440px;
         width:90%;
         box-shadow:0 24px 60px rgba(0,0,0,0.4);
         animation:slideUp 0.2s cubic-bezier(.34,1.56,.64,1);
         text-align:center;
       ">
         <div style="
-          width:56px;height:56px;border-radius:50%;margin:0 auto 20px;
+          width:56px;height:56px;border-radius:50%;margin:0 auto 16px;
           display:flex;align-items:center;justify-content:center;
           background:${danger ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)'};
         ">
           <i data-lucide="${danger ? 'alert-triangle' : 'help-circle'}" style="width:28px;height:28px;color:${danger ? '#ef4444' : 'var(--primary)'};"></i>
         </div>
-        <h3 style="font-size:1.15rem;font-weight:800;margin-bottom:10px;">${title || t('dialog.title')}</h3>
-        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:28px;">${message || ''}</p>
+        <h3 style="font-size:1.15rem;font-weight:800;margin-bottom:10px;color:var(--text-main);">${displayTitle}</h3>
+        ${displayMessage ? `<p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:24px;">${displayMessage}</p>` : ''}
         <div style="display:flex;gap:12px;justify-content:center;">
           <button id="dialog-cancel-btn" style="
             flex:1;padding:12px 20px;
@@ -607,6 +763,9 @@ export function updateHeader() {
         <a href="#student-dashboard" class="nav-link active">
           <i data-lucide="layout-dashboard"></i> ${t("nav.dashboard")}
         </a>
+        <a href="#courses" class="nav-link" style="color:#e51d74; font-weight:800;">
+          <i data-lucide="graduation-cap"></i> المقررات الدراسية 🇪🇬
+        </a>
       `;
     } else if (state.user.role === "teacher") {
       navMenu.innerHTML = `
@@ -771,14 +930,17 @@ export function updateHeader() {
           <a href="#student-dashboard" class="sidebar-nav-item">
             <i data-lucide="layout-dashboard"></i> ${t("nav.dashboard")}
           </a>
-          <a href="#courses" class="sidebar-nav-item">
-            <i data-lucide="book-open"></i> ${t("nav.courses")}
+          <a href="#courses" class="sidebar-nav-item" style="color:#e51d74; font-weight:800;">
+            <i data-lucide="graduation-cap"></i> المقررات الدراسية 🇪🇬
           </a>
           <a href="#schedule" class="sidebar-nav-item">
             <i data-lucide="calendar"></i> ${t("nav.schedule")}
           </a>
-          <a href="#student-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
-            <i data-lucide="sparkles"></i> اشتراكاتي والحصص الخاصة
+          <a href="#student-subscriptions" class="sidebar-nav-item" style="color:var(--primary); font-weight:700;">
+            <i data-lucide="sparkles"></i> باقات اشتراكاتي
+          </a>
+          <a href="#student-private-sessions" class="sidebar-nav-item" style="color:#a855f7; font-weight:700;">
+            <i data-lucide="calendar"></i> جدول الحصص الخاصة
           </a>
           <a href="#student-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
             <i data-lucide="users"></i> مجموعاتي والحصص الجماعية
@@ -968,19 +1130,30 @@ export async function checkPendingRequestsNotification() {
 // ─── API Fetch ─────────────────────────────────────────────────────────────────
 
 export async function apiFetch(endpoint, options = {}) {
-  const url = `${window.location.origin}/api${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith("/api/")
+    ? endpoint.slice(4)
+    : (endpoint === "/api" ? "" : (endpoint.startsWith("/") ? endpoint : `/${endpoint}`));
+  const url = `${window.location.origin}/api${cleanEndpoint}`;
   const headers = { "Content-Type": "application/json", ...options.headers };
   if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
   // Endpoints that should fail silently without a toast
-  const silentEndpoints = ["/sessions", "/teachers", "/blogs", "/resources", "/categories"];
-  const isSilent = silentEndpoints.some(e => endpoint.startsWith(e)) || endpoint.includes("/qa");
+  const silentEndpoints = ["/sessions", "/teachers", "/blogs", "/resources", "/categories", "/curriculum", "/landing/explore"];
+  const isSilent = silentEndpoints.some(e => cleanEndpoint.startsWith(e)) || cleanEndpoint.includes("/qa");
 
   try {
     const response = await fetch(url, { ...options, headers });
-    const data = await response.json();
+    let data;
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = { error: text || "Invalid server response" };
+    }
+
     if (!response.ok) {
-      if (response.status === 401 && endpoint !== "/auth/me") {
+      if (response.status === 401 && cleanEndpoint !== "/auth/me") {
         clearAuth(true);
       }
       const err = new Error(data.error || "Something went wrong.");
@@ -1436,7 +1609,8 @@ export async function router() {
   } else if (hash.includes("/")) {
     const routeParts = hash.split("/");
     routeBase = routeParts[0];
-    routeParam = routeParts[1] || null;
+    // Pass full sub-path so views like CourseLandingView can receive courseId/groupId
+    routeParam = routeParts.slice(1).join("/") || null;
   }
 
   updateHeader();
@@ -1475,6 +1649,7 @@ export async function router() {
     case "#admin-login":
     case "#auth": ViewClass = AuthView; break;
     case "#student-dashboard": ViewClass = StudentView; break;
+    case "#student-subscriptions": ViewClass = StudentSubscriptionsView; break;
     case "#student-groups": ViewClass = StudentGroupsView; break;
     case "#student-private-sessions": ViewClass = StudentPrivateSessionsView; break;
     case "#subscription-sessions": ViewClass = SubscriptionSessionsView; break;
@@ -1506,6 +1681,8 @@ export async function router() {
     case "#contact": ViewClass = ContactView; break;
     case "#faq": ViewClass = FAQView; break;
     case "#subscription-plans": ViewClass = SubscriptionPlansView; break;
+    case "#subject-groups":
+    case "#subject": ViewClass = SubjectGroupsView; break;
     default:
       ViewClass = LandingView;
   }

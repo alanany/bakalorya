@@ -221,15 +221,13 @@ export class UserController {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // If user is student, only allow updating avatar
+      // If user is student, allow updating education and avatar only (phone numbers are managed by admin)
       if (req.user?.role === "student") {
-        if (avatar !== undefined) {
-          user.avatar = avatar;
-          await userRepository.save(user);
-          const { password, ...safeUser } = user;
-          return res.json(safeUser);
-        }
-        return res.status(403).json({ error: "عفواً، تعديل بيانات الملف الشخصي للطالب متاح فقط من قِبل إدارة المنصة." });
+        if (avatar !== undefined) user.avatar = avatar;
+        if (education !== undefined) user.education = education;
+        await userRepository.save(user);
+        const { password, ...safeUser } = user;
+        return res.json(safeUser);
       }
 
       if (phone) {

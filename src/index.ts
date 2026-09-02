@@ -45,6 +45,9 @@ async function startServer() {
       try {
         await initAppDataSource();
         console.log("Data Source has been initialized!");
+        // Seed Egyptian curriculum (Grades and Subjects) if not present
+        const { CurriculumController } = await import("./controller/CurriculumController");
+        await CurriculumController.seedEgyptianCurriculum();
       } catch (error: any) {
         console.error("Error during Data Source initialization:", error.message || error);
       }

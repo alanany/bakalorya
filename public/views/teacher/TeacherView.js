@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO, formatSessionDateTime, getTimezoneBadgeHTML } from "../../app.js";
+import { apiFetch, state, showToast, t, confirmDialog, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO, formatSessionDateTime, getTimezoneBadgeHTML, canJoinSession } from "../../app.js";
 
 export default class TeacherView {
   constructor(container) {
@@ -358,59 +358,73 @@ export default class TeacherView {
                   <input type="text" id="course-title" class="form-input" placeholder="مثال: مادة الفيزياء - وحدة الكهرباء للثانوية" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
                 </div>
 
-                <!-- Category & Degree Grid -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                  <!-- Platform Category -->
-                  <div class="form-group" style="margin:0;">
-                    <label for="course-category-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                      <i data-lucide="layers" style="width:14px; height:14px; color:#a855f7;"></i>
-                      ${t("teacher.courseCategory")}
+                <!-- 🇪🇬 EGYPTIAN CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT) -->
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+                  
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <label style="font-weight:900; font-size:0.92rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="graduation-cap" style="width:18px; height:18px; color:#e51d74;"></i>
+                      <span>تحديد المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
                     </label>
-                    <select id="course-category-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
-                      <option value="">-- اختر التصنيف المعتمد --</option>
-                    </select>
+                    <span style="font-size:0.75rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.1); padding:3px 12px; border-radius:12px; border:1px solid rgba(229,29,116,0.2);">
+                      مناهج جمهورية مصر العربية
+                    </span>
                   </div>
 
-                  <!-- Grade Level -->
-                  <div class="form-group" style="margin:0;">
-                    <label for="course-degree" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                      <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#10b981;"></i>
-                      السنة الدراسية / المستوى
+                  <!-- 1. Stage Selector Segmented Buttons -->
+                  <div>
+                    <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                      1. اختر المرحلة التعليمية:
                     </label>
-                    <select id="course-degree" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
-                      <option value="">-- اختر المستوى --</option>
-                      
-                      <optgroup label="🌱 المرحلة الابتدائية (Primary)">
-                        <option value="الابتدائية - الصف الأول">الصف الأول الابتدائي (Primary 1)</option>
-                        <option value="الابتدائية - الصف الثاني">الصف الثاني الابتدائي (Primary 2)</option>
-                        <option value="الابتدائية - الصف الثالث">الصف الثالث الابتدائي (Primary 3)</option>
-                        <option value="الابتدائية - الصف الرابع">الصف الرابع الابتدائي (Primary 4)</option>
-                        <option value="الابتدائية - الصف الخامس">الصف الخامس الابتدائي (Primary 5)</option>
-                        <option value="الابتدائية - الصف السادس">الصف السادس الابتدائي (Primary 6)</option>
-                      </optgroup>
-
-                      <optgroup label="📘 المرحلة الإعدادية (Intermediate / Prep)">
-                        <option value="الإعدادية - الصف الأول">الصف الأول الإعدادي (Prep 1)</option>
-                        <option value="الإعدادية - الصف الثاني">الصف الثاني الإعدادي (Prep 2)</option>
-                        <option value="الإعدادية - الصف الثالث">الصف الثالث الإعدادي - الشهادة الإعدادية (Prep 3)</option>
-                      </optgroup>
-
-                      <optgroup label="🎓 المرحلة الثانوية (Secondary)">
-                        <option value="الثانوية - الصف الأول">الصف الأول الثانوي (1st Secondary)</option>
-                        <option value="الثانوية - الصف الثاني (علمي)">الصف الثاني الثانوي - علمي (2nd Sec Science)</option>
-                        <option value="الثانوية - الصف الثاني (أدبي)">الصف الثاني الثانوي - أدبي (2nd Sec Arts)</option>
-                        <option value="الثانوية - الصف الثالث (علمي علوم)">الصف الثالث الثانوي - علمي علوم (3rd Sec Science)</option>
-                        <option value="الثانوية - الصف الثالث (علمي رياضة)">الصف الثالث الثانوي - علمي رياضة (3rd Sec Math)</option>
-                        <option value="الثانوية - الصف الثالث (أدبي)">الصف الثالث الثانوي - أدبي (3rd Sec Arts)</option>
-                        <option value="الثانوية الأزهرية">الثانوية الأزهرية (Azhar Secondary)</option>
-                      </optgroup>
-
-                      <optgroup label="🌟 عام وتأسيس (All Grades / General)">
-                        <option value="جميع المراحل والصفوف">جميع المراحل والصفوف (All Grades)</option>
-                        <option value="تأسيس ودورات عامة">تأسيس ودورات تدريبية عامة (General & Foundation)</option>
-                      </optgroup>
-                    </select>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                      <button type="button" class="teacher-modal-stage-btn active" data-stage="PRIMARY" style="padding:10px 8px; border-radius:14px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#ffffff; transition:all 0.2s ease; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                        🎒 الابتدائية
+                      </button>
+                      <button type="button" class="teacher-modal-stage-btn" data-stage="PREPARATORY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                        📚 الإعدادية
+                      </button>
+                      <button type="button" class="teacher-modal-stage-btn" data-stage="SECONDARY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                        🎓 الثانوية العامة
+                      </button>
+                    </div>
                   </div>
+
+                  <!-- 2. Grade & Subject Dropdowns -->
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <!-- Grade Select -->
+                    <div class="form-group" style="margin:0;">
+                      <label for="modal-curriculum-grade-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                        2. الصف الدراسي <span style="color:#ef4444;">*</span>
+                      </label>
+                      <select id="modal-curriculum-grade-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                        <option value="">-- جاري التحميل... --</option>
+                      </select>
+                    </div>
+
+                    <!-- Subject Select -->
+                    <div class="form-group" style="margin:0;">
+                      <label for="modal-curriculum-subject-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                        3. المادة الدراسية <span style="color:#ef4444;">*</span>
+                      </label>
+                      <select id="modal-curriculum-subject-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                        <option value="">-- اختر الصف أولاً --</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Custom Subject Wrapper (if needed) -->
+                  <div id="modal-custom-subject-wrapper" style="display:none; margin-top:-4px;">
+                    <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; display:block;">
+                      اسم المادة أو التخصص المخصص:
+                    </label>
+                    <input type="text" id="modal-custom-subject-input" class="form-input" placeholder="اكتب اسم المادة يدوياً..." style="border-radius:12px; padding:9px 14px; font-size:0.88rem; width:100%;">
+                  </div>
+
+                  <!-- Hidden values for submission -->
+                  <input type="hidden" id="course-category-select" value="">
+                  <input type="hidden" id="course-degree" value="">
+                  <input type="hidden" id="modal-selected-grade-id" value="">
+                  <input type="hidden" id="modal-selected-subject-id" value="">
                 </div>
 
                 <!-- Course Description -->
@@ -802,35 +816,116 @@ export default class TeacherView {
   }
 
   renderTeacherSessionCard(session) {
-    const isLive = session.status === "live" || session.status === "active";
-    const isCompleted = session.status === "completed" || session.status === "COMPLETED";
     const date = new Date(session.scheduledAt);
+    const sessionTime = date.getTime();
+    const durationMins = session.duration || 60;
+    const durationMs = durationMins * 60 * 1000;
+    const nowTime = Date.now();
+
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
+    // Strictly expired if scheduled time + duration has passed
+    const isPastSession = !isCompleted && (nowTime >= sessionTime + durationMs);
+    // Live only if status is live AND the session duration has not ended
+    const isLive = !isCompleted && !isPastSession && (session.status === "live" || session.status === "active" || session.status === "LIVE");
+
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
 
     let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
     let sessionAction = "";
 
-    if (isLive) {
-      statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
+    if (isCompleted) {
+      statusTag = `<span class="session-tag" style="background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:800;">${t("session.finished") || '✅ مكتملة'}</span>`;
+      sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:12px; font-size:0.8rem; padding:8px; opacity:0.85;" disabled>تم توثيق التقرير واعتماد الرصيد ✅</button>`;
+    } else if (isPastSession) {
+      statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
+      const isCheckedIn = window.checkedInSessions?.has(session.id);
       sessionAction = `
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-          <a href="#classroom/${session.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; text-decoration:none; border-radius:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="door-open" style="width:16px;height:16px;"></i> دخول قاعة البث المباشر 🔴</a>
-          <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:6px 12px; justify-content:center; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle" style="width:14px;height:14px;"></i> إنهاء البث</button>
-        </div>
-      `;
-    } else if (isCompleted) {
-      statusTag = `<span class="session-tag" style="background:var(--border-color); color:var(--text-muted); border-color:transparent;">${t("session.finished")}</span>`;
-      sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:12px;" disabled>${t("session.ended")}</button>`;
-    } else {
-      sessionAction = `
-        <div style="display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:14px;">
-          <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.8rem; padding:8px 12px; justify-content:center;"><i data-lucide="play"></i> ${t("session.goLive")}</button>
-          <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.8rem; padding:8px 12px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
-            <i data-lucide="calendar-clock"></i> تعديل الموعد
+          <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:9px 12px; justify-content:center; font-weight:800; border-radius:12px; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
+            <i data-lucide="file-check" style="width:15px;height:15px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
           </button>
+          ${isCheckedIn ? `
+            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
+              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+            </span>
+          ` : `
+            <button class="btn-secondary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.8rem; padding:7px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer; border-radius:10px;">
+              <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+            </button>
+          `}
         </div>
       `;
+    } else if (isLive) {
+      statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
+      const isCheckedIn = window.checkedInSessions?.has(session.id);
+      if (isCheckedIn) {
+        sessionAction = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
+              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+            </span>
+            <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
+              <a href="#classroom/${session.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; text-decoration:none; border-radius:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="door-open" style="width:16px;height:16px;"></i> دخول قاعة البث المباشر 🔴</a>
+              <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:6px 12px; justify-content:center; color:var(--error); border-color:var(--error); font-weight:800;"><i data-lucide="stop-circle" style="width:14px;height:14px;"></i> إنهاء وتوثيق</button>
+            </div>
+          </div>
+        `;
+      } else {
+        sessionAction = `
+          <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+            <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.85rem; padding:10px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
+              <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+            </button>
+            <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل أزرار البث والقاعة</div>
+          </div>
+        `;
+      }
+    } else {
+      const isJoinable = canJoinSession(session);
+      const isOnTime = nowTime >= sessionTime;
+      const isCheckedIn = window.checkedInSessions?.has(session.id);
+      if (isJoinable) {
+        statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">${isOnTime ? '🕐 موعد الحصة الآن' : '⚡ تبدأ قريباً'}</span>`;
+        if (isCheckedIn) {
+          sessionAction = `
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+              <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
+                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+              </span>
+              <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px;">
+                <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; font-weight:800;"><i data-lucide="play" style="width:13px;height:13px;"></i> ${t("session.goLive")}</button>
+                <a href="#classroom/${session.id}" class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:4px; font-weight:800;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة 🎥</a>
+                <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
+                  <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          sessionAction = `
+            <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+              <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.85rem; padding:10px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
+                <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+              </button>
+              <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل أزرار البث والقاعة</div>
+            </div>
+          `;
+        }
+      } else {
+        sessionAction = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+            <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
+              <button disabled class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; opacity:0.85; cursor:not-allowed; justify-content:center; background:rgba(99,102,241,0.06); color:var(--primary); border-color:rgba(99,102,241,0.2); font-weight:700;">
+                <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> ينشط قبل الموعد بساعة 🔒
+              </button>
+              <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.8rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
+                <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
     }
 
     return `
@@ -902,7 +997,61 @@ export default class TeacherView {
     document.querySelectorAll(".end-session-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
-        this.renderEndSessionReportModal(id);
+        if (typeof window.showEndSessionReportModal === 'function') {
+          window.showEndSessionReportModal(id, () => this.render());
+        }
+      });
+    });
+
+    document.querySelectorAll(".session-checkin-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:13px;height:13px;"></i> جاري تأكيد الحضور...`;
+        if (window.lucide) window.lucide.createIcons();
+
+        try {
+          const res = await apiFetch(`/sessions/${id}/checkin`, { method: "POST" });
+          showToast(res.message || "تم تأكيد حضورك في الحصة بنجاح ولن يتم احتسابك غائباً ✅", "success");
+          window.checkedInSessions = window.checkedInSessions || new Set();
+          window.checkedInSessions.add(id);
+
+          const wrapper = btn.closest(".session-actions-wrapper") || btn.parentElement;
+          if (wrapper) {
+            wrapper.innerHTML = `
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
+                  <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+                </span>
+                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px;">
+                  <button class="btn-primary start-session-btn" data-id="${id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; font-weight:800;"><i data-lucide="play" style="width:13px;height:13px;"></i> بدء البث 🔴</button>
+                  <a href="#classroom/${id}" class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:4px; font-weight:800;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة 🎥</a>
+                  <button class="btn-secondary edit-session-btn" data-id="${id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
+                    <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+            wrapper.querySelectorAll(".start-session-btn").forEach(sBtn => {
+              sBtn.addEventListener("click", async () => {
+                const sId = sBtn.getAttribute("data-id");
+                try {
+                  const r = await apiFetch(`/sessions/${sId}/status`, { method: "PATCH", body: JSON.stringify({ status: "live" }) });
+                  if (r.message) showToast(r.message, "success");
+                  this.render();
+                } catch (err) {
+                  showToast(err.message || "فشل بدء الجلسة", "error");
+                }
+              });
+            });
+          }
+        } catch (err) {
+          btn.disabled = false;
+          btn.innerHTML = `<i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️`;
+          if (window.lucide) window.lucide.createIcons();
+          showToast(err.message || "تعذر تأكيد الحضور.", "error");
+        }
       });
     });
 
@@ -998,7 +1147,7 @@ export default class TeacherView {
       const idleBox = document.getElementById("image-upload-idle");
       if (previewWrapper) previewWrapper.style.display = "none";
       if (idleBox) idleBox.style.display = "block";
-      await this.populateCategoryOptions();
+      await this.initTeacherCurriculumSelector();
       courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
       courseModal.style.display = "flex";
     };
@@ -1019,8 +1168,7 @@ export default class TeacherView {
         const course = await apiFetch(`/courses/${courseId}`);
         if (course) {
           document.getElementById("course-title").value = course.title || "";
-          await this.populateCategoryOptions(course.category || "");
-          document.getElementById("course-degree").value = course.degree || "";
+          await this.initTeacherCurriculumSelector(course.grade?.id || course.gradeId, course.subject?.id || course.subjectId);
           document.getElementById("course-desc").value = course.description || "";
           document.getElementById("course-image-url").value = course.image || "";
           const directUrlInput = document.getElementById("course-image-url-direct");
@@ -1048,12 +1196,26 @@ export default class TeacherView {
 
     document.getElementById("create-course-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = document.getElementById("course-title").value;
-      const catSelectEl = document.getElementById("course-category-select");
-      const catCustomEl = document.getElementById("course-category-custom");
-      const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
-      if (!category) { showToast("الرجاء إدخال تصنيف الدورة.", "error"); return; }
-      const degree = document.getElementById("course-degree").value;
+      const title = document.getElementById("course-title").value.trim();
+      const hiddenCategory = document.getElementById("course-category-select");
+      const hiddenDegree = document.getElementById("course-degree");
+      const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+      const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+
+      let category = hiddenCategory?.value?.trim();
+      const customSubInput = document.getElementById("modal-custom-subject-input");
+      if (!category && customSubInput && customSubInput.value) {
+        category = customSubInput.value.trim();
+      }
+
+      if (!category) { 
+        showToast("الرجاء اختيار المادة الدراسية أو كتابتها.", "error"); 
+        return; 
+      }
+
+      const degree = hiddenDegree?.value || "";
+      const gradeId = hiddenGradeId?.value || null;
+      const subjectId = hiddenSubjectId?.value || null;
       const description = document.getElementById("course-desc").value;
       let image = document.getElementById("course-image-url")?.value || document.getElementById("course-image-url-direct")?.value.trim() || "";
       const meetingLink = document.getElementById("course-meeting-link").value;
@@ -1082,15 +1244,23 @@ export default class TeacherView {
       const courseId = document.getElementById("create-course-form").getAttribute("data-id");
       try {
         if (courseId) {
-          await apiFetch(`/courses/${courseId}`, { method: "PUT", body: JSON.stringify({ title, category, degree, description, image, meetingLink }) });
-          showToast("Course updated successfully", "success");
+          await apiFetch(`/courses/${courseId}`, { 
+            method: "PUT", 
+            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
+          });
+          showToast("تم تحديث بيانات الدورة بنجاح! ✅", "success");
         } else {
-          await apiFetch("/courses", { method: "POST", body: JSON.stringify({ title, category, degree, description, image, meetingLink }) });
-          showToast(t("toast.coursePublished"), "success");
+          await apiFetch("/courses", { 
+            method: "POST", 
+            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
+          });
+          showToast("تم إنشاء الدورة التعليمية بنجاح وإرسالها للاعتماد! 🎉", "success");
         }
         courseModal.style.display = "none";
         await this.render();
-      } catch (err) { }
+      } catch (err) {
+        showToast(err.message || "فشل حفظ الدورة التعليمية.", "error");
+      }
     });
 
     const sessionModal = document.getElementById("session-modal");
@@ -1480,6 +1650,149 @@ export default class TeacherView {
     if (selectedCategory && catSelect.querySelector(`option[value="${selectedCategory}"]`)) {
       catSelect.value = selectedCategory;
     }
+  }
+
+  async initTeacherCurriculumSelector(preselectedGradeId = null, preselectedSubjectId = null) {
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to fetch curriculum grades for teacher modal:", e);
+    }
+
+    if (!Array.isArray(allGrades) || allGrades.length === 0) return;
+
+    this.curriculumGradesData = allGrades;
+    let currentStage = "PRIMARY";
+
+    // If preselectedGradeId exists, infer the stage
+    if (preselectedGradeId) {
+      const g = allGrades.find(gr => gr.id === preselectedGradeId);
+      if (g && g.stage) currentStage = g.stage;
+    }
+
+    const stageBtns = document.querySelectorAll(".teacher-modal-stage-btn");
+    const gradeSelect = document.getElementById("modal-curriculum-grade-select");
+    const subjectSelect = document.getElementById("modal-curriculum-subject-select");
+    const customSubjectWrapper = document.getElementById("modal-custom-subject-wrapper");
+    const customSubjectInput = document.getElementById("modal-custom-subject-input");
+    const hiddenCategory = document.getElementById("course-category-select");
+    const hiddenDegree = document.getElementById("course-degree");
+    const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+    const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+
+    const updateStageUI = (stage) => {
+      currentStage = stage;
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+          btn.style.boxShadow = `0 4px 12px ${color}40`;
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+          btn.style.boxShadow = "none";
+        }
+      });
+
+      // Filter grades
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة لهذه المرحلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => `
+          <option value="${g.id}" ${preselectedGradeId === g.id ? 'selected' : ''}>
+            ${g.name}
+          </option>
+        `).join('');
+
+        // Trigger grade change
+        updateSubjectsUI(gradeSelect.value);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId) => {
+      if (hiddenGradeId) hiddenGradeId.value = gradeId;
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      if (selectedGrade && hiddenDegree) {
+        hiddenDegree.value = selectedGrade.name;
+      }
+
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `
+          <option value="">لا توجد مواد مسجلة</option>
+          <option value="__custom__">✏️ إدخال مادة مخصصة يدوياً</option>
+        `;
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        return;
+      }
+
+      subjectSelect.innerHTML = `
+        <option value="">-- اختر المادة الدراسية --</option>
+        ${subjects.map(s => `
+          <option value="${s.id}" data-name="${s.name}" ${preselectedSubjectId === s.id ? 'selected' : ''}>
+            ${s.name} ${s.isLanguageTrack ? '(مسار لغات 🌐)' : '(منهج عام 🇪🇬)'}
+          </option>
+        `).join('')}
+        <option value="__custom__">✏️ مادة أخرى / تخصص مخصص</option>
+      `;
+
+      if (preselectedSubjectId && subjects.some(s => s.id === preselectedSubjectId)) {
+        const s = subjects.find(sub => sub.id === preselectedSubjectId);
+        if (hiddenSubjectId) hiddenSubjectId.value = s.id;
+        if (hiddenCategory) hiddenCategory.value = s.name;
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+      } else {
+        if (hiddenSubjectId) hiddenSubjectId.value = "";
+        if (hiddenCategory) hiddenCategory.value = "";
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+      }
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val === "__custom__") {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        if (hiddenSubjectId) hiddenSubjectId.value = "";
+        if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
+      } else {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+        if (hiddenSubjectId) hiddenSubjectId.value = val;
+        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+      }
+    });
+
+    customSubjectInput?.addEventListener("input", (e) => {
+      if (subjectSelect?.value === "__custom__" && hiddenCategory) {
+        hiddenCategory.value = e.target.value.trim();
+      }
+    });
+
+    // Initialize with current stage
+    updateStageUI(currentStage);
   }
 
   renderTeacherQuestionItemsInModal(questionsContainer) {

@@ -270,7 +270,7 @@ export class AdminController {
     try {
       const courseRepo = AppDataSource.getRepository(Course);
       const courses = await courseRepo.find({
-        relations: ["teacher", "lessons", "enrollments"],
+        relations: ["teacher", "grade", "subject", "lessons", "enrollments"],
         order: { createdAt: "DESC" }
       });
 
@@ -288,7 +288,9 @@ export class AdminController {
         currency: c.currency || "EGP",
         paymentDetails: c.paymentDetails || null,
         createdAt: c.createdAt,
-        teacher: c.teacher ? { id: c.teacher.id, name: c.teacher.name, avatar: c.teacher.avatar, education: c.teacher.education } : null,
+        grade: c.grade ? { id: c.grade.id, name: c.grade.name, nameEn: c.grade.nameEn, code: c.grade.code, stage: c.grade.stage } : null,
+        subject: c.subject ? { id: c.subject.id, name: c.subject.name, nameEn: c.subject.nameEn } : null,
+        teacher: c.teacher ? { id: c.teacher.id, name: c.teacher.name, avatar: c.teacher.avatar, education: c.teacher.education, meetingLink: c.teacher.meetingLink } : null,
         lessons: c.lessons?.map(l => ({ id: l.id, title: l.title, duration: l.duration, videoUrl: l.videoUrl })) || [],
         lessonsCount: c.lessons?.length || 0,
         enrollmentsCount: c.enrollments?.length || 0
@@ -459,7 +461,7 @@ export class AdminController {
     try {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
       const enrollments = await enrollmentRepo.find({
-        relations: ["student", "course", "course.teacher", "payment"],
+        relations: ["student", "course", "course.teacher", "group", "payment"],
         order: { createdAt: "DESC" }
       });
 
@@ -481,7 +483,7 @@ export class AdminController {
 
       const enrollment = await enrollmentRepo.findOne({
         where: { id },
-        relations: ["student", "course", "payment"]
+        relations: ["student", "course", "group", "payment", "course.teacher"]
       });
 
       if (!enrollment) {
@@ -501,7 +503,7 @@ export class AdminController {
       payment.amount = amount !== undefined ? Number(amount) : (payment.amount || 0);
       payment.currency = "EGP";
       payment.status = "SUCCESS";
-      payment.provider = provider || payment.provider || "manual";
+      payment.provider = provider || payment.provider || "vodafone_cash";
       if (receiptUrl) payment.receiptUrl = receiptUrl;
       if (notes) payment.notes = notes;
 
@@ -514,10 +516,11 @@ export class AdminController {
       // Create in-app notification for the student
       if (enrollment.student) {
         try {
+          const groupTitle = enrollment.group ? `مجموعة "${enrollment.group.name}"` : `دورة "${enrollment.course?.title || 'الدورة التعليمية'}"`;
           await NotificationController.createNotification(
             enrollment.student.id,
-            "تم تفعيل اشتراكك بالدورة بنجاح! 🎉",
-            `تهانينا! تم قبول واعتماد تسجيلك في دورة "${enrollment.course?.title || 'الدورة التعليمية'}". يمكنك الآن بدء المشاهدة والمتابعة.`,
+            "تم تفعيل اشتراكك واعتماد الدفع بنجاح! 🎉",
+            `تهانينا! تم قبول واعتماد إيصال التحويل وتسجيلك في ${groupTitle}. يمكنك الآن متابعة الحصص والدخول للمجموعة.`,
             "success",
             "#courses"
           );
@@ -526,7 +529,22 @@ export class AdminController {
         }
       }
 
-      return res.json({ message: "تم قبول واعتماد تسجيل الطالب في الدورة بنجاح! ✅", enrollment });
+      // Notify teacher
+      if (enrollment.course?.teacher && enrollment.group) {
+        try {
+          await NotificationController.createNotification(
+            enrollment.course.teacher.id,
+            "تم اعتماد انضمام طالب للمجموعة ✅",
+            `تم قبول وتأكيد تسجيل الطالب "${enrollment.student?.name || 'طالب'}" في مجموعتك "${enrollment.group.name}".`,
+            "info",
+            "#teacher-dashboard/groups"
+          );
+        } catch (notifErr) {
+          console.error("Error creating teacher notification:", notifErr);
+        }
+      }
+
+      return res.json({ message: "تم قبول واعتماد تسجيل الطالب وتأكيد الدفع بنجاح! ✅", enrollment });
     } catch (err: any) {
       console.error("Admin approveEnrollment error:", err);
       return res.status(500).json({ error: err.message || "فشل اعتماد التسجيل." });
@@ -536,17 +554,44 @@ export class AdminController {
   // POST /admin/enrollments/:id/reject — Admin rejects course enrollment
   static async rejectEnrollment(req: AuthRequest, res: Response) {
     const { id } = req.params;
+    const { reason } = req.body || {};
 
     try {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
-      const enrollment = await enrollmentRepo.findOneBy({ id });
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["student", "course", "group", "payment"]
+      });
 
       if (!enrollment) {
         return res.status(404).json({ error: "طلب التسجيل غير موجود." });
       }
 
       enrollment.status = "rejected";
+      if (enrollment.payment) {
+        enrollment.payment.status = "FAILED";
+        if (reason) enrollment.payment.notes = (enrollment.payment.notes ? enrollment.payment.notes + " | " : "") + `سبب الرفض: ${reason}`;
+        await paymentRepo.save(enrollment.payment);
+      }
       await enrollmentRepo.save(enrollment);
+
+      // Notify student about rejection
+      if (enrollment.student) {
+        try {
+          const reasonText = reason ? ` (السبب: ${reason})` : "";
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "إشعار بشأن طلب الاشتراك ❌",
+            `تم رفض طلب التسجيل / إيصال الدفع لدورة "${enrollment.course?.title || 'الدورة'}"${reasonText}. يرجى إعادة تقديم الطلب بإيصال صحيح أو التواصل مع الدعم.`,
+            "warning",
+            "#courses"
+          );
+        } catch (notifErr) {
+          console.error("Error creating rejection notification:", notifErr);
+        }
+      }
 
       return res.json({ message: "تم رفض طلب التسجيل.", enrollment });
     } catch (err) {

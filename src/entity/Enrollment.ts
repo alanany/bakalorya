@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, JoinColumn
 import { User } from "./User";
 import { Course } from "./Course";
 import { Payment } from "./Payment";
+import { CourseGroup } from "./CourseGroup";
 
 @Entity()
 export class Enrollment {
@@ -13,6 +14,9 @@ export class Enrollment {
 
   @ManyToOne(() => Course, { eager: true, onDelete: "CASCADE" })
   course: Course;
+
+  @ManyToOne(() => CourseGroup, group => group.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" })
+  group: CourseGroup | null;
 
   @Column({ default: 0 })
   progress: number; // 0 to 100

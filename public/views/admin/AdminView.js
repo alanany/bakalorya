@@ -29,6 +29,11 @@ export default class AdminView {
     this.platformSettings = null;
     this.subFilter = "all";
     this.expandedStudents = new Set();
+    this.adminGroupFilterStatus = "all";
+    this.adminGroupSearchQuery = "";
+    this.adminGroupCourseFilter = "all";
+    this.adminGroupTeacherFilter = "all";
+    this.adminGroupSort = "newest";
   }
 
 
@@ -484,7 +489,7 @@ export default class AdminView {
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -496,7 +501,9 @@ export default class AdminView {
         apiFetch("/admin/earnings").catch(() => null),
         apiFetch("/subscription-plans").catch(() => []),
         apiFetch("/admin/enrollments").catch(() => []),
-        apiFetch("/admin/settings").catch(() => ({}))
+        apiFetch("/admin/settings").catch(() => ({})),
+        apiFetch("/admin/groups/pending-approval").catch(() => []),
+        apiFetch("/admin/all-groups").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -509,6 +516,8 @@ export default class AdminView {
       this.subscriptions = subscriptions || [];
       this.adminEarnings = earnings || null;
       this.enrollments = enrollments || [];
+      this.pendingCourseGroups = pendingGroups || [];
+      this.allCourseGroups = allGroups || [];
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -895,6 +904,167 @@ export default class AdminView {
       });
     });
 
+    // Admin Open Approve Group Modal
+    this.container.querySelectorAll(".admin-open-approve-group-modal-btn, .admin-approve-group-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const group = (this.pendingCourseGroups || []).find(g => String(g.id) === String(id)) || 
+                      (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        if (group) {
+          this.renderApproveGroupModal(group);
+        } else {
+          showToast("لم يتم العثور على بيانات المجموعة.", "error");
+        }
+      });
+    });
+
+    // Admin Reject Group
+    this.container.querySelectorAll(".admin-reject-group-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog("هل تريد بالتأكيد رفض طلب إنشاء هذه المجموعة؟", { danger: true });
+        if (!confirmed) return;
+
+        try {
+          btn.disabled = true;
+          await apiFetch(`/admin/groups/${id}/reject`, { method: "POST" });
+          showToast("تم رفض المجموعة.", "info");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          showToast(err.message || "فشل رفض المجموعة.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Admin Edit Group Full Details Modal
+    this.container.querySelectorAll(".admin-edit-group-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        if (group) {
+          this.renderEditGroupModal(group);
+        } else {
+          showToast("لم يتم العثور على بيانات المجموعة.", "error");
+        }
+      });
+    });
+
+    // Admin Toggle Group Status (Close for Teaching / Reopen for Enrollment)
+    this.container.querySelectorAll(".admin-toggle-group-status-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        const isClosing = action === "close";
+
+        const message = isClosing
+          ? "هل تريد بالتأكيد إغلاق هذه المجموعة وبدء التدريس؟\n• سيتم قفل باب التسجيل فوراً ولن يتمكن أي طالب جديد من الانضمام."
+          : "هل تريد إعادة فتح المجموعة وإتاحتها لتسجيل الطلاب مرة أخرى؟";
+
+        const confirmed = await confirmDialog(message);
+        if (!confirmed) return;
+
+        try {
+          btn.disabled = true;
+          const newStatus = isClosing ? "IN_PROGRESS" : "OPEN";
+          await apiFetch(`/groups/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: newStatus })
+          });
+
+          showToast(
+            isClosing
+              ? "تم إغلاق المجموعة وبدء التدريس وقفل التسجيل بنجاح! 🔒🚀"
+              : "تم فتح المجموعة للتسجيل بنجاح! 🔓✨",
+            "success"
+          );
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          showToast(err.message || "فشل تغيير حالة المجموعة.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Admin Delete Group
+    this.container.querySelectorAll(".admin-delete-group-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "هذه المجموعة";
+        const confirmed = await confirmDialog(`هل أنت متأكد من حذف "${name}" نهائياً؟`, { danger: true });
+        if (!confirmed) return;
+
+        try {
+          btn.disabled = true;
+          await apiFetch(`/groups/${id}`, { method: "DELETE" });
+          showToast("تم حذف المجموعة بنجاح.", "success");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          showToast(err.message || "فشل حذف المجموعة.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Admin Groups Search Input
+    const adminGroupSearchInput = this.container.querySelector("#admin-groups-search-input");
+    if (adminGroupSearchInput) {
+      adminGroupSearchInput.addEventListener("input", (e) => {
+        this.adminGroupSearchQuery = e.target.value;
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Status Tabs
+    this.container.querySelectorAll(".admin-group-filter-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.adminGroupFilterStatus = btn.getAttribute("data-filter");
+        this.renderTab("groups");
+      });
+    });
+
+    // Admin Groups Course Filter Dropdown
+    const adminGroupCourseFilter = this.container.querySelector("#admin-groups-course-filter");
+    if (adminGroupCourseFilter) {
+      adminGroupCourseFilter.addEventListener("change", (e) => {
+        this.adminGroupCourseFilter = e.target.value;
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Teacher Filter Dropdown
+    const adminGroupTeacherFilter = this.container.querySelector("#admin-groups-teacher-filter");
+    if (adminGroupTeacherFilter) {
+      adminGroupTeacherFilter.addEventListener("change", (e) => {
+        this.adminGroupTeacherFilter = e.target.value;
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Sort Dropdown
+    const adminGroupSort = this.container.querySelector("#admin-groups-sort");
+    if (adminGroupSort) {
+      adminGroupSort.addEventListener("change", (e) => {
+        this.adminGroupSort = e.target.value;
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Reset Filters Button
+    const resetAdminGroupFilters = () => {
+      this.adminGroupSearchQuery = "";
+      this.adminGroupFilterStatus = "all";
+      this.adminGroupCourseFilter = "all";
+      this.adminGroupTeacherFilter = "all";
+      this.adminGroupSort = "newest";
+      this.renderTab("groups");
+    };
+    this.container.querySelector("#admin-reset-group-filters-btn")?.addEventListener("click", resetAdminGroupFilters);
+    this.container.querySelector("#admin-empty-reset-filters-btn")?.addEventListener("click", resetAdminGroupFilters);
+
     // Admin Approve Course Enrollment
     this.container.querySelectorAll(".admin-approve-enrollment-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -1190,7 +1360,52 @@ export default class AdminView {
       window.print();
     });
 
-    // Admin Groups Add & View Students Buttons
+    // Groups Accordion Item Toggle
+    this.container.querySelectorAll(".group-accordion-header").forEach(header => {
+      header.addEventListener("click", (e) => {
+        // Prevent collapsing if clicked inside a button
+        if (e.target.closest("button") || e.target.closest("a")) return;
+        
+        const item = header.closest(".group-accordion-item");
+        if (!item) return;
+        const body = item.querySelector(".group-accordion-body");
+        const chevron = item.querySelector(".accordion-chevron-icon");
+        
+        const isOpen = body && body.style.display === "block";
+        if (isOpen) {
+          body.style.display = "none";
+          if (chevron) chevron.style.transform = "rotate(0deg)";
+          item.style.boxShadow = "0 4px 14px rgba(0,0,0,0.03)";
+        } else {
+          body.style.display = "block";
+          if (chevron) chevron.style.transform = "rotate(180deg)";
+          item.style.boxShadow = "0 8px 26px rgba(0,0,0,0.08)";
+        }
+      });
+    });
+
+    // Accordion Expand All / Collapse All Buttons
+    this.container.querySelector("#admin-accordion-expand-all-btn")?.addEventListener("click", () => {
+      this.container.querySelectorAll(".group-accordion-item").forEach(item => {
+        const body = item.querySelector(".group-accordion-body");
+        const chevron = item.querySelector(".accordion-chevron-icon");
+        if (body) body.style.display = "block";
+        if (chevron) chevron.style.transform = "rotate(180deg)";
+        item.style.boxShadow = "0 8px 26px rgba(0,0,0,0.08)";
+      });
+    });
+
+    this.container.querySelector("#admin-accordion-collapse-all-btn")?.addEventListener("click", () => {
+      this.container.querySelectorAll(".group-accordion-item").forEach(item => {
+        const body = item.querySelector(".group-accordion-body");
+        const chevron = item.querySelector(".accordion-chevron-icon");
+        if (body) body.style.display = "none";
+        if (chevron) chevron.style.transform = "rotate(0deg)";
+        item.style.boxShadow = "0 4px 14px rgba(0,0,0,0.03)";
+      });
+    });
+
+    // Admin Groups Add Button
     this.container.querySelector("#admin-groups-add-btn")?.addEventListener("click", () => {
       this.renderGroupSessionModal();
     });
@@ -1199,6 +1414,149 @@ export default class AdminView {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
         this.renderGroupStudentsModal(id);
+      });
+    });
+
+    // Admin View Group Sessions Button
+    this.container.querySelectorAll(".admin-view-group-sessions-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.renderGroupSessionsViewModal(id);
+      });
+    });
+
+    // Admin Edit Group Button
+    this.container.querySelectorAll(".admin-edit-group-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        if (group) {
+          this.renderEditGroupModal(group);
+        } else {
+          showToast("لم يتم العثور على بيانات المجموعة.", "error");
+        }
+      });
+    });
+
+    // Admin Toggle Group Status (Open / In_Progress)
+    this.container.querySelectorAll(".admin-toggle-group-status-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+
+        if (action === "close") {
+          // Open interactive Start Teaching & Session Generator Modal
+          if (group) {
+            this.renderStartTeachingModal(group);
+          } else {
+            showToast("لم يتم العثور على بيانات المجموعة.", "error");
+          }
+          return;
+        }
+
+        // Reopen group for registration
+        const confirmed = await confirmDialog({ message: "هل تريد إعادة فتح باب التسجيل في هذه المجموعة؟" });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/groups/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: "OPEN" })
+          });
+          showToast("تمت إعادة فتح باب التسجيل بالمجموعة بنجاح!", "success");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل تغيير حالة المجموعة.", "error");
+        }
+      });
+    });
+
+    // Admin Delete Group Button
+    this.container.querySelectorAll(".admin-delete-group-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "هذه المجموعة";
+        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id)) || {};
+
+        // Calculate enrolled students count across all sources (group, roster, allEnrollments)
+        const matchedEnrollments = (this.allEnrollments || []).filter(e => 
+          (e.group && String(e.group.id) === String(id))
+        );
+        const attrCount = parseInt(btn.getAttribute("data-enrolled") || "0", 10);
+        const count = attrCount || 
+                      group.enrolledCount || 
+                      (Array.isArray(group.students) ? group.students.length : 0) || 
+                      (Array.isArray(group.enrollments) ? group.enrollments.length : 0) || 
+                      matchedEnrollments.length;
+
+        if (count > 0) {
+          // If group has students, ONLY show the Cannot Delete Alert Modal!
+          this.renderCannotDeleteGroupModal({
+            ...group,
+            id,
+            name: group.name || name,
+            enrolledCount: count
+          });
+          return;
+        }
+
+        // ONLY if group has 0 students, show the deletion confirmation dialog
+        const confirmed = await confirmDialog({ 
+          message: `هل أنت متأكد من رغبتك في حذف المجموعة "${name}" نهائياً؟`, 
+          danger: true 
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/groups/${id}`, { method: "DELETE" });
+          showToast("تم حذف المجموعة الدراسية بنجاح 🗑️", "success");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          btn.disabled = false;
+          if ((err.message || "").includes("طلاب") || (err.message || "").includes("مسجلين")) {
+            this.renderCannotDeleteGroupModal({
+              ...group,
+              id,
+              name: group.name || name,
+              enrolledCount: count || 1
+            });
+          } else {
+            showToast(err.message || "فشل حذف المجموعة.", "error");
+          }
+        }
+      });
+    });
+
+    // Admin Approve/Reject Pending Groups
+    this.container.querySelectorAll(".admin-open-approve-group-modal-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const group = (this.pendingCourseGroups || []).find(g => String(g.id) === String(id));
+        if (group) {
+          this.renderApproveGroupModal(group);
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".admin-reject-group-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog({ message: "هل أنت متأكد من رفض هذه المجموعة الدراسية؟", danger: true });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/admin/groups/${id}/reject`, { method: "POST" });
+          showToast("تم رفض المجموعة.", "info");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل رفض المجموعة.", "error");
+        }
       });
     });
 

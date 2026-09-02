@@ -47,63 +47,92 @@ export default class SettingsView {
             </div>
 
             ${state.user.role === 'student' ? `
-              <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); color:#f59e0b; padding:14px 18px; border-radius:14px; font-size:0.88rem; font-weight:700; margin-bottom:24px; display:flex; align-items:center; gap:10px;">
-                <i data-lucide="lock" style="width:20px;height:20px;flex-shrink:0;"></i>
-                <span>بيانات الحساب معتمدة ومقفلة — لتعديل أي من بياناتك يرجى التواصل مع إدارة المنصة.</span>
-              </div>
-
-              <!-- Clean Read-Only Profile Info Grid (No Input Fields) -->
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
-                
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="user" style="width:14px;height:14px;color:var(--primary);"></i>
-                    الاسم الكامل (Full Name)
+              <form id="settings-student-profile-form" style="display:flex; flex-direction:column; gap:20px;">
+                <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.04)); border:1.5px solid rgba(99,102,241,0.25); border-radius:18px; padding:20px; display:flex; align-items:center; gap:12px;">
+                  <div style="width:40px; height:40px; border-radius:12px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="graduation-cap" style="width:20px; height:20px;"></i>
                   </div>
-                  <div style="font-size:1rem; font-weight:800; color:var(--text-main);">${state.user.name || '-'}</div>
+                  <div>
+                    <h4 style="margin:0 0 2px 0; font-size:1rem; font-weight:800; color:var(--text-main);">المرحلة والبيانات الأكاديمية 🎓</h4>
+                    <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">يمكنك تحديث صفك ومرحلتك الدراسية فورياً لتخصيص الكورسات والمجموعات المناسبة لك.</p>
+                  </div>
                 </div>
 
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="mail" style="width:14px;height:14px;color:var(--primary);"></i>
-                    البريد الإلكتروني (Email Address)
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+                  <!-- Full Name (Read-Only) -->
+                  <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="user" style="width:14px;height:14px;color:var(--primary);"></i>
+                      الاسم الكامل (معتمد)
+                    </label>
+                    <input type="text" class="form-input" value="${state.user.name || ''}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed;">
                   </div>
-                  <div style="font-size:0.95rem; font-weight:700; color:var(--text-main);">${state.user.email || '-'}</div>
+
+                  <!-- Email (Read-Only) -->
+                  <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="mail" style="width:14px;height:14px;color:var(--primary);"></i>
+                      البريد الإلكتروني (معتمد)
+                    </label>
+                    <input type="email" class="form-input" value="${state.user.email || ''}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed;">
+                  </div>
                 </div>
 
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="phone" style="width:14px;height:14px;color:var(--primary);"></i>
-                    رقم هاتف الطالب (Phone Number)
-                  </div>
-                  <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); direction:ltr; text-align:start;">${state.user.phone || '<span style="color:var(--text-muted); font-size:0.85rem;">غير مسجل</span>'}</div>
+                <!-- Education Level (Editable) -->
+                <div class="form-group">
+                  <label style="font-weight:800; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px; color:var(--primary);">
+                    <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+                    المرحلة والصف الدراسي المقيد به الطالب *
+                  </label>
+                  ${renderEducationSelectHTML({
+                    id: "settings-student-education",
+                    selectedValue: state.user.education || "Grade 6 (Primary)",
+                    required: true,
+                    style: "padding:12px 14px; font-size:0.9rem; font-weight:700; border-radius:12px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-main);"
+                  })}
+                  <small style="color:var(--text-muted); display:block; margin-top:4px;">* اختيارك للمرحلة يحدد الكورسات والمجموعات الدراسية وحصص البث المخصصة لصفك بدقة.</small>
                 </div>
 
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="phone-call" style="width:14px;height:14px;color:var(--primary);"></i>
-                    رقم هاتف ولي الأمر (Parent Phone)
-                  </div>
-                  <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); direction:ltr; text-align:start;">${state.user.parentPhone || '<span style="color:var(--text-muted); font-size:0.85rem;">غير مسجل</span>'}</div>
+                <!-- Phone Numbers Notice -->
+                <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); color:#d97706; padding:12px 16px; border-radius:14px; font-size:0.84rem; font-weight:700; display:flex; align-items:center; gap:10px;">
+                  <i data-lucide="lock" style="width:18px;height:18px;flex-shrink:0;"></i>
+                  <span>أرقام الهواتف معتمدة ومقفلة — لتعديل رقم هاتف الطالب أو ولي الأمر، يرجى التواصل مع إدارة المنصة.</span>
                 </div>
 
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="graduation-cap" style="width:14px;height:14px;color:var(--primary);"></i>
-                    المستوى والمرحلة الدراسية (Education Level)
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+                  <!-- Student Phone (Locked) -->
+                  <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                      <span style="display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="smartphone" style="width:14px;height:14px;color:#10b981;"></i>
+                        رقم هاتف الطالب (واتساب)
+                      </span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:3px;">
+                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل
+                      </span>
+                    </label>
+                    <input type="text" class="form-input" value="${state.user.phone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left;">
                   </div>
-                  <div style="font-size:0.95rem; font-weight:800; color:var(--primary);">${state.user.education || 'عام'}</div>
+
+                  <!-- Parent Phone (Locked) -->
+                  <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                      <span style="display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="phone-call" style="width:14px;height:14px;color:#f59e0b;"></i>
+                        رقم هاتف ولي الأمر (للمتابعة والغياب)
+                      </span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:3px;">
+                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل
+                      </span>
+                    </label>
+                    <input type="text" class="form-input" value="${state.user.parentPhone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left;">
+                  </div>
                 </div>
 
-                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 18px;">
-                  <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="shield-check" style="width:14px;height:14px;color:#10b981;"></i>
-                    نوع الحساب وحالة التحقق
-                  </div>
-                  <div style="font-size:0.9rem; font-weight:800; color:#10b981;">حساب طالب مفعل وموثق ✅</div>
-                </div>
-
-              </div>
+                <button type="submit" id="settings-save-student-btn" class="btn-primary" style="margin-top:12px; padding:12px 24px; font-size:0.92rem; font-weight:800; border-radius:12px; justify-content:center; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="check" style="width:16px;height:16px;"></i> حفظ المرحلة الدراسية 🎓
+                </button>
+              </form>
             ` : `
             <form id="settings-profile-form">
               <div class="form-group">
@@ -265,7 +294,47 @@ export default class SettingsView {
       }
     });
 
-    // 3. Non-student profile form
+    // 3. Student profile form
+    if (state.user?.role === "student") {
+      document.getElementById("settings-student-profile-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const saveBtn = document.getElementById("settings-save-student-btn");
+        const education = document.getElementById("settings-student-education")?.value;
+
+        if (!education) {
+          showToast("يرجى اختيار المرحلة الدراسية.", "error");
+          return;
+        }
+
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:15px;height:15px;"></i> جاري الحفظ...`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+
+        try {
+          const updatedUser = await apiFetch(`/users/me`, {
+            method: "PATCH",
+            body: JSON.stringify({ education })
+          });
+
+          if (updatedUser && updatedUser.id) {
+            state.user = { ...state.user, ...updatedUser };
+            showToast("تم حفظ المرحلة الدراسية بنجاح! 🎓", "success");
+            this.render();
+          }
+        } catch (err) {
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i> حفظ المرحلة الدراسية 🎓`;
+            if (window.lucide) window.lucide.createIcons();
+          }
+          showToast(err.message || "فشل تحديث البيانات.", "error");
+        }
+      });
+    }
+
+    // 4. Non-student profile form
     if (state.user?.role !== "student") {
       document.getElementById("settings-profile-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();

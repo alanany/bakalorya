@@ -5,24 +5,68 @@ export default class CoursesView {
     this.container = container;
     this.courses = [];
     this.enrollments = [];
+    this.allGradesData = [];
+    this.explorerStage = "SECONDARY";
+    this.explorerGradeId = null;
+    this.explorerSubjectId = null;
+    this.searchQuery = "";
+    this.studentAutoGradeSet = false; // flag: has grade been auto-set from education?
+  }
+
+  // Map user.education string → { stage, gradeNameKeyword }
+  _mapEducationToStage(education) {
+    if (!education) return null;
+    const e = education.trim().toLowerCase();
+    if (e.includes("entlq 1") || e.includes("1ث") || e.includes("grade 10")) return { stage: "SECONDARY", keyword: "1" };
+    if (e.includes("entlq 2") || e.includes("2ث") || e.includes("grade 11")) return { stage: "SECONDARY", keyword: "2" };
+    if (e.includes("entlq 3") || e.includes("3ث") || e.includes("grade 12") || e.includes("bac")) return { stage: "SECONDARY", keyword: "3" };
+    if (e.includes("grade 7") || e.includes("1ع") || e.includes("prep 1")) return { stage: "PREPARATORY", keyword: "1" };
+    if (e.includes("grade 8") || e.includes("2ع") || e.includes("prep 2")) return { stage: "PREPARATORY", keyword: "2" };
+    if (e.includes("grade 9") || e.includes("3ع") || e.includes("prep 3") || e.includes("bem")) return { stage: "PREPARATORY", keyword: "3" };
+    if (e.includes("grade 1")) return { stage: "PRIMARY", keyword: "1" };
+    if (e.includes("grade 2")) return { stage: "PRIMARY", keyword: "2" };
+    if (e.includes("grade 3")) return { stage: "PRIMARY", keyword: "3" };
+    if (e.includes("grade 4")) return { stage: "PRIMARY", keyword: "4" };
+    if (e.includes("grade 5")) return { stage: "PRIMARY", keyword: "5" };
+    if (e.includes("grade 6")) return { stage: "PRIMARY", keyword: "6" };
+    return null;
   }
 
   async render() {
     try {
       this.container.innerHTML = `
-        <div style="max-width:1280px; margin:0 auto; padding:40px 24px;">
-          <h2 class="dashboard-section-title" style="font-size:2rem; margin-bottom:32px;">
-            <i data-lucide="book-open"></i> ${t("nav.courses") || "الدورات التعليمية"}
-          </h2>
+        <div style="max-width:1320px; margin:0 auto; padding:40px 24px 80px;">
+          
+          <!-- Header Bar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h1 class="dashboard-section-title" style="font-size:2rem; font-weight:900; margin:0 0 6px 0; display:flex; align-items:center; gap:12px; color:var(--text-main);">
+                <i data-lucide="book-open" style="color:var(--primary); width:32px; height:32px;"></i>
+                ${t("nav.courses") || "المقررات والمناهج الدراسية"}
+              </h1>
+              <p style="font-size:0.92rem; color:var(--text-muted); margin:0;">
+                حدد المرحلة والصف الدراسي لاستعراض المواد، المجموعات، وكورسات الشرح المباشرة 🇪🇬
+              </p>
+            </div>
+
+            ${state.user && (state.user.role === "teacher" || state.user.role === "admin") ? `
+              <button class="btn-primary" id="open-course-modal-btn" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px;">
+                <i data-lucide="plus-circle" style="width:18px;height:18px;"></i> ${t("teacher.createCourse") || "إضافة مقرر جديد"}
+              </button>
+            ` : ''}
+          </div>
+
           <div id="courses-content-area">
             <div style="text-align:center; padding:50px;">
-              <i data-lucide="loader" class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto;"></i>
+              <div class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto 16px;"></div>
+              <p style="font-weight:700; color:var(--text-muted);">جارٍ تحميل المقررات والمناهج الدراسية...</p>
             </div>
           </div>
+
         </div>
-        
+
         <!-- Course Creation Modal (Teacher / Admin Only) -->
-        <div class="modal-overlay" id="course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+        <div class="modal-overlay" id="course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:10000;">
           <div class="modal-content" style="max-width:650px; width:92%; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); background:var(--bg-card);">
             
             <!-- Modal Header -->
@@ -41,7 +85,7 @@ export default class CoursesView {
 
             <!-- Form -->
             <form id="create-course-form">
-              <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px;">
+              <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px; max-height:75vh; overflow-y:auto;">
                 
                 <!-- Course Title -->
                 <div class="form-group" style="margin:0;">
@@ -52,59 +96,73 @@ export default class CoursesView {
                   <input type="text" id="course-title" class="form-input" placeholder="مثال: مادة الفيزياء - وحدة الكهرباء للثانوية" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
                 </div>
 
-                <!-- Category & Degree Grid -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                  <!-- Platform Category -->
-                  <div class="form-group" style="margin:0;">
-                    <label for="course-category-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                      <i data-lucide="layers" style="width:14px; height:14px; color:#a855f7;"></i>
-                      ${t("teacher.courseCategory")}
+                <!-- EGYPTIAN CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT) -->
+                <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+                  
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <label style="font-weight:900; font-size:0.92rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="graduation-cap" style="width:18px; height:18px; color:#e51d74;"></i>
+                      <span>تحديد المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
                     </label>
-                    <select id="course-category-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
-                      <option value="">-- اختر التصنيف المعتمد --</option>
-                    </select>
+                    <span style="font-size:0.75rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.1); padding:3px 12px; border-radius:12px; border:1px solid rgba(229,29,116,0.2);">
+                      مناهج جمهورية مصر العربية
+                    </span>
                   </div>
 
-                  <!-- Grade Level -->
-                  <div class="form-group" style="margin:0;">
-                    <label for="course-degree" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                      <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#10b981;"></i>
-                      السنة الدراسية / المستوى
+                  <!-- 1. Stage Selector Segmented Buttons -->
+                  <div>
+                    <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                      1. اختر المرحلة التعليمية:
                     </label>
-                    <select id="course-degree" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
-                      <option value="">-- اختر المستوى --</option>
-                      
-                      <optgroup label="🌱 المرحلة الابتدائية (Primary)">
-                        <option value="الابتدائية - الصف الأول">الصف الأول الابتدائي (Primary 1)</option>
-                        <option value="الابتدائية - الصف الثاني">الصف الثاني الابتدائي (Primary 2)</option>
-                        <option value="الابتدائية - الصف الثالث">الصف الثالث الابتدائي (Primary 3)</option>
-                        <option value="الابتدائية - الصف الرابع">الصف الرابع الابتدائي (Primary 4)</option>
-                        <option value="الابتدائية - الصف الخامس">الصف الخامس الابتدائي (Primary 5)</option>
-                        <option value="الابتدائية - الصف السادس">الصف السادس الابتدائي (Primary 6)</option>
-                      </optgroup>
-
-                      <optgroup label="📘 المرحلة الإعدادية (Intermediate / Prep)">
-                        <option value="الإعدادية - الصف الأول">الصف الأول الإعدادي (Prep 1)</option>
-                        <option value="الإعدادية - الصف الثاني">الصف الثاني الإعدادي (Prep 2)</option>
-                        <option value="الإعدادية - الصف الثالث">الصف الثالث الإعدادي - الشهادة الإعدادية (Prep 3)</option>
-                      </optgroup>
-
-                      <optgroup label="🎓 المرحلة الثانوية (Secondary)">
-                        <option value="الثانوية - الصف الأول">الصف الأول الثانوي (1st Secondary)</option>
-                        <option value="الثانوية - الصف الثاني (علمي)">الصف الثاني الثانوي - علمي (2nd Sec Science)</option>
-                        <option value="الثانوية - الصف الثاني (أدبي)">الصف الثاني الثانوي - أدبي (2nd Sec Arts)</option>
-                        <option value="الثانوية - الصف الثالث (علمي علوم)">الصف الثالث الثانوي - علمي علوم (3rd Sec Science)</option>
-                        <option value="الثانوية - الصف الثالث (علمي رياضة)">الصف الثالث الثانوي - علمي رياضة (3rd Sec Math)</option>
-                        <option value="الثانوية - الصف الثالث (أدبي)">الصف الثالث الثانوي - أدبي (3rd Sec Arts)</option>
-                        <option value="الثانوية الأزهرية">الثانوية الأزهرية (Azhar Secondary)</option>
-                      </optgroup>
-
-                      <optgroup label="🌟 عام وتأسيس (All Grades / General)">
-                        <option value="جميع المراحل والصفوف">جميع المراحل والصفوف (All Grades)</option>
-                        <option value="تأسيس ودورات عامة">تأسيس ودورات تدريبية عامة (General & Foundation)</option>
-                      </optgroup>
-                    </select>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                      <button type="button" class="teacher-modal-stage-btn active" data-stage="PRIMARY" style="padding:10px 8px; border-radius:14px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#ffffff; transition:all 0.2s ease; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                        🎒 الابتدائية
+                      </button>
+                      <button type="button" class="teacher-modal-stage-btn" data-stage="PREPARATORY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                        📚 الإعدادية
+                      </button>
+                      <button type="button" class="teacher-modal-stage-btn" data-stage="SECONDARY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                        🎓 الثانوية العامة
+                      </button>
+                    </div>
                   </div>
+
+                  <!-- 2. Grade & Subject Dropdowns -->
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <!-- Grade Select -->
+                    <div class="form-group" style="margin:0;">
+                      <label for="modal-curriculum-grade-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                        2. الصف الدراسي <span style="color:#ef4444;">*</span>
+                      </label>
+                      <select id="modal-curriculum-grade-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                        <option value="">-- جاري التحميل... --</option>
+                      </select>
+                    </div>
+
+                    <!-- Subject Select -->
+                    <div class="form-group" style="margin:0;">
+                      <label for="modal-curriculum-subject-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                        3. المادة الدراسية <span style="color:#ef4444;">*</span>
+                      </label>
+                      <select id="modal-curriculum-subject-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                        <option value="">-- اختر الصف أولاً --</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Custom Subject Wrapper (if needed) -->
+                  <div id="modal-custom-subject-wrapper" style="display:none; margin-top:-4px;">
+                    <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; display:block;">
+                      اسم المادة أو التخصص المخصص:
+                    </label>
+                    <input type="text" id="modal-custom-subject-input" class="form-input" placeholder="اكتب اسم المادة يدوياً..." style="border-radius:12px; padding:9px 14px; font-size:0.88rem; width:100%;">
+                  </div>
+
+                  <!-- Hidden values for submission -->
+                  <input type="hidden" id="course-category-select" value="">
+                  <input type="hidden" id="course-degree" value="">
+                  <input type="hidden" id="modal-selected-grade-id" value="">
+                  <input type="hidden" id="modal-selected-subject-id" value="">
                 </div>
 
                 <!-- Course Description -->
@@ -135,7 +193,7 @@ export default class CoursesView {
                       <button type="button" class="btn-secondary" id="btn-trigger-upload" style="padding:8px 20px; border-radius:30px; font-size:0.85rem; margin:0 auto; display:inline-flex; align-items:center; gap:6px;">
                         <i data-lucide="upload-cloud" style="width:16px; height:16px;"></i> اختيار صورة غلاف الدورة
                       </button>
-                      <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصغار المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
+                      <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصيغ المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
                     </div>
 
                     <div id="image-upload-loading" style="display:none; padding:10px; color:var(--primary); font-weight:700; font-size:0.88rem;">
@@ -191,383 +249,845 @@ export default class CoursesView {
 
   async loadContent() {
     try {
-      const allCourses = await apiFetch("/courses");
-      const contentArea = this.container.querySelector("#courses-content-area");
+      const [allCourses, gradesData] = await Promise.all([
+        apiFetch("/courses").catch(() => []),
+        apiFetch("/curriculum/grades").catch(() => [])
+      ]);
 
-      // ── helpers ──────────────────────────────────────────────────────────
-      let enrollments = [];
-      let enrolledCourseIds = [];
+      this.courses = allCourses || [];
+      this.allGradesData = Array.isArray(gradesData) ? gradesData : [];
 
       if (state.user && state.user.role === "student") {
-        enrollments = await apiFetch("/student/enrollments").catch(() => []);
-        enrolledCourseIds = (enrollments || []).map(e => e.course?.id);
-      }
+        this.enrollments = await apiFetch("/student/enrollments").catch(() => []);
 
-      const isTeacher = state.user && (state.user.role === "teacher" || state.user.role === "admin");
-      const isStudent = state.user && state.user.role === "student";
-      const isGuest   = !state.user;
-
-      // Decide which pool of courses each section uses
-      const publishedPool = (allCourses || []).filter(c => c.status === "PUBLISHED" || !c.status);
-      const myCourses     = isTeacher
-        ? (allCourses || []).filter(c => c.teacher?.id === state.user.id || state.user.role === "admin")
-        : [];
-      const catalogPool   = isStudent
-        ? publishedPool.filter(c => !enrolledCourseIds.includes(c.id))
-        : publishedPool;
-
-      // ── same grade options as the "add course" form ───────────────────────
-      const gradeOptions = [
-        { group: "🌱 المرحلة الابتدائية", options: [
-          "الابتدائية - الصف الأول",
-          "الابتدائية - الصف الثاني",
-          "الابتدائية - الصف الثالث",
-          "الابتدائية - الصف الرابع",
-          "الابتدائية - الصف الخامس",
-          "الابتدائية - الصف السادس",
-        ]},
-        { group: "📘 المرحلة الإعدادية", options: [
-          "الإعدادية - الصف الأول",
-          "الإعدادية - الصف الثاني",
-          "الإعدادية - الصف الثالث",
-        ]},
-        { group: "🎓 المرحلة الثانوية", options: [
-          "الثانوية - الصف الأول",
-          "الثانوية - الصف الثاني (علمي)",
-          "الثانوية - الصف الثاني (أدبي)",
-          "الثانوية - الصف الثالث (علمي علوم)",
-          "الثانوية - الصف الثالث (علمي رياضة)",
-          "الثانوية - الصف الثالث (أدبي)",
-          "الثانوية الأزهرية",
-        ]},
-        { group: "🌟 عام وتأسيس", options: [
-          "جميع المراحل والصفوف",
-          "تأسيس ودورات عامة",
-        ]},
-      ];
-
-      const gradesOptionsHTML = gradeOptions.map(g =>
-        `<optgroup label="${g.group}">${g.options.map(o => `<option value="${o}">${o}</option>`).join("")}</optgroup>`
-      ).join("");
-
-      // ── fetch categories from API (same as populateCategoryOptions) ────────
-      let apiCategories = [];
-      try { apiCategories = await apiFetch("/categories"); } catch (e) { /* ignore */ }
-      const fieldsOptionsHTML = (apiCategories || []).map(cat =>
-        `<option value="${cat.name}">${cat.name}</option>`
-      ).join("");
-
-      // ── build filter bar HTML ─────────────────────────────────────────────
-      const filterBarHTML = `
-        <div id="courses-filter-bar" style="
-          background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          border-radius: 20px;
-          padding: 16px 20px;
-          margin-bottom: 28px;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          align-items: center;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-        ">
-          <!-- Search -->
-          <div style="flex:1; min-width:220px; position:relative;">
-            <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted); pointer-events:none;"></i>
-            <input
-              type="text"
-              id="filter-search"
-              placeholder="ابحث عن دورة أو معلم..."
-              autocomplete="off"
-              style="
-                width: 100%;
-                padding: 10px 40px 10px 14px;
-                border-radius: 30px;
-                border: 1.5px solid var(--border-color);
-                background: var(--bg-app);
-                color: var(--text-main);
-                font-size: 0.88rem;
-                font-weight: 600;
-                outline: none;
-                transition: border-color 0.2s;
-                box-sizing: border-box;
-              "
-            >
-          </div>
-
-          <!-- Grade filter -->
-          <div style="position:relative; min-width:200px; flex:0 0 auto;">
-            <i data-lucide="graduation-cap" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none; z-index:1;"></i>
-            <select id="filter-grade" style="
-              appearance:none;
-              width: 100%;
-              padding: 10px 36px 10px 14px;
-              border-radius: 30px;
-              border: 1.5px solid var(--border-color);
-              background: var(--bg-app);
-              color: var(--text-main);
-              font-size: 0.85rem;
-              font-weight: 600;
-              cursor: pointer;
-              outline: none;
-              transition: border-color 0.2s;
-            ">
-              <option value="">🎓 كل المراحل الدراسية</option>
-              ${gradesOptionsHTML}
-            </select>
-          </div>
-
-          <!-- Category / Field filter -->
-          <div style="position:relative; min-width:180px; flex:0 0 auto;">
-            <i data-lucide="layers" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none; z-index:1;"></i>
-            <select id="filter-field" style="
-              appearance:none;
-              width: 100%;
-              padding: 10px 36px 10px 14px;
-              border-radius: 30px;
-              border: 1.5px solid var(--border-color);
-              background: var(--bg-app);
-              color: var(--text-main);
-              font-size: 0.85rem;
-              font-weight: 600;
-              cursor: pointer;
-              outline: none;
-              transition: border-color 0.2s;
-            ">
-              <option value="">📚 كل المواد</option>
-              ${fieldsOptionsHTML}
-            </select>
-          </div>
-
-          <!-- Clear button -->
-          <button id="filter-clear-btn" style="
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 9px 18px;
-            border-radius: 30px;
-            border: 1.5px solid var(--border-color);
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.83rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-          ">
-            <i data-lucide="x-circle" style="width:14px;height:14px;"></i>
-            مسح الفلاتر
-          </button>
-
-          <!-- Results counter -->
-          <span id="filter-results-count" style="
-            margin-inline-start: auto;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            font-weight: 700;
-            white-space: nowrap;
-          "></span>
-        </div>
-      `;
-
-      // ── build section HTML ────────────────────────────────────────────────
-      let sectionsHTML = "";
-
-      if (isGuest) {
-        sectionsHTML = `
-          <div id="section-catalog">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-              <h3 class="dashboard-section-title" style="margin:0;">
-                <i data-lucide="compass"></i> دليل الدورات التعليمية المتاحة
-              </h3>
-            </div>
-            <div class="courses-grid" id="grid-catalog"></div>
-            <div id="grid-catalog-empty" style="display:none;">
-              <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
-                <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;"></i>
-                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
-              </div>
-            </div>
-          </div>
-        `;
-      } else if (isStudent) {
-        sectionsHTML = `
-          <!-- Enrolled -->
-          <div id="section-enrolled" style="margin-bottom:40px;">
-            <h3 class="dashboard-section-title"><i data-lucide="graduation-cap"></i> ${t("student.myTrack")}</h3>
-            <div class="courses-grid" id="grid-enrolled"></div>
-            <div id="grid-enrolled-empty" style="display:none;">
-              <div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted);">
-                <p>لا توجد دورات مسجّل بها تطابق البحث.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Catalog -->
-          <div id="section-catalog">
-            <h3 class="dashboard-section-title"><i data-lucide="compass"></i> ${t("student.exploreCourses")}</h3>
-            <div class="courses-grid" id="grid-catalog"></div>
-            <div id="grid-catalog-empty" style="display:none;">
-              <div class="glass-card" style="text-align:center; padding:30px; color:var(--text-muted);">
-                <i data-lucide="search-x" style="width:40px;height:40px;opacity:0.3;margin-bottom:10px;"></i>
-                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
-              </div>
-            </div>
-          </div>
-        `;
-      } else {
-        // Teacher / Admin
-        sectionsHTML = `
-          <div id="section-catalog">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-              <h3 class="dashboard-section-title" style="margin:0;"><i data-lucide="folder-git-2"></i> ${t("teacher.coursesDir")}</h3>
-            </div>
-            <div class="courses-grid" id="grid-catalog"></div>
-            <div id="grid-catalog-empty" style="display:none;">
-              <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
-                <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;"></i>
-                <p>لا توجد دورات تطابق الفلاتر المختارة.</p>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      contentArea.innerHTML = filterBarHTML + sectionsHTML;
-      if (window.lucide) window.lucide.createIcons();
-
-      // ── render initial course cards ───────────────────────────────────────
-      const gridCatalog   = document.getElementById("grid-catalog");
-      const gridEnrolled  = document.getElementById("grid-enrolled");
-
-      if (isStudent) {
-        if (enrollments.length > 0) {
-          gridEnrolled.innerHTML = enrollments.map(enroll =>
-            this.renderCourseCard(enroll.course, enroll.progress, true, false, enroll.status)
-          ).join("");
-        } else {
-          document.getElementById("grid-enrolled-empty").style.display = "block";
-        }
-        gridCatalog.innerHTML = catalogPool.map(c => this.renderCourseCard(c, 0, false)).join("");
-      } else if (isTeacher) {
-        gridCatalog.innerHTML = myCourses.map(c => this.renderCourseCard(c, 0, true, true)).join("");
-      } else {
-        gridCatalog.innerHTML = publishedPool.map(c => this.renderCourseCard(c, 0, false)).join("");
-      }
-
-      if (window.lucide) window.lucide.createIcons();
-      if (isTeacher) this.bindEvents();
-
-      // ── filtering logic ───────────────────────────────────────────────────
-      const applyFilters = () => {
-        const q      = (document.getElementById("filter-search")?.value || "").trim().toLowerCase();
-        const grade  = (document.getElementById("filter-grade")?.value  || "").toLowerCase();
-        const field  = (document.getElementById("filter-field")?.value  || "").toLowerCase();
-
-        const matches = (course) => {
-          if (!course) return false;
-          const title   = (course.title       || "").toLowerCase();
-          const desc    = (course.description || "").toLowerCase();
-          const teacher = (course.teacher?.name || "").toLowerCase();
-          const cat     = (course.category    || "").toLowerCase();
-          const deg     = (course.degree      || "").toLowerCase();
-
-          const qOk    = !q     || title.includes(q) || desc.includes(q) || teacher.includes(q) || cat.includes(q) || deg.includes(q);
-          const grOk   = !grade || deg.includes(grade);
-          const fieldOk= !field || cat.includes(field);
-          return qOk && grOk && fieldOk;
-        };
-
-        let totalVisible = 0;
-
-        // Catalog grid
-        if (gridCatalog) {
-          const pool = isTeacher ? myCourses : isStudent ? catalogPool : publishedPool;
-          const filtered = pool.filter(c => matches(c));
-          gridCatalog.innerHTML = filtered.map(c => {
-            if (isTeacher) return this.renderCourseCard(c, 0, true, true);
-            if (isStudent) return this.renderCourseCard(c, 0, false);
-            return this.renderCourseCard(c, 0, false);
-          }).join("");
-          const emptyEl = document.getElementById("grid-catalog-empty");
-          if (emptyEl) emptyEl.style.display = filtered.length === 0 ? "block" : "none";
-          totalVisible += filtered.length;
-          if (window.lucide) window.lucide.createIcons();
+        // 1. Check saved grade preference from localStorage
+        if (!this.studentAutoGradeSet) {
+          const savedPref = localStorage.getItem(`bak_student_grade_${state.user.id}`);
+          if (savedPref) {
+            try {
+              const { gradeId, stage } = JSON.parse(savedPref);
+              if (stage && gradeId && this.allGradesData.some(g => g.id === gradeId)) {
+                this.explorerStage = stage;
+                this.explorerGradeId = gradeId;
+                this.studentAutoGradeSet = true;
+              }
+            } catch(e) { /* ignore bad JSON */ }
+          }
         }
 
-        // Enrolled grid (student only)
-        if (gridEnrolled && isStudent) {
-          const filtered = enrollments.filter(e => matches(e.course));
-          gridEnrolled.innerHTML = filtered.map(e =>
-            this.renderCourseCard(e.course, e.progress, true, false, e.status)
-          ).join("");
-          const emptyEl = document.getElementById("grid-enrolled-empty");
-          if (emptyEl) emptyEl.style.display = filtered.length === 0 ? "block" : "none";
-          totalVisible += filtered.length;
-          if (window.lucide) window.lucide.createIcons();
+        // 2. Fall back: Auto-detect from signup education field
+        if (!this.studentAutoGradeSet && state.user.education) {
+          const mapped = this._mapEducationToStage(state.user.education);
+          if (mapped) {
+            this.explorerStage = mapped.stage;
+            const stageGrades = this.allGradesData.filter(g => g.stage === mapped.stage);
+            const matchedGrade = stageGrades.find(g => {
+              const nameLower = (g.nameEn || g.name || "").toLowerCase();
+              return nameLower.includes(mapped.keyword);
+            }) || stageGrades[0];
+            if (matchedGrade) this.explorerGradeId = matchedGrade.id;
+            this.studentAutoGradeSet = true;
+          }
         }
-
-        // Update counter
-        const counter = document.getElementById("filter-results-count");
-        if (counter) {
-          const hasFilter = q || grade || field;
-          counter.textContent = hasFilter ? `${totalVisible} نتيجة` : "";
-        }
-
-        if (isTeacher) this.bindEvents();
-      };
-
-      // bind filter inputs
-      document.getElementById("filter-search")?.addEventListener("input", applyFilters);
-      document.getElementById("filter-grade")?.addEventListener("change", applyFilters);
-      document.getElementById("filter-field")?.addEventListener("change", applyFilters);
-
-      document.getElementById("filter-clear-btn")?.addEventListener("click", () => {
-        const s = document.getElementById("filter-search");
-        const g = document.getElementById("filter-grade");
-        const f = document.getElementById("filter-field");
-        if (s) s.value = "";
-        if (g) g.value = "";
-        if (f) f.value = "";
-        applyFilters();
-      });
-
-      // focus style
-      const searchInput = document.getElementById("filter-search");
-      if (searchInput) {
-        searchInput.addEventListener("focus",  () => searchInput.style.borderColor = "var(--primary)");
-        searchInput.addEventListener("blur",   () => searchInput.style.borderColor = "var(--border-color)");
       }
 
+      this.renderCurriculumExplorer();
     } catch (err) {
       console.error("Courses content loading error:", err);
     }
   }
 
-  async populateCategoryOptions(selectedCategory = "") {
-    const catSelect = document.getElementById("course-category-select");
-    if (!catSelect) return;
+  renderCurriculumExplorer() {
+    const contentArea = this.container.querySelector("#courses-content-area");
+    if (!contentArea) return;
 
-    let apiCategories = [];
-    try {
-      apiCategories = await apiFetch("/categories");
-    } catch (e) {
-      console.error("Failed to fetch categories", e);
+    const isStudent = state.user && state.user.role === "student";
+    const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
+    const stageLabels = { PRIMARY: "الابتدائية 🎒", PREPARATORY: "الإعدادية 📚", SECONDARY: "الثانوية العامة 🎓" };
+
+    if (isStudent) {
+      // ── STUDENT PATH: Show subjects directly, no stage/grade selector UI ──
+      contentArea.innerHTML = `
+
+        <!-- Grade Header with change button -->
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:28px;">
+          <div>
+            <h2 style="font-size:1.6rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:10px;">
+              <i data-lucide="graduation-cap" style="width:28px; height:28px; color:#e51d74;"></i>
+              مواد صفك الدراسي
+            </h2>
+            ${currentGrade ? `
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                <span style="font-size:0.95rem; font-weight:800; color:var(--text-main);">${currentGrade.name}</span>
+                <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted); background:var(--bg-app); padding:2px 10px; border-radius:10px; border:1px solid var(--border-color);">
+                  ${stageLabels[currentGrade.stage] || currentGrade.stage}
+                </span>
+                <span style="font-size:0.78rem; font-weight:800; background:rgba(229,29,116,0.1); color:#e51d74; padding:2px 10px; border-radius:10px; border:1px solid rgba(229,29,116,0.2);">
+                  مناهج مصر 🇪🇬
+                </span>
+              </div>
+            ` : `<p style="color:var(--text-muted); font-size:0.9rem; margin:4px 0 0 0;">اختر صفك الدراسي لعرض المواد</p>`}
+          </div>
+          <button id="change-grade-btn" style="
+            display:inline-flex; align-items:center; gap:8px;
+            padding:11px 22px; border-radius:14px; font-weight:800; font-size:0.9rem; cursor:pointer;
+            border:1.5px solid var(--primary); color:var(--primary); background:var(--primary-glow);
+            transition:all 0.2s ease; white-space:nowrap;
+          ">
+            <i data-lucide="pencil" style="width:15px; height:15px;"></i>
+            تغيير الصف
+          </button>
+        </div>
+
+        <!-- Subjects Grid -->
+        <div id="courses-explorer-subjects-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:18px; direction:rtl; margin-bottom:40px;">
+          <p style="color:var(--text-muted); font-size:0.9rem; grid-column:1/-1; text-align:center; padding:30px 0;">
+            جارٍ تحميل المواد الدراسية...
+          </p>
+        </div>
+
+        <!-- Courses catalog for current grade -->
+        <div id="courses-catalog-section" style="margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+            <div>
+              <h3 class="dashboard-section-title" style="margin:0 0 4px 0; font-size:1.2rem;">
+                <i data-lucide="compass"></i> الدورات والشروحات لهذا الصف
+              </h3>
+              <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">استعرض كورسات الشرح وحصص المراجعة المسجلة والمباشرة</p>
+            </div>
+            <div style="position:relative; width:100%; max-width:300px;">
+              <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted); pointer-events:none;"></i>
+              <input type="text" id="courses-page-search-input" placeholder="ابحث عن درس أو أستاذ..." value="${this.searchQuery || ''}"
+                style="width:100%; padding:10px 40px 10px 14px; border-radius:30px; border:1.5px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.88rem; font-weight:600; outline:none; box-sizing:border-box;">
+            </div>
+          </div>
+          <div class="courses-grid" id="courses-page-grid"></div>
+          <div id="courses-page-empty-state" style="display:none;">
+            <div class="glass-card" style="text-align:center; padding:40px 24px; color:var(--text-muted); border-radius:20px;">
+              <i data-lucide="search-x" style="width:44px;height:44px;opacity:0.3;margin-bottom:12px;"></i>
+              <h4 style="font-weight:800; font-size:1rem; color:var(--text-main); margin:0 0 6px 0;">لا توجد دورات لهذا الصف حالياً</h4>
+              <p style="font-size:0.85rem; margin:0;">تصفح المواد أعلاه أو غيّر الصف لاستعراض المزيد.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change Grade Modal -->
+        <div id="change-grade-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:20px;">
+          <div style="background:var(--bg-card); border-radius:28px; padding:32px; max-width:520px; width:100%; border:1px solid var(--border-color); box-shadow:0 30px 60px rgba(0,0,0,0.3); position:relative; max-height:90vh; overflow-y:auto;">
+            <button id="close-change-grade-modal" style="position:absolute; top:16px; left:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border-color); background:var(--bg-app); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:var(--text-muted);">&times;</button>
+            <h3 style="font-size:1.2rem; font-weight:900; color:var(--text-main); margin:0 0 6px 0; text-align:center;">تغيير الصف الدراسي</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin:0 0 24px 0;">اختر مرحلتك وصفك لعرض المواد الخاصة بك</p>
+
+            <!-- Stage buttons -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
+              ${["PRIMARY","PREPARATORY","SECONDARY"].map(stage => {
+                const colors = { PRIMARY:"#10b981", PREPARATORY:"#3b82f6", SECONDARY:"#e51d74" };
+                const labels = { PRIMARY:"🎒 ابتدائي", PREPARATORY:"📚 إعدادي", SECONDARY:"🎓 ثانوي" };
+                const isSel = this.explorerStage === stage;
+                return `<button class="modal-stage-btn" data-stage="${stage}" style="padding:10px 6px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid ${isSel ? colors[stage] : 'var(--border-color)'}; background:${isSel ? colors[stage] : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${labels[stage]}</button>`;
+              }).join('')}
+            </div>
+
+            <!-- Grade pills -->
+            <div style="margin-bottom:8px; font-size:0.82rem; font-weight:800; color:var(--text-muted);">اختر الصف الدراسي:</div>
+            <div id="modal-grades-list" style="display:flex; gap:8px; flex-wrap:wrap;">
+              ${this.allGradesData.filter(g => g.stage === this.explorerStage).map(g => {
+                const isSel = g.id === this.explorerGradeId;
+                return `<button class="modal-grade-btn" data-grade-id="${g.id}" style="padding:8px 16px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:1.5px solid ${isSel ? '#e51d74' : 'var(--border-color)'}; background:${isSel ? '#e51d74' : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${g.name}</button>`;
+              }).join('')}
+            </div>
+
+            <!-- Save button -->
+            <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-color); display:flex; gap:10px; justify-content:flex-end;">
+              <button id="close-change-grade-modal-cancel" style="padding:10px 20px; border-radius:12px; font-weight:700; font-size:0.88rem; cursor:pointer; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-muted);">إلغاء</button>
+              <button id="save-grade-btn" style="padding:10px 24px; border-radius:12px; font-weight:900; font-size:0.88rem; cursor:pointer; border:none; background:linear-gradient(135deg,#e51d74,#9333ea); color:#fff; display:flex; align-items:center; gap:8px; box-shadow:0 6px 16px rgba(229,29,116,0.3); transition:all 0.2s;">
+                <i data-lucide="save" style="width:16px; height:16px;"></i>
+                حفظ الاختيار
+              </button>
+            </div>
+          </div>
+        </div>
+
+      `;
+
+      this.bindStudentExplorerEvents();
+      this.renderExplorerSubjects();
+      if (window.lucide) window.lucide.createIcons();
+      return;
     }
 
-    let optionsHTML = `<option value="">-- اختر التصنيف المعتمد بالمنصة --</option>`;
-    if (apiCategories && apiCategories.length > 0) {
-      apiCategories.forEach(cat => {
-        const isSel = selectedCategory && (selectedCategory === cat.name || selectedCategory.toLowerCase() === cat.name.toLowerCase());
-        optionsHTML += `<option value="${cat.name}" ${isSel ? 'selected' : ''}>${cat.name}</option>`;
+    // ── NON-STUDENT PATH: Full stage/grade/subject selector ──
+    contentArea.innerHTML = `
+      <!-- 1. STAGE SELECTOR CARDS -->
+      <div id="stage-grade-selector-panel" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:28px; padding:28px 32px; margin-bottom:36px; box-shadow:0 10px 35px rgba(0,0,0,0.05); position:relative; overflow:hidden;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-weight:900; font-size:1.25rem; color:var(--text-main); margin:0 0 4px 0; display:flex; align-items:center; gap:8px;">
+              <span>1. اختر المرحلة التعليمية</span>
+              <span style="font-size:0.75rem; font-weight:800; background:rgba(229,29,116,0.1); color:#e51d74; padding:2px 10px; border-radius:10px;">
+                مناهج مصر 🇪🇬
+              </span>
+            </h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">اختر المرحلة للانتقال للصفوف والمواد المعتمدة</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:28px;">
+          
+          <!-- Primary Stage Card -->
+          <div class="courses-explorer-stage-card ${this.explorerStage === "PRIMARY" ? "active" : ""}" data-stage="PRIMARY" style="
+            background:var(--bg-app);
+            border:2px solid ${this.explorerStage === "PRIMARY" ? "#10b981" : "var(--border-color)"};
+            box-shadow:${this.explorerStage === "PRIMARY" ? "0 8px 24px rgba(16,185,129,0.18)" : "none"};
+            border-radius:22px; padding:18px 20px; cursor:pointer; display:flex; align-items:center; gap:16px; transition:all 0.25s ease;">
+            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, #10b981 0%, #047857 100%); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; flex-shrink:0; box-shadow:0 6px 16px rgba(16,185,129,0.3);">🎒</div>
+            <div>
+              <h4 style="font-size:1.1rem; font-weight:900; color:var(--text-main); margin:0 0 3px 0;">المرحلة الابتدائية</h4>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">الصفوف (1 - 6 ابتدائي)</span>
+            </div>
+          </div>
+
+          <!-- Preparatory Stage Card -->
+          <div class="courses-explorer-stage-card ${this.explorerStage === "PREPARATORY" ? "active" : ""}" data-stage="PREPARATORY" style="
+            background:var(--bg-app);
+            border:2px solid ${this.explorerStage === "PREPARATORY" ? "#3b82f6" : "var(--border-color)"};
+            box-shadow:${this.explorerStage === "PREPARATORY" ? "0 8px 24px rgba(59,130,246,0.18)" : "none"};
+            border-radius:22px; padding:18px 20px; cursor:pointer; display:flex; align-items:center; gap:16px; transition:all 0.25s ease;">
+            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; flex-shrink:0; box-shadow:0 6px 16px rgba(59,130,246,0.3);">📚</div>
+            <div>
+              <h4 style="font-size:1.1rem; font-weight:900; color:var(--text-main); margin:0 0 3px 0;">المرحلة الإعدادية</h4>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">الصفوف (1ع - 3ع والشهادة)</span>
+            </div>
+          </div>
+
+          <!-- Secondary Stage Card -->
+          <div class="courses-explorer-stage-card ${this.explorerStage === "SECONDARY" ? "active" : ""}" data-stage="SECONDARY" style="
+            background:var(--bg-app);
+            border:2px solid ${this.explorerStage === "SECONDARY" ? "#e51d74" : "var(--border-color)"};
+            box-shadow:${this.explorerStage === "SECONDARY" ? "0 8px 24px rgba(229,29,116,0.18)" : "none"};
+            border-radius:22px; padding:18px 20px; cursor:pointer; display:flex; align-items:center; gap:16px; transition:all 0.25s ease;">
+            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, #e51d74 0%, #be123c 100%); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; flex-shrink:0; box-shadow:0 6px 16px rgba(229,29,116,0.3);">🎓</div>
+            <div>
+              <h4 style="font-size:1.1rem; font-weight:900; color:var(--text-main); margin:0 0 3px 0;">الثانوية العامة والأزهر</h4>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">علمي علوم، رياضة، أدبي</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 2. GRADES SELECTOR PILLS BAR -->
+        <div style="background:rgba(0,0,0,0.02); border:1px solid var(--border-color); border-radius:20px; padding:14px 18px; margin-bottom:30px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <span style="font-size:0.88rem; font-weight:900; color:var(--text-main);">2. حدد الصف الدراسي:</span>
+          </div>
+          <div id="courses-explorer-grades-container" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          </div>
+        </div>
+
+        <!-- 3. CREATIVE SUBJECTS GRID -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px;">
+            <h3 style="font-weight:900; font-size:1.2rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+              <span>3. المواد الدراسية المقررة</span>
+              <span id="courses-selected-grade-label-badge" style="font-size:0.8rem; font-weight:800; background:rgba(0,86,210,0.1); color:var(--primary); padding:3px 12px; border-radius:12px; border:1px solid rgba(0,86,210,0.2);"></span>
+            </h3>
+            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">اضغط على أي مادة لاستعراض المجموعات ➔</span>
+          </div>
+
+          <div id="courses-explorer-subjects-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px; direction:rtl;">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 4. SEARCH & FILTERED COURSES CATALOG -->
+      <div id="courses-catalog-section" style="margin-top:40px;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <h3 class="dashboard-section-title" style="margin:0 0 4px 0; font-size:1.35rem;">
+              <i data-lucide="compass"></i> الدورات والشروحات المتاحة لهذا الصف
+            </h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">استعرض دورات الشرح وحصص المراجعة المسجلة والمباشرة</p>
+          </div>
+
+          <!-- Search Input -->
+          <div style="position:relative; width:100%; max-width:320px;">
+            <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted); pointer-events:none;"></i>
+            <input
+              type="text"
+              id="courses-page-search-input"
+              placeholder="ابحث عن درس، مادة، أو أستاذ..."
+              value="${this.searchQuery || ''}"
+              style="width:100%; padding:10px 40px 10px 14px; border-radius:30px; border:1.5px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.88rem; font-weight:600; outline:none; box-sizing:border-box;"
+            >
+          </div>
+        </div>
+
+        <div class="courses-grid" id="courses-page-grid"></div>
+        
+        <div id="courses-page-empty-state" style="display:none;">
+          <div class="glass-card" style="text-align:center; padding:48px 24px; color:var(--text-muted); border-radius:20px;">
+            <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;"></i>
+            <h4 style="font-weight:800; font-size:1.1rem; color:var(--text-main); margin:0 0 6px 0;">لا توجد دورات مضافة لهذا الصف حالياً</h4>
+            <p style="font-size:0.88rem; margin:0;">يمكنك تصفح المجموعات المباشرة من قائمة المواد أعلاه أو اختيار صف آخر.</p>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    this.bindExplorerEvents();
+    this.renderExplorerGrades();
+    if (window.lucide) window.lucide.createIcons();
+    if (state.user && (state.user.role === "teacher" || state.user.role === "admin")) {
+      this.bindEvents();
+    }
+  }
+
+
+
+  bindStudentExplorerEvents() {
+    const changeGradeBtn = this.container.querySelector("#change-grade-btn");
+    const modal = this.container.querySelector("#change-grade-modal");
+
+    // Track pending selection (before save)
+    let pendingGradeId = this.explorerGradeId;
+    let pendingStage = this.explorerStage;
+
+    // Open modal
+    if (changeGradeBtn && modal) {
+      changeGradeBtn.addEventListener("click", () => {
+        pendingGradeId = this.explorerGradeId;
+        pendingStage = this.explorerStage;
+        modal.style.display = "flex";
+        if (window.lucide) window.lucide.createIcons();
       });
     }
 
-    catSelect.innerHTML = optionsHTML;
-    if (selectedCategory && catSelect.querySelector(`option[value="${selectedCategory}"]`)) {
-      catSelect.value = selectedCategory;
+    const closeModal = () => { if (modal) modal.style.display = "none"; };
+
+    // Close modal (X button, backdrop, cancel)
+    this.container.querySelector("#close-change-grade-modal")?.addEventListener("click", closeModal);
+    this.container.querySelector("#close-change-grade-modal-cancel")?.addEventListener("click", closeModal);
+    modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    // Stage buttons: update pending stage and refresh grade pills
+    const colors = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" };
+    this.container.querySelectorAll(".modal-stage-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        pendingStage = btn.getAttribute("data-stage");
+        pendingGradeId = null;
+        // Update stage button styles
+        this.container.querySelectorAll(".modal-stage-btn").forEach(b => {
+          const s = b.getAttribute("data-stage");
+          const c = colors[s] || "#e51d74";
+          const sel = s === pendingStage;
+          b.style.border = `2px solid ${sel ? c : "var(--border-color)"}`;
+          b.style.background = sel ? c : "var(--bg-app)";
+          b.style.color = sel ? "#fff" : "var(--text-main)";
+        });
+        // Refresh grade pills
+        const gradesList = this.container.querySelector("#modal-grades-list");
+        if (gradesList) {
+          const stageGrades = this.allGradesData.filter(g => g.stage === pendingStage);
+          gradesList.innerHTML = stageGrades.map(g => `
+            <button class="modal-grade-btn" data-grade-id="${g.id}" style="padding:8px 16px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:1.5px solid var(--border-color); background:var(--bg-app); color:var(--text-main); transition:all 0.2s;">${g.name}</button>
+          `).join("");
+          this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
+        }
+      });
+    });
+
+    // Initial grade highlight binding
+    this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
+
+    // Save button: persist and apply
+    this.container.querySelector("#save-grade-btn")?.addEventListener("click", () => {
+      if (!pendingGradeId) {
+        // If no grade clicked, use first of the stage
+        const first = this.allGradesData.find(g => g.stage === pendingStage);
+        if (first) pendingGradeId = first.id;
+      }
+      if (pendingGradeId && pendingStage) {
+        this.explorerStage = pendingStage;
+        this.explorerGradeId = pendingGradeId;
+        this.explorerSubjectId = null;
+        // Save to localStorage
+        if (state.user) {
+          localStorage.setItem(`bak_student_grade_${state.user.id}`,
+            JSON.stringify({ gradeId: pendingGradeId, stage: pendingStage }));
+        }
+        closeModal();
+        this.renderCurriculumExplorer();
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // Search input
+    this.container.querySelector("#courses-page-search-input")?.addEventListener("input", (e) => {
+      this.searchQuery = e.target.value.trim().toLowerCase();
+      this.renderFilteredCoursesList();
+    });
+  }
+
+  // Highlight selected grade inside modal (without auto-closing)
+  _bindModalGradeHighlight(onSelect, currentStage) {
+    const stageColor = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" }[currentStage] || "#e51d74";
+    this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        // Highlight this button
+        this.container.querySelectorAll(".modal-grade-btn").forEach(b => {
+          b.style.border = "1.5px solid var(--border-color)";
+          b.style.background = "var(--bg-app)";
+          b.style.color = "var(--text-main)";
+        });
+        btn.style.border = `1.5px solid ${stageColor}`;
+        btn.style.background = stageColor;
+        btn.style.color = "#fff";
+        onSelect(btn.getAttribute("data-grade-id"));
+      });
+    });
+  }
+
+  // Legacy helper kept for non-student path (not used for students anymore)
+  _bindModalGradeBtns(stageColor, modal) {
+    this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.explorerGradeId = btn.getAttribute("data-grade-id");
+        this.explorerSubjectId = null;
+        if (modal) modal.style.display = "none";
+        this.renderCurriculumExplorer();
+        if (window.lucide) window.lucide.createIcons();
+      });
+    });
+  }
+
+
+  bindExplorerEvents() {
+    // "تغيير الصف" button — show the stage/grade selector
+    const changeGradeBtn = this.container.querySelector("#change-grade-btn");
+    if (changeGradeBtn) {
+      changeGradeBtn.addEventListener("click", () => {
+        const panel = this.container.querySelector("#stage-grade-selector-panel");
+        const banner = this.container.querySelector("#student-grade-banner");
+        if (panel) { panel.style.display = ""; panel.scrollIntoView({ behavior: "smooth", block: "start" }); }
+        if (banner) banner.style.display = "none";
+      });
     }
+
+    // Stage card clicks
+    this.container.querySelectorAll(".courses-explorer-stage-card").forEach(card => {
+      card.addEventListener("click", () => {
+        this.container.querySelectorAll(".courses-explorer-stage-card").forEach(c => {
+          c.classList.remove("active");
+          c.style.borderColor = "var(--border-color)";
+          c.style.boxShadow = "none";
+        });
+
+        card.classList.add("active");
+        const stage = card.getAttribute("data-stage");
+        this.explorerStage = stage;
+
+        if (stage === "PRIMARY") {
+          card.style.borderColor = "#10b981";
+          card.style.boxShadow = "0 8px 24px rgba(16,185,129,0.18)";
+        } else if (stage === "PREPARATORY") {
+          card.style.borderColor = "#3b82f6";
+          card.style.boxShadow = "0 8px 24px rgba(59,130,246,0.18)";
+        } else {
+          card.style.borderColor = "#e51d74";
+          card.style.boxShadow = "0 8px 24px rgba(229,29,116,0.18)";
+        }
+
+        this.explorerGradeId = null;
+        this.explorerSubjectId = null;
+        this.renderExplorerGrades();
+      });
+    });
+
+    // Search event
+    const searchInput = this.container.querySelector("#courses-page-search-input");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.searchQuery = e.target.value.trim().toLowerCase();
+        this.renderFilteredCoursesList();
+      });
+    }
+  }
+
+  renderExplorerGrades() {
+    const gradesContainer = this.container.querySelector("#courses-explorer-grades-container");
+    if (!gradesContainer) return;
+
+    const stageGrades = this.allGradesData.filter(g => g.stage === this.explorerStage);
+    if (stageGrades.length === 0) {
+      gradesContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">لا توجد صفوف دراسية مسجلة لهذه المرحلة حالياً.</p>`;
+      return;
+    }
+
+    if (!this.explorerGradeId || !stageGrades.some(g => g.id === this.explorerGradeId)) {
+      this.explorerGradeId = stageGrades[0].id;
+    }
+
+    const stageColors = {
+      PRIMARY: { active: "#10b981", shadow: "rgba(16,185,129,0.3)" },
+      PREPARATORY: { active: "#3b82f6", shadow: "rgba(59,130,246,0.3)" },
+      SECONDARY: { active: "#e51d74", shadow: "rgba(229,29,116,0.3)" }
+    };
+    const currentColor = stageColors[this.explorerStage] || { active: "#4f46e5", shadow: "rgba(79,70,229,0.3)" };
+
+    gradesContainer.innerHTML = stageGrades.map((grade, idx) => {
+      const isSel = grade.id === this.explorerGradeId;
+      return `
+        <button type="button" class="courses-grade-chip-btn ${isSel ? "active" : ""}" data-grade-id="${grade.id}" style="
+          padding:9px 20px;
+          border-radius:14px;
+          font-weight:800;
+          font-size:0.92rem;
+          cursor:pointer;
+          transition:all 0.2s ease;
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          border:1px solid ${isSel ? currentColor.active : "var(--border-color)"};
+          background:${isSel ? currentColor.active : "var(--bg-card)"};
+          color:${isSel ? "#ffffff" : "var(--text-main)"};
+          box-shadow:${isSel ? `0 6px 16px ${currentColor.shadow}` : "0 2px 6px rgba(0,0,0,0.02)"};
+        ">
+          <span style="background:${isSel ? "rgba(255,255,255,0.25)" : "var(--bg-app)"}; padding:2px 8px; border-radius:8px; font-size:0.75rem; font-weight:900;">
+            ${idx + 1}
+          </span>
+          <span>${grade.name}</span>
+        </button>
+      `;
+    }).join("");
+
+    gradesContainer.querySelectorAll(".courses-grade-chip-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.explorerGradeId = btn.getAttribute("data-grade-id");
+        this.explorerSubjectId = null;
+        this.renderExplorerGrades();
+      });
+    });
+
+    this.renderExplorerSubjects();
+  }
+
+  renderExplorerSubjects() {
+    const subjectsContainer = this.container.querySelector("#courses-explorer-subjects-container");
+    const gradeBadge = this.container.querySelector("#courses-selected-grade-label-badge");
+    if (!subjectsContainer) return;
+
+    const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
+    if (!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) {
+      subjectsContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; padding:30px 0; grid-column:1/-1; text-align:center;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>`;
+      if (gradeBadge) gradeBadge.textContent = "";
+      this.renderFilteredCoursesList();
+      return;
+    }
+
+    if (gradeBadge) {
+      gradeBadge.textContent = currentGrade.name;
+    }
+
+    // Creative Subject Theme Dictionary
+    const getSubjectTheme = (name) => {
+      const n = name.toLowerCase();
+      if (n.includes("عرب") || n.includes("arabic")) {
+        return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+      }
+      if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
+        return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
+      }
+      if (n.includes("رياض") || n.includes("math")) {
+        return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
+      }
+      if (n.includes("فيزي") || n.includes("physic")) {
+        return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
+      }
+      if (n.includes("كيمي") || n.includes("chem")) {
+        return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🧪" };
+      }
+      if (n.includes("أحيا") || n.includes("bio") || n.includes("علوم") || n.includes("scien")) {
+        return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧬" };
+      }
+      if (n.includes("تاريخ") || n.includes("جغراف") || n.includes("دراسات") || n.includes("فلسف")) {
+        return { gradient: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)", color: "#4f46e5", icon: "🏛️" };
+      }
+      if (n.includes("ict") || n.includes("حاسب") || n.includes("برمج") || n.includes("معلومات")) {
+        return { gradient: "linear-gradient(135deg, #0891b2 0%, #164e63 100%)", color: "#0891b2", icon: "💻" };
+      }
+      return { gradient: "linear-gradient(135deg, #e51d74 0%, #831843 100%)", color: "#e51d74", icon: "📚" };
+    };
+
+    subjectsContainer.innerHTML = currentGrade.subjects.map(subject => {
+      const theme = getSubjectTheme(subject.name);
+      const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+
+      return `
+        <a href="#subject-groups/${subject.id}" class="creative-subject-card" style="
+          background:var(--bg-card);
+          border:1px solid var(--border-color);
+          border-radius:22px;
+          padding:22px;
+          text-decoration:none;
+          display:flex;
+          flex-direction:column;
+          justify-content:space-between;
+          gap:16px;
+          box-shadow:0 4px 20px rgba(0,0,0,0.03);
+          transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position:relative;
+          overflow:hidden;
+        ">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+            <div style="
+              width:52px;
+              height:52px;
+              border-radius:16px;
+              background:${theme.gradient};
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-size:1.7rem;
+              box-shadow:0 8px 20px rgba(0,0,0,0.15);
+              flex-shrink:0;
+            ">
+              ${iconToDisplay}
+            </div>
+            <span class="badge" style="
+              background:${subject.isLanguageTrack ? "rgba(37,99,235,0.1)" : "rgba(16,185,129,0.1)"};
+              color:${subject.isLanguageTrack ? "#2563eb" : "#10b981"};
+              font-size:0.75rem;
+              font-weight:800;
+              padding:3px 10px;
+              border-radius:10px;
+            ">
+              ${subject.isLanguageTrack ? "لغات (Language)" : "عام (عربي)"}
+            </span>
+          </div>
+
+          <div>
+            <h4 style="
+              font-size:1.15rem;
+              font-weight:900;
+              color:var(--text-main);
+              margin:0 0 6px 0;
+              line-height:1.3;
+            ">
+              ${subject.name}
+            </h4>
+            <p style="
+              font-size:0.82rem;
+              color:var(--text-muted);
+              margin:0;
+              line-height:1.5;
+            ">
+              ${currentGrade.name} • مجموعات شرح ومراجعات مباشرة
+            </p>
+          </div>
+
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding-top:12px;
+            border-top:1px solid var(--border-color);
+            font-size:0.82rem;
+            font-weight:800;
+            color:${theme.color};
+          ">
+            <span>استعراض المجموعات 👥</span>
+            <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+          </div>
+        </a>
+      `;
+    }).join("");
+
+    if (window.lucide) window.lucide.createIcons();
+    this.renderFilteredCoursesList();
+  }
+
+  renderFilteredCoursesList() {
+    const grid = this.container.querySelector("#courses-page-grid");
+    const emptyState = this.container.querySelector("#courses-page-empty-state");
+    if (!grid) return;
+
+    const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
+    const gradeName = currentGrade?.name || "";
+
+    const isTeacher = state.user && (state.user.role === "teacher" || state.user.role === "admin");
+
+    const filtered = this.courses.filter(c => {
+      const title = (c.title || "").toLowerCase();
+      const desc = (c.description || "").toLowerCase();
+      const teacherName = (c.teacher?.name || "").toLowerCase();
+      const category = (c.category || "").toLowerCase();
+      const degree = (c.degree || "").toLowerCase();
+
+      // Grade match
+      const matchesGrade = !this.explorerGradeId || (c.grade?.id === this.explorerGradeId) || (gradeName && degree.includes(gradeName));
+      
+      // Search match
+      const matchesSearch = !this.searchQuery || 
+        title.includes(this.searchQuery) || 
+        desc.includes(this.searchQuery) || 
+        teacherName.includes(this.searchQuery) || 
+        category.includes(this.searchQuery);
+
+      return matchesGrade && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = "";
+      if (emptyState) emptyState.style.display = "block";
+    } else {
+      if (emptyState) emptyState.style.display = "none";
+      grid.innerHTML = filtered.map(c => {
+        return this.renderCourseCard(c, 0, false, isTeacher);
+      }).join("");
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+    if (isTeacher) this.bindEvents();
+  }
+
+  async initTeacherCurriculumSelector(preselectedGradeId = null, preselectedSubjectId = null) {
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to fetch curriculum grades:", e);
+    }
+
+    if (!Array.isArray(allGrades) || allGrades.length === 0) return;
+
+    let currentStage = "PRIMARY";
+    if (preselectedGradeId) {
+      const g = allGrades.find(gr => gr.id === preselectedGradeId);
+      if (g && g.stage) currentStage = g.stage;
+    }
+
+    const stageBtns = document.querySelectorAll(".teacher-modal-stage-btn");
+    const gradeSelect = document.getElementById("modal-curriculum-grade-select");
+    const subjectSelect = document.getElementById("modal-curriculum-subject-select");
+    const customSubjectWrapper = document.getElementById("modal-custom-subject-wrapper");
+    const customSubjectInput = document.getElementById("modal-custom-subject-input");
+    const hiddenCategory = document.getElementById("course-category-select");
+    const hiddenDegree = document.getElementById("course-degree");
+    const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+    const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+
+    const updateStageUI = (stage) => {
+      currentStage = stage;
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+          btn.style.boxShadow = `0 4px 12px ${color}40`;
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+          btn.style.boxShadow = "none";
+        }
+      });
+
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة لهذه المرحلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => `
+          <option value="${g.id}" ${preselectedGradeId === g.id ? 'selected' : ''}>
+            ${g.name}
+          </option>
+        `).join('');
+        updateSubjectsUI(gradeSelect.value);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId) => {
+      if (hiddenGradeId) hiddenGradeId.value = gradeId;
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      if (selectedGrade && hiddenDegree) {
+        hiddenDegree.value = selectedGrade.name;
+      }
+
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `
+          <option value="">لا توجد مواد مسجلة</option>
+          <option value="__custom__">✏️ إدخال مادة مخصصة يدوياً</option>
+        `;
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        return;
+      }
+
+      subjectSelect.innerHTML = `
+        <option value="">-- اختر المادة الدراسية --</option>
+        ${subjects.map(s => `
+          <option value="${s.id}" data-name="${s.name}" ${preselectedSubjectId === s.id ? 'selected' : ''}>
+            ${s.name} ${s.isLanguageTrack ? '(مسار لغات 🌐)' : '(منهج عام 🇪🇬)'}
+          </option>
+        `).join('')}
+        <option value="__custom__">✏️ مادة أخرى / تخصص مخصص</option>
+      `;
+
+      if (preselectedSubjectId && subjects.some(s => s.id === preselectedSubjectId)) {
+        const s = subjects.find(sub => sub.id === preselectedSubjectId);
+        if (hiddenSubjectId) hiddenSubjectId.value = s.id;
+        if (hiddenCategory) hiddenCategory.value = s.name;
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+      } else {
+        if (hiddenSubjectId) hiddenSubjectId.value = "";
+        if (hiddenCategory) hiddenCategory.value = "";
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+      }
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val === "__custom__") {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        if (hiddenSubjectId) hiddenSubjectId.value = "";
+        if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
+      } else {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+        if (hiddenSubjectId) hiddenSubjectId.value = val;
+        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+      }
+    });
+
+    customSubjectInput?.addEventListener("input", (e) => {
+      if (subjectSelect?.value === "__custom__" && hiddenCategory) {
+        hiddenCategory.value = e.target.value.trim();
+      }
+    });
+
+    updateStageUI(currentStage);
   }
 
   renderCourseCard(course, progress, isEnrolled, isTeacherView = false) {
@@ -592,7 +1112,7 @@ export default class CoursesView {
       if (previewWrapper) previewWrapper.style.display = "none";
       if (idleBox) idleBox.style.display = "block";
       courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
-      await this.populateCategoryOptions();
+      await this.initTeacherCurriculumSelector();
       courseModal.style.display = "flex";
     });
 
@@ -601,11 +1121,26 @@ export default class CoursesView {
 
     document.getElementById("create-course-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = document.getElementById("course-title").value;
-      const categorySelect = document.getElementById("course-category-select");
-      const category = categorySelect ? categorySelect.value : "";
-      const degreeSelect = document.getElementById("course-degree");
-      const degree = degreeSelect ? degreeSelect.value : "";
+      const title = document.getElementById("course-title").value.trim();
+      const hiddenCategory = document.getElementById("course-category-select");
+      const hiddenDegree = document.getElementById("course-degree");
+      const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+      const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+
+      let category = hiddenCategory?.value?.trim();
+      const customSubInput = document.getElementById("modal-custom-subject-input");
+      if (!category && customSubInput && customSubInput.value) {
+        category = customSubInput.value.trim();
+      }
+
+      if (!category) { 
+        showToast("الرجاء اختيار المادة الدراسية أو كتابتها.", "error"); 
+        return; 
+      }
+
+      const degree = hiddenDegree?.value || "";
+      const gradeId = hiddenGradeId?.value || null;
+      const subjectId = hiddenSubjectId?.value || null;
       const description = document.getElementById("course-desc").value;
       let image = document.getElementById("course-image-url").value;
       const meetingLink = document.getElementById("course-meeting-link").value;
@@ -634,15 +1169,23 @@ export default class CoursesView {
       const courseId = document.getElementById("create-course-form").getAttribute("data-id");
       try {
         if (courseId) {
-          await apiFetch(`/courses/${courseId}`, { method: "PUT", body: JSON.stringify({ title, category, degree, description, image, meetingLink }) });
-          showToast("Course updated successfully", "success");
+          await apiFetch(`/courses/${courseId}`, { 
+            method: "PUT", 
+            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
+          });
+          showToast("تم تحديث بيانات الدورة بنجاح! ✅", "success");
         } else {
-          await apiFetch("/courses", { method: "POST", body: JSON.stringify({ title, category, degree, description, image, meetingLink }) });
+          await apiFetch("/courses", { 
+            method: "POST", 
+            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
+          });
           showToast(t("toast.coursePublished"), "success");
         }
         courseModal.style.display = "none";
         await this.loadContent();
-      } catch (err) { }
+      } catch (err) {
+        showToast(err.message || "فشل حفظ الدورة التعليمية.", "error");
+      }
     });
   }
 

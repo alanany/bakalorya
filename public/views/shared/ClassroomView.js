@@ -50,13 +50,16 @@ export default class ClassroomView {
 
   async render() {
     try {
-      // Fetch session info (both course live sessions and private subscription 1-on-1 sessions)
-      const [sessions, myPrivateSessions] = await Promise.all([
+      // Fetch session info (both course live sessions and private subscription 1-on-1 sessions) and attendance status
+      const [sessions, myPrivateSessions, attendanceData] = await Promise.all([
         apiFetch("/sessions").catch(() => []),
-        apiFetch("/sessions/my-private").catch(() => [])
+        apiFetch("/sessions/my-private").catch(() => []),
+        apiFetch(`/sessions/${this.sessionId}/attendance`).catch(() => null)
       ]);
       const allSessions = [...(sessions || []), ...(myPrivateSessions || [])];
       this.session = allSessions.find(s => String(s.id) === String(this.sessionId));
+      this.attendanceData = attendanceData;
+      this.isCheckedIn = !!attendanceData?.isCheckedIn;
 
       if (!this.session) {
         this.container.innerHTML = `
@@ -68,38 +71,48 @@ export default class ClassroomView {
         return;
       }
 
+      const isTeacher = state.user?.role === 'teacher' || (this.session.teacher && String(this.session.teacher.id) === String(state.user?.id));
+      const isStudent = state.user?.role === 'student' || (this.session.student && String(this.session.student.id) === String(state.user?.id));
+
       const now = new Date();
       const sessionDate = this.session.scheduledAt ? new Date(this.session.scheduledAt) : null;
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       const todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1;
 
       const sessionTime = sessionDate ? sessionDate.getTime() : 0;
+      const durationMins = this.session.duration || 60;
+      const durationMs = durationMins * 60 * 1000;
       const isPastDay = sessionTime > 0 && sessionTime < todayStart;
       const isCompleted = this.session.status === 'COMPLETED' || this.session.status === 'completed';
       const isCancelled = this.session.status?.includes('CANCELLED');
       const isLive = this.session.status === 'live' || this.session.status === 'LIVE';
 
-      // Join window check: Within 30 minutes before scheduled start time to end of session duration
-      const durationMs = (this.session.duration || 60) * 60 * 1000;
-      const windowStart = sessionTime - (30 * 60 * 1000); // 30 mins before
+      // Windows: 60 mins before for teacher, 30 mins before for student
+      const teacherWindowStart = sessionTime - (60 * 60 * 1000); // 1 hour before
+      const studentWindowStart = sessionTime - (30 * 60 * 1000); // 30 mins before
       const windowEnd = sessionTime + durationMs + (30 * 60 * 1000); // 30 mins after end
-      const isWithinWindow = now.getTime() >= windowStart && now.getTime() <= windowEnd;
 
-      const isStudent = state.user?.role === 'student';
+      const formatted = formatSessionDateTime(this.session.scheduledAt);
+      const isExpiredSession = !isLive && (isPastDay || now.getTime() > windowEnd);
 
-      // 1. Past Day Session Guard
-      if (isStudent && isPastDay) {
-        showToast("عذراً، هذه الحصة من يوم سابق وانتهى موعدها.", "warning");
+      // 1. Past / Expired Session Guard
+      if (isExpiredSession) {
+        showToast("عذراً، انتهى موعد هذه الحصة المباشرة.", "warning");
         this.container.innerHTML = `
           <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
             <div style="width:72px; height:72px; border-radius:50%; background:rgba(239,68,68,0.12); color:#ef4444; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
               <i data-lucide="clock" style="width:36px; height:36px;"></i>
             </div>
-            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">انتهى موعد هذه الحصة (يوم سابق)</h2>
-            <p style="color:var(--text-muted); max-width:480px; margin:0 auto 24px auto;">عذراً، هذه الحصة خاصة بيوم سابق ولا يمكن دخول القاعة بعد انتهاء موعدها وفق سياسة المنصة.</p>
-            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
-              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لجدول الحصص
-            </a>
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">انتهى موعد هذه الحصة</h2>
+            <p style="color:var(--text-muted); max-width:480px; margin:0 auto 24px auto;">عذراً، كان موعد هذه الحصة في <strong>${formatted.fullStr || 'موعد سابق'}</strong> وقد انتهت مدة الجلسة المحددة.</p>
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+              <a href="#schedule" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
+                <i data-lucide="calendar" style="width:16px; height:16px;"></i> جدول الحصص
+              </a>
+              <a href="${isTeacher ? '#teacher-private-sessions' : '#student-private-sessions'}" class="btn-secondary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
+                <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> ${isTeacher ? 'حصص الطلاب' : 'الحصص الخاصة'}
+              </a>
+            </div>
           </div>
         `;
         if (window.lucide) window.lucide.createIcons();
@@ -107,7 +120,7 @@ export default class ClassroomView {
       }
 
       // 2. Completed / Cancelled Session Guard
-      if (isStudent && (isCompleted || isCancelled)) {
+      if (isCompleted || isCancelled) {
         showToast("عذراً، هذه الحصة مكتملة أو ملغاة ولا يمكن دخولها.", "warning");
         this.container.innerHTML = `
           <div style="text-align:center; padding:100px 24px; font-family:'Cairo', sans-serif;">
@@ -116,7 +129,7 @@ export default class ClassroomView {
             </div>
             <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">الحصة مكتملة أو ملغاة</h2>
             <p style="color:var(--text-muted); max-width:480px; margin:0 auto 24px auto;">هذه الحصة تم إكمالها أو إلغاؤها سابقاً ولا يمكن إعادة دخولها.</p>
-            <a href="#student-private-sessions" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
+            <a href="#schedule" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
               <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> الرجوع لجدول الحصص
             </a>
           </div>
@@ -125,16 +138,97 @@ export default class ClassroomView {
         return;
       }
 
-      // 3. Early Future Session Notice (Display notification banner inside classroom instead of blocking)
-      const isEarlyEntry = isStudent && !isLive && !isWithinWindow && now.getTime() < windowStart;
-      const formatted = formatSessionDateTime(this.session.scheduledAt);
+      // 3. Early Future Session Guard for Students (Must be within 30 mins)
+      const isEarlyForStudent = isStudent && !isLive && now.getTime() < studentWindowStart;
+      if (isEarlyForStudent) {
+        showToast("عذراً، يسمح للطلاب بدخول قاعة الحصة قبل موعدها بـ 30 دقيقة فقط.", "warning");
+        const diffMs = studentWindowStart - now.getTime();
+        const minsLeft = Math.ceil(diffMs / 60000);
+        let timeRemainingStr = `${minsLeft} دقيقة`;
+        if (minsLeft >= 60) {
+          const hrs = Math.floor(minsLeft / 60);
+          const remMins = minsLeft % 60;
+          timeRemainingStr = `${hrs} ساعة ${remMins > 0 ? `و ${remMins}د` : ''}`;
+        }
+
+        this.container.innerHTML = `
+          <div style="text-align:center; padding:90px 24px; font-family:'Cairo', sans-serif; max-width:580px; margin:0 auto;">
+            <div style="width:76px; height:76px; border-radius:24px; background:rgba(99,102,241,0.12); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px; border:1px solid rgba(99,102,241,0.25);">
+              <i data-lucide="lock" style="width:36px; height:36px;"></i>
+            </div>
+            <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:8px; color:var(--text-main);">قاعة الحصة مغلقة حالياً 🔒</h2>
+            <p style="color:var(--text-muted); font-size:0.92rem; line-height:1.6; margin:0 auto 20px auto;">
+              يسمح للطلاب بدخول قاعة البث المباشر <strong>قبل موعد الحصة بـ 30 دقيقة فقط</strong>.
+            </p>
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:16px 20px; margin-bottom:24px; display:inline-flex; flex-direction:column; gap:6px; width:100%; box-sizing:border-box;">
+              <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">🗓️ الموعد الرسمي للحصة:</div>
+              <div style="font-size:1.05rem; font-weight:900; color:var(--primary);">${formatted.fullStr}</div>
+              <div style="font-size:0.8rem; color:#f59e0b; font-weight:800; margin-top:4px;">⏳ ينشط زر دخول الطلاب بعد: ${timeRemainingStr}</div>
+            </div>
+            <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+              <a href="#schedule" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 20px;">
+                <i data-lucide="calendar" style="width:16px; height:16px;"></i> جدول الحصص
+              </a>
+              <a href="#student-private-sessions" class="btn-secondary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 18px;">
+                <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> حصصي الخاصة
+              </a>
+            </div>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      // 4. Early Future Session Guard for Teachers (Must be within 1 hour)
+      const isEarlyForTeacher = isTeacher && !isLive && now.getTime() < teacherWindowStart;
+      if (isEarlyForTeacher) {
+        showToast("عذراً، يسمح للمعلم بدخول القاعة قبل الموعد بساعة واحدة (60 دقيقة).", "warning");
+        const diffMs = teacherWindowStart - now.getTime();
+        const minsLeft = Math.ceil(diffMs / 60000);
+        let timeRemainingStr = `${minsLeft} دقيقة`;
+        if (minsLeft >= 60) {
+          const hrs = Math.floor(minsLeft / 60);
+          const remMins = minsLeft % 60;
+          timeRemainingStr = `${hrs} ساعة ${remMins > 0 ? `و ${remMins}د` : ''}`;
+        }
+
+        this.container.innerHTML = `
+          <div style="text-align:center; padding:90px 24px; font-family:'Cairo', sans-serif; max-width:580px; margin:0 auto;">
+            <div style="width:76px; height:76px; border-radius:24px; background:rgba(99,102,241,0.12); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:20px; border:1px solid rgba(99,102,241,0.25);">
+              <i data-lucide="lock" style="width:36px; height:36px;"></i>
+            </div>
+            <h2 style="font-size:1.6rem; font-weight:900; margin-bottom:8px; color:var(--text-main);">قاعة الحصة غير متاحة بعد 🔒</h2>
+            <p style="color:var(--text-muted); font-size:0.92rem; line-height:1.6; margin:0 auto 20px auto;">
+              يسمح للمعلم بدخول قاعة الحصة وتجهيز البث والسبورة <strong>قبل موعد الحصة بساعة واحدة (60 دقيقة)</strong>.
+            </p>
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:16px 20px; margin-bottom:24px; display:inline-flex; flex-direction:column; gap:6px; width:100%; box-sizing:border-box;">
+              <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">🗓️ الموعد الرسمي للحصة:</div>
+              <div style="font-size:1.05rem; font-weight:900; color:var(--primary);">${formatted.fullStr}</div>
+              <div style="font-size:0.8rem; color:#f59e0b; font-weight:800; margin-top:4px;">⏳ ينشط دخول المعلم للتجهيز بعد: ${timeRemainingStr}</div>
+            </div>
+            <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+              <a href="#schedule" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 20px;">
+                <i data-lucide="calendar" style="width:16px; height:16px;"></i> جدول الحصص
+              </a>
+              <a href="#teacher-private-sessions" class="btn-secondary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 18px;">
+                <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> حصص الطلاب
+              </a>
+            </div>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+
+      // Teacher early preparation banner notice (Between 1 hour and 30 mins before session start)
+      const isTeacherEarlyPrep = isTeacher && !isLive && now.getTime() < studentWindowStart;
 
       this.container.innerHTML = `
-        ${isEarlyEntry ? `
-          <div style="background:rgba(99,102,241,0.1); border:1px solid var(--primary); color:var(--primary); padding:10px 16px; border-radius:12px; margin-bottom:14px; font-size:0.88rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:'Cairo', sans-serif;">
+        ${isTeacherEarlyPrep ? `
+          <div style="background:rgba(99,102,241,0.1); border:1px solid var(--primary); color:var(--primary); padding:12px 18px; border-radius:14px; margin-bottom:14px; font-size:0.88rem; font-weight:700; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:'Cairo', sans-serif;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <i data-lucide="clock" style="width:18px; height:18px;"></i>
-              <span>أنت الآن داخل قاعة الحصة. الموعد الرسمي للبث هو: <strong>${formatted.fullStr}</strong>. يمكنك الانتظار هنا واستخدام التفاعلات.</span>
+              <i data-lucide="sparkles" style="width:18px; height:18px;"></i>
+              <span>أنت الآن داخل قاعة الحصة كـ <strong>(معلم)</strong> لتجهيز البث والسبورة. الموعد الرسمي للحصة: <strong>${formatted.fullStr}</strong> (ينشط دخول الطلاب قبل الموعد بـ 30د).</span>
             </div>
             ${formatted.badgeHTML}
           </div>
@@ -142,13 +236,30 @@ export default class ClassroomView {
         <div class="classroom-layout">
           <!-- Main Area (Video Stream or Whiteboard) -->
           <div class="classroom-main">
-            <div class="classroom-tabs">
-              <span class="classroom-tab ${this.activeTab === "stream" ? "active" : ""}" data-tab="stream">
-                <i data-lucide="video" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> Teacher Live Stream
-              </span>
-              <span class="classroom-tab ${this.activeTab === "board" ? "active" : ""}" data-tab="board">
-                <span class="whiteboard-active-indicator"></span> Whiteboard Workspace
-              </span>
+            <div class="classroom-tabs" style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; gap:8px;">
+                <span class="classroom-tab ${this.activeTab === "stream" ? "active" : ""}" data-tab="stream">
+                  <i data-lucide="video" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i> Teacher Live Stream
+                </span>
+                <span class="classroom-tab ${this.activeTab === "board" ? "active" : ""}" data-tab="board">
+                  <span class="whiteboard-active-indicator"></span> Whiteboard Workspace
+                </span>
+              </div>
+
+              <!-- Attendance Status Pill -->
+              <div id="attendance-status-badge-container" style="margin-inline-end:12px;">
+                ${this.isCheckedIn ? `
+                  <span style="font-size:0.78rem; font-weight:800; padding:5px 12px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
+                    <span>حاضر ومسجل في قاعدة البيانات ✅</span>
+                  </span>
+                ` : `
+                  <button id="manual-checkin-btn" style="font-size:0.78rem; font-weight:800; padding:5px 12px; border-radius:14px; background:#6366f1; color:#fff; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(99,102,241,0.3);">
+                    <i data-lucide="user-check" style="width:14px;height:14px;"></i>
+                    <span>تأكيد الحضور الآن ✍️</span>
+                  </button>
+                `}
+              </div>
             </div>
 
             <div class="classroom-viewport">
@@ -312,6 +423,13 @@ export default class ClassroomView {
       this.initWhiteboardCanvas();
       this.startChatSimulation();
       this.triggerScheduledPoll();
+
+      // If user is not checked in yet, prompt them with the Attendance Check-in Modal
+      if (!this.isCheckedIn) {
+        setTimeout(() => {
+          this.showAttendanceModal();
+        }, 400);
+      }
     } catch (err) {
       console.error("Failed to load virtual classroom:", err);
     }
@@ -585,6 +703,129 @@ export default class ClassroomView {
         showToast("Your poll response has been registered.", "success");
       });
     });
+    // Manual checkin button
+    this.container.querySelector("#manual-checkin-btn")?.addEventListener("click", () => {
+      this.showAttendanceModal();
+    });
+  }
+
+  showAttendanceModal() {
+    const existing = document.getElementById("classroom-attendance-modal-overlay");
+    if (existing) existing.remove();
+
+    const formatted = formatSessionDateTime(this.session?.scheduledAt);
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.id = "classroom-attendance-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.style.backdropFilter = "blur(10px)";
+    overlay.style.background = "rgba(0,0,0,0.75)";
+    overlay.style.zIndex = "9999";
+
+    const isTeacher = state.user?.role === 'teacher' || state.user?.role === 'admin';
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:520px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+        <!-- Header -->
+        <div style="padding:24px 28px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(16,185,129,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:16px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="user-check" style="width:26px; height:26px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.2rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main);">${isTeacher ? 'تأكيد حضور المعلم في الحصة 👨‍🏫' : 'تأكيد وتسجيل الحضور في الحصة 🎓'}</h3>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">تسجيلك رسمياً كـ (حاضر) في قاعدة بيانات المنصة</p>
+            </div>
+          </div>
+          <span id="dismiss-attendance-modal-x" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px 28px; background:var(--bg-app); display:flex; flex-direction:column; gap:16px;">
+          <!-- Session details card -->
+          <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">🎯 موضوع الحصة:</span>
+              <span style="font-size:0.9rem; font-weight:900; color:var(--text-main);">${this.session?.title || this.session?.topic || 'حصة تعليمية مباشرة'}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">👨‍🏫 المعلم:</span>
+              <span style="font-size:0.88rem; font-weight:800; color:var(--primary);">${this.session?.teacher?.name || 'الأستاذ'}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">👤 ${isTeacher ? 'المعلم الحاضر' : 'الطالب الحاضر'}:</span>
+              <span style="font-size:0.88rem; font-weight:800; color:var(--text-main);">${state.user?.name || (isTeacher ? 'المعلم' : 'الطالب')}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">🗓️ الموعد:</span>
+              <span style="font-size:0.82rem; font-weight:800; color:var(--text-main);">${formatted.dateStr} • ${formatted.timeStr}</span>
+            </div>
+          </div>
+
+          <!-- Policy Notice -->
+          <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:14px; padding:14px; color:var(--text-main); font-size:0.84rem; line-height:1.6;">
+            <div style="color:#10b981; font-weight:800; font-size:0.9rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="shield-check" style="width:16px;height:16px;"></i> تأكيد التواجد وعدم الغياب:
+            </div>
+            ${isTeacher 
+              ? 'بالضغط على <strong>"تأكيد حضور المعلم ودخول القاعة"</strong>، سيتم تسجيل حضور المعلم وتأكيد انعقاد الحصة رسمياً في قاعدة البيانات.' 
+              : 'بالضغط على <strong>"تأكيد حضوري ودخول القاعة"</strong>، سيتم إرسال إشعار فوري لقاعدة البيانات والمعلم بحضورك في الموعد المحدد، وضمان عدم تسجيل غياب عن الحصة.'}
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex; gap:12px; margin-top:8px;">
+            <button type="button" id="confirm-attendance-btn" class="btn-primary" style="flex:1; justify-content:center; padding:12px; font-size:0.95rem; font-weight:800; background:linear-gradient(135deg,#10b981,#059669); border-color:#10b981; box-shadow:0 4px 15px rgba(16,185,129,0.3); border-radius:14px;">
+              <i data-lucide="check" style="width:18px;height:18px;"></i> ${isTeacher ? 'تأكيد حضور المعلم ودخول القاعة الآن ✅' : 'تأكيد حضوري ودخول القاعة الآن ✅'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { overlay.remove(); };
+    document.getElementById("dismiss-attendance-modal-x")?.addEventListener("click", closeModal);
+
+    document.getElementById("confirm-attendance-btn")?.addEventListener("click", async () => {
+      const btn = document.getElementById("confirm-attendance-btn");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:18px;height:18px;"></i> جاري تأكيد الحضور...`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      await this.submitCheckIn();
+      closeModal();
+    });
+  }
+
+  async submitCheckIn() {
+    try {
+      const res = await apiFetch(`/sessions/${this.sessionId}/checkin`, {
+        method: "POST"
+      });
+
+      this.isCheckedIn = true;
+      showToast(res.message || "تم تأكيد حضورك وتسجيلك في قاعدة البيانات بنجاح ✅", "success");
+
+      // Update Top Status Badge
+      const container = document.getElementById("attendance-status-badge-container");
+      if (container) {
+        container.innerHTML = `
+          <span style="font-size:0.78rem; font-weight:800; padding:5px 12px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
+            <span>حاضر ومسجل في قاعدة البيانات ✅</span>
+          </span>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    } catch (err) {
+      console.error("Attendance checkin error:", err);
+      showToast(err.message || "تعذر تسجيل الحضور، يرجى المحاولة ثانية.", "error");
+    }
   }
 
   appendChatMessage(name, message, role = "student") {

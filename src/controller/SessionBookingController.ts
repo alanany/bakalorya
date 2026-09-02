@@ -6,6 +6,10 @@ import { SessionCreditLedger } from "../entity/SessionCreditLedger";
 import { SessionAttendance } from "../entity/SessionAttendance";
 import { TeacherEarning } from "../entity/TeacherEarning";
 import { User } from "../entity/User";
+import { Course } from "../entity/Course";
+import { CourseGroup } from "../entity/CourseGroup";
+import { Enrollment } from "../entity/Enrollment";
+import { Payment } from "../entity/Payment";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 
@@ -1219,10 +1223,10 @@ export class SessionBookingController {
 
   // POST /sessions/group-schedule — Schedule multiple live sessions for a group of students with a teacher
   static async scheduleGroupSession(req: AuthRequest, res: Response) {
-    const { title, teacherId, studentIds, scheduledAt, scheduledDates, duration, meetingLink, allowConflicts } = req.body;
+    const { title, courseId, teacherId, studentIds, scheduledAt, scheduledDates, duration, meetingLink, allowConflicts } = req.body;
 
-    if (!title || !teacherId || !studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-      return res.status(400).json({ error: "الرجاء توفير عنوان الحصة والمعلم وقائمة الطلاب." });
+    if ((!title && !courseId) || !teacherId || !studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ error: "الرجاء اختيار الدورة التعليمية، والمعلم، وتحديد طالب واحد على الأقل." });
     }
 
     let datesToSchedule: Date[] = [];
@@ -1240,10 +1244,19 @@ export class SessionBookingController {
     try {
       const userRepository = AppDataSource.getRepository(User);
       const sessionRepository = AppDataSource.getRepository(Session);
+      const courseRepository = AppDataSource.getRepository(Course);
 
       const teacher = await userRepository.findOneBy({ id: teacherId });
       if (!teacher) {
         return res.status(404).json({ error: "المعلم المحدد غير موجود." });
+      }
+
+      let course = null;
+      if (courseId) {
+        course = await courseRepository.findOne({
+          where: { id: courseId },
+          relations: ["teacher", "subject", "grade"]
+        });
       }
 
       const students = await userRepository.find({
@@ -1307,17 +1320,73 @@ export class SessionBookingController {
         }
       }
 
+      // Create and save CourseGroup record so group appears in #admin-dashboard/groups and teacher/student views
+      let savedGroup = null;
+      try {
+        const groupRepository = AppDataSource.getRepository(CourseGroup);
+        const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+
+        const daysNamesAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        const uniqueDays = Array.from(new Set(datesToSchedule.map(d => daysNamesAr[d.getDay()])));
+        const scheduleDays = uniqueDays.join("، ");
+        const firstDate = datesToSchedule[0];
+        const scheduleTime = firstDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+
+        const courseGroup = new CourseGroup();
+        courseGroup.name = effectiveTitle || (course ? `مجموعة ${course.title}` : "مجموعة دراسية");
+        if (course) courseGroup.course = course;
+        courseGroup.teacher = teacher;
+        courseGroup.scheduleDays = scheduleDays;
+        courseGroup.scheduleTime = scheduleTime;
+        courseGroup.scheduleText = `أيام ${scheduleDays} الساعة ${scheduleTime}`;
+        courseGroup.startDate = datesToSchedule[0];
+        courseGroup.endDate = datesToSchedule[datesToSchedule.length - 1];
+        courseGroup.totalSessions = datesToSchedule.length;
+        courseGroup.sessionDuration = sessionDuration;
+        courseGroup.maxStudents = Math.max(25, students.length + 5);
+        courseGroup.meetingLink = meetingLink || (course ? course.meetingLink : teacher.meetingLink) || null;
+        courseGroup.status = "OPEN";
+
+        savedGroup = await groupRepository.save(courseGroup);
+
+        // Enroll all group students in this group
+        for (const student of students) {
+          try {
+            let enrollment = null;
+            if (course) {
+              enrollment = await enrollmentRepository.findOne({
+                where: { student: { id: student.id }, course: { id: course.id } }
+              });
+            }
+            if (!enrollment) {
+              enrollment = new Enrollment();
+              enrollment.student = student;
+              if (course) enrollment.course = course;
+            }
+            enrollment.group = savedGroup;
+            enrollment.status = "active";
+            await enrollmentRepository.save(enrollment);
+          } catch (enrErr) {
+            console.error("Error saving enrollment for group student:", enrErr);
+          }
+        }
+      } catch (grpErr) {
+        console.error("Error creating CourseGroup in scheduleGroupSession:", grpErr);
+      }
+
       const createdSessions: Session[] = [];
+      const effectiveTitle = title || (course ? course.title : "حصة جماعية");
 
       for (let i = 0; i < datesToSchedule.length; i++) {
         const scheduledDate = datesToSchedule[i];
-        const sessionTitle = datesToSchedule.length > 1 ? `${title} - حصة (${i + 1}/${datesToSchedule.length})` : title;
+        const sessionTitle = datesToSchedule.length > 1 ? `${effectiveTitle} - حصة (${i + 1}/${datesToSchedule.length})` : effectiveTitle;
 
         for (const student of students) {
           const session = new Session();
           session.title = sessionTitle;
           session.teacher = teacher;
           session.student = student;
+          if (course) session.course = course;
           session.scheduledAt = scheduledDate;
           session.duration = sessionDuration;
           session.status = "SCHEDULED";
@@ -1338,15 +1407,54 @@ export class SessionBookingController {
         }
       }
 
+      // Record Financial Payment / Individual Receipts for each student
+      const studentReceipts = req.body.studentReceipts || req.body.receiptDetails?.students || null;
+      const receiptDetails = req.body.receiptDetails;
+
+      if (studentReceipts || (receiptDetails && receiptDetails.enabled)) {
+        try {
+          const paymentRepository = AppDataSource.getRepository(Payment);
+          for (const student of students) {
+            let sRec = null;
+            if (studentReceipts) {
+              if (Array.isArray(studentReceipts)) {
+                sRec = studentReceipts.find((sr: any) => String(sr.studentId) === String(student.id));
+              } else if (typeof studentReceipts === "object") {
+                sRec = studentReceipts[student.id];
+              }
+            }
+
+            const amount = sRec ? (parseFloat(sRec.amount) || 0) : (parseFloat(receiptDetails?.amount) || 0);
+            const method = sRec?.paymentMethod || receiptDetails?.paymentMethod || "manual";
+            const refNo = sRec?.transactionRef || receiptDetails?.transactionRef || `GRP-REC-${Date.now()}`;
+            const notes = sRec?.notes || receiptDetails?.notes || `سداد إيصال باقة حصص جماعية: ${effectiveTitle}`;
+
+            const payment = new Payment();
+            payment.student = student;
+            payment.amount = amount;
+            payment.currency = "EGP";
+            payment.type = "COURSE_ENROLLMENT";
+            payment.provider = method;
+            payment.providerTransactionId = refNo;
+            payment.status = "SUCCESS";
+            payment.receiptUrl = sRec?.receiptUrl || receiptDetails?.receiptUrl || null;
+            payment.notes = notes;
+            await paymentRepository.save(payment);
+          }
+        } catch (pErr) {
+          console.error("Error saving group session receipt payments:", pErr);
+        }
+      }
+
       return res.status(201).json({
         message: `تم إدراج وجدولة ${datesToSchedule.length} حصة جماعية لـ ${students.length} طلاب بنجاح! 🚀 (إجمالي ${createdSessions.length} سجل حصص)`,
         groupSize: students.length,
         datesCount: datesToSchedule.length,
         totalSessionsCreated: createdSessions.length
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("scheduleGroupSession error:", err);
-      return res.status(500).json({ error: "فشلت جدولة الحصص الجماعية." });
+      return res.status(500).json({ error: err?.message || "فشلت جدولة الحصص الجماعية." });
     }
   }
 
@@ -1465,6 +1573,101 @@ export class SessionBookingController {
     } catch (err) {
       console.error("removeStudentFromGroupSession error:", err);
       return res.status(500).json({ error: "فشل إزالة الطالب من المجموعة." });
+    }
+  }
+
+  // Check-in and confirm attendance (Student or Teacher) - records PRESENT in database
+  static async checkInAttendance(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const userId = req.user!.id;
+
+    try {
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+
+      const session = await sessionRepository.findOne({
+        where: { id },
+        relations: ["teacher", "student", "course"]
+      });
+
+      if (!session) {
+        return res.status(404).json({ error: "الحصة غير موجودة." });
+      }
+
+      // Check authorization (student, teacher, or admin)
+      let isAuthorized = false;
+      if (session.student && session.student.id === userId) isAuthorized = true;
+      if (session.teacher && session.teacher.id === userId) isAuthorized = true;
+      if (req.user!.role === "admin" || req.user!.role === "teacher" || req.user!.role === "student") isAuthorized = true;
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: "غير مصرح لك بتسجيل الحضور في هذه الحصة." });
+      }
+
+      // Check if already registered
+      let attendance = await attendanceRepository.findOne({
+        where: {
+          session: { id: session.id },
+          user: { id: userId }
+        }
+      });
+
+      if (attendance) {
+        attendance.status = "PRESENT";
+        await attendanceRepository.save(attendance);
+        return res.status(200).json({
+          message: "تم تأكيد حضورك في الحصة بنجاح ✅",
+          attendance,
+          alreadyCheckedIn: true
+        });
+      }
+
+      attendance = new SessionAttendance();
+      attendance.session = session;
+      attendance.user = { id: userId } as User;
+      attendance.status = "PRESENT";
+      attendance.markedBy = { id: userId } as User;
+      await attendanceRepository.save(attendance);
+
+      // If scheduled, mark start timestamp
+      if ((session.status === "SCHEDULED" || session.status === "scheduled") && !session.startedAt) {
+        session.startedAt = new Date();
+        await sessionRepository.save(session);
+      }
+
+      return res.status(200).json({
+        message: "تم تسجيل وتأكيد حضورك في الحصة بنجاح ✅",
+        attendance,
+        alreadyCheckedIn: false
+      });
+    } catch (err) {
+      console.error("checkInAttendance error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Get session attendance list
+  static async getSessionAttendance(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+
+    try {
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+      const records = await attendanceRepository.find({
+        where: { session: { id } },
+        relations: ["user", "markedBy"]
+      });
+
+      const currentUserId = req.user?.id;
+      const myRecord = records.find(r => r.user?.id === currentUserId);
+
+      return res.status(200).json({
+        attendees: records,
+        isCheckedIn: myRecord?.status === "PRESENT",
+        myAttendance: myRecord || null
+      });
+    } catch (err) {
+      console.error("getSessionAttendance error:", err);
+      return res.status(500).json({ error: "Internal server error." });
     }
   }
 }

@@ -2,6 +2,9 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDat
 import { User } from "./User";
 import { Lesson } from "./Lesson";
 import { Enrollment } from "./Enrollment";
+import { Grade } from "./Grade";
+import { Subject } from "./Subject";
+import { CourseGroup } from "./CourseGroup";
 
 @Entity()
 export class Course {
@@ -41,6 +44,12 @@ export class Course {
   @Column({ type: "text", nullable: true })
   paymentDetails: string;
 
+  @ManyToOne(() => Grade, grade => grade.courses, { nullable: true, eager: true, onDelete: "SET NULL" })
+  grade: Grade | null;
+
+  @ManyToOne(() => Subject, subject => subject.courses, { nullable: true, eager: true, onDelete: "SET NULL" })
+  subject: Subject | null;
+
   @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
   approvedBy: User;
 
@@ -58,6 +67,9 @@ export class Course {
 
   @OneToMany(() => Lesson, lesson => lesson.course, { cascade: true })
   lessons: Lesson[];
+
+  @OneToMany(() => CourseGroup, group => group.course, { cascade: true })
+  groups: CourseGroup[];
 
   @OneToMany(() => Enrollment, enrollment => enrollment.course, { cascade: true })
   enrollments: Enrollment[];

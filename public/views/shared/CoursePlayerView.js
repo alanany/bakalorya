@@ -602,9 +602,14 @@ export default class CoursePlayerView {
   }
 
   renderSessionRow(session) {
-    const isLive = session.status === "live";
+    const isLive = session.status === "live" || session.status === "LIVE" || session.status === "active";
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED";
     const date = new Date(session.scheduledAt);
-    const isJoinable = isLive || canJoinSession(session);
+    const sessionTime = date.getTime();
+    const durationMins = session.duration || 60;
+    const now = Date.now();
+    const isPastSession = isCompleted || (!isLive && (now > sessionTime + durationMins * 60000 + 30 * 60000));
+    const isJoinable = !isPastSession && (isLive || canJoinSession(session));
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
 
@@ -612,18 +617,20 @@ export default class CoursePlayerView {
       <div style="background:var(--bg-card); border:1px solid ${isLive ? 'var(--success)' : 'var(--border-color)'}; padding:14px 18px; border-radius:var(--radius-sm); display:flex; justify-content:space-between; align-items:center; gap:16px;">
         <div>
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-            ${isLive ? `<span class="session-tag live">${t("session.liveNow")}</span>` : `<span class="session-tag">${t("session.scheduled")}</span>`}
-            <span style="font-size:0.75rem; color:var(--text-muted);">${session.duration} ${t("session.mins")}</span>
+            ${isLive ? `<span class="session-tag live">${t("session.liveNow")}</span>` : isPastSession ? `<span class="session-tag" style="background:var(--border-color); color:var(--text-muted);">انتهت الحصة</span>` : `<span class="session-tag">${t("session.scheduled")}</span>`}
+            <span style="font-size:0.75rem; color:var(--text-muted);">${session.duration || 60} ${t("session.mins")}</span>
           </div>
           <strong style="font-size:0.9rem; color:var(--text-main);">${session.title}</strong>
           <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${formattedDate} ${t("session.at")} ${formattedTime}</div>
         </div>
 
         <div>
-          ${isJoinable
-        ? `<a href="${session.course?.meetingLink || session.teacher?.meetingLink || '#classroom/' + session.id}" target="_blank" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:6px 14px;"><i data-lucide="door-open"></i> دخول البث المباشر 🎥</a>`
-        : `<button class="btn-secondary restricted-join-btn" style="font-size:0.8rem; padding:6px 14px; opacity:0.9; cursor:pointer;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> قبل الموعد بـ 30د 🔒</button>`
-      }
+          ${isPastSession
+            ? `<button disabled class="btn-secondary" style="font-size:0.8rem; padding:6px 14px; opacity:0.6; cursor:not-allowed;">⌛ انتهت الحصة</button>`
+            : isJoinable
+            ? `<a href="#classroom/${session.id}" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:6px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="video"></i> دخول البث المباشر 🎥</a>`
+            : `<button disabled class="btn-secondary restricted-join-btn" style="font-size:0.8rem; padding:6px 14px; opacity:0.85; cursor:not-allowed;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> ينشط قبل 30د 🔒</button>`
+          }
         </div>
       </div>
     `;

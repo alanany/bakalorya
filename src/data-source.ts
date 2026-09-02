@@ -29,6 +29,9 @@ import { TeacherEarning } from "./entity/TeacherEarning";
 import { Payment } from "./entity/Payment";
 import { AuditLog } from "./entity/AuditLog";
 import { PlatformSetting } from "./entity/PlatformSetting";
+import { Grade } from "./entity/Grade";
+import { Subject } from "./entity/Subject";
+import { CourseGroup } from "./entity/CourseGroup";
 
 export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
@@ -36,7 +39,8 @@ export const allEntities = [
   TestQuestion, TestAttempt, Blog, Category, TeacherApplication,
   QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
   SessionCreditLedger, TeacherAvailability, SessionAttendance,
-  TeacherEarning, Payment, AuditLog, PlatformSetting
+  TeacherEarning, Payment, AuditLog, PlatformSetting,
+  Grade, Subject, CourseGroup
 ];
 
 export function getDataSourceOptions(): DataSourceOptions {

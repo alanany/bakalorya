@@ -23,22 +23,43 @@ export default class SubscriptionSessionsView {
         return String(sSubId) === String(this.subscriptionId);
       });
 
+      // Sort sessions: Earlier upcoming sessions first (Today, Tomorrow, upcoming dates), completed last
+      const nowTime = Date.now();
+      this.sessions.sort((a, b) => {
+        const timeA = new Date(a.scheduledAt).getTime();
+        const timeB = new Date(b.scheduledAt).getTime();
+        const isPastA = (a.status === 'COMPLETED' || a.status === 'completed') || (timeA < nowTime - (a.duration || 60) * 60000);
+        const isPastB = (b.status === 'COMPLETED' || b.status === 'completed') || (timeB < nowTime - (b.duration || 60) * 60000);
+
+        if (!isPastA && isPastB) return -1;
+        if (isPastA && !isPastB) return 1;
+
+        if (!isPastA && !isPastB) {
+          return timeA - timeB; // Earliest upcoming first (Today, Tomorrow, etc.)
+        }
+        return timeB - timeA; // Most recently completed first
+      });
+
       this.container.innerHTML = `
-        <div class="student-dashboard-layout" style="display:block;">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
-            <a href="#student-private-sessions" class="btn-secondary" style="padding:8px 12px; text-decoration:none;">
-              <i data-lucide="arrow-right"></i> عودة
-            </a>
-            <h2 class="dashboard-section-title" style="font-size: 1.8rem; margin:0;">سجل حصص الاشتراك</h2>
+        <div class="student-dashboard-layout" style="display:block; max-width:1280px; margin:0 auto; padding:24px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 24px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <a href="#student-private-sessions" class="btn-secondary" style="padding:8px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                <i data-lucide="arrow-right"></i> عودة للحصص الخاصة
+              </a>
+              <h2 class="dashboard-section-title" style="font-size: 1.6rem; margin:0;">سجل وجدول حصص الاشتراك</h2>
+            </div>
+            <span style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">مرتبة حسب الأقرب موعداً ⚡</span>
           </div>
 
           <div style="margin-bottom:40px;">
             ${this.sessions.length === 0
-              ? `<div class="glass-card" style="text-align:center; padding:24px; color:var(--text-muted);">
-                  <i data-lucide="calendar" style="width:28px;height:28px;margin-bottom:8px;opacity:0.4;"></i>
-                  <p>لا توجد حصص خاصة سابقة أو مجدولة لهذا الاشتراك.</p>
+              ? `<div class="glass-card" style="text-align:center; padding:36px; color:var(--text-muted); border-radius:20px;">
+                  <i data-lucide="calendar" style="width:36px;height:36px;margin-bottom:10px;color:var(--primary);opacity:0.5;"></i>
+                  <p style="font-size:1rem; font-weight:700; margin:0 0 4px 0; color:var(--text-main);">لا توجد حصص خاصة سابقة أو مجدولة لهذا الاشتراك</p>
+                  <p style="font-size:0.85rem; margin:0;">سيقوم المعلم أو الإدارة بجدولة مواعيد الحصص قريباً.</p>
                 </div>`
-              : `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:14px;">
+              : `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
                   ${this.sessions.map(s => this.renderSessionCard(s)).join('')}
                 </div>`
             }
@@ -54,11 +75,28 @@ export default class SubscriptionSessionsView {
     }
   }
 
+  getRelativeDateLabel(dateInput) {
+    if (!dateInput) return null;
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((targetDate - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return { text: "اليوم", bg: "rgba(239,68,68,0.12)", color: "#ef4444", icon: "🔥" };
+    if (diffDays === 1) return { text: "غداً", bg: "rgba(245,158,11,0.14)", color: "#d97706", icon: "⚡" };
+    if (diffDays === 2) return { text: "بعد غد", bg: "rgba(99,102,241,0.12)", color: "#6366f1", icon: "📅" };
+    if (diffDays < 0) return { text: "سابقاً", bg: "rgba(107,114,128,0.1)", color: "#6b7280", icon: "✓" };
+    return null;
+  }
+
   renderSessionCard(session) {
     const now = new Date();
     const date = new Date(session.scheduledAt);
-    const timeStr = date.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = date.toLocaleDateString('ar', { weekday: 'short', month: 'short', day: 'numeric' });
+    const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleDateString('ar-EG', { weekday: 'short', month: 'short', day: 'numeric' });
+    const rel = this.getRelativeDateLabel(session.scheduledAt);
 
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1;
@@ -86,8 +124,15 @@ export default class SubscriptionSessionsView {
     return `
       <div class="glass-card" style="padding:18px; border-radius:16px; border:1px solid var(--border-color);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-          <span style="font-size:0.72rem; font-weight:700; padding:3px 9px; border-radius:16px; background:${st.bg}; color:${st.color};">${st.label}</span>
-          <span style="font-size:0.75rem; color:var(--text-muted);">${session.duration || 60} دقيقة</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${rel ? `
+              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:${rel.bg}; color:${rel.color};">
+                ${rel.icon} ${rel.text}
+              </span>
+            ` : ''}
+            <span style="font-size:0.72rem; font-weight:700; padding:3px 9px; border-radius:16px; background:${st.bg}; color:${st.color};">${st.label}</span>
+          </div>
+          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">⏱️ ${session.duration || 60} دقيقة</span>
         </div>
         <h4 style="font-weight:800; font-size:0.92rem; margin:0 0 4px 0; color:var(--text-main);">${session.topic || session.title || 'حصة خاصة'}</h4>
         <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">
@@ -114,12 +159,15 @@ export default class SubscriptionSessionsView {
               </button>
             ` : !isWithinJoinWindow ? `
               <button disabled class="btn-secondary" style="width:100%; justify-content:center; font-size:0.78rem; padding:8px; opacity:0.8; cursor:not-allowed; background:rgba(99,102,241,0.05); color:var(--primary); border-color:var(--border-color);" title="ينشط زر الدخول قبل موعد الحصة بـ 30 دقيقة">
-                ⏰ الموعد ${timeStr} (ينشط قبل الموعد بـ 30د)
+                <i data-lucide="lock" style="width:13px; height:13px; margin-inline-end:4px;"></i> ينشط قبل الموعد بـ 30 دقيقة 🔒
               </button>
             ` : `
               <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; justify-content:center; font-size:0.85rem; padding:9px; text-decoration:none; gap:6px; background:#10b981; border-color:#10b981;">
                 <i data-lucide="video" style="width:16px;height:16px;"></i> دخول الحصة الآن 🎥
               </a>
+              <button class="btn-secondary session-checkin-btn" data-id="${session.id}" style="width:100%; justify-content:center; font-size:0.78rem; padding:8px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">
+                <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد الحضور (لست غائباً) ✍️
+              </button>
             `}
           ` : ''}
 
@@ -234,6 +282,31 @@ export default class SubscriptionSessionsView {
         const id = btn.getAttribute('data-id');
         const session = (this.sessions || []).find(s => String(s.id) === String(id)) || { id };
         this.renderCancelSessionModal(session);
+      });
+    });
+
+    this.container.querySelectorAll('.session-checkin-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:12px;height:12px;"></i> جاري...`;
+        if (window.lucide) window.lucide.createIcons();
+
+        try {
+          const res = await apiFetch(`/sessions/${id}/checkin`, { method: "POST" });
+          showToast(res.message || "تم تأكيد حضورك رسمياً بنجاح، ولن يتم احتسابك غائباً ✅", "success");
+          btn.outerHTML = `
+            <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:4px;">
+              <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> حاضر ومسجل ✅
+            </span>
+          `;
+          if (window.lucide) window.lucide.createIcons();
+        } catch (err) {
+          btn.disabled = false;
+          btn.innerHTML = `<i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد الحضور (لست غائباً) ✍️`;
+          if (window.lucide) window.lucide.createIcons();
+          showToast(err.message || "تعذر تأكيد الحضور.", "error");
+        }
       });
     });
   }

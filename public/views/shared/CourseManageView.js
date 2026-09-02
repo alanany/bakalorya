@@ -17,11 +17,12 @@ export default class CourseManageView {
         return;
       }
 
-      const [course, allResources, enrollments, allAssignments] = await Promise.all([
+      const [course, allResources, enrollments, allAssignments, groups] = await Promise.all([
         apiFetch(`/courses/${this.courseId}`).catch(err => ({ error: err.message || "فشل تحميل الدورة" })),
         apiFetch("/resources").catch(() => []),
         apiFetch(`/courses/${this.courseId}/enrollments`).catch(() => []),
-        apiFetch("/assignments").catch(() => [])
+        apiFetch("/assignments").catch(() => []),
+        apiFetch(`/courses/${this.courseId}/groups`).catch(() => [])
       ]);
 
       if (!course || course.error) {
@@ -34,6 +35,7 @@ export default class CourseManageView {
       this.courseResources = (allResources || []).filter(r => r.course && String(r.course.id) === String(this.courseId));
       this.courseEnrollments = enrollments || [];
       this.courseAssignments = (allAssignments || []).filter(a => a.course && String(a.course.id) === String(this.courseId));
+      this.courseGroups = groups || [];
 
       const teacherId = course.teacher?.id || course.teacherId;
       if (teacherId && teacherId !== state.user.id && state.user.role !== "admin") {
@@ -91,11 +93,14 @@ export default class CourseManageView {
             <button class="manage-tab-btn ${this.activeTab === 'curriculum' ? 'active' : ''}" data-tab="curriculum" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
               <i data-lucide="list-tree" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 📚 المنهج والدروس
             </button>
+            <button class="manage-tab-btn ${this.activeTab === 'groups' ? 'active' : ''}" data-tab="groups" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
+              <i data-lucide="users" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 👥 المجموعات وحصص البث (${(this.courseGroups || []).length})
+            </button>
             <button class="manage-tab-btn ${this.activeTab === 'assignments' ? 'active' : ''}" data-tab="assignments" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
               <i data-lucide="clipboard-list" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 📝 الواجبات والأنشطة (${(this.courseAssignments || []).length})
             </button>
             <button class="manage-tab-btn ${this.activeTab === 'students' ? 'active' : ''}" data-tab="students" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
-              <i data-lucide="users" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 👨‍🎓 الطلاب وتدليمات الأنشطة (${(this.courseEnrollments || []).length})
+              <i data-lucide="users" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 👨‍🎓 الطلاب (${(this.courseEnrollments || []).length})
             </button>
             <button class="manage-tab-btn ${this.activeTab === 'resources' ? 'active' : ''}" data-tab="resources" style="padding:12px 24px; border-radius:30px; font-weight:800; font-size:0.92rem; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all 0.2s ease;">
               <i data-lucide="folder-open" style="width:16px;height:16px;vertical-align:middle;margin-inline-end:6px;"></i> 📂 الموارد والملفات (${this.courseResources.length})
@@ -108,11 +113,12 @@ export default class CourseManageView {
           <!-- Main Content Pane -->
           <div class="manage-content">
             ${this.activeTab === 'curriculum' ? this.renderCurriculum() :
-          this.activeTab === 'assignments' ? this.renderAssignmentsTab() :
-            this.activeTab === 'students' ? this.renderStudentsTab() :
+              this.activeTab === 'groups' ? this.renderGroupsTab() :
+              this.activeTab === 'assignments' ? this.renderAssignmentsTab() :
+              this.activeTab === 'students' ? this.renderStudentsTab() :
               this.activeTab === 'resources' ? this.renderResourcesTab() :
-                this.renderSettings()
-        }
+              this.renderSettings()
+            }
           </div>
         </div>
 
@@ -700,6 +706,131 @@ export default class CourseManageView {
 
       <!-- Add Resource Inline Modal -->
       <div id="inline-resource-modal-wrapper"></div>
+    `;
+  }
+
+  renderGroupsTab() {
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:4px;">مجموعات الدورة وحصص البث المباشر 👥</h3>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">إدارة مواعيد الحصص الأسبوعية وسعة المقاعد لكل مجموعة</p>
+        </div>
+        <button class="btn-primary" id="open-manage-add-group-btn" style="padding:10px 20px; font-weight:800; background:#e51d74; border-color:#e51d74; gap:8px; display:inline-flex; align-items:center;">
+          <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة مجموعة جديدة ➕
+        </button>
+      </div>
+
+      ${this.courseGroups.length === 0 ? `
+        <div class="glass-card" style="text-align:center; padding:60px 24px; border-radius:24px; color:var(--text-muted);">
+          <i data-lucide="users" style="width:48px; height:48px; margin-bottom:12px; color:#e51d74; opacity:0.5;"></i>
+          <h4 style="font-weight:800; font-size:1.1rem; margin-bottom:6px; color:var(--text-main);">لا توجد مجموعات دراسية مضافة لهذه الدورة حتى الآن</h4>
+          <p style="font-size:0.88rem; max-width:440px; margin:0 auto 20px auto;">
+            يمكنك إنشاء مجموعات متعددة للدورة بأيام ومواعيد وسعة مقاعد مختلفة (مثل: مجموعة السبت والثلاثاء، مجموعة الأحد والأربعاء).
+          </p>
+          <button id="inline-create-group-btn" class="btn-primary" style="padding:10px 24px; border-radius:24px; font-weight:800; background:#e51d74; border-color:#e51d74;">
+            ➕ إنشاء أول مجموعة الآن
+          </button>
+        </div>
+      ` : `
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:20px;">
+          ${this.courseGroups.map(g => {
+            const enrolled = g.enrolledCount || 0;
+            const maxCap = g.maxStudents || 25;
+            const capPct = Math.min(100, Math.round((enrolled / maxCap) * 100));
+
+            const formatArabicDate = (dateStr) => {
+              if (!dateStr) return '';
+              const d = new Date(dateStr);
+              if (isNaN(d.getTime())) return dateStr;
+              const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+              const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+              return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+            };
+
+            const sessionPrice = g.sessionPrice || 40;
+            const monthlyPrice = g.monthlyPrice || (sessionPrice * 8);
+            const totalSessions = g.totalSessions || 24;
+            const duration = g.sessionDuration || 60;
+            const startDateText = g.startDate ? formatArabicDate(g.startDate) : "الأحد 13 سبتمبر 2026";
+            const endDateText = g.endDate ? formatArabicDate(g.endDate) : "الأربعاء 2 ديسمبر 2026";
+            const teacherSessionProfit = Math.round(sessionPrice * 0.5);
+
+              const isPending = g.status === 'PENDING_APPROVAL';
+
+              return `
+              <div class="glass-card" style="padding:22px; border-radius:22px; border:1px solid ${isPending ? 'rgba(245,158,11,0.3)' : 'var(--border-color)'}; display:flex; flex-direction:column; justify-content:space-between; gap:14px;">
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    <div>
+                      ${isPending
+                        ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(245,158,11,0.15); color:#d97706; display:inline-block; margin-bottom:6px;">⏳ قيد مراجعة واعتماد الإدارة</span>`
+                        : g.status === 'REJECTED'
+                          ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(239,68,68,0.15); color:#ef4444; display:inline-block; margin-bottom:6px;">❌ مرفوضة</span>`
+                          : g.status === 'IN_PROGRESS'
+                            ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(99,102,241,0.15); color:#6366f1; display:inline-block; margin-bottom:6px;">🔒 مغلقة وبدأت الدراسة</span>`
+                            : g.status === 'FULL' || capPct >= 100
+                              ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(239,68,68,0.15); color:#ef4444; display:inline-block; margin-bottom:6px;">مكتملة 🔒</span>`
+                              : `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; display:inline-block; margin-bottom:6px;">متاحة للتسجيل 🟢</span>`
+                      }
+                      <h4 style="font-size:1.15rem; font-weight:900; margin:0; color:var(--text-main);">👥 ${g.name}</h4>
+                    </div>
+                    <button class="delete-course-group-btn" data-id="${g.id}" data-name="${g.name}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; padding:4px;" title="حذف المجموعة">
+                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                    </button>
+                  </div>
+
+                  <!-- Schedule Pill -->
+                  <div style="padding:8px 12px; border-radius:12px; background:rgba(229,29,116,0.06); color:#e51d74; font-size:0.85rem; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                    <span>الجدول: ${g.scheduleText || `${g.scheduleDays || ''} ${g.scheduleTime || ''}`}</span>
+                  </div>
+
+                  ${isPending ? `
+                    <!-- Pending State: Notice only -->
+                    <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:12px; font-size:0.78rem; font-weight:800; color:#d97706; display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="clock" style="width:16px; height:16px; flex-shrink:0;"></i>
+                      <span>تم إرسال المجموعة لمراجعة الإدارة. ستظهر المقاعد وتواريخ البدء والانتهاء فور اعتمادها.</span>
+                    </div>
+                  ` : `
+                    <!-- Approved State: Dates & Capacity -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:6px 10px; font-size:0.75rem; margin-bottom:10px;">
+                      <div>
+                        <span style="color:var(--text-muted); font-weight:700; display:block;">تاريخ البدء:</span>
+                        <strong style="color:var(--text-main);">${startDateText}</strong>
+                      </div>
+                      <div>
+                        <span style="color:var(--text-muted); font-weight:700; display:block;">تاريخ الانتهاء:</span>
+                        <strong style="color:var(--text-main);">${endDateText}</strong>
+                      </div>
+                    </div>
+
+                    <!-- Capacity Progress -->
+                    <div>
+                      <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:4px;">
+                        <span>إجمالي المقاعد</span>
+                        <span>${enrolled} من ${maxCap} طالب (${g.availableSeats !== undefined ? g.availableSeats : Math.max(0, maxCap - enrolled)} متبقي)</span>
+                      </div>
+                      <div style="width:100%; height:6px; background:var(--bg-app); border-radius:10px; overflow:hidden;">
+                        <div style="width:${capPct}%; height:100%; background:${capPct >= 90 ? '#ef4444' : '#10b981'}; border-radius:10px;"></div>
+                      </div>
+                    </div>
+                  `}
+                </div>
+
+                ${g.meetingLink ? `
+                  <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.82rem; padding:8px 14px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px; border-radius:12px;">
+                    <i data-lucide="external-link" style="width:14px;height:14px;"></i> رابط البث (Zoom / Meet)
+                  </a>
+                ` : ''}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `}
+
+      <!-- Inline Group Creation Modal Container -->
+      <div id="manage-group-modal-wrapper"></div>
     `;
   }
 
@@ -1903,6 +2034,155 @@ export default class CourseManageView {
             showToast("تم حذف المورد بنجاح.", "success");
             await this.render();
           } catch (err) { console.error(err); }
+        });
+      });
+    }
+
+    // --- GROUPS TAB EVENTS ---
+    if (this.activeTab === "groups") {
+      const openAddGroup = () => {
+        const wrapper = document.getElementById("manage-group-modal-wrapper");
+        if (!wrapper) return;
+
+        const isAdmin = (window.state?.user?.role === 'admin');
+
+        wrapper.innerHTML = `
+          <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+            <div class="glass-card" style="width:100%; max-width:620px; border-radius:28px; padding:28px; max-height:90vh; display:flex; flex-direction:column; gap:18px; position:relative; overflow:hidden;">
+              
+              <!-- Header -->
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+                <div>
+                  <h3 style="font-size:1.25rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="plus-circle" style="width:20px; height:20px; color:#e51d74;"></i>
+                    إضافة مجموعة جديدة للدورة ➕
+                  </h3>
+                  <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
+                    حدد مواعيد الحصص، تواريخ البدء والانتهاء، المقاعد، وأرباح الحصة (نسبة المنصة 50%)
+                  </p>
+                </div>
+                <button id="close-manage-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">&times;</button>
+              </div>
+
+              <!-- Admin Policy Note -->
+              <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:14px; padding:10px 14px; font-size:0.8rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:10px;">
+                <i data-lucide="shield-check" style="width:18px; height:18px; color:#6366f1; flex-shrink:0;"></i>
+                <span>📌 ملاحظة: أسعار الحصص (40 ج.م./حصة) والحد الأقصى للمقاعد (25 مقعداً) يتم ضبطها واعتمادها مركزياً من إدارة المنصة فقط. ستدخل المجموعة قيد مراجعة واعتماد الإدارة فور إرسالها.</span>
+              </div>
+
+              <form id="manage-create-group-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
+                
+                <!-- Days Checkboxes -->
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px;">أيام الحصص الأسبوعية: <span style="color:#ef4444;">*</span></label>
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:6px;">
+                    ${["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"].map((day, idx) => `
+                      <label style="display:flex; align-items:center; gap:4px; padding:6px 8px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.8rem; font-weight:700; cursor:pointer;">
+                        <input type="checkbox" name="manage-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#e51d74;">
+                        <span>${day}</span>
+                      </label>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Schedule Time & Duration -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div>
+                    <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px;">توقيت الحصة:</label>
+                    <input type="text" id="manage-group-time" value="6:00م" class="form-input" style="padding:10px 14px; border-radius:12px;">
+                  </div>
+                  <div>
+                    <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px;">مدة الحصة (بالدقائق):</label>
+                    <input type="number" id="manage-group-duration" min="15" max="180" value="60" required class="form-input" style="padding:10px 14px; border-radius:12px;">
+                  </div>
+                </div>
+
+                <!-- Schedule Time -->
+                <div>
+                  <label style="display:block; font-size:0.88rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">
+                    توقيت الحصة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <input type="text" id="manage-group-time" placeholder="مثال: 6:00م أو 7:30م" value="6:00م" required class="form-input" style="padding:12px 14px; border-radius:14px; font-size:0.92rem;">
+                </div>
+
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px;">رابط البث المباشر المخصص (Zoom / Meet) - اختياري:</label>
+                  <input type="url" id="manage-group-link" placeholder="https://zoom.us/j/... أو Meet" class="form-input" style="padding:11px 14px; border-radius:12px;">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                  <button type="button" id="cancel-manage-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:20px;">إلغاء</button>
+                  <button type="submit" id="submit-manage-group-btn" class="btn-primary" style="padding:10px 28px; border-radius:20px; font-weight:900; background:#e51d74; border-color:#e51d74;">
+                    إرسال المجموعة للمراجعة والاعتماد 🚀
+                  </button>
+                </div>
+              </form>
+
+            </div>
+          </div>
+        `;
+
+        if (window.lucide) window.lucide.createIcons();
+
+        const closeWrapper = () => { wrapper.innerHTML = ""; };
+        document.getElementById("close-manage-group-modal")?.addEventListener("click", closeWrapper);
+        document.getElementById("cancel-manage-group-btn")?.addEventListener("click", closeWrapper);
+
+        document.getElementById("manage-create-group-form")?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const scheduleTime = document.getElementById("manage-group-time")?.value.trim() || "6:00م";
+          const meetingLink = document.getElementById("manage-group-link")?.value.trim() || null;
+
+          const checkedDays = Array.from(document.querySelectorAll("input[name='manage-group-days']:checked")).map(cb => cb.value);
+          const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
+          const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
+          const name = `مجموعة ${scheduleDays} (${scheduleTime})`;
+
+          const submitBtn = document.getElementById("submit-manage-group-btn");
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = "جاري الإرسال...";
+          }
+
+          try {
+            await apiFetch(`/courses/${this.courseId}/groups`, {
+              method: "POST",
+              body: JSON.stringify({
+                name,
+                scheduleDays,
+                scheduleTime,
+                scheduleText,
+                meetingLink
+              })
+            });
+            showToast("تم إرسال المجموعة لمراجعة واعتماد الإدارة بنجاح! ⏳🚀", "success");
+            closeWrapper();
+            await this.render();
+          } catch (err) {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerText = "إرسال المجموعة للمراجعة والاعتماد 🚀";
+            }
+          }
+        });
+      };
+
+      document.getElementById("open-manage-add-group-btn")?.addEventListener("click", openAddGroup);
+      document.getElementById("inline-create-group-btn")?.addEventListener("click", openAddGroup);
+
+      this.container.querySelectorAll(".delete-course-group-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const name = btn.getAttribute("data-name");
+          const confirmed = await confirmDialog({ message: `هل تريد حذف المجموعة "${name}"؟`, danger: true });
+          if (!confirmed) return;
+          try {
+            await apiFetch(`/groups/${id}`, { method: "DELETE" });
+            showToast("تم حذف المجموعة بنجاح.", "success");
+            await this.render();
+          } catch (err) {
+            showToast(err.message || "فشل حذف المجموعة.", "error");
+          }
         });
       });
     }

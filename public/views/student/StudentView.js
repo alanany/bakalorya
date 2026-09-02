@@ -1,4 +1,110 @@
-import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate, formatSessionDateTime, getTimezoneBadgeHTML, getUserTimezone, getTimezoneInfo, TIMEZONE_MAP } from "../../app.js";
+import { apiFetch, state, showToast, t, renderCourseCard, canJoinSession, getMinSessionDateTimeISO, validateSessionScheduledDate, formatSessionDateTime, getTimezoneBadgeHTML, getUserTimezone, getTimezoneInfo, TIMEZONE_MAP, renderEducationSelectHTML } from "../../app.js";
+
+// Helper: Normalize Grade Key across curricula and Arabic/English strings
+export function normalizeGradeKey(raw) {
+  if (!raw) return "";
+  const s = String(raw).toLowerCase().trim();
+
+  // Secondary 3 / Entlq 3 / BAC
+  if (s.includes("entlq 3") || s.includes("bac") || s.includes("ثالثة ثانوي") || s.includes("3ث") || s.includes("ثالث ثانوي") || s.includes("sec_3") || s.includes("grade 12")) {
+    return "sec_3";
+  }
+  // Secondary 2 / Entlq 2
+  if (s.includes("entlq 2") || s.includes("ثانية ثانوي") || s.includes("2ث") || s.includes("ثاني ثانوي") || s.includes("sec_2") || s.includes("grade 11")) {
+    return "sec_2";
+  }
+  // Secondary 1 / Entlq 1
+  if (s.includes("entlq 1") || s.includes("أولى ثانوي") || s.includes("اولى ثانوي") || s.includes("1ث") || s.includes("أول ثانوي") || s.includes("اول ثانوي") || s.includes("sec_1") || s.includes("grade 10")) {
+    return "sec_1";
+  }
+
+  // Preparatory / Intermediate
+  if (s.includes("grade 9") || s.includes("bem") || s.includes("تاسع") || s.includes("الصف 9") || s.includes("prep_3") || s.includes("3 إعدادي") || s.includes("ثالث إعدادي")) {
+    return "grade_9";
+  }
+  if (s.includes("grade 8") || s.includes("ثامن") || s.includes("الصف 8") || s.includes("prep_2") || s.includes("2 إعدادي") || s.includes("ثاني إعدادي")) {
+    return "grade_8";
+  }
+  if (s.includes("grade 7") || s.includes("سابع") || s.includes("الصف 7") || s.includes("prep_1") || s.includes("1 إعدادي") || s.includes("أول إعدادي") || s.includes("اول إعدادي")) {
+    return "grade_7";
+  }
+
+  // Primary / Prep 6-1
+  if (s.includes("grade 6") || s.includes("سادس") || s.includes("الصف 6") || s.includes("pri_6") || s.includes("prep 6") || s.includes("سادسة") || s.includes("6 إعدادي") || s.includes("6 ابتدائي")) {
+    return "grade_6";
+  }
+  if (s.includes("grade 5") || s.includes("خامس") || s.includes("الصف 5") || s.includes("pri_5") || s.includes("خامسة") || s.includes("5 ابتدائي")) {
+    return "grade_5";
+  }
+  if (s.includes("grade 4") || s.includes("رابع") || s.includes("الصف 4") || s.includes("pri_4") || s.includes("رابعة") || s.includes("4 ابتدائي")) {
+    return "grade_4";
+  }
+  if (s.includes("grade 3") || s.includes("الصف 3 ابتدائي") || s.includes("pri_3") || s.includes("3 ابتدائي")) {
+    return "grade_3";
+  }
+  if (s.includes("grade 2") || s.includes("الصف 2 ابتدائي") || s.includes("pri_2") || s.includes("2 ابتدائي")) {
+    return "grade_2";
+  }
+  if (s.includes("grade 1") || s.includes("الصف 1 ابتدائي") || s.includes("pri_1") || s.includes("1 ابتدائي")) {
+    return "grade_1";
+  }
+
+  return s;
+}
+
+// Helper: Check if course matches student's educational stage/degree
+export function isCourseMatchingStudentGrade(course, studentEdu) {
+  if (!studentEdu) return true;
+  const sKey = normalizeGradeKey(studentEdu);
+  if (!sKey) return true;
+
+  const courseGradeRaw = course.grade?.name || course.grade?.code || course.degree || '';
+  if (!courseGradeRaw) return true;
+
+  const cKey = normalizeGradeKey(courseGradeRaw);
+  return cKey === sKey;
+}
+
+// Helper: Format Student Grade Title for human display
+export function getStudentGradeDisplay(eduStr) {
+  if (!eduStr) return "لم يتم تحديد المرحلة بعد ⚠️";
+  const s = String(eduStr).toLowerCase().trim();
+  const map = {
+    "grade 1 (primary)": "الصف الأول الابتدائي (Grade 1)",
+    "grade 1 (prep)": "الصف الأول الابتدائي (Grade 1)",
+    "grade 1": "الصف الأول الابتدائي (Grade 1)",
+    "grade 2 (primary)": "الصف الثاني الابتدائي (Grade 2)",
+    "grade 2 (prep)": "الصف الثاني الابتدائي (Grade 2)",
+    "grade 2": "الصف الثاني الابتدائي (Grade 2)",
+    "grade 3 (primary)": "الصف الثالث الابتدائي (Grade 3)",
+    "grade 3 (prep)": "الصف الثالث الابتدائي (Grade 3)",
+    "grade 3": "الصف الثالث الابتدائي (Grade 3)",
+    "grade 4 (primary)": "الصف الرابع الابتدائي (Grade 4)",
+    "grade 4 (prep)": "الصف الرابع الابتدائي (Grade 4)",
+    "grade 4": "الصف الرابع الابتدائي (Grade 4)",
+    "grade 5 (primary)": "الصف الخامس الابتدائي (Grade 5)",
+    "grade 5 (prep)": "الصف الخامس الابتدائي (Grade 5)",
+    "grade 5": "الصف الخامس الابتدائي (Grade 5)",
+    "grade 6 (primary)": "الصف السادس الابتدائي (Grade 6)",
+    "grade 6 (prep)": "الصف السادس الابتدائي (Grade 6)",
+    "grade 6": "الصف السادس الابتدائي (Grade 6)",
+    "grade 7 (prep 1)": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
+    "grade 7 (intermediate)": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
+    "grade 7": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
+    "grade 8 (prep 2)": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
+    "grade 8 (intermediate)": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
+    "grade 8": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
+    "grade 9 (prep 3 / bem)": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
+    "grade 9 (intermediate)": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
+    "grade 9": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
+    "entlq 1": "الصف الأول الثانوي (انطلق 1)",
+    "entlq 2": "الصف الثاني الثانوي (انطلق 2)",
+    "entlq 3": "الصف الثالث الثانوي (انطلق 3 - BAC)",
+    "bac": "الصف الثالث الثانوي (انطلق 3 - BAC)",
+    "other": "مستوى تعليمي آخر"
+  };
+  return map[s] || eduStr;
+}
 
 export default class StudentView {
   constructor(container) {
@@ -22,14 +128,19 @@ export default class StudentView {
     `;
 
     try {
-      const [stats, enrollments, allCourses, sessions, subscriptions, assignments] = await Promise.all([
+      const [stats, enrollments, allCourses, sessions, subscriptions, assignments, meData] = await Promise.all([
         apiFetch("/student/stats").catch(() => ({ totalCourses: 0, completedLessonsCount: 0, studyHours: 0 })),
         apiFetch("/student/enrollments").catch(() => []),
         apiFetch("/courses").catch(() => []),
         apiFetch("/sessions").catch(() => []),
         apiFetch("/subscriptions/my").catch(() => []),
-        apiFetch("/assignments").catch(() => [])
+        apiFetch("/assignments").catch(() => []),
+        apiFetch("/auth/me").catch(() => null)
       ]);
+
+      if (meData) {
+        state.user = { ...state.user, ...meData };
+      }
 
       this.stats = stats || { totalCourses: 0, completedLessonsCount: 0, studyHours: 0 };
       this.enrollments = Array.isArray(enrollments) ? enrollments : [];
@@ -88,9 +199,19 @@ export default class StudentView {
       displayEnrollments = this.enrollments.filter(e => (e.progress || 0) >= 100);
     }
 
-    // Recommended courses (published courses that the student hasn't enrolled in yet)
+    // Recommended courses (strictly matching the student's grade/degree)
     const enrolledIds = new Set(this.enrollments.map(e => e.course?.id).filter(Boolean));
-    const recommendedCourses = this.allCourses.filter(c => !enrolledIds.has(c.id) && (c.status === "PUBLISHED" || !c.status)).slice(0, 3);
+    const studentEdu = state.user?.education;
+    const candidateCourses = this.allCourses.filter(c => !enrolledIds.has(c.id) && (c.status === "PUBLISHED" || !c.status));
+    
+    // Match courses specifically for student's grade/degree
+    let recommendedCourses = studentEdu ? candidateCourses.filter(c => isCourseMatchingStudentGrade(c, studentEdu)) : candidateCourses;
+    
+    // Fallback if no specific grade matches found: show candidate courses
+    if (recommendedCourses.length === 0) {
+      recommendedCourses = candidateCourses;
+    }
+    recommendedCourses = recommendedCourses.slice(0, 4);
 
     // Private sessions summary
     const totalRemainingCredits = this.subscriptions.reduce((sum, s) => sum + (s.remainingCredits || 0), 0);
@@ -101,6 +222,24 @@ export default class StudentView {
     this.container.innerHTML = `
       <div class="student-dashboard-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
         
+        <!-- Missing Education Level Alert Banner (if not set) -->
+        ${!state.user?.education ? `
+          <div class="glass-card" style="margin-bottom:24px; padding:18px 24px; border-radius:20px; background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06)); border:1.5px solid rgba(245,158,11,0.4); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; box-shadow:0 8px 24px rgba(245,158,11,0.12);">
+            <div style="display:flex; align-items:center; gap:14px; min-width:260px; flex:1;">
+              <div style="width:44px; height:44px; border-radius:14px; background:rgba(245,158,11,0.2); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="alert-triangle" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <strong style="font-size:0.98rem; color:var(--text-main); display:block; margin-bottom:2px;">تنبيه: لم تقم بتحديد مرحلتك الدراسية بعد! ⚠️</strong>
+                <span style="font-size:0.82rem; color:var(--text-muted);">يرجى تحديد صفك ومستواك الأكاديمي من صفحة الإعدادات لتخصيص الكورسات والمجموعات الدراسية وحصص البث الملائمة لك.</span>
+              </div>
+            </div>
+            <a href="#settings" class="btn-primary" style="padding:10px 20px; border-radius:20px; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; display:flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(245,158,11,0.35); text-decoration:none; color:#fff;">
+              <i data-lucide="settings" style="width:16px;height:16px;"></i> تحديد المرحلة من الإعدادات ⚙️
+            </a>
+          </div>
+        ` : ''}
+
         <!-- 1. Hero Studio Banner -->
         <div class="glass-card hero-student-banner" style="position:relative; overflow:hidden; border-radius:28px; padding:32px 36px; margin-bottom:28px; background:linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(147,51,234,0.08) 50%, rgba(16,185,129,0.08) 100%); border:1.5px solid var(--border-focus); box-shadow:0 12px 36px rgba(79,70,229,0.08);">
           
@@ -131,7 +270,22 @@ export default class StudentView {
                   أهلاً بك مجدداً، <span style="background:linear-gradient(135deg, var(--primary), #9333ea); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">${studentName}</span> 👋
                 </h1>
                 
-                <p style="color:var(--text-muted); font-size:0.92rem; margin:0; line-height:1.5;">
+                <!-- Educational Data Pill Line in Hero -->
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; margin-bottom:4px;">
+                  <span class="badge" style="font-size:0.82rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.12); padding:4px 12px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); display:inline-flex; align-items:center; gap:5px;">
+                    🎓 المرحلة: <strong>${getStudentGradeDisplay(state.user?.education)}</strong>
+                  </span>
+                  ${state.user?.parentPhone ? `
+                    <span class="badge" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); background:rgba(0,0,0,0.04); padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
+                      <i data-lucide="phone-call" style="width:12px; height:12px;"></i> ولي الأمر: ${state.user.parentPhone}
+                    </span>
+                  ` : ''}
+                  <a href="#settings" style="color:var(--primary); font-size:0.76rem; font-weight:800; text-decoration:underline; padding:0 4px; display:inline-flex; align-items:center; gap:3px;">
+                    <i data-lucide="settings" style="width:12px; height:12px;"></i> تعديل من الإعدادات ⚙️
+                  </a>
+                </div>
+
+                <p style="color:var(--text-muted); font-size:0.88rem; margin:4px 0 0 0; line-height:1.5;">
                   واصل رحلة تفوقك الدراسي واستكشف دروسك وحصصك المباشرة لليوم بكل سهولة.
                 </p>
               </div>
@@ -251,8 +405,8 @@ export default class StudentView {
                 رصيد الحصص الخاصة
               </div>
             </div>
-            <a href="#student-private-sessions" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; text-decoration:none;">
-              حجز ↗
+            <a href="#student-subscriptions" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; text-decoration:none;">
+              الباقات ↗
             </a>
           </div>
 
@@ -389,13 +543,14 @@ export default class StudentView {
             <!-- Section: Recommended Courses for You -->
             ${recommendedCourses.length > 0 ? `
               <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
                   <div>
-                    <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                       <i data-lucide="sparkles" style="width:20px; height:20px; color:#a855f7;"></i>
                       دورات مقترحة لتعزيز مهاراتك
+                      ${state.user?.education ? `<span class="badge" style="font-size:0.75rem; background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">🎯 لصف: ${getStudentGradeDisplay(state.user.education)}</span>` : ''}
                     </h3>
-                    <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">اخترنا لك هذه المناهج لمساعدتك على التفوق</p>
+                    <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">اخترنا لك هذه المناهج والدورات المتوافقة مع مرحلتك الدراسية</p>
                   </div>
                   <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none;">
                     تصفح الكل (${this.allCourses.length}) ↗
@@ -410,10 +565,10 @@ export default class StudentView {
 
           </div>
 
-          <!-- Right Column (Sidebar Schedule & Subscriptions) -->
+          <!-- Right Column (Sidebar Academic Profile, Schedule & Subscriptions) -->
           <div style="display:flex; flex-direction:column; gap:24px;">
             
-            <!-- Live & Upcoming Sessions Hub -->
+            <!-- Live & Upcoming Sessions Hub (Top Priority) -->
             <div class="glass-card" style="padding:22px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
@@ -441,41 +596,27 @@ export default class StudentView {
               `}
             </div>
 
-            <!-- 1-on-1 Private Sessions & Subscriptions Card -->
-            <div class="glass-card" style="padding:22px; border-radius:22px; border:1.5px solid rgba(168,85,247,0.25); background:linear-gradient(135deg, rgba(168,85,247,0.06), rgba(99,102,241,0.03));">
-              <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                <div style="width:40px; height:40px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; display:flex; align-items:center; justify-content:center;">
-                  <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
-                </div>
-                <div>
-                  <h4 style="font-size:1rem; font-weight:800; margin:0; color:var(--text-main);">الحصص الخاصة الفردية</h4>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">متابعة 1-on-1 مع نخبة الأساتذة</div>
-                </div>
-              </div>
 
-              ${this.subscriptions.length === 0 ? `
-                <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin:0 0 16px 0;">
-                  احصل على جلسات استشارية وشرح مخصص فردي مع أفضل الأساتذة وفق جدولك الخاص.
-                </p>
-                <a href="#subscription-plans" class="btn-primary" style="width:100%; justify-content:center; text-decoration:none; padding:10px; font-size:0.85rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg,#a855f7,#6366f1); border:none; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> تصفح باقات الحصص الشهرية
+            <!-- Quick Learning Hub & Shortcuts -->
+            <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="compass" style="width:18px; height:18px; color:var(--primary);"></i>
+                أدوات الوصول السريع ⚡
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <a href="#schedule" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="calendar" style="width:14px;height:14px;color:var(--primary);"></i> الجدول الدراسي
                 </a>
-              ` : `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
-                  ${this.subscriptions.map(sub => `
-                    <div style="padding:12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color);">
-                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <span style="font-weight:800; font-size:0.85rem; color:var(--text-main);">${sub.plan?.name || 'اشتراك شهري'}</span>
-                        <span style="font-size:0.85rem; font-weight:900; color:#a855f7;">${sub.remainingCredits || 0} متبقية</span>
-                      </div>
-                      <div style="font-size:0.75rem; color:var(--text-muted);">👨‍🏫 المعلم: ${sub.teacher?.name || 'في انتظار التعيين'}</div>
-                    </div>
-                  `).join('')}
-                </div>
-                <a href="#student-private-sessions" class="btn-secondary" style="width:100%; justify-content:center; text-decoration:none; padding:8px; font-size:0.82rem; font-weight:700; border-radius:10px; border-color:#a855f7; color:#a855f7; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="calendar"></i> إدارة الحصص الخاصة ↗
+                <a href="#assignments" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="file-text" style="width:14px;height:14px;color:#f59e0b;"></i> الواجبات (${pendingAssignments.length})
                 </a>
-              `}
+                <a href="#student-certificates" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="award" style="width:14px;height:14px;color:#10b981;"></i> شهاداتي
+                </a>
+                <a href="#settings" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="settings" style="width:14px;height:14px;color:#6366f1;"></i> الإعدادات
+                </a>
+              </div>
             </div>
 
             <!-- Quick Study Tips / Motivation Widget -->
@@ -607,7 +748,7 @@ export default class StudentView {
     const diffMins = Math.ceil(diffMs / (1000 * 60));
     const isPastSession = diffMins < -durationMins;
 
-    const isLive = session.status === "live" || session.status === "active";
+    const isLive = !isPastSession && (session.status === "live" || session.status === "active");
     const isStartingSoon = diffMins <= 30 && !isPastSession;
     const teacherTz = session.teacher?.timezone || "Africa/Cairo";
     const formatted = formatSessionDateTime(session.scheduledAt, null, { secondaryTz: teacherTz });
@@ -627,10 +768,26 @@ export default class StudentView {
           <div>⏰ الموعد: ${formatted.timeStr} ${formatted.secondaryTZHTML}</div>
         </div>
 
-        <div style="margin-top:2px;">
-          <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; padding:8px 12px; font-size:0.8rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:10px; background:${isLive || isStartingSoon ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, var(--primary), #4f46e5)'}; gap:6px; border:none; display:flex; align-items:center;">
-            <i data-lucide="${isLive ? 'video' : 'door-open'}" style="width:14px; height:14px;"></i> ${isLive ? 'دخول البث المباشر الآن 🔴' : 'دخول قاعة الحصة ⏳'}
-          </a>
+        <div class="session-actions-wrapper" data-id="${session.id}" style="margin-top:4px; display:flex; flex-direction:column; gap:6px;">
+          ${(isLive || isStartingSoon) ? (
+            window.checkedInSessions?.has(session.id) ? `
+              <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
+                <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> تم تأكيد حضورك (حاضر) ✅
+              </span>
+              <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; padding:8px 12px; font-size:0.8rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); gap:6px; border:none; display:flex; align-items:center;">
+                <i data-lucide="video" style="width:14px; height:14px;"></i> دخول قاعة الحصة الآن 🎥
+              </a>
+            ` : `
+              <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="student" style="width:100%; justify-content:center; font-size:0.82rem; padding:9px 12px; background:linear-gradient(135deg,#10b981,#059669); font-weight:800; cursor:pointer; border-radius:10px; border:none; color:#fff; display:flex; align-items:center; gap:6px; box-shadow:0 3px 10px rgba(16,185,129,0.25);">
+                <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد الحضور (لست غائباً) ✍️
+              </button>
+              <div style="font-size:0.72rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر دخول القاعة</div>
+            `
+          ) : `
+            <button disabled class="btn-secondary" style="width:100%; padding:8px 12px; font-size:0.78rem; font-weight:700; justify-content:center; border-radius:10px; opacity:0.85; cursor:not-allowed; background:rgba(99,102,241,0.06); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
+              <i data-lucide="lock" style="width:13px; height:13px; margin-inline-end:4px;"></i> ينشط قبل الموعد بـ 30 دقيقة 🔒
+            </button>
+          `}
         </div>
       </div>
     `;
@@ -643,6 +800,43 @@ export default class StudentView {
         const filter = btn.getAttribute("data-filter");
         this.courseFilter = filter;
         this.renderDashboard();
+      });
+    });
+
+    // Attendance Check-in Buttons
+    this.container.querySelectorAll('.session-checkin-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:13px;height:13px;"></i> جاري تأكيد الحضور...`;
+        if (window.lucide) window.lucide.createIcons();
+
+        try {
+          const res = await apiFetch(`/sessions/${id}/checkin`, { method: "POST" });
+          showToast(res.message || "تم تأكيد حضورك رسمياً بنجاح، ولن يتم احتسابك غائباً ✅", "success");
+          window.checkedInSessions = window.checkedInSessions || new Set();
+          window.checkedInSessions.add(id);
+
+          const wrapper = btn.closest(".session-actions-wrapper") || btn.parentElement;
+          if (wrapper) {
+            wrapper.innerHTML = `
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
+                  <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
+                </span>
+                <a href="#classroom/${id}" class="btn-primary session-action" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.85rem; padding:9px; justify-content:center; text-decoration:none; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:10px;">
+                  <i data-lucide="video" style="width:15px; height:15px;"></i> دخول قاعة الحصة الآن 🎥
+                </a>
+              </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+          }
+        } catch (err) {
+          btn.disabled = false;
+          btn.innerHTML = `<i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد الحضور (لست غائباً) ✍️`;
+          if (window.lucide) window.lucide.createIcons();
+          showToast(err.message || "تعذر تأكيد الحضور.", "error");
+        }
       });
     });
 

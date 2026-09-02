@@ -13,7 +13,7 @@ export class CourseController {
   static async getAll(req: Request, res: Response) {
     try {
       const courseRepository = AppDataSource.getRepository(Course);
-      const courses = await courseRepository.find({ relations: ["teacher"] });
+      const courses = await courseRepository.find({ relations: ["teacher", "grade", "subject"] });
       return res.status(200).json(courses);
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -28,7 +28,7 @@ export class CourseController {
 
       const course = await courseRepository.findOne({
         where: { id },
-        relations: ["teacher"]
+        relations: ["teacher", "grade", "subject"]
       });
       if (!course) {
         return res.status(404).json({ error: "Course not found." });
@@ -46,7 +46,7 @@ export class CourseController {
   }
 
   static async create(req: AuthRequest, res: Response) {
-    const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails } = req.body;
+    const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails, gradeId, subjectId } = req.body;
 
     if (!title || !description || !category) {
       return res.status(400).json({ error: "Missing title, description, or category." });
@@ -69,6 +69,13 @@ export class CourseController {
       course.meetingLink = meetingLink || null;
       course.image = image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60";
       course.teacher = teacher;
+
+      if (gradeId) {
+        course.grade = { id: gradeId } as any;
+      }
+      if (subjectId) {
+        course.subject = { id: subjectId } as any;
+      }
 
       const numericPrice = parseFloat(price) || 0;
       const courseIsFree = isFree === true || isFree === "true" || numericPrice === 0;
@@ -228,13 +235,13 @@ export class CourseController {
 
   static async update(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails } = req.body;
+    const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails, gradeId, subjectId } = req.body;
 
     try {
       const courseRepository = AppDataSource.getRepository(Course);
       const course = await courseRepository.findOne({
         where: { id },
-        relations: ["teacher"]
+        relations: ["teacher", "grade", "subject"]
       });
 
       if (!course) {
@@ -249,6 +256,12 @@ export class CourseController {
       if (description !== undefined) course.description = description;
       if (category !== undefined) course.category = category;
       if (degree !== undefined) course.degree = degree;
+      if (gradeId !== undefined) {
+        course.grade = gradeId ? ({ id: gradeId } as any) : null;
+      }
+      if (subjectId !== undefined) {
+        course.subject = subjectId ? ({ id: subjectId } as any) : null;
+      }
       if (image !== undefined) course.image = image;
       if (meetingLink !== undefined) course.meetingLink = meetingLink;
       if (price !== undefined) {

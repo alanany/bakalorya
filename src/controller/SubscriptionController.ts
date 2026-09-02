@@ -186,10 +186,10 @@ export class SubscriptionController {
       });
 
       const filteredSubscriptions = courseId
-        ? subscriptions.filter(sub => 
-            (sub.plan && (sub.plan.courseId === courseId || sub.plan.course?.id === courseId)) ||
-            (sub.subjectId === courseId)
-          )
+        ? subscriptions.filter(sub =>
+          (sub.plan && (sub.plan.courseId === courseId || sub.plan.course?.id === courseId)) ||
+          (sub.subjectId === courseId)
+        )
         : subscriptions;
 
       const result = await Promise.all(filteredSubscriptions.map(async (sub) => {
@@ -233,8 +233,8 @@ export class SubscriptionController {
         order: { price: "ASC" }
       });
 
-      const allActivePlans = availablePlans.length > 0 
-        ? availablePlans 
+      const allActivePlans = availablePlans.length > 0
+        ? availablePlans
         : await planRepository.find({ where: { isActive: true }, order: { price: "ASC" } });
 
       // 2. Find student's subscription for this course
@@ -244,7 +244,7 @@ export class SubscriptionController {
         order: { createdAt: "DESC" }
       });
 
-      const matchedSub = subscriptions.find(s => 
+      const matchedSub = subscriptions.find(s =>
         (s.plan && (s.plan.courseId === courseId || s.plan.course?.id === courseId)) ||
         (s.subjectId === courseId)
       ) || (subscriptions.length > 0 ? subscriptions[0] : null);
