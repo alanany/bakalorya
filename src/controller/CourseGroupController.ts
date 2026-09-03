@@ -649,7 +649,7 @@ export class CourseGroupController {
       const sessionRepo = AppDataSource.getRepository(Session);
       const groupRepo = AppDataSource.getRepository(CourseGroup);
 
-      let enrollment = null;
+      let enrollment: Enrollment | null = null;
       if (enrollmentId) {
         enrollment = await enrollmentRepo.findOne({
           where: { id: enrollmentId },

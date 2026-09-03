@@ -14,6 +14,9 @@ const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Lesson_1 = require("./Lesson");
 const Enrollment_1 = require("./Enrollment");
+const Grade_1 = require("./Grade");
+const Subject_1 = require("./Subject");
+const CourseGroup_1 = require("./CourseGroup");
 let Course = class Course {
     id;
     title;
@@ -27,12 +30,15 @@ let Course = class Course {
     isFree;
     currency;
     paymentDetails;
+    grade;
+    subject;
     approvedBy;
     approvedAt;
     rejectionReason;
     teacher;
     unitsOrder;
     lessons;
+    groups;
     enrollments;
     createdAt;
     updatedAt;
@@ -88,6 +94,14 @@ __decorate([
     __metadata("design:type", String)
 ], Course.prototype, "paymentDetails", void 0);
 __decorate([
+    (0, typeorm_1.ManyToOne)(() => Grade_1.Grade, grade => grade.courses, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
+], Course.prototype, "grade", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Subject_1.Subject, subject => subject.courses, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
+], Course.prototype, "subject", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true, onDelete: "SET NULL" }),
     __metadata("design:type", User_1.User)
 ], Course.prototype, "approvedBy", void 0);
@@ -111,6 +125,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Lesson_1.Lesson, lesson => lesson.course, { cascade: true }),
     __metadata("design:type", Array)
 ], Course.prototype, "lessons", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => CourseGroup_1.CourseGroup, group => group.course, { cascade: true }),
+    __metadata("design:type", Array)
+], Course.prototype, "groups", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Enrollment_1.Enrollment, enrollment => enrollment.course, { cascade: true }),
     __metadata("design:type", Array)

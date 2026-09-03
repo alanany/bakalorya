@@ -14,10 +14,12 @@ const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Course_1 = require("./Course");
 const Payment_1 = require("./Payment");
+const CourseGroup_1 = require("./CourseGroup");
 let Enrollment = class Enrollment {
     id;
     student;
     course;
+    group;
     progress; // 0 to 100
     status;
     completedLessons; // List of completed lesson IDs
@@ -41,6 +43,10 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)
 ], Enrollment.prototype, "course", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => CourseGroup_1.CourseGroup, group => group.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "group", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)

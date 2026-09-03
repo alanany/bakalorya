@@ -1251,7 +1251,7 @@ export class SessionBookingController {
         return res.status(404).json({ error: "المعلم المحدد غير موجود." });
       }
 
-      let course = null;
+      let course: Course | null = null;
       if (courseId) {
         course = await courseRepository.findOne({
           where: { id: courseId },
@@ -1320,8 +1320,10 @@ export class SessionBookingController {
         }
       }
 
+      const effectiveTitle = title || (course ? course.title : "حصة جماعية");
+
       // Create and save CourseGroup record so group appears in #admin-dashboard/groups and teacher/student views
-      let savedGroup = null;
+      let savedGroup: CourseGroup | null = null;
       try {
         const groupRepository = AppDataSource.getRepository(CourseGroup);
         const enrollmentRepository = AppDataSource.getRepository(Enrollment);
@@ -1352,7 +1354,7 @@ export class SessionBookingController {
         // Enroll all group students in this group
         for (const student of students) {
           try {
-            let enrollment = null;
+            let enrollment: Enrollment | null = null;
             if (course) {
               enrollment = await enrollmentRepository.findOne({
                 where: { student: { id: student.id }, course: { id: course.id } }
@@ -1375,7 +1377,6 @@ export class SessionBookingController {
       }
 
       const createdSessions: Session[] = [];
-      const effectiveTitle = title || (course ? course.title : "حصة جماعية");
 
       for (let i = 0; i < datesToSchedule.length; i++) {
         const scheduledDate = datesToSchedule[i];
@@ -1415,7 +1416,7 @@ export class SessionBookingController {
         try {
           const paymentRepository = AppDataSource.getRepository(Payment);
           for (const student of students) {
-            let sRec = null;
+            let sRec: any = null;
             if (studentReceipts) {
               if (Array.isArray(studentReceipts)) {
                 sRec = studentReceipts.find((sr: any) => String(sr.studentId) === String(student.id));
