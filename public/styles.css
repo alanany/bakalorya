@@ -88,24 +88,22 @@ body.dark-theme {
   --glass-bg: rgba(15, 15, 20, 0.7);
 }
 
---secondary-rgb: 147,
-51,
-234;
-
---accent: #d97706;
---accent-glow: rgba(217, 119, 6, 0.1);
-
---glass-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.06);
---glass-bg: rgba(255, 255, 255, 0.75);
-}
-
 /* --- RESET & BASE STYLES --- */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -114,7 +112,6 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
@@ -222,9 +219,10 @@ textarea {
 }
 
 .header-container {
-  max-width: 1280px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 8px 24px;
+  padding: 8px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;

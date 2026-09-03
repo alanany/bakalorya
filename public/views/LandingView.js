@@ -21,11 +21,11 @@ export default class LandingView {
 
   async render() {
     this.container.innerHTML = `
-      <div style="background:var(--bg-app); min-height:100vh;">
+      <div style="background:var(--bg-app); min-height:100vh; width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box;">
 
         <!-- TOP UTILITY BAR -->
-        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.82rem; color:var(--text-muted);">
-          <div style="max-width:1280px; margin:0 auto; display:flex; gap:24px; align-items:center; font-weight:700;">
+        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 20px; font-size:0.82rem; color:var(--text-muted); width:100%;">
+          <div style="width:100%; margin:0 auto; display:flex; gap:24px; align-items:center; font-weight:700;">
             <span style="color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:4px; cursor:pointer;">للطلاب والمتفوقين</span>
             <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمعلمين والأساتذة</span>
             <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمدارس والمؤسسات</span>
@@ -33,10 +33,10 @@ export default class LandingView {
         </div>
 
         <!-- SCREENSHOT 1: SECTION 1 (DUAL HERO CAROUSEL) -->
-        <section style="max-width:1280px; margin:0 auto; padding:32px 24px 16px 24px;">
-          <div class="hero-section-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px; align-items:stretch;">
+        <section style="width:100%; margin:0 auto; padding:24px 20px 16px 20px;">
+          <div class="hero-section-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:stretch;">
             
-            <div class="glass-card hero-card-main" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
+            <div class="glass-card hero-card-main" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; border-radius:24px; padding:36px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px; box-shadow:0 12px 36px rgba(0,86,210,0.25);">
               <div style="max-width:320px; z-index:2;">
                 <h1 style="font-size:2.1rem; font-weight:900; line-height:1.25; margin-bottom:14px; color:#ffffff;">
                   ابدأ، طوّر، وحقق أفضل درجات انطلق 🎓
@@ -55,7 +55,7 @@ export default class LandingView {
               </div>
             </div>
 
-            <div class="glass-card hero-card-secondary" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px;">
+            <div class="glass-card hero-card-secondary" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; padding:36px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:300px;">
               <div style="max-width:320px; z-index:2;">
                 <h2 style="font-size:1.8rem; font-weight:900; line-height:1.3; margin-bottom:14px; color:var(--text-color);">
                   ارتقِ بمستوى طلابك وانضم لطاقم معلّمي انطلق 👨‍🏫
@@ -87,32 +87,14 @@ export default class LandingView {
 
 
         <!-- 🌟 CREATIVE CURRICULUM EXPLORER (HERO STAGE, GRADE & SUBJECTS SELECTOR) -->
-        <section id="interactive-curriculum-explorer" style="max-width:1280px; margin:0 auto; padding:20px 24px 44px 24px;">
-          <div class="glass-card curriculum-explorer-box" style="
-            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(24, 24, 27, 0.02) 100%);
-            border: 1px solid var(--border-color);
-            border-radius: 32px;
-            padding: 44px 36px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-          ">
-            
-            <!-- BACKGROUND AMBIENT GLOW EFFECTS -->
-            <div style="position:absolute; top:-100px; right:-100px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(229,29,116,0.12) 0%, transparent 70%); pointer-events:none;"></div>
-            <div style="position:absolute; bottom:-100px; left:-100px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.1) 0%, transparent 70%); pointer-events:none;"></div>
-
-        <!-- SECTION 1: INTERACTIVE ACCORDION CURRICULUM EXPLORER (WIDE & EXPANSIVE) -->
-        <section style="max-width:1400px; width:100%; margin:0 auto; padding:36px 16px 24px 16px; direction:rtl;">
-          
-          <div style="background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:28px; padding:36px 18px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden;">
+        <section id="interactive-curriculum-explorer" style="width:100%; margin:0 auto; padding:12px 20px 28px 20px; direction:rtl;">
+          <div style="background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:28px; padding:20px 16px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden;">
             
             <!-- Floating Decorative Background Glows -->
-            <div style="position:absolute; top:-60px; right:-60px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.12) 0%, transparent 70%); pointer-events:none;"></div>
-            <div style="position:absolute; bottom:-60px; left:-60px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%); pointer-events:none;"></div>
+            <div style="position:absolute; top:-40px; right:-20px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.12) 0%, transparent 70%); pointer-events:none;"></div>
 
             <!-- SECTION HEADER (CENTERED) -->
-            <div style="text-align:center; max-width:820px; margin:0 auto 36px auto; position:relative; z-index:1;">
+            <div style="text-align:center; max-width:820px; margin:0 auto 32px auto; position:relative; z-index:1;">
               <span style="font-size:0.85rem; font-weight:900; background:rgba(0,86,210,0.08); color:var(--primary); padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;">
                 <i data-lucide="compass" style="width:15px;height:15px;"></i> استكشف المناهج والمجموعات الدراسية
               </span>
@@ -137,13 +119,13 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 1: SECTION 2 (DYNAMIC NEW AND POPULAR 3-COLUMNS FROM DATABASE) -->
-        <section style="max-width:1280px; margin:0 auto; padding:32px 24px;">
+        <section style="width:100%; margin:0 auto; padding:24px 20px;">
           
 
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
 
             <!-- Column 1: Most popular -->
-            <div class="glass-card" style="background:rgba(99,102,241,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px;">
+            <div class="glass-card" style="background:rgba(99,102,241,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px 20px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   الأكثر طلباً ومتابعة <i data-lucide="arrow-left" style="width:16px;height:16px; color:var(--primary);"></i>
@@ -156,7 +138,7 @@ export default class LandingView {
             </div>
 
             <!-- Column 2: Hot new releases -->
-            <div class="glass-card" style="background:rgba(245,158,11,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px;">
+            <div class="glass-card" style="background:rgba(245,158,11,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px 20px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   الإصدارات الحديثة <i data-lucide="arrow-left" style="width:16px;height:16px; color:#f59e0b;"></i>
@@ -169,7 +151,7 @@ export default class LandingView {
             </div>
 
             <!-- Column 3: Trending AI/Live courses -->
-            <div class="glass-card" style="background:rgba(16,185,129,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px;">
+            <div class="glass-card" style="background:rgba(16,185,129,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px 20px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
                   جلسات البث والمراجعات <i data-lucide="arrow-left" style="width:16px;height:16px; color:#10b981;"></i>
@@ -186,8 +168,8 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 2: SECTION 1 (GRADIENT FEATURED CAREER BANNER DYNAMIC FROM DATABASE) -->
-        <section style="max-width:1280px; margin:0 auto; padding:20px 24px 32px 24px;">
-          <div style="background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border-radius:24px; padding:36px; color:#ffffff; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,86,210,0.25);">
+        <section style="width:100%; margin:0 auto; padding:16px 20px 28px 20px;">
+          <div style="background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border-radius:24px; padding:32px 24px; color:#ffffff; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,86,210,0.25);">
             
             <div class="gradient-banner-inner" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
               <div style="max-width:440px;">
@@ -213,9 +195,9 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 2: SECTION 2 (DUAL SUBSCRIPTION BANNERS) -->
-        <section style="max-width:1280px; margin:0 auto; padding:0 24px 40px 24px;">
-          <div class="subscription-banners-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:24px;">
-            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #0056D2 0%, #2563eb 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,86,210,0.2);">
+        <section style="width:100%; margin:0 auto; padding:0 20px 32px 20px;">
+          <div class="subscription-banners-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:20px;">
+            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #0056D2 0%, #2563eb 100%); color:#ffffff; border-radius:24px; padding:32px 24px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,86,210,0.2);">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
                    <span style="background:#f59e0b; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem;">PLUS</span>
@@ -230,7 +212,7 @@ export default class LandingView {
               <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=300&auto=format&fit=crop&q=80" alt="Education Books" style="width:120px; height:150px; object-fit:cover; border-radius:20px; border:2px solid rgba(255,255,255,0.3); flex-shrink:0;">
             </div>
 
-            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:36px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
+            <div class="glass-card subscription-banner-card" style="background:linear-gradient(135deg, #001e50 0%, #0f172a 100%); color:#ffffff; border-radius:24px; padding:32px 24px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; box-shadow:0 12px 32px rgba(0,30,80,0.3); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher-apply'">
               <div style="max-width:300px; z-index:2;">
                 <div style="display:inline-flex; align-items:center; gap:6px; color:#93c5fd; font-size:0.8rem; font-weight:900; margin-bottom:12px;">
                    <span style="color:#ffffff; font-weight:500;">for teachers & schools</span>
@@ -249,13 +231,13 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 3: SECTION 1 (MAIN UX PATHS) -->
-        <section style="max-width:1280px; margin:0 auto; padding:16px 24px 32px 24px;">
+        <section style="width:100%; margin:0 auto; padding:16px 20px 28px 20px;">
           <h2 style="font-size:1.8rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
             ماذا تريد أن تتعلم؟
           </h2>
-          <div class="learn-paths-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+          <div class="learn-paths-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
             <!-- Courses Path -->
-            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
+            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:36px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
               <div style="width:80px; height:80px; background:rgba(37,99,235,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#2563eb;">
                 <i data-lucide="book-open" style="width:40px; height:40px;"></i>
               </div>
@@ -267,7 +249,7 @@ export default class LandingView {
             </div>
 
             <!-- Private Lessons Path -->
-            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
+            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:36px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
               <div style="width:80px; height:80px; background:rgba(16,185,129,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#10b981;">
                 <i data-lucide="users" style="width:40px; height:40px;"></i>
               </div>
@@ -282,8 +264,8 @@ export default class LandingView {
 
 
         <!-- SECTION 2: EXPLORE SPECIALIZATIONS & DEGREES -->
-        <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+        <section style="width:100%; margin:0 auto; padding:16px 20px 32px 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
             <div>
               <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
                 استكشف المراحل والصفوف الدراسية
@@ -358,8 +340,8 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 3: SECTION 3 (91% CIRCULAR OUTCOMES BANNER) -->
-        <section style="max-width:1280px; margin:0 auto; padding:0 24px 60px 24px;">
-          <div class="glass-card outcome-banner-inner" style="background:#001e50; color:#ffffff; border-radius:24px; padding:48px 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:32px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,30,80,0.35);">
+        <section style="width:100%; margin:0 auto; padding:0 20px 40px 20px;">
+          <div class="glass-card outcome-banner-inner" style="background:#001e50; color:#ffffff; border-radius:24px; padding:40px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:28px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,30,80,0.35);">
             <div style="max-width:540px; z-index:2;">
               <h2 style="font-size:2.2rem; font-weight:900; line-height:1.25; margin-bottom:16px; color:#ffffff;">
                 91% من طلاب منصة انطلق حققوا ميزة التفوق والنجاح
@@ -388,8 +370,8 @@ export default class LandingView {
 
 
         <!-- SECTION: WHY PEOPLE CHOOSE entlqEDU (FEATURE ICONS GRID) -->
-        <section style="max-width:1280px; margin:0 auto; padding:20px 24px 40px 24px;">
-          <div style="margin-bottom:24px;">
+        <section style="width:100%; margin:0 auto; padding:16px 20px 32px 20px;">
+          <div style="margin-bottom:20px;">
             <h2 style="font-size:1.75rem; font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
               لماذا يختار الطلاب والأساتذة منصة انطلق 
             </h2>
@@ -398,7 +380,7 @@ export default class LandingView {
 
           <div class="why-choose-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
             <!-- Feature 1 -->
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px 20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
               <div>
                 <div style="width:52px; height:52px; border-radius:14px; background:rgba(0,86,210,0.12); color:#0056D2; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
                   <i data-lucide="award" style="width:26px; height:26px;"></i>
@@ -411,7 +393,7 @@ export default class LandingView {
             </div>
 
             <!-- Feature 2 -->
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#schedule'">
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px 20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#schedule'">
               <div>
                 <div style="width:52px; height:52px; border-radius:14px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
                   <i data-lucide="video" style="width:26px; height:26px;"></i>
@@ -424,7 +406,7 @@ export default class LandingView {
             </div>
 
             <!-- Feature 3 -->
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#resources'">
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px 20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#resources'">
               <div>
                 <div style="width:52px; height:52px; border-radius:14px; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
                   <i data-lucide="book-open-check" style="width:26px; height:26px;"></i>
@@ -437,7 +419,7 @@ export default class LandingView {
             </div>
 
             <!-- Feature 4 -->
-            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; border:1px solid #e2e8f0; padding:24px 20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.04); transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
               <div>
                 <div style="width:52px; height:52px; border-radius:14px; background:rgba(236,72,153,0.12); color:#ec4899; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
                   <i data-lucide="trending-up" style="width:26px; height:26px;"></i>
@@ -453,7 +435,7 @@ export default class LandingView {
 
 
         <!-- SCREENSHOT 4: SECTION 2 (FAQ ACCORDION SECTION) -->
-        <section style="max-width:1280px; margin:0 auto; padding:10px 24px 24px 24px;">
+        <section style="width:100%; margin:0 auto; padding:10px 20px 24px 20px;">
           <h2 style="font-size:1.35rem; font-weight:900; color:var(--text-color); margin-bottom:16px;">
             الأسئلة الشائعة والمتكررة
           </h2>
@@ -513,8 +495,8 @@ export default class LandingView {
 
 
         <!-- entlqEDU CORE: REAL-TIME PLATFORM METRICS & INTERACTIVE CHART -->
-        <section id="platform-analytics-section" style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:60px 24px; position:relative; overflow:hidden;">
-          <div style="max-width:1280px; margin:0 auto; position:relative; z-index:2;">
+        <section id="platform-analytics-section" style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:48px 20px; position:relative; overflow:hidden;">
+          <div style="width:100%; margin:0 auto; position:relative; z-index:2;">
             
             <!-- 4 Modern Stat Cards -->
             <div class="metrics-strip-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:40px;">
@@ -565,48 +547,48 @@ export default class LandingView {
 
             </div>
 
-           
-              
-
-               
-
-             
-
-              
-
-            </div>
-
           </div>
         </section>
 
 
-      
-
-
-        <!-- TOP INSTRUCTORS SECTION -->
-        <section style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:70px 24px;">
-          <div style="max-width:1280px; margin:0 auto;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:40px; flex-wrap:wrap; gap:16px;">
-              <div>
-                <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:700; font-size:0.85rem; margin-bottom:6px;">
-                  <i data-lucide="award" style="width:16px;height:16px;"></i> نخبة الأساتذة والخبراء
-                </div>
-                <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">تعلم على يد أفضل أساتذة انطلق 👨‍🏫</h2>
-                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">أساتذة ذوو خبرة طويلة في إعداد طلاب انطلق للدرجات العليا</p>
+        <!-- TOP INSTRUCTORS SECTION (CENTERED HORIZONTAL SCROLL) -->
+        <section style="background:var(--bg-card); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); padding:40px 20px;">
+          <div style="width:100%; margin:0 auto; text-align:center;">
+            
+            <!-- Centered Header -->
+            <div style="max-width:700px; margin:0 auto 24px auto;">
+              <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:800; font-size:0.82rem; margin-bottom:8px; background:rgba(0,86,210,0.08); padding:5px 16px; border-radius:20px;">
+                <i data-lucide="award" style="width:16px;height:16px;"></i> نخبة الأساتذة والخبراء
               </div>
-              <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">انضم كـ معلم بالمنصة</a>
+              <h2 style="font-size:1.65rem; font-weight:900; margin:0 0 6px 0; color:var(--text-color);">تعلم على يد أفضل أساتذة انطلق 👨‍🏫</h2>
+              <p style="color:var(--text-muted); font-size:0.9rem; margin:0 auto; line-height:1.6;">أساتذة ذوو خبرة طويلة في إعداد طلاب انطلق للدرجات العليا</p>
             </div>
 
-            <div id="top-teachers-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:24px;">
-              <div style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;"><i data-lucide="loader" class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto;"></i></div>
+            <!-- Scroll Controls & Action -->
+            <div style="display:flex; justify-content:center; align-items:center; gap:12px; margin-bottom:20px;">
+              <button id="teachers-scroll-right" title="تمرير لليمين" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s, transform 0.2s;" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'">
+                <i data-lucide="chevron-right" style="width:18px; height:18px;"></i>
+              </button>
+              <a href="#teacher-apply" class="btn-secondary" style="padding:8px 20px; font-size:0.82rem; border-radius:20px; text-decoration:none;">انضم كـ معلم بالمنصة</a>
+              <button id="teachers-scroll-left" title="تمرير لليسار" style="width:36px; height:36px; border-radius:50%; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s, transform 0.2s;" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'">
+                <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+              </button>
             </div>
+
+            <!-- Centered Horizontal Cards Scroll Container -->
+            <div style="width:100%; display:flex; justify-content:center;">
+              <div id="top-teachers-container" style="display:flex; gap:16px; overflow-x:auto; padding:6px 10px 14px 10px; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; width:max-content; max-width:100%; margin:0 auto; justify-content:center;">
+                <div style="text-align:center; padding:30px; color:var(--text-muted); width:100%;"><i data-lucide="loader" class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></i></div>
+              </div>
+            </div>
+
           </div>
         </section>
 
 
         <!-- BLOG & ARTICLES SECTION -->
-        <section style="max-width:1280px; margin:0 auto; padding:70px 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:40px; flex-wrap:wrap; gap:16px;">
+        <section style="width:100%; margin:0 auto; padding:48px 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:32px; flex-wrap:wrap; gap:16px;">
             <div>
               <div style="display:inline-flex; align-items:center; gap:6px; color:var(--primary); font-weight:700; font-size:0.85rem; margin-bottom:6px;">
                 <i data-lucide="newspaper" style="width:16px;height:16px;"></i> المدونة والإرشادات التربوية
@@ -617,15 +599,15 @@ export default class LandingView {
             <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح جميع المقالات ➔</a>
           </div>
 
-          <div id="landing-blogs-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+          <div id="landing-blogs-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
             <div style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;"><i data-lucide="loader" class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto;"></i></div>
           </div>
         </section>
 
 
         <!-- CALL TO ACTION BANNER -->
-        <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:70px 24px; text-align:center;">
-          <div style="max-width:800px; margin:0 auto;">
+        <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:60px 20px; text-align:center;">
+          <div style="max-width:850px; margin:0 auto;">
             <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في انطلق</h2>
             <p style="font-size:1.1rem; opacity:0.9; margin-bottom:32px; line-height:1.6;">انضم اليوم إلى آلاف الطلاب واستفد من أحدث الدورات التفاعلية والدروس المباشرة مع نخبة المعلمين.</p>
             <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
@@ -641,8 +623,8 @@ export default class LandingView {
 
 
         <!-- FOOTER -->
-        <footer style="background:var(--bg-card); border-top:1px solid var(--border-color); padding:70px 24px 30px 24px; color:var(--text-muted); font-size:0.9rem;">
-          <div style="max-width:1280px; margin:0 auto;">
+        <footer style="background:var(--bg-card); border-top:1px solid var(--border-color); padding:48px 20px 24px 20px; color:var(--text-muted); font-size:0.9rem;">
+          <div style="width:100%; margin:0 auto;">
             
             <div class="footer-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:40px; margin-bottom:50px;">
               <div>
@@ -873,7 +855,7 @@ export default class LandingView {
         accordionContainer.innerHTML = stages.map(stage => {
           const isOpen = this.explorerStage === stage.key;
           const stageGrades = this.allGradesData.filter(g => g.stage === stage.key);
-          
+
           if (isOpen && (!this.explorerGradeId || !stageGrades.some(g => g.id === this.explorerGradeId))) {
             this.explorerGradeId = stageGrades[0]?.id || null;
           }
@@ -967,8 +949,8 @@ export default class LandingView {
                     </span>
                     <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">
                       ${stageGrades.map((grade, idx) => {
-                        const isGradeSel = grade.id === currentGrade?.id;
-                        return `
+            const isGradeSel = grade.id === currentGrade?.id;
+            return `
                           <button type="button" class="accordion-grade-chip-btn ${isGradeSel ? 'active' : ''}" data-grade-id="${grade.id}" style="
                             padding: 8px 16px;
                             border-radius: 14px;
@@ -990,7 +972,7 @@ export default class LandingView {
                             <span>${grade.name}</span>
                           </button>
                         `;
-                      }).join('')}
+          }).join('')}
                     </div>
                   </div>
 
@@ -1017,10 +999,10 @@ export default class LandingView {
                     ${(!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) ? `
                       <p style="color:var(--text-muted); font-size:0.9rem; padding:20px;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>
                     ` : currentGrade.subjects.map(subject => {
-                      const theme = this.getSubjectTheme(subject.name);
-                      const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+            const theme = this.getSubjectTheme(subject.name);
+            const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
 
-                      return `
+            return `
                         <a href="#subject-groups/${subject.id}" class="creative-circle-subject-card" style="
                           width: 140px;
                           background: var(--bg-card);
@@ -1136,7 +1118,7 @@ export default class LandingView {
 
                         </a>
                       `;
-                    }).join('')}
+          }).join('')}
                   </div>
 
                 </div>
@@ -1337,20 +1319,24 @@ export default class LandingView {
     if (topTeachersContainer) {
       const teachersList = this.teachers || [];
       if (teachersList.length === 0) {
-        topTeachersContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); grid-column:1/-1; text-align:center; padding:30px;">لا يوجد أساتذة مسجلين في النظام حالياً.</div>`;
+        topTeachersContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); width:100%; text-align:center; padding:20px;">لا يوجد أساتذة مسجلين في النظام حالياً.</div>`;
       } else {
         topTeachersContainer.innerHTML = teachersList.map(teacher => `
-          <div class="glass-card" style="padding:28px; border-radius:20px; border:1px solid var(--border-color); text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#teacher/${teacher.id}'">
-            <img src="${teacher.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${teacher.id}`}" style="width:84px; height:84px; border-radius:50%; border:3px solid var(--primary); margin:0 auto 16px auto; background:var(--bg-app); object-fit:cover;">
-            <h3 style="font-size:1.15rem; font-weight:800; margin:0 0 4px 0; color:var(--text-color);">${teacher.name}</h3>
-            <div style="font-size:0.82rem; color:var(--primary); font-weight:700; margin-bottom:12px;">${teacher.education || 'أستاذ وخبير تربوي في انطلق'}</div>
-            <div style="display:flex; justify-content:center; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted); margin-bottom:18px; background:var(--bg-app); padding:8px 12px; border-radius:12px;">
-              <span>⭐ 4.95 (أستاذ موثوق)</span>
-              <span>•</span>
-              <span>${teacher.location || 'المنصة الرقمية'}</span>
+          <div class="glass-card stat-card-hover" style="flex:0 0 190px; min-width:190px; max-width:200px; padding:16px 12px; border-radius:18px; border:1px solid var(--border-color); text-align:center; transition:transform 0.2s, box-shadow 0.2s; cursor:pointer; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; justify-content:space-between; height:240px; box-sizing:border-box;" onclick="window.location.hash='#teacher/${teacher.id}'">
+            <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+              <div style="position:relative; margin-bottom:8px;">
+                <img src="${teacher.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${teacher.id}`}" alt="${teacher.name}" style="width:58px; height:58px; border-radius:50%; border:2px solid var(--primary); background:var(--bg-app); object-fit:cover; display:block;">
+                <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#ffffff; font-size:0.6rem; font-weight:800; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg-card);" title="معلم موثق">✓</span>
+              </div>
+              <h3 style="font-size:0.92rem; font-weight:800; margin:0 0 3px 0; color:var(--text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${teacher.name}</h3>
+              <div style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${teacher.education || 'أستاذ خبير'}</div>
+              <div style="display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--text-muted); background:var(--bg-app); padding:3px 8px; border-radius:8px; font-weight:700;">
+                <span>⭐ 4.9</span>
+                <span>•</span>
+                <span>${teacher.subject || teacher.location || 'انطلق'}</span>
+              </div>
             </div>
-            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">خبير تربوي في إعداد وشرح دروس انطلق والتمارين المنهجية التطبيقية.</p>
-            <a href="#teacher/${teacher.id}" class="btn-secondary" style="width:100%; justify-content:center; font-size:0.85rem; padding:8px 14px; text-decoration:none; display:inline-flex;">عرض ملف الأستاذ والدورات ➔</a>
+            <a href="#teacher/${teacher.id}" class="btn-secondary" style="width:100%; justify-content:center; font-size:0.75rem; padding:6px 8px; border-radius:14px; text-decoration:none; display:inline-flex;" onclick="event.stopPropagation();">الملف والدورات ➔</a>
           </div>
         `).join("");
       }
@@ -1455,6 +1441,20 @@ export default class LandingView {
         }
       });
     });
+
+    // Top Teachers Horizontal Scroll Controls
+    const teachersContainer = this.container.querySelector("#top-teachers-container");
+    const scrollRightBtn = this.container.querySelector("#teachers-scroll-right");
+    const scrollLeftBtn = this.container.querySelector("#teachers-scroll-left");
+
+    if (teachersContainer && scrollRightBtn && scrollLeftBtn) {
+      scrollRightBtn.addEventListener("click", () => {
+        teachersContainer.scrollBy({ left: 300, behavior: "smooth" });
+      });
+      scrollLeftBtn.addEventListener("click", () => {
+        teachersContainer.scrollBy({ left: -300, behavior: "smooth" });
+      });
+    }
 
     this.bindChartEvents();
   }
