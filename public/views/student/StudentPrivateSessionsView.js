@@ -330,10 +330,10 @@ export default class StudentPrivateSessionsView {
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
           ${!isPast ? `
             ${isWithinJoinWindow ? `
-              <a href="#classroom/${session.id}"
-                class="btn-primary" style="width:100%; justify-content:center; font-size:0.88rem; padding:11px; text-decoration:none; gap:8px; background:linear-gradient(135deg,#10b981,#059669); border-color:#10b981; box-shadow:0 4px 14px rgba(16,185,129,0.3); font-weight:800;">
-                <i data-lucide="video" style="width:18px;height:18px;"></i> دخول قاعة الحصة الآن 🎥
-              </a>
+              <button class="btn-primary" data-join-meet-id="${session.id}"
+                style="width:100%; justify-content:center; font-size:0.88rem; padding:11px; text-decoration:none; gap:8px; background:linear-gradient(135deg,#10b981,#059669); border-color:#10b981; box-shadow:0 4px 14px rgba(16,185,129,0.3); font-weight:800; cursor:pointer; border-radius:12px; color:#fff; display:flex; align-items:center;">
+                <i data-lucide="video" style="width:18px;height:18px;"></i> الانضمام عبر Google Meet 🎥
+              </button>
               <button class="btn-secondary session-checkin-btn" data-id="${session.id}" style="width:100%; justify-content:center; font-size:0.84rem; padding:9px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">
                 <i data-lucide="user-check" style="width:16px;height:16px;"></i> تأكيد الحضور (لست غائباً) ✍️
               </button>

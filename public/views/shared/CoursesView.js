@@ -11,6 +11,7 @@ export default class CoursesView {
     this.explorerSubjectId = null;
     this.searchQuery = "";
     this.studentAutoGradeSet = false; // flag: has grade been auto-set from education?
+    this.teacherStatusFilter = "all";
   }
 
   // Map user.education string → { stage, gradeNameKeyword }
@@ -42,10 +43,10 @@ export default class CoursesView {
             <div>
               <h1 class="dashboard-section-title" style="font-size:2rem; font-weight:900; margin:0 0 6px 0; display:flex; align-items:center; gap:12px; color:var(--text-main);">
                 <i data-lucide="book-open" style="color:var(--primary); width:32px; height:32px;"></i>
-                ${t("nav.courses") || "المقررات والمناهج الدراسية"}
+                ${state.user && state.user.role === "teacher" ? "المقررات الدراسية الخاصة بك 👨‍🏫" : (t("nav.courses") || "المقررات والمناهج الدراسية")}
               </h1>
               <p style="font-size:0.92rem; color:var(--text-muted); margin:0;">
-                حدد المرحلة والصف الدراسي لاستعراض المواد، المجموعات، وكورسات الشرح المباشرة 🇪🇬
+                ${state.user && state.user.role === "teacher" ? "إدارة واستعراض المقررات والمجموعات التعليمية التي قمت بإضافتها على المنصة" : "حدد المرحلة والصف الدراسي لاستعراض المواد، المجموعات، وكورسات الشرح المباشرة 🇪🇬"}
               </p>
             </div>
 
@@ -254,7 +255,12 @@ export default class CoursesView {
         apiFetch("/curriculum/grades").catch(() => [])
       ]);
 
-      this.courses = allCourses || [];
+      this.courses = (allCourses || []).filter(c => {
+        if (state.user && state.user.role === "teacher") {
+          return c.teacher?.id === state.user.id || c.teacherId === state.user.id;
+        }
+        return true;
+      });
       this.allGradesData = Array.isArray(gradesData) ? gradesData : [];
 
       if (state.user && state.user.role === "student") {
@@ -271,7 +277,7 @@ export default class CoursesView {
                 this.explorerGradeId = gradeId;
                 this.studentAutoGradeSet = true;
               }
-            } catch(e) { /* ignore bad JSON */ }
+            } catch (e) { /* ignore bad JSON */ }
           }
         }
 
@@ -300,6 +306,12 @@ export default class CoursesView {
   renderCurriculumExplorer() {
     const contentArea = this.container.querySelector("#courses-content-area");
     if (!contentArea) return;
+
+    // ── TEACHER PATH: Clean compact dashboard with small filter bar ──
+    if (state.user && state.user.role === "teacher") {
+      this.renderTeacherCoursesDashboard(contentArea);
+      return;
+    }
 
     const isStudent = state.user && state.user.role === "student";
     const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
@@ -380,21 +392,21 @@ export default class CoursesView {
 
             <!-- Stage buttons -->
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
-              ${["PRIMARY","PREPARATORY","SECONDARY"].map(stage => {
-                const colors = { PRIMARY:"#10b981", PREPARATORY:"#3b82f6", SECONDARY:"#e51d74" };
-                const labels = { PRIMARY:"🎒 ابتدائي", PREPARATORY:"📚 إعدادي", SECONDARY:"🎓 ثانوي" };
-                const isSel = this.explorerStage === stage;
-                return `<button class="modal-stage-btn" data-stage="${stage}" style="padding:10px 6px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid ${isSel ? colors[stage] : 'var(--border-color)'}; background:${isSel ? colors[stage] : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${labels[stage]}</button>`;
-              }).join('')}
+              ${["PRIMARY", "PREPARATORY", "SECONDARY"].map(stage => {
+        const colors = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" };
+        const labels = { PRIMARY: "🎒 ابتدائي", PREPARATORY: "📚 إعدادي", SECONDARY: "🎓 ثانوي" };
+        const isSel = this.explorerStage === stage;
+        return `<button class="modal-stage-btn" data-stage="${stage}" style="padding:10px 6px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid ${isSel ? colors[stage] : 'var(--border-color)'}; background:${isSel ? colors[stage] : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${labels[stage]}</button>`;
+      }).join('')}
             </div>
 
             <!-- Grade pills -->
             <div style="margin-bottom:8px; font-size:0.82rem; font-weight:800; color:var(--text-muted);">اختر الصف الدراسي:</div>
             <div id="modal-grades-list" style="display:flex; gap:8px; flex-wrap:wrap;">
               ${this.allGradesData.filter(g => g.stage === this.explorerStage).map(g => {
-                const isSel = g.id === this.explorerGradeId;
-                return `<button class="modal-grade-btn" data-grade-id="${g.id}" style="padding:8px 16px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:1.5px solid ${isSel ? '#e51d74' : 'var(--border-color)'}; background:${isSel ? '#e51d74' : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${g.name}</button>`;
-              }).join('')}
+        const isSel = g.id === this.explorerGradeId;
+        return `<button class="modal-grade-btn" data-grade-id="${g.id}" style="padding:8px 16px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:1.5px solid ${isSel ? '#e51d74' : 'var(--border-color)'}; background:${isSel ? '#e51d74' : 'var(--bg-app)'}; color:${isSel ? '#fff' : 'var(--text-main)'}; transition:all 0.2s;">${g.name}</button>`;
+      }).join('')}
             </div>
 
             <!-- Save button -->
@@ -541,206 +553,297 @@ export default class CoursesView {
     this.bindExplorerEvents();
     this.renderExplorerGrades();
     if (window.lucide) window.lucide.createIcons();
-    if (state.user && (state.user.role === "teacher" || state.user.role === "admin")) {
+  }
+
+  renderTeacherCoursesDashboard(contentArea) {
+    const totalCount = this.courses.length;
+      const publishedCount = this.courses.filter(c => (c.status || "PUBLISHED") === "PUBLISHED").length;
+
+      contentArea.innerHTML = `
+      <!-- Compact KPI Summary Bar -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:24px;">
+        <div class="glass-card" style="padding:16px 18px; border-radius:18px; border:1px solid var(--border-color); display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:rgba(0,86,210,0.1); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="book-open" style="width:20px; height:20px;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">إجمالي مقرراتك</div>
+            <div style="font-size:1.3rem; font-weight:900; color:var(--text-main);">${totalCount}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:16px 18px; border-radius:18px; border:1px solid var(--border-color); display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:rgba(16,185,129,0.1); color:#10b981; display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="check-circle" style="width:20px; height:20px;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">مقررات منشورة</div>
+            <div style="font-size:1.3rem; font-weight:900; color:#10b981;">${publishedCount}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:16px 18px; border-radius:18px; border:1px solid var(--border-color); display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:rgba(245,158,11,0.1); color:#f59e0b; display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="users" style="width:20px; height:20px;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">إدارة المجموعات</div>
+            <a href="#teacher-groups" style="font-size:0.85rem; font-weight:800; color:#f59e0b; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+              فتح المجموعات ➔
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Small Compact Filter Toolbar -->
+      <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:20px; padding:14px 18px; margin-bottom:26px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 16px rgba(0,0,0,0.03);">
+        
+        <!-- Search Input -->
+        <div style="position:relative; flex:1; min-width:220px; max-width:380px;">
+          <i data-lucide="search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
+          <input type="text" id="teacher-courses-search" placeholder="ابحث في مقرراتك بالاسم أو المادة..." value="${this.searchQuery || ''}"
+            style="width:100%; padding:9px 34px 9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-weight:600; outline:none; box-sizing:border-box;">
+        </div>
+
+        <!-- Filters Dropdown Group -->
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <select id="teacher-grade-filter-select" style="padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; outline:none; cursor:pointer;">
+            <option value="">🏫 جميع الصفوف الدراسية</option>
+            ${this.allGradesData.map(g => `
+              <option value="${g.id}" ${this.explorerGradeId === g.id ? 'selected' : ''}>${g.name}</option>
+            `).join('')}
+          </select>
+
+          <select id="teacher-status-filter-select" style="padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; outline:none; cursor:pointer;">
+            <option value="all" ${this.teacherStatusFilter === "all" ? "selected" : ""}>🔘 جميع الحالات</option>
+            <option value="PUBLISHED" ${this.teacherStatusFilter === "PUBLISHED" ? "selected" : ""}>✅ منشور فقط</option>
+            <option value="DRAFT" ${this.teacherStatusFilter === "DRAFT" ? "selected" : ""}>📝 مسودة</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Courses Grid Area -->
+      <div class="courses-grid" id="courses-page-grid"></div>
+      <div id="courses-page-empty-state" style="display:none;"></div>
+    `;
+
+      this.bindTeacherFilterEvents();
+      this.renderFilteredCoursesList();
+      if (window.lucide) window.lucide.createIcons();
       this.bindEvents();
     }
-  }
 
+    bindTeacherFilterEvents() {
+      this.container.querySelector("#teacher-courses-search")?.addEventListener("input", (e) => {
+        this.searchQuery = e.target.value.trim().toLowerCase();
+        this.renderFilteredCoursesList();
+      });
 
+      this.container.querySelector("#teacher-grade-filter-select")?.addEventListener("change", (e) => {
+        this.explorerGradeId = e.target.value ? e.target.value : null;
+        this.renderFilteredCoursesList();
+      });
 
-  bindStudentExplorerEvents() {
-    const changeGradeBtn = this.container.querySelector("#change-grade-btn");
-    const modal = this.container.querySelector("#change-grade-modal");
-
-    // Track pending selection (before save)
-    let pendingGradeId = this.explorerGradeId;
-    let pendingStage = this.explorerStage;
-
-    // Open modal
-    if (changeGradeBtn && modal) {
-      changeGradeBtn.addEventListener("click", () => {
-        pendingGradeId = this.explorerGradeId;
-        pendingStage = this.explorerStage;
-        modal.style.display = "flex";
-        if (window.lucide) window.lucide.createIcons();
+      this.container.querySelector("#teacher-status-filter-select")?.addEventListener("change", (e) => {
+        this.teacherStatusFilter = e.target.value;
+        this.renderFilteredCoursesList();
       });
     }
 
-    const closeModal = () => { if (modal) modal.style.display = "none"; };
+    bindStudentExplorerEvents() {
+      const changeGradeBtn = this.container.querySelector("#change-grade-btn");
+      const modal = this.container.querySelector("#change-grade-modal");
 
-    // Close modal (X button, backdrop, cancel)
-    this.container.querySelector("#close-change-grade-modal")?.addEventListener("click", closeModal);
-    this.container.querySelector("#close-change-grade-modal-cancel")?.addEventListener("click", closeModal);
-    modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+      // Track pending selection (before save)
+      let pendingGradeId = this.explorerGradeId;
+      let pendingStage = this.explorerStage;
 
-    // Stage buttons: update pending stage and refresh grade pills
-    const colors = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" };
-    this.container.querySelectorAll(".modal-stage-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        pendingStage = btn.getAttribute("data-stage");
-        pendingGradeId = null;
-        // Update stage button styles
-        this.container.querySelectorAll(".modal-stage-btn").forEach(b => {
-          const s = b.getAttribute("data-stage");
-          const c = colors[s] || "#e51d74";
-          const sel = s === pendingStage;
-          b.style.border = `2px solid ${sel ? c : "var(--border-color)"}`;
-          b.style.background = sel ? c : "var(--bg-app)";
-          b.style.color = sel ? "#fff" : "var(--text-main)";
+      // Open modal
+      if (changeGradeBtn && modal) {
+        changeGradeBtn.addEventListener("click", () => {
+          pendingGradeId = this.explorerGradeId;
+          pendingStage = this.explorerStage;
+          modal.style.display = "flex";
+          if (window.lucide) window.lucide.createIcons();
         });
-        // Refresh grade pills
-        const gradesList = this.container.querySelector("#modal-grades-list");
-        if (gradesList) {
-          const stageGrades = this.allGradesData.filter(g => g.stage === pendingStage);
-          gradesList.innerHTML = stageGrades.map(g => `
+      }
+
+      const closeModal = () => { if (modal) modal.style.display = "none"; };
+
+      // Close modal (X button, backdrop, cancel)
+      this.container.querySelector("#close-change-grade-modal")?.addEventListener("click", closeModal);
+      this.container.querySelector("#close-change-grade-modal-cancel")?.addEventListener("click", closeModal);
+      modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+      // Stage buttons: update pending stage and refresh grade pills
+      const colors = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" };
+      this.container.querySelectorAll(".modal-stage-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          pendingStage = btn.getAttribute("data-stage");
+          pendingGradeId = null;
+          // Update stage button styles
+          this.container.querySelectorAll(".modal-stage-btn").forEach(b => {
+            const s = b.getAttribute("data-stage");
+            const c = colors[s] || "#e51d74";
+            const sel = s === pendingStage;
+            b.style.border = `2px solid ${sel ? c : "var(--border-color)"}`;
+            b.style.background = sel ? c : "var(--bg-app)";
+            b.style.color = sel ? "#fff" : "var(--text-main)";
+          });
+          // Refresh grade pills
+          const gradesList = this.container.querySelector("#modal-grades-list");
+          if (gradesList) {
+            const stageGrades = this.allGradesData.filter(g => g.stage === pendingStage);
+            gradesList.innerHTML = stageGrades.map(g => `
             <button class="modal-grade-btn" data-grade-id="${g.id}" style="padding:8px 16px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:1.5px solid var(--border-color); background:var(--bg-app); color:var(--text-main); transition:all 0.2s;">${g.name}</button>
           `).join("");
-          this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
-        }
-      });
-    });
-
-    // Initial grade highlight binding
-    this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
-
-    // Save button: persist and apply
-    this.container.querySelector("#save-grade-btn")?.addEventListener("click", () => {
-      if (!pendingGradeId) {
-        // If no grade clicked, use first of the stage
-        const first = this.allGradesData.find(g => g.stage === pendingStage);
-        if (first) pendingGradeId = first.id;
-      }
-      if (pendingGradeId && pendingStage) {
-        this.explorerStage = pendingStage;
-        this.explorerGradeId = pendingGradeId;
-        this.explorerSubjectId = null;
-        // Save to localStorage
-        if (state.user) {
-          localStorage.setItem(`bak_student_grade_${state.user.id}`,
-            JSON.stringify({ gradeId: pendingGradeId, stage: pendingStage }));
-        }
-        closeModal();
-        this.renderCurriculumExplorer();
-        if (window.lucide) window.lucide.createIcons();
-      }
-    });
-
-    // Search input
-    this.container.querySelector("#courses-page-search-input")?.addEventListener("input", (e) => {
-      this.searchQuery = e.target.value.trim().toLowerCase();
-      this.renderFilteredCoursesList();
-    });
-  }
-
-  // Highlight selected grade inside modal (without auto-closing)
-  _bindModalGradeHighlight(onSelect, currentStage) {
-    const stageColor = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" }[currentStage] || "#e51d74";
-    this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        // Highlight this button
-        this.container.querySelectorAll(".modal-grade-btn").forEach(b => {
-          b.style.border = "1.5px solid var(--border-color)";
-          b.style.background = "var(--bg-app)";
-          b.style.color = "var(--text-main)";
+            this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
+          }
         });
-        btn.style.border = `1.5px solid ${stageColor}`;
-        btn.style.background = stageColor;
-        btn.style.color = "#fff";
-        onSelect(btn.getAttribute("data-grade-id"));
       });
-    });
-  }
 
-  // Legacy helper kept for non-student path (not used for students anymore)
-  _bindModalGradeBtns(stageColor, modal) {
-    this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this.explorerGradeId = btn.getAttribute("data-grade-id");
-        this.explorerSubjectId = null;
-        if (modal) modal.style.display = "none";
-        this.renderCurriculumExplorer();
-        if (window.lucide) window.lucide.createIcons();
-      });
-    });
-  }
+      // Initial grade highlight binding
+      this._bindModalGradeHighlight((id) => { pendingGradeId = id; }, pendingStage);
 
-
-  bindExplorerEvents() {
-    // "تغيير الصف" button — show the stage/grade selector
-    const changeGradeBtn = this.container.querySelector("#change-grade-btn");
-    if (changeGradeBtn) {
-      changeGradeBtn.addEventListener("click", () => {
-        const panel = this.container.querySelector("#stage-grade-selector-panel");
-        const banner = this.container.querySelector("#student-grade-banner");
-        if (panel) { panel.style.display = ""; panel.scrollIntoView({ behavior: "smooth", block: "start" }); }
-        if (banner) banner.style.display = "none";
-      });
-    }
-
-    // Stage card clicks
-    this.container.querySelectorAll(".courses-explorer-stage-card").forEach(card => {
-      card.addEventListener("click", () => {
-        this.container.querySelectorAll(".courses-explorer-stage-card").forEach(c => {
-          c.classList.remove("active");
-          c.style.borderColor = "var(--border-color)";
-          c.style.boxShadow = "none";
-        });
-
-        card.classList.add("active");
-        const stage = card.getAttribute("data-stage");
-        this.explorerStage = stage;
-
-        if (stage === "PRIMARY") {
-          card.style.borderColor = "#10b981";
-          card.style.boxShadow = "0 8px 24px rgba(16,185,129,0.18)";
-        } else if (stage === "PREPARATORY") {
-          card.style.borderColor = "#3b82f6";
-          card.style.boxShadow = "0 8px 24px rgba(59,130,246,0.18)";
-        } else {
-          card.style.borderColor = "#e51d74";
-          card.style.boxShadow = "0 8px 24px rgba(229,29,116,0.18)";
+      // Save button: persist and apply
+      this.container.querySelector("#save-grade-btn")?.addEventListener("click", () => {
+        if (!pendingGradeId) {
+          // If no grade clicked, use first of the stage
+          const first = this.allGradesData.find(g => g.stage === pendingStage);
+          if (first) pendingGradeId = first.id;
         }
-
-        this.explorerGradeId = null;
-        this.explorerSubjectId = null;
-        this.renderExplorerGrades();
+        if (pendingGradeId && pendingStage) {
+          this.explorerStage = pendingStage;
+          this.explorerGradeId = pendingGradeId;
+          this.explorerSubjectId = null;
+          // Save to localStorage
+          if (state.user) {
+            localStorage.setItem(`bak_student_grade_${state.user.id}`,
+              JSON.stringify({ gradeId: pendingGradeId, stage: pendingStage }));
+          }
+          closeModal();
+          this.renderCurriculumExplorer();
+          if (window.lucide) window.lucide.createIcons();
+        }
       });
-    });
 
-    // Search event
-    const searchInput = this.container.querySelector("#courses-page-search-input");
-    if (searchInput) {
-      searchInput.addEventListener("input", (e) => {
+      // Search input
+      this.container.querySelector("#courses-page-search-input")?.addEventListener("input", (e) => {
         this.searchQuery = e.target.value.trim().toLowerCase();
         this.renderFilteredCoursesList();
       });
     }
-  }
 
-  renderExplorerGrades() {
-    const gradesContainer = this.container.querySelector("#courses-explorer-grades-container");
-    if (!gradesContainer) return;
-
-    const stageGrades = this.allGradesData.filter(g => g.stage === this.explorerStage);
-    if (stageGrades.length === 0) {
-      gradesContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">لا توجد صفوف دراسية مسجلة لهذه المرحلة حالياً.</p>`;
-      return;
+    // Highlight selected grade inside modal (without auto-closing)
+    _bindModalGradeHighlight(onSelect, currentStage) {
+      const stageColor = { PRIMARY: "#10b981", PREPARATORY: "#3b82f6", SECONDARY: "#e51d74" }[currentStage] || "#e51d74";
+      this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          // Highlight this button
+          this.container.querySelectorAll(".modal-grade-btn").forEach(b => {
+            b.style.border = "1.5px solid var(--border-color)";
+            b.style.background = "var(--bg-app)";
+            b.style.color = "var(--text-main)";
+          });
+          btn.style.border = `1.5px solid ${stageColor}`;
+          btn.style.background = stageColor;
+          btn.style.color = "#fff";
+          onSelect(btn.getAttribute("data-grade-id"));
+        });
+      });
     }
 
-    if (!this.explorerGradeId || !stageGrades.some(g => g.id === this.explorerGradeId)) {
-      this.explorerGradeId = stageGrades[0].id;
+    // Legacy helper kept for non-student path (not used for students anymore)
+    _bindModalGradeBtns(stageColor, modal) {
+      this.container.querySelectorAll(".modal-grade-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.explorerGradeId = btn.getAttribute("data-grade-id");
+          this.explorerSubjectId = null;
+          if (modal) modal.style.display = "none";
+          this.renderCurriculumExplorer();
+          if (window.lucide) window.lucide.createIcons();
+        });
+      });
     }
 
-    const stageColors = {
-      PRIMARY: { active: "#10b981", shadow: "rgba(16,185,129,0.3)" },
-      PREPARATORY: { active: "#3b82f6", shadow: "rgba(59,130,246,0.3)" },
-      SECONDARY: { active: "#e51d74", shadow: "rgba(229,29,116,0.3)" }
-    };
-    const currentColor = stageColors[this.explorerStage] || { active: "#4f46e5", shadow: "rgba(79,70,229,0.3)" };
 
-    gradesContainer.innerHTML = stageGrades.map((grade, idx) => {
-      const isSel = grade.id === this.explorerGradeId;
-      return `
+    bindExplorerEvents() {
+      // "تغيير الصف" button — show the stage/grade selector
+      const changeGradeBtn = this.container.querySelector("#change-grade-btn");
+      if (changeGradeBtn) {
+        changeGradeBtn.addEventListener("click", () => {
+          const panel = this.container.querySelector("#stage-grade-selector-panel");
+          const banner = this.container.querySelector("#student-grade-banner");
+          if (panel) { panel.style.display = ""; panel.scrollIntoView({ behavior: "smooth", block: "start" }); }
+          if (banner) banner.style.display = "none";
+        });
+      }
+
+      // Stage card clicks
+      this.container.querySelectorAll(".courses-explorer-stage-card").forEach(card => {
+        card.addEventListener("click", () => {
+          this.container.querySelectorAll(".courses-explorer-stage-card").forEach(c => {
+            c.classList.remove("active");
+            c.style.borderColor = "var(--border-color)";
+            c.style.boxShadow = "none";
+          });
+
+          card.classList.add("active");
+          const stage = card.getAttribute("data-stage");
+          this.explorerStage = stage;
+
+          if (stage === "PRIMARY") {
+            card.style.borderColor = "#10b981";
+            card.style.boxShadow = "0 8px 24px rgba(16,185,129,0.18)";
+          } else if (stage === "PREPARATORY") {
+            card.style.borderColor = "#3b82f6";
+            card.style.boxShadow = "0 8px 24px rgba(59,130,246,0.18)";
+          } else {
+            card.style.borderColor = "#e51d74";
+            card.style.boxShadow = "0 8px 24px rgba(229,29,116,0.18)";
+          }
+
+          this.explorerGradeId = null;
+          this.explorerSubjectId = null;
+          this.renderExplorerGrades();
+        });
+      });
+
+      // Search event
+      const searchInput = this.container.querySelector("#courses-page-search-input");
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          this.searchQuery = e.target.value.trim().toLowerCase();
+          this.renderFilteredCoursesList();
+        });
+      }
+    }
+
+    renderExplorerGrades() {
+      const gradesContainer = this.container.querySelector("#courses-explorer-grades-container");
+      if (!gradesContainer) return;
+
+      const stageGrades = this.allGradesData.filter(g => g.stage === this.explorerStage);
+      if (stageGrades.length === 0) {
+        gradesContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">لا توجد صفوف دراسية مسجلة لهذه المرحلة حالياً.</p>`;
+        return;
+      }
+
+      if (!this.explorerGradeId || !stageGrades.some(g => g.id === this.explorerGradeId)) {
+        this.explorerGradeId = stageGrades[0].id;
+      }
+
+      const stageColors = {
+        PRIMARY: { active: "#10b981", shadow: "rgba(16,185,129,0.3)" },
+        PREPARATORY: { active: "#3b82f6", shadow: "rgba(59,130,246,0.3)" },
+        SECONDARY: { active: "#e51d74", shadow: "rgba(229,29,116,0.3)" }
+      };
+      const currentColor = stageColors[this.explorerStage] || { active: "#4f46e5", shadow: "rgba(79,70,229,0.3)" };
+
+      gradesContainer.innerHTML = stageGrades.map((grade, idx) => {
+        const isSel = grade.id === this.explorerGradeId;
+        return `
         <button type="button" class="courses-grade-chip-btn ${isSel ? "active" : ""}" data-grade-id="${grade.id}" style="
           padding:9px 20px;
           border-radius:14px;
@@ -762,71 +865,71 @@ export default class CoursesView {
           <span>${grade.name}</span>
         </button>
       `;
-    }).join("");
+      }).join("");
 
-    gradesContainer.querySelectorAll(".courses-grade-chip-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this.explorerGradeId = btn.getAttribute("data-grade-id");
-        this.explorerSubjectId = null;
-        this.renderExplorerGrades();
+      gradesContainer.querySelectorAll(".courses-grade-chip-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.explorerGradeId = btn.getAttribute("data-grade-id");
+          this.explorerSubjectId = null;
+          this.renderExplorerGrades();
+        });
       });
-    });
 
-    this.renderExplorerSubjects();
-  }
-
-  renderExplorerSubjects() {
-    const subjectsContainer = this.container.querySelector("#courses-explorer-subjects-container");
-    const gradeBadge = this.container.querySelector("#courses-selected-grade-label-badge");
-    if (!subjectsContainer) return;
-
-    const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
-    if (!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) {
-      subjectsContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; padding:30px 0; grid-column:1/-1; text-align:center;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>`;
-      if (gradeBadge) gradeBadge.textContent = "";
-      this.renderFilteredCoursesList();
-      return;
+      this.renderExplorerSubjects();
     }
 
-    if (gradeBadge) {
-      gradeBadge.textContent = currentGrade.name;
-    }
+    renderExplorerSubjects() {
+      const subjectsContainer = this.container.querySelector("#courses-explorer-subjects-container");
+      const gradeBadge = this.container.querySelector("#courses-selected-grade-label-badge");
+      if (!subjectsContainer) return;
 
-    // Creative Subject Theme Dictionary
-    const getSubjectTheme = (name) => {
-      const n = name.toLowerCase();
-      if (n.includes("عرب") || n.includes("arabic")) {
-        return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+      const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
+      if (!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) {
+        subjectsContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; padding:30px 0; grid-column:1/-1; text-align:center;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>`;
+        if (gradeBadge) gradeBadge.textContent = "";
+        this.renderFilteredCoursesList();
+        return;
       }
-      if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
-        return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
-      }
-      if (n.includes("رياض") || n.includes("math")) {
-        return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
-      }
-      if (n.includes("فيزي") || n.includes("physic")) {
-        return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
-      }
-      if (n.includes("كيمي") || n.includes("chem")) {
-        return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🧪" };
-      }
-      if (n.includes("أحيا") || n.includes("bio") || n.includes("علوم") || n.includes("scien")) {
-        return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧬" };
-      }
-      if (n.includes("تاريخ") || n.includes("جغراف") || n.includes("دراسات") || n.includes("فلسف")) {
-        return { gradient: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)", color: "#4f46e5", icon: "🏛️" };
-      }
-      if (n.includes("ict") || n.includes("حاسب") || n.includes("برمج") || n.includes("معلومات")) {
-        return { gradient: "linear-gradient(135deg, #0891b2 0%, #164e63 100%)", color: "#0891b2", icon: "💻" };
-      }
-      return { gradient: "linear-gradient(135deg, #e51d74 0%, #831843 100%)", color: "#e51d74", icon: "📚" };
-    };
 
-    subjectsContainer.innerHTML = currentGrade.subjects.map(subject => {
-      const theme = getSubjectTheme(subject.name);
-      const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+      if (gradeBadge) {
+        gradeBadge.textContent = currentGrade.name;
+      }
 
-      return `
+      // Creative Subject Theme Dictionary
+      const getSubjectTheme = (name) => {
+        const n = name.toLowerCase();
+        if (n.includes("عرب") || n.includes("arabic")) {
+          return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+        }
+        if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
+          return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
+        }
+        if (n.includes("رياض") || n.includes("math")) {
+          return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
+        }
+        if (n.includes("فيزي") || n.includes("physic")) {
+          return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
+        }
+        if (n.includes("كيمي") || n.includes("chem")) {
+          return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🧪" };
+        }
+        if (n.includes("أحيا") || n.includes("bio") || n.includes("علوم") || n.includes("scien")) {
+          return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧬" };
+        }
+        if (n.includes("تاريخ") || n.includes("جغراف") || n.includes("دراسات") || n.includes("فلسف")) {
+          return { gradient: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)", color: "#4f46e5", icon: "🏛️" };
+        }
+        if (n.includes("ict") || n.includes("حاسب") || n.includes("برمج") || n.includes("معلومات")) {
+          return { gradient: "linear-gradient(135deg, #0891b2 0%, #164e63 100%)", color: "#0891b2", icon: "💻" };
+        }
+        return { gradient: "linear-gradient(135deg, #e51d74 0%, #831843 100%)", color: "#e51d74", icon: "📚" };
+      };
+
+      subjectsContainer.innerHTML = currentGrade.subjects.map(subject => {
+        const theme = getSubjectTheme(subject.name);
+        const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+
+        return `
         <a href="#subject-groups/${subject.id}" class="creative-subject-card" style="
           background:var(--bg-card);
           border:1px solid var(--border-color);
@@ -904,138 +1007,172 @@ export default class CoursesView {
           </div>
         </a>
       `;
-    }).join("");
-
-    if (window.lucide) window.lucide.createIcons();
-    this.renderFilteredCoursesList();
-  }
-
-  renderFilteredCoursesList() {
-    const grid = this.container.querySelector("#courses-page-grid");
-    const emptyState = this.container.querySelector("#courses-page-empty-state");
-    if (!grid) return;
-
-    const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
-    const gradeName = currentGrade?.name || "";
-
-    const isTeacher = state.user && (state.user.role === "teacher" || state.user.role === "admin");
-
-    const filtered = this.courses.filter(c => {
-      const title = (c.title || "").toLowerCase();
-      const desc = (c.description || "").toLowerCase();
-      const teacherName = (c.teacher?.name || "").toLowerCase();
-      const category = (c.category || "").toLowerCase();
-      const degree = (c.degree || "").toLowerCase();
-
-      // Grade match
-      const matchesGrade = !this.explorerGradeId || (c.grade?.id === this.explorerGradeId) || (gradeName && degree.includes(gradeName));
-      
-      // Search match
-      const matchesSearch = !this.searchQuery || 
-        title.includes(this.searchQuery) || 
-        desc.includes(this.searchQuery) || 
-        teacherName.includes(this.searchQuery) || 
-        category.includes(this.searchQuery);
-
-      return matchesGrade && matchesSearch;
-    });
-
-    if (filtered.length === 0) {
-      grid.innerHTML = "";
-      if (emptyState) emptyState.style.display = "block";
-    } else {
-      if (emptyState) emptyState.style.display = "none";
-      grid.innerHTML = filtered.map(c => {
-        return this.renderCourseCard(c, 0, false, isTeacher);
       }).join("");
+
+      if (window.lucide) window.lucide.createIcons();
+      this.renderFilteredCoursesList();
     }
 
-    if (window.lucide) window.lucide.createIcons();
-    if (isTeacher) this.bindEvents();
-  }
+    renderFilteredCoursesList() {
+      const grid = this.container.querySelector("#courses-page-grid");
+      const emptyState = this.container.querySelector("#courses-page-empty-state");
+      if (!grid) return;
 
-  async initTeacherCurriculumSelector(preselectedGradeId = null, preselectedSubjectId = null) {
-    let allGrades = [];
-    try {
-      allGrades = await apiFetch("/curriculum/grades");
-    } catch (e) {
-      console.error("Failed to fetch curriculum grades:", e);
-    }
+      const currentGrade = this.allGradesData.find(g => g.id === this.explorerGradeId);
+      const gradeName = currentGrade?.name || "";
 
-    if (!Array.isArray(allGrades) || allGrades.length === 0) return;
+      const isTeacher = state.user && state.user.role === "teacher";
+      const isAdmin = state.user && state.user.role === "admin";
+      const isStaff = isTeacher || isAdmin;
 
-    let currentStage = "PRIMARY";
-    if (preselectedGradeId) {
-      const g = allGrades.find(gr => gr.id === preselectedGradeId);
-      if (g && g.stage) currentStage = g.stage;
-    }
+      const filtered = this.courses.filter(c => {
+        // If user is a teacher, strictly show courses created/owned by this teacher
+        if (isTeacher) {
+          const myId = state.user?.id;
+          const ownerId = c.teacher?.id || c.teacherId;
+          if (ownerId !== myId) return false;
 
-    const stageBtns = document.querySelectorAll(".teacher-modal-stage-btn");
-    const gradeSelect = document.getElementById("modal-curriculum-grade-select");
-    const subjectSelect = document.getElementById("modal-curriculum-subject-select");
-    const customSubjectWrapper = document.getElementById("modal-custom-subject-wrapper");
-    const customSubjectInput = document.getElementById("modal-custom-subject-input");
-    const hiddenCategory = document.getElementById("course-category-select");
-    const hiddenDegree = document.getElementById("course-degree");
-    const hiddenGradeId = document.getElementById("modal-selected-grade-id");
-    const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
-
-    const updateStageUI = (stage) => {
-      currentStage = stage;
-      stageBtns.forEach(btn => {
-        const isCurrent = btn.getAttribute("data-stage") === stage;
-        btn.classList.toggle("active", isCurrent);
-        if (isCurrent) {
-          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
-          btn.style.background = color;
-          btn.style.borderColor = color;
-          btn.style.color = "#ffffff";
-          btn.style.boxShadow = `0 4px 12px ${color}40`;
-        } else {
-          btn.style.background = "var(--bg-card)";
-          btn.style.borderColor = "var(--border-color)";
-          btn.style.color = "var(--text-main)";
-          btn.style.boxShadow = "none";
+          // Status match for teacher
+          if (this.teacherStatusFilter && this.teacherStatusFilter !== "all") {
+            const status = (c.status || "PUBLISHED").toUpperCase();
+            if (status !== this.teacherStatusFilter.toUpperCase()) return false;
+          }
         }
+
+        const title = (c.title || "").toLowerCase();
+        const desc = (c.description || "").toLowerCase();
+        const teacherName = (c.teacher?.name || "").toLowerCase();
+        const category = (c.category || "").toLowerCase();
+        const degree = (c.degree || "").toLowerCase();
+
+        // Grade match
+        const matchesGrade = !this.explorerGradeId || (c.grade?.id === this.explorerGradeId) || (gradeName && degree.includes(gradeName));
+
+        // Search match
+        const matchesSearch = !this.searchQuery ||
+          title.includes(this.searchQuery) ||
+          desc.includes(this.searchQuery) ||
+          teacherName.includes(this.searchQuery) ||
+          category.includes(this.searchQuery);
+
+        return matchesGrade && matchesSearch;
       });
 
-      const stageGrades = allGrades.filter(g => g.stage === stage);
-      if (stageGrades.length === 0) {
-        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة لهذه المرحلة</option>`;
-        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
-        return;
+      if (filtered.length === 0) {
+        grid.innerHTML = "";
+        if (emptyState) {
+          emptyState.style.display = "block";
+          if (isTeacher) {
+            const hasAnyCourses = this.courses.length > 0;
+            emptyState.innerHTML = `
+            <div class="glass-card" style="text-align:center; padding:44px 24px; color:var(--text-muted); border-radius:20px;">
+              <i data-lucide="${hasAnyCourses ? 'search-x' : 'book-open'}" style="width:48px;height:48px;opacity:0.3;margin-bottom:12px;color:var(--primary);"></i>
+              <h4 style="font-weight:800; font-size:1.05rem; color:var(--text-main); margin:0 0 6px 0;">
+                ${hasAnyCourses ? 'لا توجد نتائج مطابقة للبحث أو التصفية الحالية' : 'لم تقم بإضافة أي مقررات دراسية حتى الآن'}
+              </h4>
+              <p style="font-size:0.86rem; margin:0 0 16px 0;">
+                ${hasAnyCourses ? 'جرّب تغيير كلمات البحث أو مسح فلتر الصف والحالة.' : 'ابدأ الآن بإنشاء مقررك التعليمي الأول وإضافة الفصول والدروس والمجموعات.'}
+              </p>
+              <button class="btn-primary" onclick="document.getElementById('open-course-modal-btn')?.click()" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة مقرر جديد
+              </button>
+            </div>
+          `;
+          }
+        }
+      } else {
+        if (emptyState) emptyState.style.display = "none";
+        grid.innerHTML = filtered.map(c => {
+          return this.renderCourseCard(c, 0, false, isStaff);
+        }).join("");
       }
 
-      if (gradeSelect) {
-        gradeSelect.innerHTML = stageGrades.map(g => `
+      if (window.lucide) window.lucide.createIcons();
+      if (isStaff) this.bindEvents();
+    }
+
+  async initTeacherCurriculumSelector(preselectedGradeId = null, preselectedSubjectId = null) {
+      let allGrades = [];
+      try {
+        allGrades = await apiFetch("/curriculum/grades");
+      } catch (e) {
+        console.error("Failed to fetch curriculum grades:", e);
+      }
+
+      if (!Array.isArray(allGrades) || allGrades.length === 0) return;
+
+      let currentStage = "PRIMARY";
+      if (preselectedGradeId) {
+        const g = allGrades.find(gr => gr.id === preselectedGradeId);
+        if (g && g.stage) currentStage = g.stage;
+      }
+
+      const stageBtns = document.querySelectorAll(".teacher-modal-stage-btn");
+      const gradeSelect = document.getElementById("modal-curriculum-grade-select");
+      const subjectSelect = document.getElementById("modal-curriculum-subject-select");
+      const customSubjectWrapper = document.getElementById("modal-custom-subject-wrapper");
+      const customSubjectInput = document.getElementById("modal-custom-subject-input");
+      const hiddenCategory = document.getElementById("course-category-select");
+      const hiddenDegree = document.getElementById("course-degree");
+      const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+      const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+
+      const updateStageUI = (stage) => {
+        currentStage = stage;
+        stageBtns.forEach(btn => {
+          const isCurrent = btn.getAttribute("data-stage") === stage;
+          btn.classList.toggle("active", isCurrent);
+          if (isCurrent) {
+            const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+            btn.style.background = color;
+            btn.style.borderColor = color;
+            btn.style.color = "#ffffff";
+            btn.style.boxShadow = `0 4px 12px ${color}40`;
+          } else {
+            btn.style.background = "var(--bg-card)";
+            btn.style.borderColor = "var(--border-color)";
+            btn.style.color = "var(--text-main)";
+            btn.style.boxShadow = "none";
+          }
+        });
+
+        const stageGrades = allGrades.filter(g => g.stage === stage);
+        if (stageGrades.length === 0) {
+          if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة لهذه المرحلة</option>`;
+          if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+          return;
+        }
+
+        if (gradeSelect) {
+          gradeSelect.innerHTML = stageGrades.map(g => `
           <option value="${g.id}" ${preselectedGradeId === g.id ? 'selected' : ''}>
             ${g.name}
           </option>
         `).join('');
-        updateSubjectsUI(gradeSelect.value);
-      }
-    };
+          updateSubjectsUI(gradeSelect.value);
+        }
+      };
 
-    const updateSubjectsUI = (gradeId) => {
-      if (hiddenGradeId) hiddenGradeId.value = gradeId;
-      const selectedGrade = allGrades.find(g => g.id === gradeId);
-      if (selectedGrade && hiddenDegree) {
-        hiddenDegree.value = selectedGrade.name;
-      }
+      const updateSubjectsUI = (gradeId) => {
+        if (hiddenGradeId) hiddenGradeId.value = gradeId;
+        const selectedGrade = allGrades.find(g => g.id === gradeId);
+        if (selectedGrade && hiddenDegree) {
+          hiddenDegree.value = selectedGrade.name;
+        }
 
-      const subjects = selectedGrade?.subjects || [];
-      if (!subjectSelect) return;
+        const subjects = selectedGrade?.subjects || [];
+        if (!subjectSelect) return;
 
-      if (subjects.length === 0) {
-        subjectSelect.innerHTML = `
+        if (subjects.length === 0) {
+          subjectSelect.innerHTML = `
           <option value="">لا توجد مواد مسجلة</option>
           <option value="__custom__">✏️ إدخال مادة مخصصة يدوياً</option>
         `;
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
-        return;
-      }
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+          return;
+        }
 
-      subjectSelect.innerHTML = `
+        subjectSelect.innerHTML = `
         <option value="">-- اختر المادة الدراسية --</option>
         ${subjects.map(s => `
           <option value="${s.id}" data-name="${s.name}" ${preselectedSubjectId === s.id ? 'selected' : ''}>
@@ -1045,241 +1182,241 @@ export default class CoursesView {
         <option value="__custom__">✏️ مادة أخرى / تخصص مخصص</option>
       `;
 
-      if (preselectedSubjectId && subjects.some(s => s.id === preselectedSubjectId)) {
-        const s = subjects.find(sub => sub.id === preselectedSubjectId);
-        if (hiddenSubjectId) hiddenSubjectId.value = s.id;
-        if (hiddenCategory) hiddenCategory.value = s.name;
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
-      } else {
-        if (hiddenSubjectId) hiddenSubjectId.value = "";
-        if (hiddenCategory) hiddenCategory.value = "";
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
-      }
-    };
+        if (preselectedSubjectId && subjects.some(s => s.id === preselectedSubjectId)) {
+          const s = subjects.find(sub => sub.id === preselectedSubjectId);
+          if (hiddenSubjectId) hiddenSubjectId.value = s.id;
+          if (hiddenCategory) hiddenCategory.value = s.name;
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+        } else {
+          if (hiddenSubjectId) hiddenSubjectId.value = "";
+          if (hiddenCategory) hiddenCategory.value = "";
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+        }
+      };
 
-    stageBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        updateStageUI(btn.getAttribute("data-stage"));
+      stageBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          updateStageUI(btn.getAttribute("data-stage"));
+        });
       });
-    });
 
-    gradeSelect?.addEventListener("change", (e) => {
-      updateSubjectsUI(e.target.value);
-    });
+      gradeSelect?.addEventListener("change", (e) => {
+        updateSubjectsUI(e.target.value);
+      });
 
-    subjectSelect?.addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (val === "__custom__") {
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
-        if (hiddenSubjectId) hiddenSubjectId.value = "";
-        if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
-      } else {
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
-        if (hiddenSubjectId) hiddenSubjectId.value = val;
-        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
-        if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
-      }
-    });
+      subjectSelect?.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (val === "__custom__") {
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+          if (hiddenSubjectId) hiddenSubjectId.value = "";
+          if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
+        } else {
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+          if (hiddenSubjectId) hiddenSubjectId.value = val;
+          const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+          if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+        }
+      });
 
-    customSubjectInput?.addEventListener("input", (e) => {
-      if (subjectSelect?.value === "__custom__" && hiddenCategory) {
-        hiddenCategory.value = e.target.value.trim();
-      }
-    });
+      customSubjectInput?.addEventListener("input", (e) => {
+        if (subjectSelect?.value === "__custom__" && hiddenCategory) {
+          hiddenCategory.value = e.target.value.trim();
+        }
+      });
 
-    updateStageUI(currentStage);
-  }
+      updateStageUI(currentStage);
+    }
 
-  renderCourseCard(course, progress, isEnrolled, isTeacherView = false) {
-    return renderCourseCard(course, {
-      enrollmentStatus: isEnrolled ? "active" : null,
-      isTeacherView,
-      progress
-    });
-  }
+    renderCourseCard(course, progress, isEnrolled, isTeacherView = false) {
+      return renderCourseCard(course, {
+        enrollmentStatus: isEnrolled ? "active" : null,
+        isTeacherView,
+        progress
+      });
+    }
 
-  bindEvents() {
-    const courseModal = document.getElementById("course-modal");
-    this.setupImageUploadEvents();
+    bindEvents() {
+      const courseModal = document.getElementById("course-modal");
+      this.setupImageUploadEvents();
 
-    // Open for Create
-    document.getElementById("open-course-modal-btn")?.addEventListener("click", async () => {
-      document.getElementById("create-course-form").reset();
-      document.getElementById("create-course-form").removeAttribute("data-id");
-      document.getElementById("course-image-url").value = "";
-      const previewWrapper = document.getElementById("image-preview-wrapper");
-      const idleBox = document.getElementById("image-upload-idle");
-      if (previewWrapper) previewWrapper.style.display = "none";
-      if (idleBox) idleBox.style.display = "block";
-      courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
-      await this.initTeacherCurriculumSelector();
-      courseModal.style.display = "flex";
-    });
+      // Open for Create
+      document.getElementById("open-course-modal-btn")?.addEventListener("click", async () => {
+        document.getElementById("create-course-form").reset();
+        document.getElementById("create-course-form").removeAttribute("data-id");
+        document.getElementById("course-image-url").value = "";
+        const previewWrapper = document.getElementById("image-preview-wrapper");
+        const idleBox = document.getElementById("image-upload-idle");
+        if (previewWrapper) previewWrapper.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+        courseModal.querySelector(".modal-title").innerText = t("teacher.createCourse");
+        await this.initTeacherCurriculumSelector();
+        courseModal.style.display = "flex";
+      });
 
-    document.getElementById("close-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
-    document.getElementById("cancel-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
+      document.getElementById("close-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
+      document.getElementById("cancel-course-modal")?.addEventListener("click", () => { courseModal.style.display = "none"; });
 
-    document.getElementById("create-course-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const title = document.getElementById("course-title").value.trim();
-      const hiddenCategory = document.getElementById("course-category-select");
-      const hiddenDegree = document.getElementById("course-degree");
-      const hiddenGradeId = document.getElementById("modal-selected-grade-id");
-      const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
+      document.getElementById("create-course-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const title = document.getElementById("course-title").value.trim();
+        const hiddenCategory = document.getElementById("course-category-select");
+        const hiddenDegree = document.getElementById("course-degree");
+        const hiddenGradeId = document.getElementById("modal-selected-grade-id");
+        const hiddenSubjectId = document.getElementById("modal-selected-subject-id");
 
-      let category = hiddenCategory?.value?.trim();
-      const customSubInput = document.getElementById("modal-custom-subject-input");
-      if (!category && customSubInput && customSubInput.value) {
-        category = customSubInput.value.trim();
-      }
+        let category = hiddenCategory?.value?.trim();
+        const customSubInput = document.getElementById("modal-custom-subject-input");
+        if (!category && customSubInput && customSubInput.value) {
+          category = customSubInput.value.trim();
+        }
 
-      if (!category) { 
-        showToast("الرجاء اختيار المادة الدراسية أو كتابتها.", "error"); 
-        return; 
-      }
+        if (!category) {
+          showToast("الرجاء اختيار المادة الدراسية أو كتابتها.", "error");
+          return;
+        }
 
-      const degree = hiddenDegree?.value || "";
-      const gradeId = hiddenGradeId?.value || null;
-      const subjectId = hiddenSubjectId?.value || null;
-      const description = document.getElementById("course-desc").value;
-      let image = document.getElementById("course-image-url").value;
-      const meetingLink = document.getElementById("course-meeting-link").value;
+        const degree = hiddenDegree?.value || "";
+        const gradeId = hiddenGradeId?.value || null;
+        const subjectId = hiddenSubjectId?.value || null;
+        const description = document.getElementById("course-desc").value;
+        let image = document.getElementById("course-image-url").value;
+        const meetingLink = document.getElementById("course-meeting-link").value;
+        const fileInput = document.getElementById("course-image-file");
+
+        // Handle file upload
+        if (fileInput && fileInput.files.length > 0 && !image) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          try {
+            const token = state.token || localStorage.getItem("token");
+            const uploadRes = await fetch("/api/upload", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + token },
+              body: formData
+            });
+            if (uploadRes.ok) {
+              const data = await uploadRes.json();
+              image = data.url;
+            }
+          } catch (err) {
+            console.error("Upload failed", err);
+          }
+        }
+
+        const courseId = document.getElementById("create-course-form").getAttribute("data-id");
+        try {
+          if (courseId) {
+            await apiFetch(`/courses/${courseId}`, {
+              method: "PUT",
+              body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink })
+            });
+            showToast("تم تحديث بيانات الدورة بنجاح! ✅", "success");
+          } else {
+            await apiFetch("/courses", {
+              method: "POST",
+              body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink })
+            });
+            showToast(t("toast.coursePublished"), "success");
+          }
+          courseModal.style.display = "none";
+          await this.loadContent();
+        } catch (err) {
+          showToast(err.message || "فشل حفظ الدورة التعليمية.", "error");
+        }
+      });
+    }
+
+    setupImageUploadEvents() {
       const fileInput = document.getElementById("course-image-file");
+      const triggerBtn = document.getElementById("btn-trigger-upload");
+      const dropzone = document.getElementById("course-dropzone");
+      const idleBox = document.getElementById("image-upload-idle");
+      const loadingBox = document.getElementById("image-upload-loading");
+      const previewWrapper = document.getElementById("image-preview-wrapper");
+      const previewImg = document.getElementById("course-preview-img");
+      const removeBtn = document.getElementById("remove-course-image-btn");
+      const hiddenUrlInput = document.getElementById("course-image-url");
+      const toggleUrlBtn = document.getElementById("toggle-url-input-btn");
+      const urlInputWrapper = document.getElementById("url-input-wrapper");
+      const directUrlInput = document.getElementById("course-image-url-direct");
 
-      // Handle file upload
-      if (fileInput && fileInput.files.length > 0 && !image) {
+      triggerBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput?.click();
+      });
+
+      dropzone?.addEventListener("click", (e) => {
+        if (e.target === dropzone || idleBox?.contains(e.target)) {
+          fileInput?.click();
+        }
+      });
+
+      toggleUrlBtn?.addEventListener("click", () => {
+        if (urlInputWrapper.style.display === "none") {
+          urlInputWrapper.style.display = "block";
+          toggleUrlBtn.innerText = "إلغاء أدخل الرابط ✕";
+        } else {
+          urlInputWrapper.style.display = "none";
+          toggleUrlBtn.innerText = "أو أدخل رابط صورة مباشرة 🔗";
+        }
+      });
+
+      directUrlInput?.addEventListener("input", (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+          hiddenUrlInput.value = val;
+          previewImg.src = val;
+          previewWrapper.style.display = "block";
+          if (idleBox) idleBox.style.display = "none";
+        }
+      });
+
+      removeBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hiddenUrlInput.value = "";
+        if (fileInput) fileInput.value = "";
+        if (directUrlInput) directUrlInput.value = "";
+        previewWrapper.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+      });
+
+      fileInput?.addEventListener("change", async () => {
+        if (!fileInput.files || fileInput.files.length === 0) return;
+        const file = fileInput.files[0];
+
+        if (idleBox) idleBox.style.display = "none";
+        if (loadingBox) loadingBox.style.display = "block";
+        if (previewWrapper) previewWrapper.style.display = "none";
+
         const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
+        formData.append("file", file);
+
         try {
           const token = state.token || localStorage.getItem("token");
-          const uploadRes = await fetch("/api/upload", {
+          const res = await fetch("/api/upload", {
             method: "POST",
             headers: { "Authorization": "Bearer " + token },
             body: formData
           });
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            image = data.url;
+
+          if (res.ok) {
+            const data = await res.json();
+            hiddenUrlInput.value = data.url;
+            previewImg.src = data.url;
+            if (loadingBox) loadingBox.style.display = "none";
+            if (previewWrapper) previewWrapper.style.display = "block";
+            showToast("تم رفع صورة الدورة بنجاح 🎉", "success");
+          } else {
+            throw new Error("Upload failed");
           }
         } catch (err) {
-          console.error("Upload failed", err);
-        }
-      }
-
-      const courseId = document.getElementById("create-course-form").getAttribute("data-id");
-      try {
-        if (courseId) {
-          await apiFetch(`/courses/${courseId}`, { 
-            method: "PUT", 
-            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
-          });
-          showToast("تم تحديث بيانات الدورة بنجاح! ✅", "success");
-        } else {
-          await apiFetch("/courses", { 
-            method: "POST", 
-            body: JSON.stringify({ title, category, degree, gradeId, subjectId, description, image, meetingLink }) 
-          });
-          showToast(t("toast.coursePublished"), "success");
-        }
-        courseModal.style.display = "none";
-        await this.loadContent();
-      } catch (err) {
-        showToast(err.message || "فشل حفظ الدورة التعليمية.", "error");
-      }
-    });
-  }
-
-  setupImageUploadEvents() {
-    const fileInput = document.getElementById("course-image-file");
-    const triggerBtn = document.getElementById("btn-trigger-upload");
-    const dropzone = document.getElementById("course-dropzone");
-    const idleBox = document.getElementById("image-upload-idle");
-    const loadingBox = document.getElementById("image-upload-loading");
-    const previewWrapper = document.getElementById("image-preview-wrapper");
-    const previewImg = document.getElementById("course-preview-img");
-    const removeBtn = document.getElementById("remove-course-image-btn");
-    const hiddenUrlInput = document.getElementById("course-image-url");
-    const toggleUrlBtn = document.getElementById("toggle-url-input-btn");
-    const urlInputWrapper = document.getElementById("url-input-wrapper");
-    const directUrlInput = document.getElementById("course-image-url-direct");
-
-    triggerBtn?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      fileInput?.click();
-    });
-
-    dropzone?.addEventListener("click", (e) => {
-      if (e.target === dropzone || idleBox?.contains(e.target)) {
-        fileInput?.click();
-      }
-    });
-
-    toggleUrlBtn?.addEventListener("click", () => {
-      if (urlInputWrapper.style.display === "none") {
-        urlInputWrapper.style.display = "block";
-        toggleUrlBtn.innerText = "إلغاء أدخل الرابط ✕";
-      } else {
-        urlInputWrapper.style.display = "none";
-        toggleUrlBtn.innerText = "أو أدخل رابط صورة مباشرة 🔗";
-      }
-    });
-
-    directUrlInput?.addEventListener("input", (e) => {
-      const val = e.target.value.trim();
-      if (val) {
-        hiddenUrlInput.value = val;
-        previewImg.src = val;
-        previewWrapper.style.display = "block";
-        if (idleBox) idleBox.style.display = "none";
-      }
-    });
-
-    removeBtn?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hiddenUrlInput.value = "";
-      if (fileInput) fileInput.value = "";
-      if (directUrlInput) directUrlInput.value = "";
-      previewWrapper.style.display = "none";
-      if (idleBox) idleBox.style.display = "block";
-    });
-
-    fileInput?.addEventListener("change", async () => {
-      if (!fileInput.files || fileInput.files.length === 0) return;
-      const file = fileInput.files[0];
-
-      if (idleBox) idleBox.style.display = "none";
-      if (loadingBox) loadingBox.style.display = "block";
-      if (previewWrapper) previewWrapper.style.display = "none";
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        const token = state.token || localStorage.getItem("token");
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + token },
-          body: formData
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          hiddenUrlInput.value = data.url;
-          previewImg.src = data.url;
+          console.error("Image upload failed", err);
           if (loadingBox) loadingBox.style.display = "none";
-          if (previewWrapper) previewWrapper.style.display = "block";
-          showToast("تم رفع صورة الدورة بنجاح 🎉", "success");
-        } else {
-          throw new Error("Upload failed");
+          if (idleBox) idleBox.style.display = "block";
+          showToast("تعذر رفع الصورة، الرجاء إعادة المحاولة.", "error");
         }
-      } catch (err) {
-        console.error("Image upload failed", err);
-        if (loadingBox) loadingBox.style.display = "none";
-        if (idleBox) idleBox.style.display = "block";
-        showToast("تعذر رفع الصورة، الرجاء إعادة المحاولة.", "error");
-      }
-    });
-  }
+      });
+    }
 
-  onDestroy() { }
-}
+    onDestroy() { }
+  }

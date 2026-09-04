@@ -506,11 +506,11 @@ export default class StudentGroupsView {
           <!-- Live Join Action Button -->
           ${group.liveSession ? `
             <div style="display:flex; flex-direction:column; gap:6px;">
-              <a href="#classroom/${group.liveSession.id}"
-                style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:11px 16px; border-radius:14px; font-size:0.88rem; font-weight:800; text-decoration:none; background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.3); transition:transform 0.15s;">
+              <button class="btn-primary" data-join-meet-id="${group.liveSession.id}"
+                style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:11px 16px; border-radius:14px; font-size:0.88rem; font-weight:800; border:none; background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
                 <i data-lucide="video" style="width:16px; height:16px;"></i>
-                دخول قاعة البث المباشر الآن 🔴
-              </a>
+                الانضمام عبر Google Meet الآن 🔴
+              </button>
               <button class="btn-secondary session-checkin-btn" data-id="${group.liveSession.id}"
                 style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:9px; border-radius:12px; font-size:0.82rem; font-weight:800; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer;">
                 <i data-lucide="user-check" style="width:15px; height:15px;"></i>
@@ -561,10 +561,10 @@ export default class StudentGroupsView {
                       ${badgeText}
                     </span>
                     ${(isNow || isSoon) ? `
-                      <a href="#classroom/${s.id}"
-                        style="font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; background:#10b981; color:#fff; text-decoration:none;">
-                        دخول 🎥
-                      </a>
+                      <button data-join-meet-id="${s.id}"
+                        style="font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; background:#10b981; color:#fff; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px;">
+                        Google Meet 🎥
+                      </button>
                       <button class="session-checkin-btn" data-id="${s.id}"
                         style="font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); cursor:pointer;">
                         تأكيد الحضور ✍️

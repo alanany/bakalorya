@@ -629,12 +629,10 @@ export default class CourseLandingView {
 
   renderMustEnrollModal() {
     const existingModal = document.getElementById("must-enroll-modal-dynamic");
-
     if (existingModal) existingModal.remove();
 
     const isPending = this.enrollmentStatus === 'pending';
     const isRejected = this.enrollmentStatus === 'rejected';
-    const isPaid = !this.course.isFree && this.course.price > 0;
     const teacherName = this.course.teacher?.name || 'أستاذ المادة';
 
     const modalHTML = `
@@ -643,10 +641,10 @@ export default class CourseLandingView {
           
           <div style="padding:24px; text-align:center; background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color);">
             <div style="width:64px; height:64px; border-radius:50%; background:rgba(245,158,11,0.15); color:#f59e0b; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; border:2px solid rgba(245,158,11,0.3);">
-              <i data-lucide="${isPending ? 'clock' : isRejected ? 'x-circle' : 'lock'}" style="width:32px; height:32px;"></i>
+              <i data-lucide="${isPending ? 'clock' : isRejected ? 'x-circle' : 'users'}" style="width:32px; height:32px;"></i>
             </div>
             <h3 style="font-weight:900; font-size:1.3rem; margin:0 0 6px 0; color:var(--text-main);">
-              ${isPending ? 'طلب الالتحاق قيد المراجعة ⏳' : isRejected ? 'طلب الالتحاق مرفوض ❌' : 'يلزم الالتحاق بالكورس أولاً 🔒'}
+              ${isPending ? 'طلب الانضمام قيد المراجعة ⏳' : isRejected ? 'طلب الانضمام مرفوض ❌' : 'الاشتراك في إحدى مجموعات المقرر 👥'}
             </h3>
             <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.78rem;">
               📚 ${this.course.title}
@@ -658,15 +656,15 @@ export default class CourseLandingView {
               <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:46px; height:46px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
               <div>
                 <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">${teacherName}</div>
-                <div style="font-size:0.78rem; color:var(--text-muted);">أستاذ ومحاضر الكورس</div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">أستاذ ومحاضر المقرر</div>
               </div>
             </div>
 
             ${isPending ? `
               <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 24px 0; text-align:center;">
-                طلب تسجيلك في هذا الكورس تم إرساله بنجاح وهو قيد المراجعة والموافقة من الإدارة حالياً.<br>
+                طلب تسجيلك في المجموعة الدراسية تم إرساله بنجاح وهو قيد المراجعة وتأكيد الدفع من الإدارة حالياً.<br>
                 <span style="color:var(--text-muted); font-size:0.85rem; display:block; margin-top:8px;">
-                  بمجرد تفعيل اشتراكك في الكورس، ستتمكن من حجز الحصص الخاصة 1-on-1 مباشرة مع الأستاذ.
+                  بمجرد اعتماد اشتراكك، ستتمكن من حضور الحصص المباشرة ومتابعة المقرر.
                 </span>
               </p>
               <div style="display:flex; justify-content:center;">
@@ -676,7 +674,7 @@ export default class CourseLandingView {
               </div>
             ` : isRejected ? `
               <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 24px 0; text-align:center;">
-                تم رفض طلب تسجيلك في هذا الكورس سابقاً. يرجى التواصل مع الدعم أو محاولة التسجيل مرة أخرى.
+                تم رفض طلب تسجيلك في هذه المجموعة سابقاً. يرجى التواصل مع الدعم أو اختيار مجموعة أخرى.
               </p>
               <div style="display:flex; justify-content:center;">
                 <button type="button" id="close-must-enroll-modal" class="btn-secondary" style="padding:10px 28px; border-radius:30px; font-weight:800;">
@@ -685,12 +683,12 @@ export default class CourseLandingView {
               </div>
             ` : `
               <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0 0 20px 0;">
-                لطلب حجز حصة خاصة فردية ومباشرة (1-on-1) مع <strong>أ. ${teacherName}</strong>، يجب أن تكون مسجلاً ومشتركاً في كورس <strong>"${this.course.title}"</strong> أولاً.
+                الاشتراك متاح للمجموعات الدراسية المباشرة. يرجى اختيار إحدى المجموعات المتاحة لهذا المقرر وتأكيد إشعار التحويل للانضمام.
               </p>
 
               <div style="display:flex; flex-direction:column; gap:10px;">
                 <button type="button" id="enroll-now-from-dialog-btn" class="btn-primary" style="padding:12px; border-radius:14px; font-weight:800; font-size:0.95rem; justify-content:center; gap:8px;">
-                  <i data-lucide="sparkles" style="width:16px;height:16px;"></i> ${isPaid ? `التحاق بالكورس الآن (${this.course.price} ${this.course.currency || 'ج.م'}) 💳` : 'التسجيل في الكورس مجاناً الآن 🎁'}
+                  <i data-lucide="users" style="width:16px;height:16px;"></i> اختيار المجموعة والتسجيل الآن 🚀
                 </button>
                 <button type="button" id="close-must-enroll-modal" class="btn-secondary" style="padding:10px; border-radius:14px; font-weight:700; font-size:0.88rem; justify-content:center;">
                   إلغاء
@@ -712,103 +710,10 @@ export default class CourseLandingView {
     document.getElementById("close-must-enroll-modal")?.addEventListener("click", closeModal);
     document.getElementById("enroll-now-from-dialog-btn")?.addEventListener("click", () => {
       closeModal();
-      const enrollHeroBtn = document.getElementById("enroll-hero-btn");
-      if (enrollHeroBtn) {
-        enrollHeroBtn.click();
-      } else {
-        if (isPaid) {
-          this.renderPaidCourseEnrollmentModal();
-        }
-      }
-    });
-  }
-
-  renderPaidCourseEnrollmentModal() {
-    const existingModal = document.getElementById("paid-course-modal-dynamic");
-    if (existingModal) existingModal.remove();
-
-    const paymentInfo = this.course.paymentDetails || "فودافون كاش / إنستاباي / IBAN البنك الأهلي المصري\nرقم المحفظة المعتمـد: 01012345678\nالاسم: أكاديمية انطلق التعليمية";
-
-    const modalHTML = `
-      <div class="modal-overlay" id="paid-course-modal-dynamic" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:10000;">
-        <div class="modal-content" style="max-width:540px; width:95%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card);">
-          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1)); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="font-weight:800; font-size:1.15rem; margin:0; display:flex; align-items:center; gap:8px; color:var(--text-main);">
-              <i data-lucide="credit-card" style="color:var(--primary);"></i>
-              تفاصيل دفع رسوم الدورة 💳
-            </h3>
-            <span id="close-paid-course-modal" style="font-size:1.4rem; cursor:pointer; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
-          </div>
-
-          <div style="padding:24px;">
-            <!-- Course Summary Box -->
-            <div style="margin-bottom:18px; padding:14px 16px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div style="font-size:0.75rem; color:var(--primary); font-weight:800; text-transform:uppercase;">${this.course.category}</div>
-                <div style="font-size:1rem; font-weight:800; color:var(--text-main); margin-top:2px;">${this.course.title}</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">المعلم: ${this.course.teacher?.name || 'منصة انطلق'}</div>
-              </div>
-              <div style="text-align:end; font-size:1.2rem; font-weight:800; color:var(--primary);">
-                ${this.course.price} ${this.course.currency || 'ج.م'}
-              </div>
-            </div>
-
-            <!-- Attached Payment Details -->
-            <div style="margin-bottom:20px; padding:16px; border-radius:16px; background:linear-gradient(135deg, rgba(79,70,229,0.06), rgba(16,185,129,0.06)); border:1px solid var(--border-focus);">
-              <label style="font-weight:800; font-size:0.88rem; margin-bottom:8px; display:flex; align-items:center; gap:6px; color:var(--text-main);">
-                <i data-lucide="building-bank" style="width:16px; height:16px; color:var(--primary);"></i>
-                بيانات التحويل المعتمـدة المرفقة بالدورة
-              </label>
-              <div style="font-size:0.85rem; color:var(--text-main); line-height:1.6; white-space:pre-wrap; font-weight:600; font-family:monospace; background:var(--bg-app); padding:12px; border-radius:10px; border:1px solid var(--border-color);">
-                ${paymentInfo}
-              </div>
-            </div>
-
-            <p style="font-size:0.82rem; color:var(--text-muted); margin:0 0 20px 0; line-height:1.5;">
-              يرجى تحويل المبلغ المطلوب وفق البيانات أعلاه، ثم النقر على تأكيد طلب الالتحاق لإرسال الطلب لإدارة المنصة والمعلم للاعتماد.
-            </p>
-
-            <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-color); padding-top:16px;">
-              <button type="button" class="btn-secondary" id="cancel-paid-course-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
-              <button type="button" id="confirm-paid-enrollment-btn" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#4f46e5,#0056D2); border:none; gap:6px; display:inline-flex; align-items:center;">
-                <i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد طلب الحجز والدفع 🚀
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML("beforeend", modalHTML);
-    if (window.lucide) window.lucide.createIcons();
-
-    const modalEl = document.getElementById("paid-course-modal-dynamic");
-    const closeBtn = document.getElementById("close-paid-course-modal");
-    const cancelBtn = document.getElementById("cancel-paid-course-modal");
-    const confirmBtn = document.getElementById("confirm-paid-enrollment-btn");
-
-    const closeModal = () => modalEl.remove();
-    closeBtn?.addEventListener("click", closeModal);
-    cancelBtn?.addEventListener("click", closeModal);
-
-    confirmBtn?.addEventListener("click", async () => {
-      confirmBtn.disabled = true;
-      try {
-        await apiFetch(`/student/enrollments`, {
-          method: "POST",
-          body: JSON.stringify({ courseId: this.course.id })
-        });
-        showToast("تم تقديم طلب التسجيل بنجاح! في انتظار موافقة المعلم وتأكيد الدفع.", "success");
-        closeModal();
-        showEnrollmentRequestedModal({
-          courseTitle: this.course.title,
-          teacherName: this.course.teacher?.name,
-          courseImage: this.course.image
-        });
-        await this.render();
-      } catch (err) {
-        showToast(err.message || "فشل تقديم طلب التسجيل", "error");
-        confirmBtn.disabled = false;
+      const enrollGroupBtn = document.getElementById("enroll-group-action-btn");
+      if (enrollGroupBtn) {
+        enrollGroupBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        enrollGroupBtn.click();
       }
     });
   }

@@ -445,13 +445,16 @@ export class CurriculumController {
         return res.status(404).json({ error: "المادة الدراسية غير موجودة." });
       }
 
-      // Fetch all published courses for this subject
-      const courses = await courseRepo.find({
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+
+      // Fetch all real groups belonging to courses under this subject
+      const groups = await groupRepo.find({
         where: {
-          subject: { id: subjectId },
-          status: "PUBLISHED"
+          course: {
+            subject: { id: subjectId }
+          }
         },
-        relations: ["teacher", "groups", "groups.teacher", "grade", "subject"]
+        relations: ["course", "course.subject", "course.teacher", "course.grade", "teacher"]
       });
 
       const selectedDays = days
@@ -460,180 +463,80 @@ export class CurriculumController {
 
       const groupCards: any[] = [];
 
-      for (const course of courses) {
-        const groups = course.groups || [];
-        for (const group of groups) {
-          // Skip groups pending admin approval or rejected
-          if (group.status === "PENDING_APPROVAL" || group.status === "REJECTED") {
-            continue;
-          }
-
-          // If days filter is active, check match
-          if (selectedDays.length > 0) {
-            const groupScheduleStr = `${group.scheduleDays || ""} ${group.scheduleText || ""} ${group.name || ""}`.toLowerCase();
-            const matchesDay = selectedDays.some(day => groupScheduleStr.includes(day));
-            if (!matchesDay) continue;
-          }
-
-          const enrolledCount = await enrollmentRepo.count({
-            where: {
-              group: { id: group.id },
-              status: "active"
-            }
-          });
-
-          const pendingCount = await enrollmentRepo.count({
-            where: {
-              group: { id: group.id },
-              status: "pending"
-            }
-          });
-
-          const totalOccupied = enrolledCount + pendingCount;
-          const maxSeats = group.maxStudents || 25;
-          const availableSeats = Math.max(0, maxSeats - totalOccupied);
-          const isFull = totalOccupied >= maxSeats;
-
-          const teacher = group.teacher || course.teacher;
-
-          const groupPrice = group.monthlyPrice || course.price || 320;
-          const sessionPrice = group.sessionPrice || (groupPrice > 0 ? Math.round(groupPrice / 8) : 40);
-
-          groupCards.push({
-            groupId: group.id,
-            groupName: group.name,
-            courseId: course.id,
-            courseTitle: course.title,
-            price: groupPrice,
-            isFree: course.isFree,
-            currency: course.currency || "ج.م.",
-            startDate: group.startDate || "2026-09-13",
-            endDate: group.endDate || "2026-12-02",
-            totalSessions: group.totalSessions || 24,
-            sessionDuration: group.sessionDuration || 60,
-            sessionPrice: sessionPrice,
-            studentHourlyRate: group.studentHourlyRate || sessionPrice,
-            teacherHourlyRate: group.teacherHourlyRate || 100,
-            billingCycle: group.billingCycle || "شهريًّا",
-            monthlyPrice: groupPrice,
-            platformCommissionPercent: group.platformCommissionPercent || 50,
-            teacher: teacher ? {
-              id: teacher.id,
-              name: teacher.name,
-              avatar: teacher.avatar || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80",
-              rating: 91,
-              ratingCount: 2763
-            } : {
-              id: null,
-              name: "مدرس المنصة المعتمد",
-              avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80",
-              rating: 95,
-              ratingCount: 1540
-            },
-            scheduleText: group.scheduleText || `${group.scheduleDays || "الأحد والثلاثاء"} الساعة ${group.scheduleTime || "6:00م"}`,
-            scheduleDays: group.scheduleDays,
-            scheduleTime: group.scheduleTime,
-            maxStudents: maxSeats,
-            enrolledCount: totalOccupied,
-            availableSeats: availableSeats,
-            isFull: isFull,
-            status: isFull ? "FULL" : group.status || "OPEN"
-          });
+      for (const group of groups) {
+        if (!group.course) continue;
+        // Skip archived or draft courses
+        if (group.course.status === "ARCHIVED" || group.course.status === "DRAFT") {
+          continue;
         }
-      }
 
-      // If no custom course groups exist yet for this subject, provide default curriculum teacher groups
-      if (groupCards.length === 0 && (!days || selectedDays.length === 0)) {
-        const sampleTeachers = [
-          { name: "أمنية خالد", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80", rating: 91, ratingCount: 2763, scheduleText: "الأحد والثلاثاء الساعة 6:00م", scheduleDays: "الأحد، الثلاثاء", price: 320, sessionPrice: 40, maxSeats: 25, enrolled: 12 },
-          { name: "شيماء كمال", avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80", rating: 94, ratingCount: 3120, scheduleText: "الأحد والثلاثاء الساعة 6:00م", scheduleDays: "الأحد، الثلاثاء", price: 320, sessionPrice: 40, maxSeats: 25, enrolled: 18 },
-          { name: "أحمد سامي", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80", rating: 96, ratingCount: 1890, scheduleText: "السبت والأربعاء الساعة 7:30م", scheduleDays: "السبت، الأربعاء", price: 350, sessionPrice: 45, maxSeats: 30, enrolled: 22 },
-          { name: "سارة حسني", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80", rating: 93, ratingCount: 2450, scheduleText: "الاثنين والخميس الساعة 5:00م", scheduleDays: "الاثنين، الخميس", price: 300, sessionPrice: 38, maxSeats: 20, enrolled: 9 }
-        ];
-
-        for (let i = 0; i < sampleTeachers.length; i++) {
-          const t = sampleTeachers[i];
-          const available = Math.max(0, t.maxSeats - t.enrolled);
-          groupCards.push({
-            groupId: `sample-group-${subject.id}-${i + 1}`,
-            groupName: `مجموعة ${t.scheduleDays} - إشراف ${t.name}`,
-            courseId: courses[0]?.id || `demo-course-${subject.id}`,
-            courseTitle: `شرح ومراجعة ${subject.name} - ${subject.grade?.name || ""}`,
-            price: t.price,
-            isFree: false,
-            currency: "ج.م.",
-            startDate: "2026-09-13",
-            endDate: "2026-12-02",
-            totalSessions: 24,
-            sessionDuration: 60,
-            sessionPrice: t.sessionPrice || 40,
-            billingCycle: "شهريًّا",
-            monthlyPrice: t.price,
-            platformCommissionPercent: 50,
-            teacher: {
-              id: `teacher-${i + 1}`,
-              name: t.name,
-              avatar: t.avatar,
-              rating: t.rating,
-              ratingCount: t.ratingCount
-            },
-            scheduleText: t.scheduleText,
-            scheduleDays: t.scheduleDays,
-            scheduleTime: "6:00م",
-            maxStudents: t.maxSeats,
-            enrolledCount: t.enrolled,
-            availableSeats: available,
-            isFull: available <= 0,
-            status: "OPEN"
-          });
+        // Skip groups pending approval, rejected, or closed
+        if (group.status === "PENDING_APPROVAL" || group.status === "REJECTED" || group.status === "CLOSED") {
+          continue;
         }
-      } else if (groupCards.length === 0 && selectedDays.length > 0) {
-        // Filter sample teachers by selected days if no DB groups matched
-        const sampleTeachers = [
-          { name: "أمنية خالد", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80", rating: 91, ratingCount: 2763, scheduleText: "الأحد والثلاثاء الساعة 6:00م", scheduleDays: "الأحد، الثلاثاء", price: 320, sessionPrice: 40, maxSeats: 25, enrolled: 12 },
-          { name: "شيماء كمال", avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80", rating: 94, ratingCount: 3120, scheduleText: "الأحد والثلاثاء الساعة 6:00م", scheduleDays: "الأحد، الثلاثاء", price: 320, sessionPrice: 40, maxSeats: 25, enrolled: 18 },
-          { name: "أحمد سامي", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80", rating: 96, ratingCount: 1890, scheduleText: "السبت والأربعاء الساعة 7:30م", scheduleDays: "السبت، الأربعاء", price: 350, sessionPrice: 45, maxSeats: 30, enrolled: 22 },
-          { name: "سارة حسني", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80", rating: 93, ratingCount: 2450, scheduleText: "الاثنين والخميس الساعة 5:00م", scheduleDays: "الاثنين، الخميس", price: 300, sessionPrice: 38, maxSeats: 20, enrolled: 9 }
-        ];
 
-        sampleTeachers.forEach((t, i) => {
-          const groupScheduleStr = `${t.scheduleDays} ${t.scheduleText}`.toLowerCase();
-          const matches = selectedDays.some(day => groupScheduleStr.includes(day));
-          if (matches) {
-            const available = Math.max(0, t.maxSeats - t.enrolled);
-            groupCards.push({
-              groupId: `sample-group-${subject.id}-${i + 1}`,
-              groupName: `مجموعة ${t.scheduleDays} - إشراف ${t.name}`,
-              courseId: courses[0]?.id || `demo-course-${subject.id}`,
-              courseTitle: `شرح ومراجعة ${subject.name} - ${subject.grade?.name || ""}`,
-              price: t.price,
-              isFree: false,
-              currency: "ج.م.",
-              startDate: "2026-09-13",
-              endDate: "2026-12-02",
-              totalSessions: 24,
-              sessionDuration: 60,
-              sessionPrice: t.sessionPrice || 40,
-              billingCycle: "شهريًّا",
-              monthlyPrice: t.price,
-              platformCommissionPercent: 50,
-              teacher: {
-                id: `teacher-${i + 1}`,
-                name: t.name,
-                avatar: t.avatar,
-                rating: t.rating,
-                ratingCount: t.ratingCount
-              },
-              scheduleText: t.scheduleText,
-              scheduleDays: t.scheduleDays,
-              scheduleTime: "6:00م",
-              maxStudents: t.maxSeats,
-              enrolledCount: t.enrolled,
-              availableSeats: available,
-              isFull: available <= 0,
-              status: "OPEN"
-            });
+        // If days filter is active, check match
+        if (selectedDays.length > 0) {
+          const groupScheduleStr = `${group.scheduleDays || ""} ${group.scheduleText || ""} ${group.name || ""}`.toLowerCase();
+          const matchesDay = selectedDays.some(day => groupScheduleStr.includes(day));
+          if (!matchesDay) continue;
+        }
+
+        const enrolledCount = await enrollmentRepo.count({
+          where: {
+            group: { id: group.id },
+            status: "active"
           }
+        });
+
+        const pendingCount = await enrollmentRepo.count({
+          where: {
+            group: { id: group.id },
+            status: "pending"
+          }
+        });
+
+        const totalOccupied = enrolledCount + pendingCount;
+        const maxSeats = group.maxStudents || 25;
+        const availableSeats = Math.max(0, maxSeats - totalOccupied);
+        const isFull = totalOccupied >= maxSeats;
+
+        const teacher = group.teacher || group.course.teacher;
+
+        const groupPrice = group.monthlyPrice || group.course.price || 320;
+        const sessionPrice = group.sessionPrice || (groupPrice > 0 ? Math.round(groupPrice / 8) : 40);
+
+        groupCards.push({
+          groupId: group.id,
+          groupName: group.name,
+          courseId: group.course.id,
+          courseTitle: group.course.title,
+          price: groupPrice,
+          isFree: group.course.isFree,
+          currency: group.course.currency || "ج.م.",
+          startDate: group.startDate ? String(group.startDate) : null,
+          endDate: group.endDate ? String(group.endDate) : null,
+          totalSessions: group.totalSessions || 0,
+          sessionDuration: group.sessionDuration || 60,
+          sessionPrice: sessionPrice,
+          studentHourlyRate: group.studentHourlyRate || sessionPrice,
+          teacherHourlyRate: group.teacherHourlyRate || 0,
+          billingCycle: group.billingCycle || "شهريًّا",
+          monthlyPrice: groupPrice,
+          platformCommissionPercent: group.platformCommissionPercent || 50,
+          teacher: teacher ? {
+            id: teacher.id,
+            name: teacher.name,
+            avatar: teacher.avatar || ""
+          } : null,
+          scheduleText: group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime || ""}`.trim() : "حسب جدول المجموعة"),
+          scheduleDays: group.scheduleDays || "",
+          scheduleTime: group.scheduleTime || "",
+          maxStudents: maxSeats,
+          enrolledCount: totalOccupied,
+          availableSeats: availableSeats,
+          isFull: isFull,
+          status: isFull ? "FULL" : group.status || "OPEN"
         });
       }
 

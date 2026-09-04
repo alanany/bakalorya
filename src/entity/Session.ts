@@ -41,6 +41,9 @@ export class Session {
   @Column({ nullable: true })
   completedAt: Date;
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  meetingLink: string | null;
+
   // Session Report / Lesson Notes Fields
   @Column({ nullable: true })
   topic: string;

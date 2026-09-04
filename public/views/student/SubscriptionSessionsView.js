@@ -162,9 +162,9 @@ export default class SubscriptionSessionsView {
                 <i data-lucide="lock" style="width:13px; height:13px; margin-inline-end:4px;"></i> ينشط قبل الموعد بـ 30 دقيقة 🔒
               </button>
             ` : `
-              <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; justify-content:center; font-size:0.85rem; padding:9px; text-decoration:none; gap:6px; background:#10b981; border-color:#10b981;">
-                <i data-lucide="video" style="width:16px;height:16px;"></i> دخول الحصة الآن 🎥
-              </a>
+              <button class="btn-primary" data-join-meet-id="${session.id}" style="width:100%; justify-content:center; font-size:0.85rem; padding:9px; text-decoration:none; gap:6px; background:#10b981; border-color:#10b981; cursor:pointer; color:#fff; display:flex; align-items:center; border-radius:10px;">
+                <i data-lucide="video" style="width:16px;height:16px;"></i> الانضمام عبر Google Meet 🎥
+              </button>
               <button class="btn-secondary session-checkin-btn" data-id="${session.id}" style="width:100%; justify-content:center; font-size:0.78rem; padding:8px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">
                 <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد الحضور (لست غائباً) ✍️
               </button>

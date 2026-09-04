@@ -226,6 +226,87 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+}
+
+.header-left-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+  color: var(--text-color);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#header-logo {
+  height: 36px;
+  object-fit: contain;
+  transition: opacity 0.2s;
+  display: block;
+}
+
+.header-search-container {
+  flex: 1;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+#header-search-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  padding: 4px 4px 4px 16px;
+  transition: border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+#header-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--text-color);
+  padding-inline-start: 8px;
+}
+
+#header-search-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #0056D2;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+#auth-action-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .logo-link {
@@ -316,6 +397,46 @@ body.light-theme .moon-icon {
 
 body.dark-theme .moon-icon {
   display: block;
+}
+
+/* Header Auth Buttons */
+.header-login-btn {
+  color: #0056D2;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.header-login-btn:hover {
+  background: rgba(0, 86, 210, 0.08);
+}
+
+.header-signup-btn {
+  border: 1.5px solid #0056D2;
+  color: #0056D2;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-signup-btn:hover {
+  background: #0056D2;
+  color: #ffffff;
 }
 
 .login-btn {
@@ -982,11 +1103,34 @@ body.dark-theme .moon-icon {
   transform: translateY(-1px);
 }
 
+.auth-form-title {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.auth-form-desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.auth-form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 960px) {
   .auth-modern-card {
     grid-template-columns: 1fr;
     max-width: 520px;
+    width: 100%;
     border-radius: 20px;
   }
   
@@ -1002,6 +1146,138 @@ body.dark-theme .moon-icon {
   
   .auth-form-panel {
     padding: 32px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-page-wrapper {
+    padding: 16px 10px;
+    min-height: calc(100vh - 65px);
+    align-items: flex-start;
+  }
+
+  .auth-modern-card {
+    border-radius: 18px;
+    max-width: 100%;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  }
+
+  .auth-form-row-2col {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .auth-showcase-panel {
+    padding: 22px 14px;
+  }
+
+  .auth-logo-wrapper {
+    padding: 10px 20px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .auth-logo-img {
+    height: 46px;
+    max-width: 130px;
+  }
+
+  .auth-showcase-title {
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+  }
+
+  .auth-showcase-subtitle {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .auth-showcase-footer {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    padding-top: 12px;
+    text-align: center;
+    font-size: 0.78rem;
+  }
+
+  .auth-trust-badge {
+    font-size: 0.78rem;
+    padding: 5px 10px;
+  }
+
+  .auth-form-panel {
+    padding: 20px 14px;
+  }
+
+  .auth-form-title {
+    font-size: 1.3rem;
+  }
+
+  .auth-form-desc {
+    font-size: 0.84rem;
+  }
+
+  .auth-tabs-nav {
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+
+  .auth-tab-btn {
+    padding: 9px 8px;
+    font-size: 0.86rem;
+    gap: 6px;
+  }
+
+  .auth-input-field {
+    padding: 11px 38px 11px 12px;
+    font-size: 0.88rem;
+  }
+
+  [dir="ltr"] .auth-input-field {
+    padding: 11px 12px 11px 38px;
+  }
+
+  .auth-btn-submit {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+  }
+
+  .auth-demo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .phone-input-group select.phone-code-select {
+    width: 105px !important;
+    font-size: 0.8rem !important;
+    padding: 9px 4px !important;
+  }
+
+  .phone-input-group input.phone-number-input {
+    font-size: 0.86rem !important;
+    padding: 9px 10px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth-page-wrapper {
+    padding: 10px 6px;
+  }
+
+  .auth-form-panel {
+    padding: 16px 10px;
+  }
+
+  .auth-showcase-panel {
+    padding: 18px 10px;
+  }
+
+  .phone-input-group select.phone-code-select {
+    width: 92px !important;
+    font-size: 0.75rem !important;
+    padding: 8px 2px !important;
   }
 }
 
@@ -2235,11 +2511,43 @@ body.sidebar-open {
   }
 
   .header-container {
-    padding: 8px 14px !important;
+    padding: 6px 12px !important;
+    gap: 8px !important;
     justify-content: space-between !important;
   }
 
+  .header-left-brand {
+    gap: 8px !important;
+  }
+
+  #header-logo {
+    height: 30px !important;
+    max-width: 110px !important;
+    padding: 0 !important;
+  }
+
+  .sidebar-toggle-btn {
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .header-actions {
+    gap: 6px !important;
+  }
+
+  #lang-toggle,
+  #theme-toggle {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    font-size: 0.72rem !important;
+    border-radius: 8px !important;
+  }
+
   #header-search-wrapper,
+  .header-search-container,
   .header-teachers-link,
   .nav-menu {
     display: none !important;
@@ -2248,6 +2556,23 @@ body.sidebar-open {
   .user-profile-name,
   .logout-text {
     display: none !important;
+  }
+
+  /* On mobile header, hide redundant signup button (it is prominent at top of sidebar drawer) */
+  .header-signup-btn {
+    display: none !important;
+  }
+
+  /* Make login button a clear, compact touch-friendly button */
+  .header-login-btn {
+    background: #0056D2 !important;
+    color: #ffffff !important;
+    padding: 6px 12px !important;
+    font-size: 0.82rem !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0, 86, 210, 0.25) !important;
+    white-space: nowrap !important;
   }
 
   /* Grid Layouts on Mobile Phones */
@@ -2418,9 +2743,52 @@ body.sidebar-open {
     padding-right: 10px !important;
   }
 
+  .header-container {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+  }
+
+  .header-left-brand {
+    gap: 6px !important;
+  }
+
   #header-logo {
-    height: 44px !important;
-    padding: 3px 8px !important;
+    height: 26px !important;
+    max-width: 95px !important;
+    padding: 0 !important;
+  }
+
+  .sidebar-toggle-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .header-actions {
+    gap: 4px !important;
+  }
+
+  #lang-toggle,
+  #theme-toggle {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .header-login-btn {
+    padding: 5px 10px !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* --- EXTRA SMALL MOBILE (max-width: 360px) --- */
+@media screen and (max-width: 360px) {
+  #header-logo {
+    height: 23px !important;
+    max-width: 78px !important;
+  }
+  #lang-toggle {
+    display: none !important;
   }
 }
 

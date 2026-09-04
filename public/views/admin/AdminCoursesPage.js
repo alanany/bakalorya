@@ -119,11 +119,12 @@ export const AdminCoursesPage = {
       };
       const st = stMap[e.status] || { label: e.status, bg: 'rgba(99,102,241,0.15)', color: 'var(--primary)' };
       const receiptUrl = e.payment?.receiptUrl;
-      const isFree = Boolean(e.course?.isFree || (!e.course?.price && !e.group?.sessionPrice && !e.group?.monthlyPrice));
-      const paymentAmount = e.payment?.amount !== undefined ? e.payment.amount : (e.group?.monthlyPrice || e.course?.price || 0);
+      const paymentAmount = e.payment?.amount !== undefined ? e.payment.amount : (e.group?.monthlyPrice || (e.group?.sessionPrice ? e.group.sessionPrice * 8 : 320));
       const providerLabel = e.payment?.provider === 'vodafone_cash' ? '📱 فودافون كاش' :
                             e.payment?.provider === 'instapay' ? '⚡ إنستاباي' :
                             e.payment?.provider === 'bank_transfer' ? '🏦 تحويل بنكي' :
+                            e.payment?.provider === 'orange_cash' ? '🟠 أورنج كاش' :
+                            e.payment?.provider === 'etisalat_cash' ? '🟢 اتصالات كاش' :
                             (e.payment?.provider || 'تحويل مالي');
 
       const rawStudentPhone = e.student?.phone || e.payment?.providerTransactionId || '';
@@ -171,20 +172,14 @@ export const AdminCoursesPage = {
                     </td>
 
                     <td style="padding:14px 16px;">
-                      ${isFree ? `
-                        <span style="font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:3px 10px; border-radius:10px;">🎁 مجاني</span>
-                      ` : `
-                        <div>
-                          <strong style="font-size:0.95rem; font-weight:900; color:#10b981;">${paymentAmount} ج.م.</strong>
-                          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${providerLabel}</div>
-                        </div>
-                      `}
+                      <div>
+                        <strong style="font-size:0.95rem; font-weight:900; color:#10b981;">${paymentAmount} ج.م.</strong>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${providerLabel}</div>
+                      </div>
                     </td>
 
                     <td style="padding:14px 16px;">
-                      ${isFree ? `
-                        <span style="font-size:0.75rem; color:#10b981; font-weight:700;">🎁 لا يتطلب إيصال</span>
-                      ` : receiptUrl ? `
+                      ${receiptUrl ? `
                         <a href="${receiptUrl}" target="_blank" class="btn-secondary" style="padding:5px 12px; font-size:0.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:var(--primary); border-color:var(--primary); border-radius:12px; font-weight:800;">
                           <i data-lucide="file-text" style="width:13px;height:13px;"></i> عرض الإيصال 📄
                         </a>
@@ -217,8 +212,8 @@ export const AdminCoursesPage = {
                     <td style="padding:14px 16px;">
                       <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         ${e.status !== 'active' ? `
-                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" data-free="${isFree}" style="padding:6px 14px; font-size:0.8rem; background:#10b981; border-color:#10b981; font-weight:800; border-radius:14px;" title="قبول واعتماد إيصال الدفع">
-                            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> اعتماد وقبول ✅
+                          <button class="btn-primary admin-approve-enrollment-btn" data-id="${e.id}" style="padding:6px 14px; font-size:0.8rem; background:#10b981; border-color:#10b981; font-weight:800; border-radius:14px; display:inline-flex; align-items:center; gap:5px;" title="مراجعة وتأكيد تفاصيل الدفع واعتماد الاشتراك">
+                            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> اعتماد وتوثيق الدفع 💳✅
                           </button>
                         ` : ''}
                         ${e.status !== 'rejected' ? `
@@ -343,18 +338,24 @@ export const AdminCoursesPage = {
                 </div>
               </div>
 
-              <!-- Receipt Upload & Preview -->
-              <div class="form-group" style="margin:0; background:rgba(79,70,229,0.03); border:1px dashed var(--border-color); border-radius:14px; padding:12px 14px;">
+              <!-- Receipt Upload & Preview (Strictly Mandatory for Admin Approval) -->
+              <div class="form-group" style="margin:0; background:rgba(79,70,229,0.03); border:1.5px dashed ${existingReceipt ? 'var(--border-color)' : '#f59e0b'}; border-radius:14px; padding:14px;">
                 <label style="font-weight:800; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>🖼️ صورة إيصال التحويل (رفع من محادثة الواتساب أو الجهاز):</span>
+                  <span>🖼️ صورة إيصال التحويل (إجباري للاعتماد والتفعيل): <span style="color:var(--error);">*</span></span>
                   ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:var(--primary); text-decoration:none; font-weight:700;">عرض الإيصال المرفق ↗</a>` : ''}
                 </label>
                 
-                <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 8px 0;">
-                  إذا استلمت إيصال التحويل من الطالب عبر الواتساب، يمكنك حفظه ورفعه هنا ليتم توثيقه وأرشفته رسمياً في سجل الطالب بالمنصة.
-                </p>
+                ${existingReceipt ? `
+                  <p style="font-size:0.75rem; color:#059669; font-weight:700; margin:0 0 8px 0;">
+                    ✓ يوجد إيصال مرفوع ومرفق مع الطلب مسبقاً، ويمكنك استبداله برفع صورة جديدة إذا لزم الأمر.
+                  </p>
+                ` : `
+                  <p style="font-size:0.75rem; color:#d97706; font-weight:700; margin:0 0 8px 0; background:rgba(245,158,11,0.08); padding:6px 10px; border-radius:8px; border:1px solid rgba(245,158,11,0.25);">
+                    ⚠️ اختار الطالب إرسال الإيصال عبر الواتساب. بصفتك المسؤول، يجب عليك رفع صورة الإيصال المستلمة من الطالب لتأكيد واعتماد الدفع وتفعيل المقعد.
+                  </p>
+                `}
 
-                <input type="file" id="approve-enrollment-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
+                <input type="file" id="approve-enrollment-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;" ${!existingReceipt ? 'required' : ''}>
                 
                 <div id="enrollment-receipt-preview-container" style="${existingReceipt ? 'display:block;' : 'display:none;'} margin-top:10px; text-align:center;">
                   <img id="enrollment-receipt-preview" src="${existingReceipt || ''}" style="max-height:140px; border-radius:10px; border:2px solid var(--border-color); object-fit:contain; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
@@ -362,10 +363,16 @@ export const AdminCoursesPage = {
                 </div>
               </div>
 
-              <!-- Notes -->
-              <div class="form-group" style="margin:0;">
-                <label for="approve-enrollment-notes" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">ملاحظات العملية / رقم المرجع (اختياري)</label>
-                <input type="text" id="approve-enrollment-notes" class="form-input" placeholder="مثال: تم التحويل من رقم 010xxxxxxxx أو كود العملية #9812" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+              <!-- Transaction ID / Sender Phone & Notes -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-enrollment-txid" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">رقم هاتف المحول / رقم العملية</label>
+                  <input type="text" id="approve-enrollment-txid" class="form-input" value="${enrollment.payment?.providerTransactionId || enrollment.student?.phone || ''}" placeholder="010xxxxxxxx أو رقم الحساب" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-enrollment-notes" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">ملاحظات العملية / رقم المرجع</label>
+                  <input type="text" id="approve-enrollment-notes" class="form-input" value="${enrollment.payment?.notes || ''}" placeholder="مثال: تم التأكيد بنجاح" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                </div>
               </div>
 
             </div>
@@ -373,7 +380,7 @@ export const AdminCoursesPage = {
             <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
               <button type="button" class="btn-secondary" id="cancel-approve-enrollment-modal" style="padding:8px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
               <button type="submit" id="submit-approve-enrollment-btn" class="btn-primary" style="padding:8px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#10b981; border-color:#10b981; gap:6px; display:inline-flex; align-items:center;">
-                <i data-lucide="check" style="width:16px; height:16px;"></i> تأكيد وقبول التسجيل ✅
+                <i data-lucide="check" style="width:16px; height:16px;"></i> تأكيد وقبول التسجيل واعتماد الدفع ✅
               </button>
             </div>
           </form>
@@ -408,6 +415,13 @@ export const AdminCoursesPage = {
 
     document.getElementById("approve-enrollment-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      if (!existingReceipt && (!fileInput?.files || fileInput.files.length === 0)) {
+        showToast("⚠️ لا يمكن اعتماد الطالب بدون رفع صورة إيصال التحويل! يرجى رفع صورة الإيصال أولاً.", "error");
+        fileInput?.focus();
+        return;
+      }
+
       const submitBtn = document.getElementById("submit-approve-enrollment-btn");
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -432,20 +446,21 @@ export const AdminCoursesPage = {
             showToast("فشل رفع صورة الإيصال", "error");
             if (submitBtn) {
               submitBtn.disabled = false;
-              submitBtn.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i> تأكيد وقبول التسجيل ✅`;
+              submitBtn.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i> تأكيد وقبول التسجيل واعتماد الدفع ✅`;
               if (window.lucide) window.lucide.createIcons();
             }
             return;
           }
         }
 
-        const amount = document.getElementById("approve-enrollment-amount").value;
-        const provider = document.getElementById("approve-enrollment-provider").value;
-        const notes = document.getElementById("approve-enrollment-notes").value.trim();
+        const amount = document.getElementById("approve-enrollment-amount")?.value;
+        const provider = document.getElementById("approve-enrollment-provider")?.value;
+        const providerTransactionId = document.getElementById("approve-enrollment-txid")?.value.trim() || null;
+        const notes = document.getElementById("approve-enrollment-notes")?.value.trim() || null;
 
         const res = await apiFetch(`/admin/enrollments/${enrollmentId}/approve`, {
           method: "POST",
-          body: JSON.stringify({ amount, provider, receiptUrl, notes })
+          body: JSON.stringify({ amount, provider, providerTransactionId, receiptUrl, notes })
         });
 
         showToast(res.message || "تم اعتماد تسجيل الطالب وتأكيد الدفع بنجاح! 🎉", "success");

@@ -183,9 +183,9 @@ export default class CoursePlayerView {
                       <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">المعلم: ${this.course?.teacher?.name || ''}</div>
                     </div>
                   </div>
-                  <a href="#classroom/${activeLiveSession.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); border:none; font-size:0.85rem; padding:8px 18px; border-radius:24px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                    <i data-lucide="door-open"></i> انضم إلى قاعة البث المباشر
-                  </a>
+                  <button class="btn-primary" data-join-meet-id="${activeLiveSession.id}" style="background:linear-gradient(135deg, #10b981, #059669); border:none; font-size:0.85rem; padding:8px 18px; border-radius:24px; font-weight:800; cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                    <i data-lucide="video"></i> الانضمام عبر Google Meet 🔴
+                  </button>
                 </div>
               ` : ""}
 
@@ -628,7 +628,7 @@ export default class CoursePlayerView {
           ${isPastSession
             ? `<button disabled class="btn-secondary" style="font-size:0.8rem; padding:6px 14px; opacity:0.6; cursor:not-allowed;">⌛ انتهت الحصة</button>`
             : isJoinable
-            ? `<a href="#classroom/${session.id}" class="btn-primary" style="background:var(--success); font-size:0.8rem; padding:6px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="video"></i> دخول البث المباشر 🎥</a>`
+            ? `<button class="btn-primary" data-join-meet-id="${session.id}" style="background:var(--success); font-size:0.8rem; padding:6px 14px; border:none; cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; border-radius:8px;"><i data-lucide="video"></i> Google Meet 🎥</button>`
             : `<button disabled class="btn-secondary restricted-join-btn" style="font-size:0.8rem; padding:6px 14px; opacity:0.85; cursor:not-allowed;" title="متاح الانضمام قبل الموعد بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> ينشط قبل 30د 🔒</button>`
           }
         </div>

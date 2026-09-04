@@ -700,12 +700,10 @@ export default class TeacherDetailsView {
               <i data-lucide="send" style="width:16px;height:16px;"></i> ${teacherSub ? 'تأكيد وحجز الحصة مباشرة 🚀' : 'إرسال طلب الحصة الخاصة للأستاذ 🚀'}
             </button>
 
-            ${phone ? `
-              <a id="ps-whatsapp-direct-btn" href="#" target="_blank" class="btn-secondary"
-                style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:#25D366; border-color:rgba(37,211,102,0.4); background:rgba(37,211,102,0.08); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <i data-lucide="message-circle" style="width:16px;height:16px;"></i> تواصل فوري وتنسيق الموعد عبر واتساب 💬
-              </a>
-            ` : ''}
+            <a href="${state.platformSettings?.whatsappUrl || 'https://wa.me/213555123456'}" target="_blank" class="btn-secondary"
+              style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:#25D366; border-color:rgba(37,211,102,0.4); background:rgba(37,211,102,0.08); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+              <i data-lucide="message-circle" style="width:16px;height:16px;"></i> التواصل مع إدارة المنصة للاستفسار والمساعدة 💬
+            </a>
 
             <a href="#subscription-plans?teacherId=${this.teacherId}" class="btn-secondary"
               style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:var(--primary); border-color:var(--primary); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
@@ -727,21 +725,6 @@ export default class TeacherDetailsView {
     modalBackdrop.addEventListener("click", (e) => {
       if (e.target === modalBackdrop) closeModal();
     });
-
-    // Update WhatsApp link dynamically as user inputs topic & date
-    const updateWhatsAppLink = () => {
-      const topic = modalBackdrop.querySelector("#ps-topic")?.value || "حصة خاصة 1-on-1";
-      const sched = modalBackdrop.querySelector("#ps-scheduled-at")?.value || "";
-      const waBtn = modalBackdrop.querySelector("#ps-whatsapp-direct-btn");
-      if (waBtn && phone) {
-        const text = `مرحباً أستاذ ${name}، أنا الطالب (${state.user?.name || ''}) وأرغب في حجز حصة خاصة (1-on-1) معكم في مادة: ${topic} بتاريخ وموعد مقترح: ${sched}. هل الموعد مناسب معكم؟`;
-        waBtn.href = `https://wa.me/${getCleanWhatsAppNumber(phone)}?text=${encodeURIComponent(text)}`;
-      }
-    };
-
-    modalBackdrop.querySelector("#ps-topic")?.addEventListener("input", updateWhatsAppLink);
-    modalBackdrop.querySelector("#ps-scheduled-at")?.addEventListener("change", updateWhatsAppLink);
-    updateWhatsAppLink();
 
     // Form Submit logic
     modalBackdrop.querySelector("#private-session-request-form")?.addEventListener("submit", async (e) => {
@@ -787,16 +770,10 @@ export default class TeacherDetailsView {
               link: "#teacher-private-sessions"
             })
           }).catch(() => {});
-          showToast("تم إرسال طلب الحصة الخاصة للأستاذ بنجاح! سيتم التواصل معك لتأكيد الموعد 🚀", "success");
+          showToast("تم إرسال طلب الحصة الخاصة بنجاح! سيتم مراجعته والتواصل معك من الإدارة 🚀", "success");
         }
 
         closeModal();
-
-        // If user wants to open WhatsApp as well
-        if (phone) {
-          const text = `مرحباً أستاذ ${name}، أنا الطالب (${state.user?.name || ''}) وقمت بتقديم طلب حجز حصة خاصة (1-on-1) معكم عبر المنصة في موضوع "${topic}" بموعد مقترح: ${scheduledAt}.`;
-          window.open(`https://wa.me/${getCleanWhatsAppNumber(phone)}?text=${encodeURIComponent(text)}`, "_blank");
-        }
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `<i data-lucide="send" style="width:16px;height:16px;"></i> تأكيد الطلب`;

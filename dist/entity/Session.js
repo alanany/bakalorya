@@ -27,6 +27,7 @@ let Session = class Session {
     status;
     startedAt;
     completedAt;
+    meetingLink;
     // Session Report / Lesson Notes Fields
     topic;
     whatWasCovered;
@@ -85,6 +86,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
 ], Session.prototype, "completedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", length: 500, nullable: true }),
+    __metadata("design:type", Object)
+], Session.prototype, "meetingLink", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

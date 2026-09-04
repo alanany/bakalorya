@@ -83,61 +83,47 @@
   </aside>
 
   <!-- Main Header Navbar -->
-  <header class="app-header"
-    style="background:var(--bg-card); border-bottom:1px solid var(--border-color); position:sticky; top:0; z-index:100; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-    <div class="header-container"
-      style="width:100%; max-width:100%; margin:0 auto; padding:8px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+  <header class="app-header">
+    <div class="header-container">
 
       <!-- Brand Logo + Toggle + Teachers Link -->
-      <div class="header-left-brand" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
-        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية"
-          style="display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
+      <div class="header-left-brand">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="القائمة الجانبية">
           <i data-lucide="menu" style="width:20px; height:20px;"></i>
         </button>
 
         <!-- Entlq Logo Image -->
-        <a href="#landing" class="logo-link" style="text-decoration:none; display:flex; align-items:center; gap:8px;">
-          <img src="assets/logo.png" alt="انطلق" id="header-logo"
-            style="height:36px; object-fit:contain; transition:opacity 0.2s;" onmouseenter="this.style.opacity='0.85'"
-            onmouseleave="this.style.opacity='1'">
+        <a href="#landing" class="logo-link">
+          <img src="assets/logo.png" alt="انطلق" id="header-logo">
         </a>
       </div>
 
       <!-- Centered Pill Search Bar -->
-      <div class="header-search-container"
-        style="flex:1; max-width:520px; display:flex; align-items:center; position:relative;">
-        <div
-          style="width:100%; display:flex; align-items:center; background:var(--bg-app); border:1px solid var(--border-color); border-radius:30px; padding:4px 4px 4px 16px; transition:border-color 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);"
-          id="header-search-wrapper">
-          <input type="text" id="header-search-input"
-            placeholder="بحث..."
-            style="width:100%; border:none; background:transparent; outline:none; font-size:0.88rem; font-family:inherit; color:var(--text-color); padding-inline-start:8px;">
-          <button id="header-search-btn" title="بحث"
-            style="width:34px; height:34px; border-radius:50%; background:#0056D2; color:#ffffff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background 0.2s;"
-            onmouseenter="this.style.background='#1e40af'" onmouseleave="this.style.background='#0056D2'">
+      <div class="header-search-container">
+        <div id="header-search-wrapper">
+          <input type="text" id="header-search-input" placeholder="بحث...">
+          <button id="header-search-btn" title="بحث">
             <i data-lucide="search" style="width:16px; height:16px;"></i>
           </button>
         </div>
       </div>
 
       <!-- Nav Menu (Injected for logged-in users) -->
-      <nav class="nav-menu" id="nav-menu" style="display:flex; gap:16px; align-items:center;">
+      <nav class="nav-menu" id="nav-menu">
         <!-- Injected navigation -->
       </nav>
 
       <!-- Right Header Actions (Log In + Join for Free + Controls) -->
-      <div class="header-actions" style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <button class="theme-toggle" id="lang-toggle" title="تبديل اللغة"
-          style="font-size:0.75rem; font-weight:700; min-width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer;">
+      <div class="header-actions">
+        <button class="theme-toggle" id="lang-toggle" title="تبديل اللغة">
           EN
         </button>
-        <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر"
-          style="width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center;">
-          <i data-lucide="sun" class="sun-icon" style="width:16px; height:16px;"></i>
-          <i data-lucide="moon" class="moon-icon" style="width:16px; height:16px;"></i>
+        <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر">
+          <i data-lucide="sun" class="sun-icon"></i>
+          <i data-lucide="moon" class="moon-icon"></i>
         </button>
 
-        <div id="auth-action-container" style="display:flex; align-items:center; gap:8px;">
+        <div id="auth-action-container">
           <!-- Injected login/register action or user dropdown -->
         </div>
       </div>

@@ -166,7 +166,7 @@ export default class TeacherPrivateSessionsView {
           return `
             <div style="display:flex; flex-direction:column; gap:6px;">
               <div style="display:flex; gap:6px;">
-                <a href="#classroom/${s.id}" class="btn-primary" style="font-size:0.78rem; padding:6px 12px; text-decoration:none; background:linear-gradient(135deg,#10b981,#059669);"><i data-lucide="video" style="width:13px;height:13px;"></i> دخول القاعة 🎥</a>
+                <button class="btn-primary" data-join-meet-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
                 <button class="btn-secondary end-session-btn" data-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle" style="width:13px;height:13px;"></i> إنهاء</button>
               </div>
               ${isCheckedIn ? `
@@ -191,7 +191,7 @@ export default class TeacherPrivateSessionsView {
                 </span>
                 <div style="display:flex; gap:6px;">
                   <button class="btn-primary start-session-btn" data-id="${s.id}" style="font-size:0.78rem; padding:6px 12px;"><i data-lucide="play" style="width:13px;height:13px;"></i> بدء الحصة</button>
-                  <a href="#classroom/${s.id}" class="btn-secondary" style="font-size:0.78rem; padding:6px 12px; text-decoration:none;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة</a>
+                  <button class="btn-secondary" data-join-meet-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet</button>
                 </div>
               </div>
             `;
@@ -262,9 +262,9 @@ export default class TeacherPrivateSessionsView {
                                 <td style="padding:16px; color:var(--text-muted);">${s.topic || 'بدون موضوع'}</td>
                                 <td style="padding:16px;">${statusBadge(s)}</td>
                                 <td style="padding:16px;">
-                                    <a href="#classroom/${s.id}" style="color:var(--primary); text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
-                                        <i data-lucide="video" style="width:15px;height:15px;"></i> دخول القاعة 🎥
-                                    </a>
+                                    <button data-join-meet-id="${s.id}" style="color:var(--primary); background:none; border:none; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:4px; font-size:0.88rem;">
+                                        <i data-lucide="video" style="width:15px;height:15px;"></i> Google Meet 🎥
+                                    </button>
                                 </td>
                                 <td style="padding:16px;">${actionButtons(s)}</td>
                             </tr>
@@ -347,7 +347,7 @@ export default class TeacherPrivateSessionsView {
                 </span>
                 <div style="display:flex; gap:6px;">
                   <button class="btn-primary start-session-btn" data-id="${id}" style="font-size:0.78rem; padding:6px 12px;"><i data-lucide="play" style="width:13px;height:13px;"></i> بدء الحصة</button>
-                  <a href="#classroom/${id}" class="btn-secondary" style="font-size:0.78rem; padding:6px 12px; text-decoration:none;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة</a>
+                  <button class="btn-secondary" data-join-meet-id="${id}" style="font-size:0.78rem; padding:6px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet</button>
                 </div>
               </div>
             `;

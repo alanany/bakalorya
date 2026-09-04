@@ -212,28 +212,6 @@ export default class TeacherView {
 
           </div>
 
-          <!-- 3. Pending Enrollment Requests Radar (If requests exist) -->
-          ${this.enrollmentRequests.length > 0 ? `
-            <div class="glass-card" style="margin-bottom:32px; padding:20px 24px; border-radius:20px; background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05)); border:1.5px solid #f59e0b; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-              <div style="display:flex; align-items:center; gap:14px;">
-                <div style="width:44px; height:44px; border-radius:14px; background:#f59e0b; color:#ffffff; display:flex; align-items:center; justify-content:center;">
-                  <i data-lucide="user-plus" style="width:22px; height:22px;"></i>
-                </div>
-                <div>
-                  <h3 style="font-size:1.05rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">
-                    طلبات انضمام جديدة معلقة (${this.enrollmentRequests.length})
-                  </h3>
-                  <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
-                    يوجد طلاب في انتظار مراجعة واعتماد طلب تسجيلهم في دوراتك التعليمية.
-                  </p>
-                </div>
-              </div>
-              <a href="#enrollment-requests" class="btn-primary" style="background:#f59e0b; border:none; padding:8px 20px; font-weight:800; font-size:0.85rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                <i data-lucide="check-square"></i> مراجعة الطلبات فوراً ↗
-              </a>
-            </div>
-          ` : ''}
-
           <!-- 4. Main Two-Column Command Grid Layout -->
           <div class="dashboard-main-grid-layout" style="display:grid; grid-template-columns: 1fr 370px; gap:28px; align-items:start;">
             
@@ -788,9 +766,9 @@ export default class TeacherView {
 
         ${isActive ? `
         <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
-          <a href="#classroom/${session.id}" class="btn-primary" style="padding:8px 12px; font-size:0.82rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); gap:6px; display:flex; align-items:center;">
-            <i data-lucide="video" style="width:15px; height:15px;"></i> دخول قاعة الحصة لبدء البث 🎥
-          </a>
+          <button class="btn-primary" data-join-meet-id="${session.id}" style="padding:8px 12px; font-size:0.82rem; font-weight:800; justify-content:center; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); gap:6px; display:flex; align-items:center; border:none; color:#fff; cursor:pointer;">
+            <i data-lucide="video" style="width:15px; height:15px;"></i> بدء البث عبر Google Meet 🎥
+          </button>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
             <button class="btn-primary complete-private-btn" data-id="${session.id}" style="font-size:0.72rem; padding:6px 8px; justify-content:center; background:rgba(16,185,129,0.1); border-color:#10b981; color:#047857; font-weight:700;">
               ✓ إكمال
@@ -866,7 +844,7 @@ export default class TeacherView {
               <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
             </span>
             <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
-              <a href="#classroom/${session.id}" class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; text-decoration:none; border-radius:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="door-open" style="width:16px;height:16px;"></i> دخول قاعة البث المباشر 🔴</a>
+              <button class="btn-primary" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; border-radius:12px; display:flex; align-items:center; gap:6px; border:none; color:#fff; cursor:pointer;"><i data-lucide="video" style="width:16px;height:16px;"></i> فتح Google Meet الآن 🔴</button>
               <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:6px 12px; justify-content:center; color:var(--error); border-color:var(--error); font-weight:800;"><i data-lucide="stop-circle" style="width:14px;height:14px;"></i> إنهاء وتوثيق</button>
             </div>
           </div>
@@ -895,7 +873,7 @@ export default class TeacherView {
               </span>
               <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px;">
                 <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; font-weight:800;"><i data-lucide="play" style="width:13px;height:13px;"></i> ${t("session.goLive")}</button>
-                <a href="#classroom/${session.id}" class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:4px; font-weight:800;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة 🎥</a>
+                <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:4px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
                 <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
                   <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
                 </button>
@@ -1025,7 +1003,7 @@ export default class TeacherView {
                 </span>
                 <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px;">
                   <button class="btn-primary start-session-btn" data-id="${id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; font-weight:800;"><i data-lucide="play" style="width:13px;height:13px;"></i> بدء البث 🔴</button>
-                  <a href="#classroom/${id}" class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:4px; font-weight:800;"><i data-lucide="video" style="width:13px;height:13px;"></i> القاعة 🎥</a>
+                  <button class="btn-secondary" data-join-meet-id="${id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:4px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
                   <button class="btn-secondary edit-session-btn" data-id="${id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
                     <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
                   </button>
@@ -1068,11 +1046,11 @@ export default class TeacherView {
             showEnrollmentAcceptanceModal({
               enrollmentId: id,
               studentName: req?.student?.name || "الطالب",
-              studentPhone: req?.student?.phone || "",
-              studentEmail: req?.student?.email || "",
+              studentPhone: "",
+              studentEmail: "",
               courseTitle: req?.course?.title || "الدورة التعليمية",
               teacherName: req?.course?.teacher?.name || state.user?.name,
-              onAccept: async (customMsg, sendWhatsApp) => {
+              onAccept: async () => {
                 try {
                   const res = await apiFetch(`/teacher/enrollment-requests/${id}`, {
                     method: "PUT",
@@ -1081,18 +1059,9 @@ export default class TeacherView {
                   showToast("تم قبول طلب الطالب بنجاح! 🎉", "success");
                   checkPendingRequestsNotification();
                   await this.render();
-
-                  if (sendWhatsApp) {
-                    const phone = req?.student?.phone ? getCleanWhatsAppNumber(req.student.phone) : "";
-                    if (phone) {
-                      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(customMsg)}`;
-                      window.open(waUrl, "_blank");
-                    } else {
-                      handleWhatsAppResponse(res);
-                    }
-                  }
                 } catch (err) {
                   console.error(err);
+                  showToast(err.message || "حدث خطأ أثناء قبول الطلب", "error");
                 }
               }
             });

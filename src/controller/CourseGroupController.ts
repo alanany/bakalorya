@@ -172,6 +172,12 @@ export class CourseGroupController {
     try {
       const { id } = req.params;
       const { 
+        name,
+        teacherId,
+        scheduleDays,
+        scheduleTime,
+        scheduleText,
+        meetingLink,
         sessionPrice, 
         studentHourlyRate, 
         teacherHourlyRate, 
@@ -193,6 +199,19 @@ export class CourseGroupController {
         return res.status(404).json({ error: "Group not found." });
       }
 
+      if (name && typeof name === "string" && name.trim()) {
+        group.name = name.trim();
+      }
+
+      if (teacherId) {
+        group.teacher = { id: teacherId } as any;
+      }
+
+      if (scheduleDays !== undefined) group.scheduleDays = scheduleDays;
+      if (scheduleTime !== undefined) group.scheduleTime = scheduleTime;
+      if (scheduleText !== undefined) group.scheduleText = scheduleText;
+      if (meetingLink !== undefined) group.meetingLink = meetingLink;
+
       if (studentHourlyRate !== undefined) {
         group.studentHourlyRate = parseFloat(studentHourlyRate);
         group.sessionPrice = parseFloat(studentHourlyRate);
@@ -208,7 +227,7 @@ export class CourseGroupController {
       if (monthlyPrice !== undefined) {
         group.monthlyPrice = parseFloat(monthlyPrice);
       } else {
-        group.monthlyPrice = group.sessionPrice * 8;
+        group.monthlyPrice = (group.sessionPrice || 50) * 8;
       }
       
       if (maxStudents !== undefined) group.maxStudents = parseInt(maxStudents, 10);
@@ -423,23 +442,26 @@ export class CourseGroupController {
           teacher: group.teacher || group.course?.teacher || null
         },
         totalStudents: enrollments.length,
-        students: enrollments.map(e => ({
-          enrollmentId: e.id,
-          studentId: e.student?.id || null,
-          name: e.student?.name || "طالب",
-          email: e.student?.email || "",
-          phone: e.student?.phone || e.payment?.providerTransactionId || "",
-          status: e.status,
-          progress: e.progress || 0,
-          payment: e.payment ? {
-            amount: e.payment.amount,
-            status: e.payment.status,
-            provider: e.payment.provider,
-            providerTransactionId: e.payment.providerTransactionId,
-            receiptUrl: e.payment.receiptUrl
-          } : null,
-          enrolledAt: e.createdAt
-        }))
+        students: enrollments.map(e => {
+          const isAdmin = req.user?.role === "admin";
+          return {
+            enrollmentId: e.id,
+            studentId: e.student?.id || null,
+            name: e.student?.name || "طالب",
+            email: isAdmin ? (e.student?.email || "") : undefined,
+            phone: isAdmin ? (e.student?.phone || e.payment?.providerTransactionId || "") : undefined,
+            status: e.status,
+            progress: e.progress || 0,
+            payment: isAdmin && e.payment ? {
+              amount: e.payment.amount,
+              status: e.payment.status,
+              provider: e.payment.provider,
+              providerTransactionId: e.payment.providerTransactionId,
+              receiptUrl: e.payment.receiptUrl
+            } : null,
+            enrolledAt: e.createdAt
+          };
+        })
       });
     } catch (err: any) {
       console.error("Error fetching group roster:", err);
@@ -465,16 +487,21 @@ export class CourseGroupController {
 
       const groupsWithStats = await Promise.all(
         groups.map(async (group) => {
-          const activeEnrollments = await enrollmentRepo.find({
-            where: { group: { id: group.id }, status: "active" },
-            relations: ["student"]
-          });
-          const pendingCount = await enrollmentRepo.count({
-            where: { group: { id: group.id }, status: "pending" }
+          const allEnrollments = await enrollmentRepo.find({
+            where: { group: { id: group.id } },
+            relations: ["student", "payment"]
           });
 
+          const activeEnrollments = allEnrollments.filter(e => 
+            !e.status || e.status.toLowerCase() === "active" || e.status.toLowerCase() === "confirmed"
+          );
+          const pendingEnrollments = allEnrollments.filter(e => 
+            e.status && e.status.toLowerCase() === "pending"
+          );
+
           const activeCount = activeEnrollments.length;
-          const totalOccupied = activeCount + pendingCount;
+          const pendingCount = pendingEnrollments.length;
+          const totalOccupied = allEnrollments.length;
           const maxSeats = group.maxStudents || 25;
           const availableSeats = Math.max(0, maxSeats - totalOccupied);
           const isFull = totalOccupied >= maxSeats;
@@ -486,7 +513,17 @@ export class CourseGroupController {
             pendingCount,
             availableSeats,
             isFull,
-            students: activeEnrollments.map(e => e.student)
+            students: allEnrollments
+              .filter(e => e.student)
+              .map(e => ({
+                id: e.student.id,
+                name: e.student.name,
+                email: e.student.email,
+                phone: e.student.phone,
+                status: e.status || "active",
+                progress: e.progress || 0,
+                enrolledAt: e.createdAt
+              }))
           };
         })
       );

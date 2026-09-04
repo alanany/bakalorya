@@ -48,6 +48,18 @@ export function openGroupPaymentModal(options) {
     onSuccess
   } = options;
 
+  // Retrieve platform financial transfer accounts from global settings
+  const pSettings = state.platformSettings || {};
+  const vfCash = pSettings.vodafoneCashNumber || "01098765432";
+  const instapay = pSettings.instapayHandle || "bakalorya@instapay";
+  const orangeCash = pSettings.orangeCashNumber || "";
+  const etisalatCash = pSettings.etisalatCashNumber || "";
+  const bankDetails = pSettings.bankAccountDetails || "";
+  const customInstructions = pSettings.paymentInstructions || "";
+  const instructionsHtml = customInstructions
+    ? customInstructions.replace(/\n/g, "<br>")
+    : `* يرجى إتمام التحويل بمبلغ <strong>${monthlyPrice} ج.م.</strong> ثم إدخال بيانات العملية وإرفاق صورة الإيصال بالأسفل لاعتماد اشتراكك فورياً.`;
+
   const modalOverlay = document.createElement("div");
   modalOverlay.id = "group-payment-modal-overlay";
   modalOverlay.className = "modal-overlay";
@@ -140,31 +152,37 @@ export function openGroupPaymentModal(options) {
           background: var(--bg-app);
           border: 1px solid var(--border-color);
           border-radius: 20px;
-          padding: 18px 20px;
+          padding: 16px 20px;
           display: flex;
           flex-direction: column;
           gap: 12px;
         ">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">المقرر والمادة:</span>
-            <span style="font-size:0.9rem; font-weight:800; color:var(--text-main);">${courseTitle} ${subjectName ? `(${subjectName})` : ''}</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:800; font-size:0.95rem; color:var(--text-main);">المقرر والمجموعة:</span>
+            <span style="font-weight:900; font-size:1rem; color:var(--primary);">${courseTitle} - ${groupName}</span>
           </div>
-          
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">مواعيد الحصص الأسبوعية:</span>
-            <span style="font-size:0.88rem; font-weight:800; color:var(--primary);">${scheduleDays} • ${scheduleTime}</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">المعلم المعتمد:</span>
+            <span style="font-weight:800; font-size:0.9rem; color:var(--text-main);">👨‍🏫 ${teacherName}</span>
           </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">نظام الحساب والاشتراك:</span>
-            <span style="font-size:0.88rem; font-weight:800; color:var(--text-main);">${sessionPrice} ج.م. للحصة (${totalSessions} حصة بالمقرر)</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">مواعيد الحصص:</span>
+            <span style="font-weight:800; font-size:0.9rem; color:var(--text-main);">🗓️ ${scheduleDays} (${scheduleTime})</span>
           </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:2px;">
-            <span style="font-size:0.92rem; font-weight:900; color:var(--text-main);">المبلغ المطلوب تحويله (اشتراك 8 حصص شهرياً):</span>
-            <span style="font-size:1.25rem; font-weight:900; color:#10b981; background:rgba(16,185,129,0.1); padding:4px 14px; border-radius:14px; border:1px solid rgba(16,185,129,0.2);">
-              ${monthlyPrice} ج.م.
-            </span>
+          <div style="
+            border-top: 1px dashed var(--border-color);
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+            <div>
+              <span style="font-weight:900; font-size:0.95rem; color:var(--text-main);">رسوم الاشتراك للشهر (8 حصص):</span>
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block;">(سعر الحصة ${sessionPrice} ج.م.)</span>
+            </div>
+            <div style="font-size:1.4rem; font-weight:900; color:#e51d74;">
+              ${monthlyPrice} <span style="font-size:0.85rem;">ج.م.</span>
+            </div>
           </div>
         </div>
 
@@ -180,13 +198,13 @@ export function openGroupPaymentModal(options) {
             <span style="font-weight:900; font-size:0.9rem; color:var(--text-main);">بيانات التحويل المالي المعتمدة للمنصة:</span>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
             
             <!-- Vodafone Cash -->
             <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <span style="display:block; font-size:0.75rem; color:#ef4444; font-weight:800;">🔴 فودافون كاش</span>
-                <span style="font-size:0.9rem; font-weight:900; color:var(--text-main); font-family:monospace;" id="vf-cash-num">01098765432</span>
+                <span style="font-size:0.9rem; font-weight:900; color:var(--text-main); font-family:monospace;" id="vf-cash-num">${vfCash}</span>
               </div>
               <button type="button" class="btn-secondary copy-wallet-btn" data-target="vf-cash-num" style="padding:4px 10px; font-size:0.75rem; border-radius:10px;">
                 نسخ 📋
@@ -197,16 +215,55 @@ export function openGroupPaymentModal(options) {
             <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <span style="display:block; font-size:0.75rem; color:#8b5cf6; font-weight:800;">⚡ إنستاباي (InstaPay)</span>
-                <span style="font-size:0.85rem; font-weight:900; color:var(--text-main);" id="instapay-handle">bakalorya@instapay</span>
+                <span style="font-size:0.85rem; font-weight:900; color:var(--text-main);" id="instapay-handle">${instapay}</span>
               </div>
               <button type="button" class="btn-secondary copy-wallet-btn" data-target="instapay-handle" style="padding:4px 10px; font-size:0.75rem; border-radius:10px;">
                 نسخ 📋
               </button>
             </div>
 
+            ${orangeCash ? `
+            <!-- Orange Cash -->
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span style="display:block; font-size:0.75rem; color:#f97316; font-weight:800;">🟠 أورنج كاش</span>
+                <span style="font-size:0.9rem; font-weight:900; color:var(--text-main); font-family:monospace;" id="orange-cash-num">${orangeCash}</span>
+              </div>
+              <button type="button" class="btn-secondary copy-wallet-btn" data-target="orange-cash-num" style="padding:4px 10px; font-size:0.75rem; border-radius:10px;">
+                نسخ 📋
+              </button>
+            </div>
+            ` : ''}
+
+            ${etisalatCash ? `
+            <!-- Etisalat Cash -->
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span style="display:block; font-size:0.75rem; color:#10b981; font-weight:800;">🟢 اتصالات كاش</span>
+                <span style="font-size:0.9rem; font-weight:900; color:var(--text-main); font-family:monospace;" id="etisalat-cash-num">${etisalatCash}</span>
+              </div>
+              <button type="button" class="btn-secondary copy-wallet-btn" data-target="etisalat-cash-num" style="padding:4px 10px; font-size:0.75rem; border-radius:10px;">
+                نسخ 📋
+              </button>
+            </div>
+            ` : ''}
+
+            ${bankDetails ? `
+            <!-- Bank Details -->
+            <div style="grid-column: 1 / -1; background:var(--bg-card); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <span style="display:block; font-size:0.75rem; color:var(--primary); font-weight:800;">🏦 الحساب البنكي / الآيبان</span>
+                <span style="font-size:0.85rem; font-weight:900; color:var(--text-main);" id="bank-transfer-details">${bankDetails}</span>
+              </div>
+              <button type="button" class="btn-secondary copy-wallet-btn" data-target="bank-transfer-details" style="padding:4px 10px; font-size:0.75rem; border-radius:10px;">
+                نسخ 📋
+              </button>
+            </div>
+            ` : ''}
+
           </div>
           <p style="font-size:0.75rem; color:var(--text-muted); margin:10px 0 0 0; line-height:1.4;">
-            * يرجى إتمام التحويل بمبلغ <strong>${monthlyPrice} ج.م.</strong> ثم إدخال بيانات العملية وإرفاق صورة الإيصال بالأسفل لاعتماد اشتراكك فورياً.
+            ${instructionsHtml}
           </p>
         </div>
 
@@ -243,10 +300,10 @@ export function openGroupPaymentModal(options) {
             >
           </div>
 
-          <!-- 3. Receipt Submission Mode (Direct Upload vs WhatsApp) -->
+          <!-- 3. Receipt Submission Options (Upload or Send via WhatsApp) -->
           <div class="form-group" style="margin:0;">
             <label style="display:block; font-weight:800; font-size:0.85rem; margin-bottom:8px; color:var(--text-main);">
-              3. طريقة تسليم إيصال التحويل للإدارة: <span style="color:#ef4444;">*</span>
+              3. طريقة تسليم إيصال التحويل لإدارة المنصة: <span style="color:#ef4444;">*</span>
             </label>
             
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
@@ -264,7 +321,7 @@ export function openGroupPaymentModal(options) {
                 <input type="radio" name="receipt_delivery_mode" value="upload" checked style="accent-color:var(--primary); width:16px; height:16px;">
                 <div>
                   <strong style="display:block; font-size:0.88rem; color:var(--text-main);">📤 رفع صورة الإيصال الآن</strong>
-                  <span style="font-size:0.72rem; color:var(--text-muted);">تحميل مباشر على الموقع</span>
+                  <span style="font-size:0.72rem; color:var(--text-muted);">تحميل مباشر على المنصة</span>
                 </div>
               </label>
 
@@ -281,8 +338,8 @@ export function openGroupPaymentModal(options) {
               ">
                 <input type="radio" name="receipt_delivery_mode" value="whatsapp" style="accent-color:#10b981; width:16px; height:16px;">
                 <div>
-                  <strong style="display:block; font-size:0.88rem; color:#10b981;">💬 سأرسل الإيصال لاحقاً عبر الواتساب</strong>
-                  <span style="font-size:0.72rem; color:var(--text-muted);">إتمام التسجيل والإرسال بالواتساب</span>
+                  <strong style="display:block; font-size:0.88rem; color:#10b981;">💬 سأرسل الإيصال عبر الواتساب</strong>
+                  <span style="font-size:0.72rem; color:var(--text-muted);">تخطي الرفع والإرسال للإدارة</span>
                 </div>
               </label>
             </div>
@@ -290,9 +347,9 @@ export function openGroupPaymentModal(options) {
             <!-- Mode 1: Direct File Dropzone -->
             <div id="receipt-upload-wrapper" style="display:block;">
               <div id="receipt-upload-dropzone" style="
-                border: 2px dashed var(--border-color);
+                border: 2px dashed var(--primary);
                 border-radius: 18px;
-                padding: 20px;
+                padding: 22px;
                 text-align: center;
                 background: var(--bg-app);
                 cursor: pointer;
@@ -301,29 +358,29 @@ export function openGroupPaymentModal(options) {
                 <input type="file" id="group-payment-receipt-file" accept="image/*" style="display:none;">
                 
                 <div id="receipt-idle-state">
-                  <div style="width:44px; height:44px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:1.3rem;">
+                  <div style="width:48px; height:48px; border-radius:50%; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:1.4rem;">
                     📤
                   </div>
-                  <span style="font-weight:800; font-size:0.88rem; color:var(--primary); display:block; margin-bottom:4px;">
-                    اضغط هنا لاختيار أو تصوير إيصال التحويل
+                  <span style="font-weight:900; font-size:0.92rem; color:var(--primary); display:block; margin-bottom:4px;">
+                    اضغط هنا لاختيار أو تصوير إيصال التحويل 📄
                   </span>
-                  <span style="font-size:0.75rem; color:var(--text-muted);">
+                  <span style="font-size:0.75rem; color:var(--text-muted); display:block;">
                     الصيغ المقبولة: JPG, PNG, WEBP (الحد الأقصى 20 ميجابايت)
                   </span>
                 </div>
 
-                <div id="receipt-loading-state" style="display:none; padding:10px; color:var(--primary); font-weight:800; font-size:0.9rem;">
+                <div id="receipt-loading-state" style="display:none; padding:12px; color:var(--primary); font-weight:800; font-size:0.9rem;">
                   <div class="spinner" style="width:24px;height:24px;display:inline-block;vertical-align:middle;margin-inline-end:8px;"></div>
-                  جاري رفع صورة الإيصال...
+                  جاري رفع وتوثيق صورة الإيصال...
                 </div>
 
                 <div id="receipt-preview-state" style="display:none; text-align:center;">
                   <div style="position:relative; display:inline-block;">
-                    <img id="receipt-preview-image" src="" style="max-height:140px; border-radius:14px; object-fit:cover; border:2px solid #10b981; box-shadow:0 6px 18px rgba(0,0,0,0.15);">
-                    <button type="button" id="remove-receipt-btn" style="position:absolute; top:-10px; right:-10px; background:#ef4444; color:#fff; border:none; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.3);">&times;</button>
+                    <img id="receipt-preview-image" src="" style="max-height:150px; border-radius:14px; object-fit:cover; border:2px solid #10b981; box-shadow:0 6px 18px rgba(0,0,0,0.15);">
+                    <button type="button" id="remove-receipt-btn" style="position:absolute; top:-10px; right:-10px; background:#ef4444; color:#fff; border:none; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.3);" title="حذف واختيار صورة أخرى">&times;</button>
                   </div>
-                  <p style="font-size:0.8rem; color:#10b981; font-weight:800; margin:6px 0 0 0;">
-                    ✓ تم اختيار ورفع إيصال التحويل بنجاح
+                  <p style="font-size:0.82rem; color:#10b981; font-weight:800; margin:8px 0 0 0;">
+                    ✓ تم رفع إيصال التحويل وتجهيزه للاعتماد بنجاح
                   </p>
                 </div>
 
@@ -332,7 +389,7 @@ export function openGroupPaymentModal(options) {
               <input type="hidden" id="group-payment-receipt-url" value="">
             </div>
 
-            <!-- Mode 2: WhatsApp Delivery Helper Box -->
+            <!-- Mode 2: WhatsApp Skip Box -->
             <div id="receipt-whatsapp-wrapper" style="display:none;">
               <div style="
                 background: rgba(16, 185, 129, 0.08);
@@ -345,10 +402,10 @@ export function openGroupPaymentModal(options) {
                   💬
                 </div>
                 <h4 style="font-size:0.95rem; font-weight:900; margin:0 0 6px 0; color:var(--text-main);">
-                  إرسال صورة الإيصال لاحقاً لمسؤول المنصة عبر الواتساب
+                  إرسال صورة الإيصال لإدارة المنصة عبر الواتساب
                 </h4>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.5;">
-                  يمكنك إتمام التسجيل والاشتراك الآن وسيقوم المسؤول بمراجعة وتأكيد حسابك بمجرد إرسال صورة التحويل له عبر الواتساب.
+                  يمكنك تخطي رفع الإيصال الآن وإتمام التسجيل، وسيقوم مسؤول الإدارة بمراجعة الإيصال وتأكيد مقعدك بعد إرساله له عبر الواتساب.
                 </p>
                 <button type="button" id="open-whatsapp-chat-action-btn" class="btn-primary" style="
                   background: #10b981;
@@ -363,11 +420,14 @@ export function openGroupPaymentModal(options) {
                   border-radius: 30px;
                   box-shadow: 0 4px 16px rgba(16,185,129,0.35);
                 ">
-                  <span>فتح محادثة الواتساب لإرسال الإيصال الآن 💬</span>
+                  <span>فتح محادثة واتساب إدارة المنصة 💬</span>
                 </button>
               </div>
             </div>
 
+            <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0; line-height:1.5;">
+              📌 سيقوم مسؤول إدارة المنصة بمراجعة وتدقيق إيصال التحويل واعتماد تفعيل مقعدك في المجموعة.
+            </p>
           </div>
 
           <!-- Notes -->
@@ -379,7 +439,7 @@ export function openGroupPaymentModal(options) {
               type="text" 
               id="group-payment-notes" 
               class="form-input" 
-              placeholder="مثال: تم التحويل من محفظة والدي باسم محمد..." 
+              placeholder="مثال: كود العملية #12345 أو اسم صاحب المحفظة" 
               style="border-radius:14px; padding:11px 16px; font-size:0.88rem; width:100%; box-sizing:border-box;"
             >
           </div>
@@ -428,50 +488,48 @@ export function openGroupPaymentModal(options) {
     });
   });
 
-  // Delivery mode radio toggle
+  const submitBtn = modalOverlay.querySelector("#submit-group-payment-btn");
   const uploadCard = modalOverlay.querySelector("#delivery-option-upload-card");
   const waCard = modalOverlay.querySelector("#delivery-option-whatsapp-card");
   const uploadWrapper = modalOverlay.querySelector("#receipt-upload-wrapper");
   const waWrapper = modalOverlay.querySelector("#receipt-whatsapp-wrapper");
-  const senderPhoneInput = modalOverlay.querySelector("#group-payment-sender-phone");
-  const submitBtn = modalOverlay.querySelector("#submit-group-payment-btn");
   let currentDeliveryMode = "upload";
 
   modalOverlay.querySelectorAll("input[name='receipt_delivery_mode']").forEach(radio => {
     radio.addEventListener("change", (e) => {
       currentDeliveryMode = e.target.value;
       if (currentDeliveryMode === "upload") {
-        uploadCard.style.borderColor = "var(--primary)";
-        waCard.style.borderColor = "var(--border-color)";
-        uploadWrapper.style.display = "block";
-        waWrapper.style.display = "none";
-        if (senderPhoneInput) senderPhoneInput.required = true;
-        if (submitBtn) submitBtn.innerHTML = `<span>تأكيد وإرسال إشعار الدفع للإدارة 🚀</span>`;
+        if (uploadCard) uploadCard.style.borderColor = "var(--primary)";
+        if (waCard) waCard.style.borderColor = "var(--border-color)";
+        if (uploadWrapper) uploadWrapper.style.display = "block";
+        if (waWrapper) waWrapper.style.display = "none";
+        if (submitBtn) submitBtn.innerHTML = `<span>تأكيد وإرسال إيصال الدفع للإدارة 🚀</span>`;
       } else {
-        uploadCard.style.borderColor = "var(--border-color)";
-        waCard.style.borderColor = "#10b981";
-        uploadWrapper.style.display = "none";
-        waWrapper.style.display = "block";
-        if (senderPhoneInput) senderPhoneInput.required = false;
-        if (submitBtn) submitBtn.innerHTML = `<span>تأكيد وإتمام التسجيل (سأرسل الإيصال لاحقاً) 🚀</span>`;
+        if (uploadCard) uploadCard.style.borderColor = "var(--border-color)";
+        if (waCard) waCard.style.borderColor = "#10b981";
+        if (uploadWrapper) uploadWrapper.style.display = "none";
+        if (waWrapper) waWrapper.style.display = "block";
+        if (submitBtn) submitBtn.innerHTML = `<span>تأكيد وإتمام الطلب (سأرسل الإيصال عبر الواتساب) 🚀</span>`;
       }
     });
   });
 
-  // WhatsApp Send Button Handler
-  modalOverlay.querySelector("#open-whatsapp-chat-action-btn")?.addEventListener("click", () => {
+  // Open WhatsApp chat helper
+  const openWhatsAppChat = () => {
     const studentName = state.user?.name || "طالب";
     const senderPhone = modalOverlay.querySelector("#group-payment-sender-phone")?.value.trim() || state.user?.phone || "";
     const provider = modalOverlay.querySelector("#group-payment-provider-select")?.value || "تحويل مالي";
     const notes = modalOverlay.querySelector("#group-payment-notes")?.value.trim() || "";
 
-    const message = `مرحباً إدارة منصة بكالوريا 👋\nأود تأكيد تحويل رسوم الاشتراك في المجموعة الدراسية:\n- 👨‍🎓 اسم الطالب: ${studentName}\n- 👥 المجموعة: ${groupName}\n- 📚 المقرر: ${courseTitle}\n- 👨‍🏫 المعلم: ${teacherName}\n- 💰 المبلغ المحول: ${monthlyPrice} ج.م.\n- 📱 طريقة التحويل: ${provider}\n- 📞 رقم المحول منه: ${senderPhone || 'غير محدد'}\n${notes ? `- 📝 ملاحظات: ${notes}\n` : ''}\n(مرفق صورة إيصال التحويل)`;
+    const message = `مرحباً إدارة منصة بكالوريا 👋\nأود تأكيد تحويل رسوم الاشتراك في المجموعة الدراسية:\n- 👨‍🎓 اسم الطالب: ${studentName}\n- 👥 المجموعة: ${groupName}\n- 📚 المقرر: ${courseTitle}\n- 👨‍🏫 المعلم: ${teacherName}\n- 💰 المبلغ: ${monthlyPrice} ج.م.\n- 📱 طريقة التحويل: ${provider}\n- 📞 رقم المحول منه: ${senderPhone || 'غير محدد'}\n${notes ? `- 📝 ملاحظات: ${notes}\n` : ''}\n(مرفق صورة إيصال التحويل للاعتماد)`;
 
     const waUrl = state.platformSettings?.whatsappUrl || "https://wa.me/213555123456";
     const cleanNumber = waUrl.replace(/\D/g, "") || "213555123456";
     const targetUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
     window.open(targetUrl, "_blank");
-  });
+  };
+
+  modalOverlay.querySelector("#open-whatsapp-chat-action-btn")?.addEventListener("click", openWhatsAppChat);
 
   // Receipt upload handling
   const fileInput = modalOverlay.querySelector("#group-payment-receipt-file");
@@ -547,11 +605,12 @@ export function openGroupPaymentModal(options) {
     const provider = modalOverlay.querySelector("#group-payment-provider-select")?.value || "vodafone_cash";
     const rawSenderPhone = modalOverlay.querySelector("#group-payment-sender-phone")?.value.trim();
     const senderPhone = rawSenderPhone || state.user?.phone || state.user?.email || "غير محدد";
-    const receiptUrl = hiddenReceiptUrl?.value || "";
+    let receiptUrl = hiddenReceiptUrl?.value || "";
     const notes = modalOverlay.querySelector("#group-payment-notes")?.value.trim();
 
     if (currentDeliveryMode === "upload" && !receiptUrl && (!fileInput.files || fileInput.files.length === 0)) {
-      showToast("يرجى اختيار صورة إيصال التحويل أو اختيار 'سأرسل الإيصال لاحقاً عبر الواتساب'.", "warning");
+      showToast("يرجى اختيار صورة إيصال التحويل أو اختيار 'سأرسل الإيصال عبر الواتساب'.", "warning");
+      fileInput?.click();
       return;
     }
 
@@ -559,12 +618,11 @@ export function openGroupPaymentModal(options) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = `
         <div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;"></div>
-        <span>جاري الإرسال...</span>
+        <span>جاري تأكيد الطلب...</span>
       `;
 
       // If file chosen but not yet uploaded (in upload mode)
-      let finalReceiptUrl = receiptUrl;
-      if (currentDeliveryMode === "upload" && !finalReceiptUrl && fileInput?.files?.[0]) {
+      if (currentDeliveryMode === "upload" && !receiptUrl && fileInput?.files?.[0]) {
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
         const token = state.token || localStorage.getItem("token") || localStorage.getItem("auth_token") || "";
@@ -577,12 +635,18 @@ export function openGroupPaymentModal(options) {
         });
         if (uploadRes.ok) {
           const data = await uploadRes.json();
-          finalReceiptUrl = data.url;
+          receiptUrl = data.url;
+          hiddenReceiptUrl.value = data.url;
+        } else {
+          showToast("فشل رفع صورة الإيصال. يرجى المحاولة مجدداً.", "error");
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>تأكيد وإرسال إشعار الدفع للإدارة 🚀</span>`;
+          return;
         }
       }
 
       const isViaWa = currentDeliveryMode === "whatsapp";
-      const deliveryTag = isViaWa ? "[سأرسل الإيصال لاحقاً عبر الواتساب للمشرف]" : "[تم رفع الإيصال بالموقع]";
+      const deliveryTag = isViaWa ? "[سأرسل الإيصال عبر الواتساب للإدارة]" : "[تم رفع الإيصال بالموقع]";
       const fullNotes = notes 
         ? `${notes} ${deliveryTag} (رقم المحول: ${senderPhone})` 
         : `${deliveryTag} (رقم المحول: ${senderPhone})`;
@@ -593,7 +657,7 @@ export function openGroupPaymentModal(options) {
         amount: monthlyPrice,
         provider,
         providerTransactionId: senderPhone,
-        receiptUrl: isViaWa ? (finalReceiptUrl || null) : finalReceiptUrl,
+        receiptUrl: isViaWa ? (receiptUrl || null) : receiptUrl,
         notes: fullNotes
       };
 
@@ -603,7 +667,7 @@ export function openGroupPaymentModal(options) {
       });
 
       closeModal();
-      showToast(res.message || "تم إرسال طلب الاشتراك بنجاح! 🎉", "success");
+      showToast(res.message || "تم إرسال طلب الاشتراك وإيصال الدفع بنجاح! 🎉", "success");
 
       // Show celebratory confirmation modal
       showGroupEnrollmentSuccessModal({
@@ -620,9 +684,7 @@ export function openGroupPaymentModal(options) {
       console.error("Group enrollment submission error:", err);
       showToast(err.message || "حدث خطأ أثناء إرسال طلب الاشتراك.", "error");
       submitBtn.disabled = false;
-      submitBtn.innerHTML = currentDeliveryMode === "whatsapp" 
-        ? `<span>تأكيد وإتمام التسجيل (سأرسل الإيصال لاحقاً) 🚀</span>`
-        : `<span>تأكيد وإرسال إشعار الدفع للإدارة 🚀</span>`;
+      submitBtn.innerHTML = `<span>تأكيد وإرسال إيصال الدفع للإدارة 🚀</span>`;
     }
   });
 }

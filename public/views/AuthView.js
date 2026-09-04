@@ -105,10 +105,10 @@ export default class AuthView {
           <div class="auth-form-panel">
             
             <div style="margin-bottom: 22px;">
-              <h2 id="auth-header-title" style="font-size: 1.55rem; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">
+              <h2 id="auth-header-title" class="auth-form-title">
                 ${titleText}
               </h2>
-              <p id="auth-header-desc" style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
+              <p id="auth-header-desc" class="auth-form-desc">
                 ${descText}
               </p>
             </div>
@@ -223,7 +223,7 @@ export default class AuthView {
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-row-2col">
             <div class="form-group" style="margin:0;">
               <label for="reg-phone" style="font-weight:700; font-size:0.82rem; color:var(--text-main);">هاتف الطالب (واتساب)</label>
               ${renderPhoneInputGroup({ selectId: "reg-phone-code", inputId: "reg-phone", defaultCode: "+20", placeholder: "01012345678" })}
@@ -236,14 +236,14 @@ export default class AuthView {
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-row-2col">
             <div class="form-group" style="margin:0;">
               <label for="reg-location" style="font-weight:700; font-size:0.82rem; color:var(--text-main);">المدينة / المحافظة</label>
-              <input type="text" id="reg-location" class="form-input" style="padding:11px 14px; border-radius:12px; font-size:0.88rem;" placeholder="مثال: القاهرة، الجيزة..." required>
+              <input type="text" id="reg-location" class="form-input" style="padding:11px 14px; border-radius:12px; font-size:0.88rem; width:100%; box-sizing:border-box;" placeholder="مثال: القاهرة، الجيزة..." required>
             </div>
             <div class="form-group" style="margin:0;">
               <label for="reg-education" style="font-weight:700; font-size:0.82rem; color:var(--text-main);">المستوى الدراسي</label>
-              ${renderEducationSelectHTML({ id: "reg-education", selectedValue: "Entlq 3", style: "padding:11px 14px; border-radius:12px; font-size:0.88rem;" })}
+              ${renderEducationSelectHTML({ id: "reg-education", selectedValue: "Entlq 3", style: "padding:11px 14px; border-radius:12px; font-size:0.88rem; width:100%; box-sizing:border-box;" })}
             </div>
           </div>
 

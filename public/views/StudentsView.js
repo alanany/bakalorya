@@ -246,7 +246,7 @@ export default class StudentsView {
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:4px;">
                 <i data-lucide="mail" style="width:12px; height:12px; color:var(--primary);"></i> ${student.email}
               </div>
-              ${rawParentPhone ? `
+              ${state.user?.role === 'admin' && rawParentPhone ? `
                 <div style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:2px; display:flex; align-items:center; gap:4px;">
                   👨‍👩‍👦 ولي الأمر: ${rawParentPhone}
                 </div>
@@ -278,26 +278,30 @@ export default class StudentsView {
           </div>
         </td>
 
-        <!-- Contact Actions (WhatsApp & Call) -->
+        <!-- Contact Actions (Admin Only) -->
         <td style="padding:14px 16px; vertical-align:middle; text-align:center;">
-          <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-            ${rawPhone ? `
-              <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
-                <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">الطالب:</span>
-                <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب الطالب">
-                  <i data-lucide="message-circle" style="width:12px; height:12px;"></i> واتساب
-                </a>
-              </div>
-            ` : ''}
-            ${rawParentPhone ? `
-              <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
-                <span style="font-size:0.75rem; font-weight:700; color:var(--primary);">ولي الأمر:</span>
-                <a href="https://wa.me/${cleanParentPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب ولي الأمر">
-                  💬 واتساب
-                </a>
-              </div>
-            ` : (!rawPhone ? '<span style="color:var(--text-muted); font-size:0.78rem;">لا يوجد هاتف</span>' : '')}
-          </div>
+          ${state.user?.role === 'admin' ? `
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+              ${rawPhone ? `
+                <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
+                  <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">الطالب:</span>
+                  <a href="https://wa.me/${cleanPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:#10b981; color:#10b981; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب الطالب">
+                    <i data-lucide="message-circle" style="width:12px; height:12px;"></i> واتساب
+                  </a>
+                </div>
+              ` : ''}
+              ${rawParentPhone ? `
+                <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
+                  <span style="font-size:0.75rem; font-weight:700; color:var(--primary);">ولي الأمر:</span>
+                  <a href="https://wa.me/${cleanParentPhoneWa}" target="_blank" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="واتساب ولي الأمر">
+                    💬 واتساب
+                  </a>
+                </div>
+              ` : (!rawPhone ? '<span style="color:var(--text-muted); font-size:0.78rem;">لا يوجد هاتف</span>' : '')}
+            </div>
+          ` : `
+            <span style="color:var(--text-muted); font-size:0.78rem; background:rgba(0,0,0,0.04); padding:4px 10px; border-radius:12px; font-weight:700;">متاح للإدارة فقط 🔒</span>
+          `}
         </td>
 
         <!-- Actions -->

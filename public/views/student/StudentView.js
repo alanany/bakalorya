@@ -774,14 +774,14 @@ export default class StudentView {
               <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
                 <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> تم تأكيد حضورك (حاضر) ✅
               </span>
-              <a href="#classroom/${session.id}" class="btn-primary" style="width:100%; padding:8px 12px; font-size:0.8rem; font-weight:800; justify-content:center; text-decoration:none; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); gap:6px; border:none; display:flex; align-items:center;">
-                <i data-lucide="video" style="width:14px; height:14px;"></i> دخول قاعة الحصة الآن 🎥
-              </a>
+              <button class="btn-primary" data-join-meet-id="${session.id}" style="width:100%; padding:9px 12px; font-size:0.82rem; font-weight:800; justify-content:center; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); gap:6px; border:none; display:flex; align-items:center; cursor:pointer; box-shadow:0 3px 10px rgba(16,185,129,0.3);">
+                <i data-lucide="video" style="width:15px; height:15px;"></i> الانضمام عبر Google Meet 🎥
+              </button>
             ` : `
               <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="student" style="width:100%; justify-content:center; font-size:0.82rem; padding:9px 12px; background:linear-gradient(135deg,#10b981,#059669); font-weight:800; cursor:pointer; border-radius:10px; border:none; color:#fff; display:flex; align-items:center; gap:6px; box-shadow:0 3px 10px rgba(16,185,129,0.25);">
                 <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد الحضور (لست غائباً) ✍️
               </button>
-              <div style="font-size:0.72rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر دخول القاعة</div>
+              <div style="font-size:0.72rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر Google Meet</div>
             `
           ) : `
             <button disabled class="btn-secondary" style="width:100%; padding:8px 12px; font-size:0.78rem; font-weight:700; justify-content:center; border-radius:10px; opacity:0.85; cursor:not-allowed; background:rgba(99,102,241,0.06); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
@@ -824,9 +824,9 @@ export default class StudentView {
                 <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
                   <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
                 </span>
-                <a href="#classroom/${id}" class="btn-primary session-action" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.85rem; padding:9px; justify-content:center; text-decoration:none; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:10px;">
-                  <i data-lucide="video" style="width:15px; height:15px;"></i> دخول قاعة الحصة الآن 🎥
-                </a>
+                <button class="btn-primary session-action" data-join-meet-id="${id}" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.85rem; padding:9px; justify-content:center; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:10px; border:none; color:#fff; cursor:pointer;">
+                  <i data-lucide="video" style="width:15px; height:15px;"></i> الانضمام عبر Google Meet 🚀
+                </button>
               </div>
             `;
             if (window.lucide) window.lucide.createIcons();

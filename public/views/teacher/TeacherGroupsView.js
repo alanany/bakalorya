@@ -510,16 +510,60 @@ export default class TeacherGroupsView {
       return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    const isPending = group.status === 'PENDING_APPROVAL';
+    const isPending = group.status === 'PENDING_APPROVAL' || group.status === 'PENDING' || group.status === 'pending';
     const isLive = Boolean(group.liveSession);
     const isClosedOrTeaching = group.status === 'IN_PROGRESS' || group.status === 'CLOSED';
     const isFull = group.isFull || group.status === 'FULL' || capacityPct >= 100;
+
+    // ── IF PENDING: Show only name, course, grade, subject, and pending status ──
+    if (isPending) {
+      return `
+        <div class="glass-card" data-group-id="${group.id}" data-key="${group.key}"
+          style="border-radius:20px; border:1px solid rgba(245,158,11,0.35); border-inline-start:5px solid #f59e0b; overflow:hidden; background:var(--bg-card); padding:18px 22px; margin-bottom:14px; box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+            <!-- Left: Index + Title + Course Badges -->
+            <div style="display:flex; align-items:center; gap:14px; flex:1; min-width:240px;">
+              <span style="width:36px; height:36px; border-radius:12px; background:rgba(245,158,11,0.12); color:#d97706; font-weight:900; font-size:0.85rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                ${idx + 1}
+              </span>
+              <div>
+                <strong style="font-size:1.05rem; font-weight:900; color:var(--text-main); display:block; margin-bottom:4px; line-height:1.3;">
+                  👥 ${group.title || group.name}
+                </strong>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:8px;">
+                    ${group.course?.title || 'مقرر دراسي'}
+                  </span>
+                  ${group.grade ? `<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:8px;">${group.grade.name}</span>` : ''}
+                  ${group.subject ? `<span class="badge" style="background:rgba(229,29,116,0.1); color:#e51d74; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:8px;">${group.subject.name}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Status Badge only -->
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:0.8rem; font-weight:900; padding:6px 14px; border-radius:14px; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="clock" style="width:15px; height:15px;"></i> ⏳ قيد المراجعة والاعتماد
+              </span>
+            </div>
+          </div>
+
+          <!-- Pending Notice Banner -->
+          <div style="margin-top:14px; padding:10px 14px; background:rgba(245,158,11,0.06); border-radius:12px; border:1px dashed rgba(245,158,11,0.3); display:flex; align-items:center; gap:8px; font-size:0.82rem; color:var(--text-muted); font-weight:700;">
+            <i data-lucide="info" style="width:16px; height:16px; color:#d97706; flex-shrink:0;"></i>
+            <span>المجموعة قيد مراجعة واعتماد الإدارة ⏳. سيتم تفعيل المواعيد وروابط البث وفتح التسجيل للطلاب فور اعتمادها.</span>
+          </div>
+
+        </div>
+      `;
+    }
 
     const startDateText = group.startDate ? formatArabicDate(group.startDate) : "13 سبتمبر 2026";
     const endDateText = group.endDate ? formatArabicDate(group.endDate) : "2 ديسمبر 2026";
 
     // Dynamic accent color
-    const accentColor = isLive ? '#10b981' : isPending ? '#f59e0b' : isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : '#10b981';
+    const accentColor = isLive ? '#10b981' : isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : '#10b981';
 
     return `
       <div class="glass-card teacher-accordion-item" data-group-id="${group.id}" data-key="${group.key}"
@@ -670,10 +714,10 @@ export default class TeacherGroupsView {
 
             <!-- If Live: Quick Join -->
             ${isLive ? `
-              <a href="#classroom/${group.liveSession.id}"
-                style="padding:8px 18px; font-size:0.82rem; font-weight:900; border-radius:12px; background:#10b981; border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; text-decoration:none; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
-                <i data-lucide="video" style="width:15px; height:15px;"></i> دخول البث المباشر الآن 🔴
-              </a>
+              <button data-join-meet-id="${group.liveSession.id}"
+                style="padding:8px 18px; font-size:0.82rem; font-weight:900; border-radius:12px; background:#10b981; border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                <i data-lucide="video" style="width:15px; height:15px;"></i> فتح Google Meet الآن 🔴
+              </button>
             ` : ''}
 
           </div>
@@ -858,14 +902,37 @@ export default class TeacherGroupsView {
   }
 
   // ── Open Students Modal (Teacher View - Anonymized / NO Contacts) ─────────────
-  openStudentsModal(groupKey) {
+  async openStudentsModal(groupKey) {
     const group = this.groupsData.find(g => g.key === groupKey);
     if (!group) return;
 
     const container = document.getElementById("teacher-group-modal-container");
     if (!container) return;
 
-    const students = group.students || [];
+    container.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div class="glass-card" style="width:100%; max-width:540px; border-radius:24px; padding:24px; max-height:85vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+          <div style="text-align:center; padding:40px;">
+            <div class="spinner" style="width:36px; height:36px; margin:0 auto 12px; border-width:3px;"></div>
+            <p style="font-weight:700; font-size:0.92rem; color:var(--text-muted);">جارٍ تحميل قائمة طلاب المجموعة...</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    let students = group.students || [];
+
+    if (group.id) {
+      try {
+        const res = await apiFetch(`/groups/${group.id}/roster`);
+        if (res && Array.isArray(res.students)) {
+          students = res.students;
+          group.students = students;
+        }
+      } catch (err) {
+        console.warn("Could not fetch fresh roster, falling back to cached students", err);
+      }
+    }
 
     container.innerHTML = `
       <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
@@ -879,7 +946,7 @@ export default class TeacherGroupsView {
                 قائمة طلاب المجموعة (${students.length}) 👥
               </h3>
               <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                👥 ${group.title} • سعة المجموعة: ${group.maxStudents || 25} طالب
+                👥 ${group.title || group.name} • سعة المجموعة: ${group.maxStudents || 25} طالب
               </p>
             </div>
             <button id="close-teacher-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main);">
@@ -891,10 +958,12 @@ export default class TeacherGroupsView {
           <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-inline-end:4px;">
             ${students.length === 0 ? `
               <div style="text-align:center; padding:40px; color:var(--text-muted); font-size:0.88rem;">
+                <i data-lucide="users" style="width:40px; height:40px; opacity:0.3; margin:0 auto 10px; display:block;"></i>
                 لا يوجد طلاب مسجلون في هذه المجموعة حتى الآن.
               </div>
             ` : students.map((st, idx) => {
               const avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || `student_${idx}`)}`;
+              const isPending = st.status && st.status.toLowerCase() === "pending";
               return `
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color);">
                   <div style="display:flex; align-items:center; gap:12px;">
@@ -908,8 +977,8 @@ export default class TeacherGroupsView {
                     </div>
                   </div>
 
-                  <span style="padding:4px 10px; border-radius:12px; background:rgba(16,185,129,0.1); color:#10b981; font-weight:800; font-size:0.75rem; border:1px solid rgba(16,185,129,0.25); display:inline-flex; align-items:center; gap:4px;">
-                    ✅ مقعد نشط
+                  <span style="padding:4px 10px; border-radius:12px; background:${isPending ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'}; color:${isPending ? '#d97706' : '#10b981'}; font-weight:800; font-size:0.75rem; border:1px solid ${isPending ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:4px;">
+                    ${isPending ? '⏳ قيد المراجعة' : '✅ مقعد نشط'}
                   </span>
                 </div>
               `;
@@ -1021,17 +1090,17 @@ export default class TeacherGroupsView {
 
                   <div style="display:flex; align-items:center; gap:8px;">
                     ${isLive ? `
-                      <a href="#classroom/${sess.id}" style="padding:6px 14px; border-radius:12px; font-weight:800; font-size:0.78rem; background:#10b981; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
-                        <i data-lucide="video" style="width:13px; height:13px;"></i> دخول البث الآن 🔴
-                      </a>
+                      <button data-join-meet-id="${sess.id}" style="padding:6px 14px; border-radius:12px; font-weight:800; font-size:0.78rem; background:#10b981; color:#fff; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+                        <i data-lucide="video" style="width:13px; height:13px;"></i> فتح Google Meet الآن 🔴
+                      </button>
                     ` : isPast ? `
                       <span style="padding:4px 10px; border-radius:10px; background:rgba(107,114,128,0.1); color:#6b7280; font-size:0.74rem; font-weight:700;">
                         ✓ حصة مكتملة
                       </span>
                     ` : `
-                      <a href="#classroom/${sess.id}" style="padding:6px 12px; border-radius:12px; font-weight:800; font-size:0.76rem; background:rgba(99,102,241,0.1); color:var(--primary); text-decoration:none; border:1px solid rgba(99,102,241,0.25); display:inline-flex; align-items:center; gap:4px;">
-                        <i data-lucide="video" style="width:13px; height:13px;"></i> قاعة البث 🎥
-                      </a>
+                      <button data-join-meet-id="${sess.id}" style="padding:6px 12px; border-radius:12px; font-weight:800; font-size:0.76rem; background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.25); cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="video" style="width:13px; height:13px;"></i> Google Meet 🎥
+                      </button>
                     `}
                   </div>
                 </div>

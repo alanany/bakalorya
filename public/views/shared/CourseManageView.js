@@ -778,21 +778,19 @@ export default class CourseManageView {
                     <button class="delete-course-group-btn" data-id="${g.id}" data-name="${g.name}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; padding:4px;" title="حذف المجموعة">
                       <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
                     </button>
-                  </div>
-
-                  <!-- Schedule Pill -->
-                  <div style="padding:8px 12px; border-radius:12px; background:rgba(229,29,116,0.06); color:#e51d74; font-size:0.85rem; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="calendar" style="width:16px;height:16px;"></i>
-                    <span>الجدول: ${g.scheduleText || `${g.scheduleDays || ''} ${g.scheduleTime || ''}`}</span>
-                  </div>
-
                   ${isPending ? `
                     <!-- Pending State: Notice only -->
-                    <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:12px; font-size:0.78rem; font-weight:800; color:#d97706; display:flex; align-items:center; gap:8px;">
+                    <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:14px; font-size:0.82rem; font-weight:800; color:#d97706; display:flex; align-items:center; gap:8px; margin-top:10px;">
                       <i data-lucide="clock" style="width:16px; height:16px; flex-shrink:0;"></i>
-                      <span>تم إرسال المجموعة لمراجعة الإدارة. ستظهر المقاعد وتواريخ البدء والانتهاء فور اعتمادها.</span>
+                      <span>المجموعة قيد مراجعة واعتماد الإدارة ⏳. سيتم تفعيل الجدول وتواريخ البدء والانتهاء فور اعتمادها.</span>
                     </div>
                   ` : `
+                    <!-- Schedule Pill -->
+                    <div style="padding:8px 12px; border-radius:12px; background:rgba(229,29,116,0.06); color:#e51d74; font-size:0.85rem; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                      <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                      <span>الجدول: ${g.scheduleText || `${g.scheduleDays || ''} ${g.scheduleTime || ''}`}</span>
+                    </div>
+
                     <!-- Approved State: Dates & Capacity -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:6px 10px; font-size:0.75rem; margin-bottom:10px;">
                       <div>
@@ -818,11 +816,17 @@ export default class CourseManageView {
                   `}
                 </div>
 
-                ${g.meetingLink ? `
-                  <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.82rem; padding:8px 14px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px; border-radius:12px;">
-                    <i data-lucide="external-link" style="width:14px;height:14px;"></i> رابط البث (Zoom / Meet)
-                  </a>
-                ` : ''}
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                  <button type="button" class="btn-secondary view-course-group-students-btn" data-id="${g.id}" data-name="${g.name}"
+                    style="font-size:0.8rem; padding:8px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:rgba(229,29,116,0.08); color:#e51d74; border-color:rgba(229,29,116,0.3); font-weight:800;">
+                    <i data-lucide="users" style="width:14px; height:14px;"></i> قائمة الطلاب (${enrolled}) 👥
+                  </button>
+                  ${g.meetingLink ? `
+                    <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-secondary" style="font-size:0.8rem; padding:8px 12px; text-decoration:none; justify-content:center; display:inline-flex; align-items:center; gap:6px; border-radius:12px;">
+                      <i data-lucide="external-link" style="width:14px;height:14px;"></i> رابط البث (Zoom / Meet)
+                    </a>
+                  ` : ''}
+                </div>
               </div>
             `;
           }).join("")}
@@ -2183,6 +2187,97 @@ export default class CourseManageView {
           } catch (err) {
             showToast(err.message || "فشل حذف المجموعة.", "error");
           }
+        });
+      });
+
+      this.container.querySelectorAll(".view-course-group-students-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const groupId = btn.getAttribute("data-id");
+          const groupName = btn.getAttribute("data-name");
+          const wrapper = document.getElementById("manage-group-modal-wrapper");
+          if (!wrapper) return;
+
+          wrapper.innerHTML = `
+            <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+              <div class="glass-card" style="width:100%; max-width:540px; border-radius:24px; padding:24px; max-height:85vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+                <div style="text-align:center; padding:40px;">
+                  <div class="spinner" style="width:36px; height:36px; margin:0 auto 12px; border-width:3px;"></div>
+                  <p style="font-weight:700; font-size:0.92rem; color:var(--text-muted);">جارٍ تحميل قائمة طلاب المجموعة...</p>
+                </div>
+              </div>
+            </div>
+          `;
+
+          let students = [];
+          try {
+            const res = await apiFetch(`/groups/${groupId}/roster`);
+            if (res && Array.isArray(res.students)) {
+              students = res.students;
+            }
+          } catch (err) {
+            showToast(err.message || "فشل تحميل قائمة الطلاب.", "error");
+          }
+
+          wrapper.innerHTML = `
+            <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+              <div class="glass-card" style="width:100%; max-width:540px; border-radius:24px; padding:24px; max-height:85vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+                
+                <!-- Modal Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+                  <div>
+                    <h3 style="font-size:1.15rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="users" style="width:20px; height:20px; color:#e51d74;"></i>
+                      قائمة طلاب المجموعة (${students.length}) 👥
+                    </h3>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                      👥 ${groupName || 'المجموعة الدراسية'}
+                    </p>
+                  </div>
+                  <button id="close-course-group-students-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
+                    &times;
+                  </button>
+                </div>
+
+                <!-- Students List -->
+                <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-inline-end:4px;">
+                  ${students.length === 0 ? `
+                    <div style="text-align:center; padding:40px; color:var(--text-muted); font-size:0.88rem;">
+                      <i data-lucide="users" style="width:40px; height:40px; opacity:0.3; margin:0 auto 10px; display:block;"></i>
+                      لا يوجد طلاب مسجلون في هذه المجموعة حتى الآن.
+                    </div>
+                  ` : students.map((st, idx) => {
+                    const avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || `student_${idx}`)}`;
+                    const isPending = st.status && st.status.toLowerCase() === "pending";
+                    return `
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color);">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <div style="width:28px; height:28px; border-radius:8px; background:rgba(99,102,241,0.1); color:var(--primary); font-weight:800; font-size:0.75rem; display:flex; align-items:center; justify-content:center;">
+                            ${idx + 1}
+                          </div>
+                          <img src="${avatar}" alt="${st.name}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color); background:var(--bg-card);">
+                          <div>
+                            <div style="font-size:0.92rem; font-weight:800; color:var(--text-main);">${st.name}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">طالب مقيد بالمجموعة 🎓</div>
+                          </div>
+                        </div>
+
+                        <span style="padding:4px 10px; border-radius:12px; background:${isPending ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'}; color:${isPending ? '#d97706' : '#10b981'}; font-weight:800; font-size:0.75rem; border:1px solid ${isPending ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:4px;">
+                          ${isPending ? '⏳ قيد المراجعة' : '✅ مقعد نشط'}
+                        </span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+
+              </div>
+            </div>
+          `;
+
+          if (window.lucide) window.lucide.createIcons();
+
+          document.getElementById("close-course-group-students-modal")?.addEventListener("click", () => {
+            wrapper.innerHTML = "";
+          });
         });
       });
     }

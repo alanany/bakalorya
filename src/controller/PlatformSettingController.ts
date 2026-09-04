@@ -25,6 +25,14 @@ export class PlatformSettingController {
       const contactSubtitle = map["contact_subtitle"] || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.";
       const contactAddress = map["contact_address"] || "الجزائر العاصمة / القاهرة";
 
+      // Platform Financial Transfer Accounts
+      const vodafoneCashNumber = map["vodafone_cash_number"] || "01098765432";
+      const instapayHandle = map["instapay_handle"] || "bakalorya@instapay";
+      const orangeCashNumber = map["orange_cash_number"] || "";
+      const etisalatCashNumber = map["etisalat_cash_number"] || "";
+      const bankAccountDetails = map["bank_account_details"] || "";
+      const paymentInstructions = map["payment_instructions"] || "";
+
       return res.json({
         whatsappNumber,
         cleanWhatsApp,
@@ -35,7 +43,13 @@ export class PlatformSettingController {
         workingHours,
         contactTitle,
         contactSubtitle,
-        contactAddress
+        contactAddress,
+        vodafoneCashNumber,
+        instapayHandle,
+        orangeCashNumber,
+        etisalatCashNumber,
+        bankAccountDetails,
+        paymentInstructions
       });
     } catch (err: any) {
       console.error("getPublicSettings error:", err);
@@ -63,6 +77,14 @@ export class PlatformSettingController {
       const contactSubtitle = map["contact_subtitle"] || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.";
       const contactAddress = map["contact_address"] || "الجزائر العاصمة / القاهرة";
 
+      // Platform Financial Transfer Accounts
+      const vodafoneCashNumber = map["vodafone_cash_number"] || "01098765432";
+      const instapayHandle = map["instapay_handle"] || "bakalorya@instapay";
+      const orangeCashNumber = map["orange_cash_number"] || "";
+      const etisalatCashNumber = map["etisalat_cash_number"] || "";
+      const bankAccountDetails = map["bank_account_details"] || "";
+      const paymentInstructions = map["payment_instructions"] || "";
+
       return res.json({
         whatsappNumber,
         cleanWhatsApp,
@@ -73,7 +95,13 @@ export class PlatformSettingController {
         workingHours,
         contactTitle,
         contactSubtitle,
-        contactAddress
+        contactAddress,
+        vodafoneCashNumber,
+        instapayHandle,
+        orangeCashNumber,
+        etisalatCashNumber,
+        bankAccountDetails,
+        paymentInstructions
       });
     } catch (err: any) {
       console.error("getAdminSettings error:", err);
@@ -92,7 +120,13 @@ export class PlatformSettingController {
         workingHours,
         contactTitle,
         contactSubtitle,
-        contactAddress
+        contactAddress,
+        vodafoneCashNumber,
+        instapayHandle,
+        orangeCashNumber,
+        etisalatCashNumber,
+        bankAccountDetails,
+        paymentInstructions
       } = req.body;
       const settingRepo = AppDataSource.getRepository(PlatformSetting);
 
@@ -105,6 +139,12 @@ export class PlatformSettingController {
         { key: "contact_title", value: contactTitle !== undefined ? String(contactTitle).trim() : undefined },
         { key: "contact_subtitle", value: contactSubtitle !== undefined ? String(contactSubtitle).trim() : undefined },
         { key: "contact_address", value: contactAddress !== undefined ? String(contactAddress).trim() : undefined },
+        { key: "vodafone_cash_number", value: vodafoneCashNumber !== undefined ? String(vodafoneCashNumber).trim() : undefined },
+        { key: "instapay_handle", value: instapayHandle !== undefined ? String(instapayHandle).trim() : undefined },
+        { key: "orange_cash_number", value: orangeCashNumber !== undefined ? String(orangeCashNumber).trim() : undefined },
+        { key: "etisalat_cash_number", value: etisalatCashNumber !== undefined ? String(etisalatCashNumber).trim() : undefined },
+        { key: "bank_account_details", value: bankAccountDetails !== undefined ? String(bankAccountDetails).trim() : undefined },
+        { key: "payment_instructions", value: paymentInstructions !== undefined ? String(paymentInstructions).trim() : undefined },
       ].filter(item => item.value !== undefined);
 
       for (const item of itemsToUpdate) {
@@ -127,7 +167,7 @@ export class PlatformSettingController {
       const cleanWhatsApp = formatPhoneForWhatsApp(savedWhatsapp);
 
       return res.json({
-        message: "تم حفظ كافة بيانات التواصل وصفحة اتصل بنا بنجاح ✅",
+        message: "تم حفظ كافة إعدادات المنصة وبيانات التحويل المالي بنجاح ✅",
         settings: {
           whatsappNumber: savedWhatsapp,
           cleanWhatsApp,
@@ -138,7 +178,13 @@ export class PlatformSettingController {
           workingHours: map["working_hours"] || "الأحد - الخميس (09:00 ص - 06:00 م)",
           contactTitle: map["contact_title"] || "نحن هنا لدعمك وإجابة استفساراتك 💬",
           contactSubtitle: map["contact_subtitle"] || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.",
-          contactAddress: map["contact_address"] || "الجزائر العاصمة / القاهرة"
+          contactAddress: map["contact_address"] || "الجزائر العاصمة / القاهرة",
+          vodafoneCashNumber: map["vodafone_cash_number"] || "01098765432",
+          instapayHandle: map["instapay_handle"] || "bakalorya@instapay",
+          orangeCashNumber: map["orange_cash_number"] || "",
+          etisalatCashNumber: map["etisalat_cash_number"] || "",
+          bankAccountDetails: map["bank_account_details"] || "",
+          paymentInstructions: map["payment_instructions"] || ""
         }
       });
     } catch (err: any) {

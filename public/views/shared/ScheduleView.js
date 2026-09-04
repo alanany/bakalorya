@@ -237,7 +237,7 @@ export default class ScheduleView {
                 <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
               </span>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <a href="#classroom/${session.id}" class="btn-primary" style="background:var(--success); font-size:0.9rem; padding:10px; justify-content:center; text-decoration:none; font-weight:800;"><i data-lucide="video"></i> دخول القاعة 🎥</a>
+                <button class="btn-primary" data-join-meet-id="${session.id}" style="background:var(--success); font-size:0.9rem; padding:10px; justify-content:center; border:none; cursor:pointer; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
                 <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.85rem; padding:10px; justify-content:center; color:var(--error); border-color:var(--error); font-weight:800;"><i data-lucide="stop-circle"></i> إنهاء وتوثيق</button>
               </div>
             </div>
@@ -259,7 +259,7 @@ export default class ScheduleView {
               <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                 <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
               </span>
-              <a href="#classroom/${session.id}" class="btn-primary session-action" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; text-decoration:none; font-weight:900;"><i data-lucide="video"></i> دخول قاعة الحصة الآن 🎥</a>
+              <button class="btn-primary session-action" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; font-weight:900; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:6px; border-radius:12px;"><i data-lucide="video"></i> الانضمام عبر Google Meet 🎥</button>
             </div>
           `;
         } else {
@@ -309,7 +309,7 @@ export default class ScheduleView {
                 </span>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                   <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.9rem; padding:10px; justify-content:center; font-weight:800;"><i data-lucide="play"></i> بدء البث 🔴</button>
-                  <a href="#classroom/${session.id}" class="btn-secondary" style="font-size:0.9rem; padding:10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px; font-weight:800;"><i data-lucide="video"></i> دخول 🎥</a>
+                  <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.9rem; padding:10px; justify-content:center; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
                 </div>
               </div>
             `;
@@ -340,7 +340,7 @@ export default class ScheduleView {
                 <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                   <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
                 </span>
-                <a href="#classroom/${session.id}" class="btn-primary session-action" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; text-decoration:none; font-weight:900;"><i data-lucide="video"></i> دخول قاعة الحصة الآن 🎥</a>
+                <button class="btn-primary session-action" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; border:none; color:#fff; cursor:pointer; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:12px;"><i data-lucide="video"></i> الانضمام عبر Google Meet 🎥</button>
               </div>
             `;
           } else {
@@ -501,17 +501,17 @@ export default class ScheduleView {
       actionBtn = `<button disabled class="btn-secondary" style="padding:4px; font-size:0.7rem; width:100%; justify-content:center; margin-top:6px; opacity:0.6; cursor:not-allowed; border-color:var(--border-color);">غير متاحة للدخول</button>`;
     } else if (isLive && !isTeacher) {
       actionBtn = `
-        <a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border-color:#10b981; text-decoration:none; display:flex; align-items:center; gap:4px;">دخول 🎥</a>
+        <button class="btn-primary" data-join-meet-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:4px; border-radius:8px;">Google Meet 🎥</button>
         <button class="btn-secondary session-checkin-btn" data-id="${session.id}" style="padding:4px 6px; font-size:0.7rem; width:100%; justify-content:center; margin-top:4px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">تأكيد الحضور ✍️</button>
       `;
     } else if (isLive && isTeacher) {
-      actionBtn = `<a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; text-decoration:none;">Enter</a>`;
+      actionBtn = `<button class="btn-primary" data-join-meet-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:4px; border-radius:8px;">Google Meet 🎥</button>`;
     } else if (isSoon && isTeacher) {
       actionBtn = `<button class="btn-primary start-session-btn" data-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px;">Start</button>`;
     } else if (!isPastDay && !isTeacher) {
       if (isWithinJoinWindow) {
         actionBtn = `
-          <a href="#classroom/${session.id}" class="btn-primary" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border-color:#10b981; text-decoration:none; display:flex; align-items:center; gap:4px;">دخول 🎥</a>
+          <button class="btn-primary" data-join-meet-id="${session.id}" style="padding:6px; font-size:0.75rem; width:100%; justify-content:center; margin-top:6px; background:#10b981; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:4px; border-radius:8px;">Google Meet 🎥</button>
           <button class="btn-secondary session-checkin-btn" data-id="${session.id}" style="padding:4px 6px; font-size:0.7rem; width:100%; justify-content:center; margin-top:4px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">تأكيد الحضور ✍️</button>
         `;
       } else {
@@ -578,9 +578,9 @@ export default class ScheduleView {
           <div style="display:flex; flex-direction:column; gap:4px;">
             ${daySessions.map(s => {
         const sTime = new Date(s.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return `<a href="#classroom/${s.id}" style="background:var(--primary-glow); color:var(--primary); font-size:0.7rem; padding:4px 6px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:none; display:block; font-weight:700;" title="${s.title}">
+        return `<button data-join-meet-id="${s.id}" style="background:var(--primary-glow); color:var(--primary); font-size:0.7rem; padding:4px 6px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:none; display:block; font-weight:700; width:100%; text-align:start; border:none; cursor:pointer;" title="${s.title}">
                 <b>${sTime}</b> ${s.title}
-              </a>`;
+              </button>`;
       }).join('')}
           </div>
         </div>
@@ -695,7 +695,7 @@ export default class ScheduleView {
                   </span>
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                     <button class="btn-primary start-session-btn" data-id="${id}" style="font-size:0.88rem; padding:10px; justify-content:center; font-weight:800;"><i data-lucide="play"></i> بدء البث 🔴</button>
-                    <a href="#classroom/${id}" class="btn-primary" style="background:linear-gradient(135deg,#6366f1,#4f46e5); font-size:0.88rem; padding:10px; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px; font-weight:800;"><i data-lucide="video"></i> دخول القاعة 🎥</a>
+                    <button class="btn-primary" data-join-meet-id="${id}" style="background:linear-gradient(135deg,#6366f1,#4f46e5); font-size:0.88rem; padding:10px; justify-content:center; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:6px; font-weight:800; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
                   </div>
                 </div>
               `;
@@ -705,9 +705,9 @@ export default class ScheduleView {
                   <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                     <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
                   </span>
-                  <a href="#classroom/${id}" class="btn-primary session-action" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; text-decoration:none; font-weight:900; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="video" style="width:16px; height:16px;"></i> دخول قاعة الحصة الآن 🎥
-                  </a>
+                  <button class="btn-primary session-action" data-join-meet-id="${id}" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; border:none; color:#fff; cursor:pointer; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:12px;">
+                    <i data-lucide="video" style="width:16px; height:16px;"></i> الانضمام عبر Google Meet 🎥
+                  </button>
                 </div>
               `;
             }

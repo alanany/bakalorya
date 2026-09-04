@@ -534,7 +534,12 @@ export const AdminSessionsPage = {
                       <!-- State & Management Controls -->
                       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         
-                        ${grp.status === 'OPEN' ? `
+                        ${grp.status === 'PENDING_APPROVAL' ? `
+                          <button type="button" class="btn-primary admin-approve-group-btn" data-id="${grp.id}"
+                            style="padding:8px 16px; font-size:0.82rem; font-weight:900; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
+                            <i data-lucide="check-circle-2" style="width:15px; height:15px;"></i> مراجعة وتعديل واعتماد المجموعة ✏️✅
+                          </button>
+                        ` : grp.status === 'OPEN' ? `
                           <button type="button" class="btn-secondary admin-toggle-group-status-btn" data-id="${grp.id}" data-action="close"
                             style="padding:8px 14px; font-size:0.8rem; font-weight:800; color:#6366f1; border-color:#6366f1; background:rgba(99,102,241,0.08); border-radius:12px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
                             <i data-lucide="lock" style="width:13px; height:13px;"></i> إغلاق وبدء التدريس 🔒
@@ -1196,9 +1201,9 @@ export const AdminSessionsPage = {
                         <span style="font-size:0.75rem; font-weight:900; background:rgba(16,185,129,0.15); color:#10b981; padding:3px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:4px;">
                           <span style="width:6px; height:6px; border-radius:50%; background:#10b981;"></span> مباشر الآن 🔴
                         </span>
-                        <a href="#classroom/${s.id}" class="btn-primary" style="padding:6px 14px; font-size:0.78rem; font-weight:800; border-radius:10px; background:#10b981; border-color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                          دخول القاعة 🚀
-                        </a>
+                        <button class="btn-primary" data-join-meet-id="${s.id}" style="padding:6px 14px; font-size:0.78rem; font-weight:800; border-radius:10px; background:#10b981; border-color:#10b981; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                          Google Meet 🎥
+                        </button>
                       ` : isCompleted ? `
                         <span style="font-size:0.75rem; font-weight:800; background:rgba(107,114,128,0.12); color:#6b7280; padding:3px 10px; border-radius:10px;">
                           ✓ مكتملة
@@ -1208,9 +1213,9 @@ export const AdminSessionsPage = {
                           ⏳ قادمة ومجدولة
                         </span>
                         ${s.id ? `
-                          <a href="#classroom/${s.id}" class="btn-secondary" style="padding:5px 12px; font-size:0.76rem; font-weight:800; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                            <i data-lucide="video" style="width:12px; height:12px;"></i> القاعة
-                          </a>
+                          <button class="btn-secondary" data-join-meet-id="${s.id}" style="padding:5px 12px; font-size:0.76rem; font-weight:800; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="video" style="width:12px; height:12px;"></i> Google Meet 🎥
+                          </button>
                         ` : ''}
                       `}
                     </div>
@@ -1382,16 +1387,23 @@ export const AdminSessionsPage = {
     const initialStartDate = group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : todayStr;
     const initialEndDate = group.endDate ? new Date(group.endDate).toISOString().slice(0, 10) : calculateEndDate(initialStartDate, initialDays, initialSessions);
 
+    const teachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
+    const teacherOptions = teachers.map(t => `
+      <option value="${t.id}" ${group.teacher && String(group.teacher.id) === String(t.id) ? 'selected' : ''}>
+        ${t.name} (${t.email || t.phone || 'معلم'})
+      </option>
+    `).join('');
+
     wrapper.innerHTML = `
       <div style="position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
-        <div class="glass-card" style="width:100%; max-width:620px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden; border:2px solid #10b981; box-shadow:0 16px 40px rgba(0,0,0,0.3);">
+        <div class="glass-card" style="width:100%; max-width:640px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden; border:2px solid #10b981; box-shadow:0 16px 40px rgba(0,0,0,0.3);">
           
           <!-- Modal Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
             <div>
               <div style="display:flex; gap:6px; margin-bottom:4px;">
                 <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem; font-weight:800;">
-                  اعتماد ونشر مجموعة دراسية 🚀
+                  مراجعة وتعديل واعتماد المجموعة الدراسية ✏️✅
                 </span>
                 ${group.course?.title ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.75rem;">${group.course.title}</span>` : ''}
               </div>
@@ -1399,7 +1411,7 @@ export const AdminSessionsPage = {
                 👥 ${group.name || group.title}
               </h3>
               <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 0 0;">
-                المعلم: <strong style="color:var(--text-main);">${group.teacher?.name || "معلم المادة"}</strong> • حدد التواريخ والأسعار وسعة المقاعد
+                يمكنك تعديل المواعيد، الأسعار، السعة، المعلم المشرف، ورابط البث قبل النشر للطلاب
               </p>
             </div>
             <button id="close-admin-approve-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.3rem;">
@@ -1408,8 +1420,27 @@ export const AdminSessionsPage = {
           </div>
 
           <!-- Form Body -->
-          <form id="admin-approve-group-form" style="display:flex; flex-direction:column; gap:16px; overflow-y:auto; padding-inline-end:4px;">
+          <form id="admin-approve-group-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
             
+            <!-- Group Name & Teacher Select -->
+            <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  اسم المجموعة: <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="text" id="approve-group-name" value="${group.name || group.title || ''}" required class="form-input"
+                  style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  المعلم المشرف: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="approve-group-teacher" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                  ${teacherOptions || `<option value="${group.teacher?.id || ''}">${group.teacher?.name || 'معلم المادة'}</option>`}
+                </select>
+              </div>
+            </div>
+
             <!-- Schedule Days Checkboxes -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
@@ -1482,6 +1513,12 @@ export const AdminSessionsPage = {
                 </label>
                 <input type="number" id="approve-group-teacher-rate" value="${initialTeacherRate}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1.5px solid #10b981; background:var(--bg-app); color:#10b981; font-weight:800; font-size:1rem; box-sizing:border-box;">
               </div>
+            </div>
+
+            <!-- Meeting Link -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">رابط قاعة البث (Zoom / Google Meet):</label>
+              <input type="url" id="approve-group-meeting-link" value="${group.meetingLink || ''}" placeholder="https://zoom.us/j/... أو Meet" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
             </div>
 
             <!-- Live Calculation Summary Card -->
@@ -1562,6 +1599,9 @@ export const AdminSessionsPage = {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const name = wrapper.querySelector("#approve-group-name")?.value.trim() || group.name || group.title;
+      const teacherId = wrapper.querySelector("#approve-group-teacher")?.value || group.teacher?.id;
+      const meetingLink = wrapper.querySelector("#approve-group-meeting-link")?.value.trim() || null;
       const startDate = wrapper.querySelector("#approve-group-start-date")?.value || null;
       const endDate = wrapper.querySelector("#approve-group-end-date")?.value || null;
       const scheduleTime = wrapper.querySelector("#approve-group-time")?.value.trim() || "6:00م";
@@ -1585,6 +1625,9 @@ export const AdminSessionsPage = {
         await apiFetch(`/admin/groups/${group.id}/approve`, {
           method: "POST",
           body: JSON.stringify({
+            name,
+            teacherId,
+            meetingLink,
             startDate,
             endDate,
             scheduleDays,
@@ -1796,7 +1839,7 @@ export const AdminSessionsPage = {
                             <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px;">تغيير المعلم</button>
                             <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:var(--error);">إلغاء</button>
                           ` : ''}
-                          <a href="#classroom/${sess.id}" class="btn-primary" style="font-size:0.72rem; padding:4px 8px; text-decoration:none;">دخول</a>
+                          <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; cursor:pointer;">Google Meet 🎥</button>
                         </div>
                       </div>
                     `;
@@ -1863,9 +1906,9 @@ export const AdminSessionsPage = {
                                 <i data-lucide="x-circle" style="width:12px;height:12px;"></i> إلغاء الحصة
                               </button>
                             ` : ''}
-                            <a href="#classroom/${sess.id}" class="btn-primary" style="font-size:0.75rem; padding:5px 10px; text-decoration:none;">
-                              <i data-lucide="video" style="width:12px;height:12px;"></i> دخول
-                            </a>
+                            <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                              <i data-lucide="video" style="width:12px;height:12px;"></i> Google Meet 🎥
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -2193,25 +2236,12 @@ export const AdminSessionsPage = {
       }
     });
 
-    // 2. Quick Approve from Modal
+    // 2. Approve from Modal with Payment Details
     container.querySelectorAll(".admin-roster-approve-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const enrollmentId = btn.getAttribute("data-enrollment-id");
         if (!enrollmentId) return;
-        btn.disabled = true;
-        try {
-          const res = await apiFetch(`/admin/enrollments/${enrollmentId}/approve`, {
-            method: "POST",
-            body: JSON.stringify({})
-          });
-          showToast(res.message || "تم اعتماد وتفعيل مقعد الطالب بنجاح! ✅", "success");
-          await this.loadAllData();
-          await this.renderGroupStudentsModal(dbGroupId);
-          this.renderTab(this.activeTab);
-        } catch (err) {
-          btn.disabled = false;
-          showToast(err.message || "فشل اعتماد تسجيل الطالب", "error");
-        }
+        this.renderApproveEnrollmentModal(enrollmentId);
       });
     });
 

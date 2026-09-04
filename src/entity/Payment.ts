@@ -18,7 +18,7 @@ export class Payment {
   currency: string;
 
   @Column()
-  type: "COURSE_ENROLLMENT" | "SUBSCRIPTION";
+  type: "COURSE_ENROLLMENT" | "SUBSCRIPTION" | "GROUP_ENROLLMENT";
 
   @ManyToOne(() => Enrollment, { nullable: true, onDelete: "SET NULL" })
   courseEnrollment: Enrollment;

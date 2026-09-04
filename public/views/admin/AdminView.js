@@ -1067,37 +1067,9 @@ export default class AdminView {
 
     // Admin Approve Course Enrollment
     this.container.querySelectorAll(".admin-approve-enrollment-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        const isFreeAttr = btn.getAttribute("data-free") === "true";
-        const enrollment = (this.enrollments || []).find(e => e.id === id);
-        const isFree = isFreeAttr || Boolean(enrollment?.course?.isFree || !enrollment?.course?.price || Number(enrollment?.course?.price) === 0);
-
-        if (isFree) {
-          const studentName = enrollment?.student?.name || "الطالب";
-          const courseTitle = enrollment?.course?.title || "الدورة";
-          const confirmed = await confirmDialog(`هل تريد قبول واعتماد تسجيل "${studentName}" في الدورة المجانية "${courseTitle}" مباشرة؟ 🎁`);
-          if (!confirmed) return;
-
-          try {
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner" style="width:12px;height:12px;display:inline-block;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></span> جاري الاعتماد...`;
-            const res = await apiFetch(`/admin/enrollments/${id}/approve`, {
-              method: "POST",
-              body: JSON.stringify({ amount: 0, provider: "Free Course", notes: "دورة مجانية - قبول فوري ومباشر" })
-            });
-            showToast(res.message || "تم قبول تسجيل الطالب في الدورة المجانية بنجاح! 🎁✅", "success");
-            await this.loadAllData();
-            this.renderTab("enrollments");
-          } catch (err) {
-            showToast(err.message || "فشل اعتماد تسجيل الدورة المجانية", "error");
-            btn.disabled = false;
-            btn.innerHTML = `<i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول مباشر (مجاني) ✅`;
-            if (window.lucide) window.lucide.createIcons();
-          }
-        } else {
-          this.renderApproveEnrollmentModal(id);
-        }
+        this.renderApproveEnrollmentModal(id);
       });
     });
 
@@ -1776,6 +1748,14 @@ export default class AdminView {
       const contactSubtitle = document.getElementById("setting-contact-subtitle")?.value.trim();
       const contactAddress = document.getElementById("setting-contact-address")?.value.trim();
 
+      // Platform Financial Transfer Accounts
+      const vodafoneCashNumber = document.getElementById("setting-vodafone-cash")?.value.trim();
+      const instapayHandle = document.getElementById("setting-instapay-handle")?.value.trim();
+      const orangeCashNumber = document.getElementById("setting-orange-cash")?.value.trim();
+      const etisalatCashNumber = document.getElementById("setting-etisalat-cash")?.value.trim();
+      const bankAccountDetails = document.getElementById("setting-bank-details")?.value.trim();
+      const paymentInstructions = document.getElementById("setting-payment-instructions")?.value.trim();
+
       try {
         const res = await apiFetch("/admin/settings", {
           method: "PUT",
@@ -1787,14 +1767,20 @@ export default class AdminView {
             workingHours,
             contactTitle,
             contactSubtitle,
-            contactAddress
+            contactAddress,
+            vodafoneCashNumber,
+            instapayHandle,
+            orangeCashNumber,
+            etisalatCashNumber,
+            bankAccountDetails,
+            paymentInstructions
           })
         });
 
         if (res && res.settings) {
           this.platformSettings = res.settings;
           state.platformSettings = { ...state.platformSettings, ...res.settings };
-          showToast(res.message || "تم حفظ كافة إعدادات المنصة وبيانات التواصل بنجاح! ✅", "success");
+          showToast(res.message || "تم حفظ كافة إعدادات المنصة وبيانات التحويل المالي بنجاح! ✅", "success");
 
           // Update preview link & floating whatsapp button
           const previewLink = document.getElementById("admin-preview-wa-link");
@@ -1811,7 +1797,7 @@ export default class AdminView {
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width:18px; height:18px;"></i> <span>حفظ إعدادات الواتساب والتواصل 💾</span>`;
+          submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width:18px; height:18px;"></i> <span>حفظ إعدادات المنصة وبيانات التحويل 💾</span>`;
           if (window.lucide) window.lucide.createIcons();
         }
       }

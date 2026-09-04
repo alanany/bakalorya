@@ -472,10 +472,10 @@ export class AdminController {
     }
   }
 
-  // POST /admin/enrollments/:id/approve — Admin approves course enrollment
+  // POST /admin/enrollments/:id/approve — Admin approves group enrollment & saves payment details
   static async approveEnrollment(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { amount, receiptUrl, notes, provider } = req.body;
+    const { amount, receiptUrl, notes, provider, providerTransactionId } = req.body;
 
     try {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
@@ -498,14 +498,22 @@ export class AdminController {
         }) || new Payment();
       }
 
+      const finalReceiptUrl = receiptUrl || payment.receiptUrl;
+      if (!finalReceiptUrl) {
+        return res.status(400).json({
+          error: "لا يمكن اعتماد وتفعيل اشتراك الطالب بدون رفع صورة إيصال التحويل المالي وتوثيقه."
+        });
+      }
+
       payment.student = enrollment.student;
-      payment.type = "COURSE_ENROLLMENT";
+      payment.type = "GROUP_ENROLLMENT";
       payment.amount = amount !== undefined ? Number(amount) : (payment.amount || 0);
       payment.currency = "EGP";
       payment.status = "SUCCESS";
       payment.provider = provider || payment.provider || "vodafone_cash";
-      if (receiptUrl) payment.receiptUrl = receiptUrl;
-      if (notes) payment.notes = notes;
+      if (providerTransactionId !== undefined) payment.providerTransactionId = providerTransactionId;
+      payment.receiptUrl = finalReceiptUrl;
+      if (notes !== undefined) payment.notes = notes;
 
       const savedPayment = await paymentRepo.save(payment);
 

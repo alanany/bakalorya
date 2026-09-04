@@ -78,11 +78,11 @@ export function renderPhoneInputGroup({ selectId = "phone-code", inputId = "phon
   `).join("");
 
   return `
-    <div style="display:flex; gap:8px; align-items:center;">
-      <select id="${selectId}" class="form-select" style="width:145px; flex-shrink:0; font-size:0.85rem; padding:10px 8px; border-radius:10px;">
+    <div class="phone-input-group" style="display:flex; gap:8px; align-items:center; width:100%; box-sizing:border-box;">
+      <select id="${selectId}" class="form-select phone-code-select" style="width:130px; min-width:85px; max-width:135px; flex-shrink:0; font-size:0.85rem; padding:10px 6px; border-radius:10px;">
         ${optionsHtml}
       </select>
-      <input type="tel" id="${inputId}" class="form-input" value="${numValue || ''}" placeholder="${placeholder}" ${required ? "required" : ""} style="flex:1; padding:10px 14px; border-radius:10px;">
+      <input type="tel" id="${inputId}" class="form-input phone-number-input" value="${numValue || ''}" placeholder="${placeholder}" ${required ? "required" : ""} style="flex:1; min-width:0; width:100%; padding:10px 14px; border-radius:10px; box-sizing:border-box;">
     </div>
   `;
 }
@@ -227,6 +227,94 @@ export function getSessionJoinInfo(session) {
     text: `متاح الانضمام قبل الموعد بـ 30 دقيقة فقط`
   };
 }
+
+// ─── Direct Google Meet Resolver & Joiner ───
+export function getSessionMeetingUrl(session) {
+  if (!session) return "";
+  let raw = (
+    session.meetingLink ||
+    session.meetingUrl ||
+    session.courseGroup?.meetingLink ||
+    session.group?.meetingLink ||
+    session.course?.meetingLink ||
+    session.teacher?.meetingLink ||
+    ""
+  ).trim();
+
+  if (!raw && state.user?.role === "teacher" && state.user?.meetingLink) {
+    raw = state.user.meetingLink.trim();
+  }
+
+  if (!raw) return "";
+
+  if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+    raw = "https://" + raw;
+  }
+  return raw;
+}
+
+export async function joinSessionDirectly(sessionOrId) {
+  let session = sessionOrId;
+  if (!session) return;
+  if (typeof sessionOrId === "string" || typeof sessionOrId === "number") {
+    try {
+      const [sessions, myPrivate] = await Promise.all([
+        apiFetch("/sessions").catch(() => []),
+        apiFetch("/sessions/my-private").catch(() => [])
+      ]);
+      session = [...(sessions || []), ...(myPrivate || [])].find(s => String(s.id) === String(sessionOrId));
+    } catch (e) {
+      console.error("joinSessionDirectly session lookup error:", e);
+    }
+  }
+
+  if (!session) {
+    showToast("تعذر العثور على بيانات الحصة المحددة.", "error");
+    return;
+  }
+
+  // 1. Time restriction check
+  const isJoinAllowed = canJoinSession(session);
+  if (!isJoinAllowed) {
+    const isTeacher = state.user?.role === "teacher" || (session.teacher && String(session.teacher.id) === String(state.user?.id));
+    const winText = isTeacher ? "ساعة واحدة (60 دقيقة)" : "30 دقيقة";
+    showToast(`عفواً، ينشط رابط Google Meet للحصة قبل موعدها بـ ${winText} فقط.`, "warning");
+    return;
+  }
+
+  // 2. Resolve Google Meet Link
+  const meetUrl = getSessionMeetingUrl(session);
+  if (!meetUrl) {
+    showToast("لم يقم المعلم أو الإدارة بإضافة رابط Google Meet لهذه الحصة بعد. يرجى التواصل مع المعلم.", "warning");
+    return;
+  }
+
+  // 3. Auto Check-in attendance in database
+  if (session.id) {
+    apiFetch(`/sessions/${session.id}/checkin`, { method: "POST" })
+      .then(() => {
+        window.checkedInSessions = window.checkedInSessions || new Set();
+        window.checkedInSessions.add(String(session.id));
+      })
+      .catch(() => {});
+  }
+
+  showToast("جارٍ فتح Google Meet مباشرة... 🎥", "success");
+  window.open(meetUrl, "_blank", "noopener,noreferrer");
+}
+
+window.joinSessionDirectly = joinSessionDirectly;
+window.getSessionMeetingUrl = getSessionMeetingUrl;
+
+// Global Delegated Click Listener for direct Google Meet buttons
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-join-meet-id]");
+  if (btn) {
+    e.preventDefault();
+    const sessionId = btn.getAttribute("data-join-meet-id");
+    joinSessionDirectly(sessionId);
+  }
+});
 
 // ─── Global End Session & Report Modal (Settles credits & adds teacher earnings) ───
 export function showEndSessionReportModal(sessionId, onSuccess) {
@@ -560,7 +648,13 @@ export const state = {
     cleanWhatsApp: "213555123456",
     whatsappUrl: "https://wa.me/213555123456",
     contactPhone: "+213 555 123 456",
-    contactEmail: "support@entlqedu.com"
+    contactEmail: "support@entlqedu.com",
+    vodafoneCashNumber: "01098765432",
+    instapayHandle: "bakalorya@instapay",
+    orangeCashNumber: "",
+    etisalatCashNumber: "",
+    bankAccountDetails: "",
+    paymentInstructions: ""
   }
 };
 
@@ -772,12 +866,11 @@ export function updateHeader() {
         <a href="#teacher-portal" class="nav-link active">
           <i data-lucide="graduation-cap"></i> ${t("nav.teacherPortal")}
         </a>
+        <a href="#courses" class="nav-link">
+          <i data-lucide="book-open"></i> ${t("nav.teacher.courses")}
+        </a>
         <a href="#students" class="nav-link">
           <i data-lucide="users"></i> ${t("nav.teacher.students") || "إدارة الطلاب"}
-        </a>
-        <a href="#enrollment-requests" class="nav-link" style="position:relative; display:flex; align-items:center; gap:6px;">
-          <i data-lucide="bell"></i> ${t("nav.teacher.requests") || "طلبات التسجيل"}
-          <span id="header-pending-requests-badge" style="display:none; background:var(--error); color:#fff; font-size:0.7rem; font-weight:700; padding:2px 7px; border-radius:10px; box-shadow:0 0 8px rgba(239,68,68,0.5);">0</span>
         </a>
       `;
     } else if (state.user.role === "admin") {
@@ -789,14 +882,14 @@ export function updateHeader() {
     }
 
     authContainer.innerHTML = `
-      <div style="display:flex; align-items:center; gap:10px;">
-        <a href="#notifications" id="header-notification-btn" title="الإشعارات والتنبيهات" style="position:relative; width:38px; height:38px; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; color:var(--text-main); text-decoration:none; transition:all 0.2s ease;">
-          <i data-lucide="bell" style="width:18px; height:18px;"></i>
-          <span id="header-unread-notif-badge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--error,#ef4444); color:#fff; font-size:0.65rem; font-weight:800; padding:1px 6px; border-radius:10px; border:2px solid var(--bg-card); min-width:18px; text-align:center;">0</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a href="#notifications" id="header-notification-btn" title="الإشعارات والتنبيهات" style="position:relative; width:34px; height:34px; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; color:var(--text-main); text-decoration:none; transition:all 0.2s ease; flex-shrink:0;">
+          <i data-lucide="bell" style="width:16px; height:16px;"></i>
+          <span id="header-unread-notif-badge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--error,#ef4444); color:#fff; font-size:0.65rem; font-weight:800; padding:1px 5px; border-radius:10px; border:2px solid var(--bg-card); min-width:16px; text-align:center;">0</span>
         </a>
 
-        <div class="user-profile-trigger">
-          <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq"}" alt="Avatar" class="user-avatar">
+        <div class="user-profile-trigger" style="display:flex; align-items:center; gap:6px;">
+          <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq"}" alt="Avatar" class="user-avatar" style="width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0;">
           <span class="user-profile-name" style="font-weight:700; font-size:0.88rem;">${state.user.name}</span>
           <button class="logout-btn" id="logout-button" title="${t("nav.logout") || 'تسجيل الخروج'}">
             <i data-lucide="log-out" style="width:15px; height:15px;"></i>
@@ -829,8 +922,8 @@ export function updateHeader() {
       </a>
     `;
     authContainer.innerHTML = `
-      <a href="#login" style="color:#0056D2; font-weight:700; text-decoration:none; font-size:0.9rem; margin-inline-end:8px;">${t("nav.login") || "Log In"}</a>
-      <a href="#signup" style="border:1.5px solid #0056D2; color:#0056D2; background:transparent; padding:8px 18px; border-radius:6px; font-weight:800; font-size:0.9rem; text-decoration:none; transition:all 0.2s;" onmouseenter="this.style.background='#0056D2'; this.style.color='#ffffff';" onmouseleave="this.style.background='transparent'; this.style.color='#0056D2';">${t("auth.register") || "Join for Free"}</a>
+      <a href="#login" class="header-login-btn" title="${t("nav.login") || "تسجيل الدخول"}">${t("nav.login") || "تسجيل الدخول"}</a>
+      <a href="#signup" class="header-signup-btn">${t("auth.register") || "انضم مجاناً"}</a>
     `;
   }
 
@@ -890,9 +983,6 @@ export function updateHeader() {
           </a>
           <a href="#students" class="sidebar-nav-item">
             <i data-lucide="users"></i> ${t("nav.teacher.students") || "الطلاب المسجلين"}
-          </a>
-          <a href="#enrollment-requests" class="sidebar-nav-item">
-            <i data-lucide="user-check"></i> ${t("nav.teacher.requests") || "طلبات التسجيل"}
           </a>
           <a href="#schedule" class="sidebar-nav-item">
             <i data-lucide="calendar"></i> ${t("nav.schedule")}
@@ -1003,7 +1093,29 @@ export function updateHeader() {
         </div>
       `;
     }
+
+    links += `
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
+        <button type="button" id="sidebar-drawer-theme-btn" style="flex:1; border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; background:var(--bg-app); cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-color); display:flex; align-items:center; justify-content:center; gap:6px;">
+          <i data-lucide="sun" class="sun-icon" style="width:16px; height:16px;"></i>
+          <i data-lucide="moon" class="moon-icon" style="width:16px; height:16px;"></i>
+          <span>المظهر</span>
+        </button>
+        <button type="button" id="sidebar-drawer-lang-btn" style="flex:1; border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; background:var(--bg-app); cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-color); display:flex; align-items:center; justify-content:center; gap:6px;">
+          <i data-lucide="globe" style="width:16px; height:16px;"></i>
+          <span>${state.language === "ar" ? "English" : "العربية"}</span>
+        </button>
+      </div>
+    `;
+
     sidebarList.innerHTML = links;
+
+    sidebarList.querySelector("#sidebar-drawer-theme-btn")?.addEventListener("click", () => {
+      document.getElementById("theme-toggle")?.click();
+    });
+    sidebarList.querySelector("#sidebar-drawer-lang-btn")?.addEventListener("click", () => {
+      document.getElementById("lang-toggle")?.click();
+    });
 
     sidebarList.querySelectorAll("a").forEach(a => {
       a.addEventListener("click", closeSidebar);
@@ -1661,7 +1773,13 @@ export async function router() {
     case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;
-    case "#enrollment-requests": ViewClass = RequestsView; break;
+    case "#enrollment-requests": 
+      if (state.user?.role === "teacher") {
+        window.location.hash = "#teacher-portal";
+        return;
+      }
+      ViewClass = RequestsView; 
+      break;
     case "#teacher-blogs": ViewClass = TeacherBlogsView; break;
     case "#blog": ViewClass = BlogDetailsView; break;
     case "#classroom": ViewClass = ClassroomView; break;

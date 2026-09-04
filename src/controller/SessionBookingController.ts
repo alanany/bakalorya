@@ -117,6 +117,7 @@ export class SessionBookingController {
       session.duration = subscription.plan?.sessionDurationMins || 60;
       session.status = "SCHEDULED";
       session.topic = topic || "";
+      session.meetingLink = sessionTeacher?.meetingLink || null;
 
       await sessionRepository.save(session);
 
@@ -655,6 +656,7 @@ export class SessionBookingController {
         sess.duration = subscription.plan?.sessionDurationMins || 60;
         sess.status = "SCHEDULED";
         sess.topic = topic || "";
+        sess.meetingLink = sessionTeacher?.meetingLink || null;
 
         const saved = await sessionRepository.save(sess);
         newSessions.push(saved);
@@ -1092,6 +1094,7 @@ export class SessionBookingController {
           sess.duration = subscription.plan?.sessionDurationMins || 60;
           sess.status = "SCHEDULED";
           sess.topic = item.topic || "";
+          sess.meetingLink = sessionTeacher?.meetingLink || null;
 
           await sessionRepo.save(sess);
         }
@@ -1392,6 +1395,7 @@ export class SessionBookingController {
           session.duration = sessionDuration;
           session.status = "SCHEDULED";
           session.topic = sessionTitle;
+          session.meetingLink = meetingLink || (course ? course.meetingLink : teacher.meetingLink) || null;
 
           const saved = await sessionRepository.save(session);
           createdSessions.push(saved);
@@ -1517,6 +1521,7 @@ export class SessionBookingController {
           newSess.status = "SCHEDULED";
           newSess.topic = sess.topic || sess.title;
           if (sess.course) newSess.course = sess.course;
+          newSess.meetingLink = sess.meetingLink || sess.course?.meetingLink || sess.teacher?.meetingLink || null;
 
           await sessionRepository.save(newSess);
           addedCount++;

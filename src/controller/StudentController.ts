@@ -56,61 +56,61 @@ export class StudentController {
         return res.status(404).json({ error: "Student profile not found." });
       }
 
-      let selectedGroup: CourseGroup | null = null;
-      if (groupId) {
-        selectedGroup = await groupRepository.findOne({
-          where: { id: groupId, course: { id: courseId } }
+      // Subscriptions are strictly for groups — direct course enrollments are not allowed
+      if (!groupId) {
+        return res.status(400).json({ 
+          error: "الاشتراك متاح للمجموعات الدراسية فقط. يرجى اختيار وتحديد المجموعة الدراسية للاشتراك بها." 
         });
+      }
 
-        if (!selectedGroup) {
-          return res.status(404).json({ error: "المجموعة الدراسية المحددة غير موجودة." });
-        }
+      const selectedGroup = await groupRepository.findOne({
+        where: { id: groupId, course: { id: courseId } }
+      });
 
-        if (selectedGroup.status === "CLOSED" || selectedGroup.status === "IN_PROGRESS") {
-          return res.status(400).json({
-            error: "عذراً، هذه المجموعة مغلقة للتسجيل حالياً نظراً لبدء الدراسة والتدريس."
-          });
-        }
+      if (!selectedGroup) {
+        return res.status(404).json({ error: "المجموعة الدراسية المحددة غير موجودة." });
+      }
 
-        if (selectedGroup.status === "PENDING_APPROVAL" || selectedGroup.status === "REJECTED") {
-          return res.status(400).json({
-            error: "عذراً، هذه المجموعة غير متاحة للتسجيل حالياً بانتظار اعتماد الإدارة."
-          });
-        }
-
-        // Capacity check: count active + pending enrollments
-        const totalEnrolled = await enrollmentRepository.count({
-          where: [
-            { group: { id: groupId }, status: "active" },
-            { group: { id: groupId }, status: "pending" }
-          ]
+      if (selectedGroup.status === "CLOSED" || selectedGroup.status === "IN_PROGRESS") {
+        return res.status(400).json({
+          error: "عذراً، هذه المجموعة مغلقة للتسجيل حالياً نظراً لبدء الدراسة والتدريس."
         });
+      }
 
-        const maxSeats = selectedGroup.maxStudents || 25;
-        if (totalEnrolled >= maxSeats || selectedGroup.status === "FULL") {
-          return res.status(400).json({
-            error: `عذراً، هذه المجموعة مكتملة العدد (${totalEnrolled}/${maxSeats} طالب) ومغلقة للتسجيل.`
-          });
-        }
+      if (selectedGroup.status === "PENDING_APPROVAL" || selectedGroup.status === "REJECTED") {
+        return res.status(400).json({
+          error: "عذراً، هذه المجموعة غير متاحة للتسجيل حالياً بانتظار اعتماد الإدارة."
+        });
+      }
+
+      // Capacity check: count active + pending enrollments
+      const totalEnrolled = await enrollmentRepository.count({
+        where: [
+          { group: { id: groupId }, status: "active" },
+          { group: { id: groupId }, status: "pending" }
+        ]
+      });
+
+      const maxSeats = selectedGroup.maxStudents || 25;
+      if (totalEnrolled >= maxSeats || selectedGroup.status === "FULL") {
+        return res.status(400).json({
+          error: `عذراً، هذه المجموعة مكتملة العدد (${totalEnrolled}/${maxSeats} طالب) ومغلقة للتسجيل.`
+        });
       }
 
       let enrollment = await enrollmentRepository.findOne({
-        where: selectedGroup
-          ? { student: { id: req.user!.id }, group: { id: selectedGroup.id } }
-          : { student: { id: req.user!.id }, course: { id: courseId } },
+        where: { student: { id: req.user!.id }, group: { id: selectedGroup.id } },
         relations: ["group", "payment"]
       });
 
       if (enrollment) {
         if (enrollment.status === "active") {
-          return res.status(400).json({ error: "أنت مسجل بالفعل في هذه الدورة / المجموعة الدراسية." });
+          return res.status(400).json({ error: "أنت مسجل بالفعل في هذه المجموعة الدراسية." });
         }
         if (enrollment.status === "pending") {
           return res.status(400).json({ error: "طلب تسجيلك في هذه المجموعة قيد المراجعة والاعتماد من الإدارة بالفعل ⏳." });
         }
-        if (selectedGroup) {
-          enrollment.group = selectedGroup;
-        }
+        enrollment.group = selectedGroup;
         if (enrollment.status === "rejected") {
           enrollment.status = "pending";
         }
@@ -118,29 +118,27 @@ export class StudentController {
         enrollment = new Enrollment();
         enrollment.student = student;
         enrollment.course = course;
-        if (selectedGroup) {
-          enrollment.group = selectedGroup;
-        }
+        enrollment.group = selectedGroup;
         enrollment.progress = 0;
         enrollment.status = "pending";
         enrollment.completedLessons = [];
       }
 
-      // Handle Payment record — ALL enrollments require admin approval (no free courses)
+      // Handle Payment record — Every group subscription is PAID and requires admin approval
       let payment = enrollment.payment;
       if (!payment) {
         payment = new Payment();
       }
 
-      const calculatedAmount = amount !== undefined ? Number(amount) : (
-        selectedGroup?.monthlyPrice || 
-        (selectedGroup?.sessionPrice ? selectedGroup.sessionPrice * 8 : (course.price || 0))
+      const calculatedAmount = (amount !== undefined && Number(amount) > 0) ? Number(amount) : (
+        selectedGroup.monthlyPrice || 
+        (selectedGroup.sessionPrice ? selectedGroup.sessionPrice * 8 : (selectedGroup.studentHourlyRate ? selectedGroup.studentHourlyRate * 8 : 320))
       );
 
       payment.student = student;
       payment.amount = calculatedAmount;
       payment.currency = "EGP";
-      payment.type = "COURSE_ENROLLMENT";
+      payment.type = "GROUP_ENROLLMENT";
       payment.provider = provider || "vodafone_cash";
       if (providerTransactionId) payment.providerTransactionId = providerTransactionId;
       if (receiptUrl) payment.receiptUrl = receiptUrl;
