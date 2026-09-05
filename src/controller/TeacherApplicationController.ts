@@ -95,18 +95,30 @@ export class TeacherApplicationController {
 
       let whatsappNotification: any = null;
       if (status === "approved") {
-        // Create active teacher account
-        const teacher = userRepo.create({
-          name: application.name,
-          email: application.email,
-          password: application.password, // Already hashed
-          role: "teacher",
-          phone: application.phone,
-          education: application.education,
-          location: application.location,
-          avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(application.name)}`
-        });
-        await userRepo.save(teacher);
+        // Create active teacher account or update existing user
+        const existingUser = await userRepo.findOneBy({ email: application.email });
+        if (existingUser) {
+          existingUser.role = "teacher";
+          existingUser.status = "ACTIVE";
+          if (application.password) existingUser.password = application.password;
+          if (application.phone) existingUser.phone = application.phone;
+          if (application.education) existingUser.education = application.education;
+          if (application.location) existingUser.location = application.location;
+          await userRepo.save(existingUser);
+        } else {
+          const teacher = userRepo.create({
+            name: application.name,
+            email: application.email,
+            password: application.password, // Already hashed
+            role: "teacher",
+            status: "ACTIVE",
+            phone: application.phone,
+            education: application.education,
+            location: application.location,
+            avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(application.name)}`
+          });
+          await userRepo.save(teacher);
+        }
 
         if (application.phone) {
           const msg = buildRegistrationSuccessMessage(application.name, "teacher");

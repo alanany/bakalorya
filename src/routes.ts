@@ -297,6 +297,7 @@ router.post("/admin/enrollments/:id/approve", authMiddleware, requireRole(["admi
 router.post("/admin/enrollments/:id/reject", authMiddleware, requireRole(["admin"]), AdminController.rejectEnrollment);
 router.get("/admin/reports", authMiddleware, requireRole(["admin"]), AdminController.getReports);
 router.get("/admin/teacher-applications", authMiddleware, requireRole(["admin"]), TeacherApplicationController.getApplications);
+router.put("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);
 router.patch("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);
 
 export default router;

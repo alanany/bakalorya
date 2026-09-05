@@ -2948,3 +2948,264 @@ body.sidebar-open {
     max-height: none !important;
   }
 }
+
+/* ── TEACHER APPLICATION PAGE RESPONSIVE STYLES ──────────────────────────────── */
+.teacher-apply-container {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  box-sizing: border-box;
+}
+
+.teacher-apply-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.teacher-apply-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border-focus);
+  border-radius: 30px;
+  padding: 6px 18px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.teacher-apply-title {
+  font-size: clamp(1.45rem, 4vw, 2.2rem);
+  font-weight: 900;
+  color: var(--text-color);
+  margin: 0 0 12px 0;
+  line-height: 1.3;
+}
+
+.teacher-apply-desc {
+  font-size: clamp(0.88rem, 2vw, 1rem);
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.teacher-apply-card {
+  border-radius: 24px;
+  padding: 36px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  width: 100%;
+  transition: box-shadow 0.3s ease;
+}
+
+.teacher-apply-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.teacher-apply-form-grid .form-group {
+  margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.teacher-apply-form-grid .form-group.col-full {
+  grid-column: 1 / -1;
+}
+
+.teacher-apply-form-grid label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-color);
+}
+
+.teacher-apply-form-grid .form-input,
+.teacher-apply-form-grid textarea.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  border-radius: 12px;
+}
+
+.teacher-apply-form-grid textarea.form-input {
+  min-height: 110px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.teacher-apply-actions {
+  border-top: 1px solid var(--border-color);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.teacher-apply-actions .btn-cancel {
+  text-decoration: none;
+  padding: 12px 24px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.teacher-apply-actions .btn-submit {
+  padding: 12px 32px;
+  font-size: 1rem;
+  font-weight: 800;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.teacher-apply-success-card {
+  max-width: 600px;
+  margin: 50px auto;
+  text-align: center;
+  padding: 48px 32px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 24px;
+}
+
+.teacher-apply-success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--success-glow);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+}
+
+/* Tablet Breakpoint (<= 768px) */
+@media screen and (max-width: 768px) {
+  .teacher-apply-container {
+    padding: 28px 20px 60px;
+  }
+
+  .teacher-apply-card {
+    padding: 26px 20px;
+    border-radius: 20px;
+  }
+
+  .teacher-apply-form-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .teacher-apply-actions {
+    padding-top: 20px;
+  }
+}
+
+/* Mobile Breakpoint (<= 540px) */
+@media screen and (max-width: 540px) {
+  .teacher-apply-container {
+    padding: 20px 12px 40px;
+  }
+
+  .teacher-apply-header {
+    margin-bottom: 22px;
+  }
+
+  .teacher-apply-badge {
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    gap: 6px;
+  }
+
+  .teacher-apply-card {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .teacher-apply-form-grid {
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .teacher-apply-form-grid .form-input,
+  .teacher-apply-form-grid textarea.form-input {
+    padding: 11px 13px;
+    font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+    border-radius: 10px;
+  }
+
+  .teacher-apply-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+    padding-top: 16px;
+  }
+
+  .teacher-apply-actions .btn-cancel,
+  .teacher-apply-actions .btn-submit {
+    width: 100%;
+    min-height: 46px;
+    box-sizing: border-box;
+  }
+
+  .teacher-apply-success-card {
+    margin: 24px auto;
+    padding: 30px 16px;
+    border-radius: 18px;
+  }
+
+  .teacher-apply-success-card h2 {
+    font-size: 1.45rem !important;
+  }
+
+  .teacher-apply-success-card p {
+    font-size: 0.88rem !important;
+    margin-bottom: 20px !important;
+  }
+
+  .teacher-apply-success-card .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Extra Small Screen (<= 380px) */
+@media screen and (max-width: 380px) {
+  .teacher-apply-container {
+    padding: 16px 8px 32px;
+  }
+
+  .teacher-apply-card {
+    padding: 16px 10px;
+  }
+}
