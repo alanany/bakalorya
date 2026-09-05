@@ -89,9 +89,19 @@ export const AdminUsersPage = {
                           </div>
                         </td>
                         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
-                          <div>${u.email}</div>
-                          ${u.phone ? `<div style="font-size:0.75rem;color:var(--text-main);margin-top:2px;">📱 ${u.phone}</div>` : ''}
-                          ${u.meetingLink ? `<div style="font-size:0.72rem;color:var(--primary);margin-top:2px;font-weight:700;"><a href="${u.meetingLink}" target="_blank" style="color:var(--primary);text-decoration:underline;">🔗 رابط الاجتماع الثابت</a></div>` : ''}
+                          <div>
+                            <a href="mailto:${u.email}" style="color:var(--text-color); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;" title="إرسال بريد إلكتروني">
+                              <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);"></i> ${u.email}
+                            </a>
+                          </div>
+                          ${u.phone ? `
+                            <div style="margin-top:4px;">
+                              <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:3px 8px; border-radius:8px;" title="فتح محادثة واتساب">
+                                <i data-lucide="message-circle" style="width:12px;height:12px;"></i> ${u.phone}
+                              </a>
+                            </div>
+                          ` : '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">بدون هاتف</div>'}
+                          ${u.meetingLink ? `<div style="font-size:0.72rem;color:var(--primary);margin-top:4px;font-weight:700;"><a href="${u.meetingLink}" target="_blank" style="color:var(--primary);text-decoration:underline;">🔗 رابط الاجتماع الثابت</a></div>` : ''}
                           <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
                             ${(!u.teacherCapabilities || u.teacherCapabilities.includes("COURSE_INSTRUCTOR")) ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.65rem; font-weight:800;">📚 إنشاء دورات</span>` : ''}
                             ${(!u.teacherCapabilities || u.teacherCapabilities.includes("SESSION_TEACHER")) ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.65rem; font-weight:800;">⏱️ حصص خاصة</span>` : ''}
@@ -112,11 +122,23 @@ export const AdminUsersPage = {
                           </span>
                         </td>
                         <td style="padding:14px 20px;">
-                          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--primary);color:var(--primary);">
-                              <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل الأجر والبيانات
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            ${u.phone ? `
+                              <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 11px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب مباشرة">
+                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+                              </a>
+                            ` : `
+                              <button class="btn-secondary" disabled style="font-size:0.75rem;padding:6px 11px;opacity:0.4;cursor:not-allowed;border-radius:10px;display:inline-flex;align-items:center;gap:4px;" title="لا يتوفر هاتف مسجل">
+                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+                              </button>
+                            `}
+                            <button class="btn-secondary communicate-user-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج التواصل">
+                              <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
                             </button>
-                            <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--info);color:var(--info);">
+                            <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+                              <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
+                            </button>
+                            <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
                             </button>
                           </div>
@@ -256,7 +278,10 @@ export const AdminUsersPage = {
 
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
-        <h3 style="font-weight:700;">${t("admin.tab.students")} (${students.length})</h3>
+        <div>
+          <h3 style="font-weight:700;margin-bottom:4px;">${t("admin.tab.students")} (${students.length})</h3>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin:0;">قائمة الطلاب المسجلين، بيانات الاتصال، وإمكانية التواصل المباشر عبر الواتساب والبريد الإلكتروني</p>
+        </div>
         <button class="btn-primary" id="open-create-student-btn" style="font-size:0.85rem;padding:10px 18px;background:var(--success);">
           <i data-lucide="user-plus"></i> ${t("admin.addStudent")}
         </button>
@@ -265,19 +290,98 @@ export const AdminUsersPage = {
       ${students.length === 0
         ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noStudents")}</div>`
         : `<div class="glass-card" style="overflow:hidden;padding:0;">
-            <table style="width:100%;border-collapse:collapse;">
-              <thead>
-                <tr style="background:var(--bg-card);border-bottom:1px solid var(--border-color);">
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.name")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.email")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.joined")}</th>
-                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${students.map(u => this.memberTableRow(u)).join("")}
-              </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;text-align:start;font-size:0.88rem;">
+                <thead>
+                  <tr style="background:var(--bg-card);border-bottom:1px solid var(--border-color);">
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.name")}</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">المستوى / الولاية</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">التواصل السريع</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${students.map(u => {
+                    const joinDate = new Date(u.createdAt).toLocaleDateString();
+                    const cleanPhone = u.phone ? getCleanWhatsAppNumber(u.phone) : "";
+                    const cleanParentPhone = u.parentPhone ? getCleanWhatsAppNumber(u.parentPhone) : "";
+                    const studentWaText = encodeURIComponent(`مرحباً ${u.name}، نتواصل معك من إدارة منصة انطلق.`);
+                    const parentWaText = encodeURIComponent(`مرحباً ولي أمر الطالب ${u.name}، نتواصل معكم من إدارة منصة انطلق.`);
+
+                    return `
+                      <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:14px 20px;">
+                          <div style="display:flex;align-items:center;gap:12px;">
+                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+                            <div>
+                              <div style="font-weight:700;font-size:0.9rem;">${u.name}</div>
+                              <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
+                          <div>
+                            <a href="mailto:${u.email}" style="color:var(--text-color);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:600;" title="إرسال بريد إلكتروني">
+                              <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);"></i> ${u.email}
+                            </a>
+                          </div>
+                          ${u.phone ? `
+                            <div style="margin-top:4px;">
+                              <a href="https://wa.me/${cleanPhone}?text=${studentWaText}" target="_blank" style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:2px 8px; border-radius:6px;" title="واتساب الطالب">
+                                <i data-lucide="message-circle" style="width:12px;height:12px;"></i> ${u.phone}
+                              </a>
+                            </div>
+                          ` : ''}
+                          ${u.parentPhone ? `
+                            <div style="margin-top:2px;">
+                              <a href="https://wa.me/${cleanParentPhone}?text=${parentWaText}" target="_blank" style="color:var(--primary); text-decoration:none; font-size:0.78rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(99,102,241,0.08); padding:2px 8px; border-radius:6px;" title="واتساب ولي الأمر">
+                                👨‍👩‍👦 ${u.parentPhone}
+                              </a>
+                            </div>
+                          ` : ''}
+                          ${!u.phone && !u.parentPhone ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">بدون هاتف مسجل</div>` : ''}
+                        </td>
+                        <td style="padding:14px 20px;">
+                          ${u.education ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800; display:inline-block; margin-bottom:4px;">${u.education}</span>` : '<span style="font-size:0.75rem;color:var(--text-muted);">-</span>'}
+                          ${u.location ? `<div style="font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:3px;"><i data-lucide="map-pin" style="width:11px;height:11px;"></i> ${u.location}</div>` : ''}
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                            ${cleanPhone ? `
+                              <a href="https://wa.me/${cleanPhone}?text=${studentWaText}" target="_blank" class="btn-secondary" style="padding:5px 10px; font-size:0.75rem; border-color:#10b981; color:#10b981; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:rgba(16,185,129,0.08);" title="واتساب الطالب مباشرة">
+                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+                              </a>
+                            ` : ''}
+                            ${cleanParentPhone ? `
+                              <a href="https://wa.me/${cleanParentPhone}?text=${parentWaText}" target="_blank" class="btn-secondary" style="padding:5px 10px; font-size:0.75rem; border-color:var(--primary); color:var(--primary); border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:rgba(99,102,241,0.08);" title="واتساب ولي الأمر">
+                                💬 ولي الأمر
+                              </a>
+                            ` : ''}
+                            <button class="btn-secondary communicate-user-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج المراسلة">
+                              <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
+                            </button>
+                          </div>
+                        </td>
+                        <td style="padding:14px 20px;">
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+                              <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
+                            </button>
+                            <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+                              <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
+                            </button>
+                            <button class="btn-secondary delete-user-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+                              <i data-lucide="trash-2" style="width:12px;height:12px;"></i> حذف
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
           </div>`
       }
     `;
@@ -319,6 +423,7 @@ export const AdminUsersPage = {
   memberTableRow(user) {
     const joinDate = new Date(user.createdAt).toLocaleDateString();
     const isMe = user.id === state.user?.id;
+    const cleanPhone = user.phone ? getCleanWhatsAppNumber(user.phone) : "";
 
     let roleBadge = `<span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;background:rgba(99,102,241,0.15);color:var(--primary);">${t("admin.role.student")}</span>`;
     if (user.role === "teacher") {
@@ -335,19 +440,36 @@ export const AdminUsersPage = {
             <span style="font-weight:600;font-size:0.9rem;">${user.name}</span>
           </div>
         </td>
-        <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">${user.email}</td>
+        <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
+          <div>${user.email}</div>
+          ${user.phone ? `
+            <div style="margin-top:3px;">
+              <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(`مرحباً ${user.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" style="color:#10b981;font-size:0.78rem;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="واتساب">
+                <i data-lucide="message-circle" style="width:12px;height:12px;"></i> ${user.phone}
+              </a>
+            </div>
+          ` : ''}
+        </td>
         <td style="padding:14px 20px;">${roleBadge}</td>
         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">${joinDate}</td>
         <td style="padding:14px 20px;">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn-secondary edit-member-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--primary);color:var(--primary);">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            ${cleanPhone ? `
+              <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(`مرحباً ${user.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 10px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب">
+                <i data-lucide="message-circle" style="width:12px;height:12px;"></i> واتساب
+              </a>
+            ` : ''}
+            <button class="btn-secondary communicate-user-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج التواصل">
+              <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
+            </button>
+            <button class="btn-secondary edit-member-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
               <i data-lucide="edit" style="width:12px;height:12px;"></i> ${t("admin.editMember")}
             </button>
-            <button class="btn-secondary view-transcript-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--info);color:var(--info);">
+            <button class="btn-secondary view-transcript-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
               <i data-lucide="file-text" style="width:12px;height:12px;"></i> ${t("admin.viewTranscript")}
             </button>
             ${!isMe ? `
-              <button class="btn-secondary delete-user-btn" data-id="${user.id}" data-name="${user.name}" style="font-size:0.75rem;padding:6px 12px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);">
+              <button class="btn-secondary delete-user-btn" data-id="${user.id}" data-name="${user.name}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                 <i data-lucide="trash-2" style="width:12px;height:12px;"></i> ${t("common.delete")}
               </button>` : `<span style="font-size:0.75rem;color:var(--text-muted);">${t("admin.you")}</span>`}
           </div>
@@ -576,6 +698,231 @@ export const AdminUsersPage = {
     const closeModal = () => { container.innerHTML = ""; };
     document.getElementById("close-transcript-modal")?.addEventListener("click", closeModal);
     document.getElementById("close-transcript-btn")?.addEventListener("click", closeModal);
+  },
+
+  // ── Render Quick Communicate Modal (WhatsApp & Email) ─────────────────────────
+
+  renderCommunicateModal(user) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const isTeacher = user.role === "teacher";
+    const cleanUserPhone = user.phone ? getCleanWhatsAppNumber(user.phone) : "";
+    const cleanParentPhone = user.parentPhone ? getCleanWhatsAppNumber(user.parentPhone) : "";
+
+    let currentTargetPhone = cleanUserPhone || cleanParentPhone || "";
+    let currentTargetType = cleanUserPhone ? "user" : (cleanParentPhone ? "parent" : "none");
+
+    const templates = isTeacher ? [
+      {
+        id: "t1",
+        label: "👋 ترحيب وتنسيق",
+        text: `مرحباً الأستاذ ${user.name}، نأمل أن تكون بخير. نتواصل معك من إدارة منصة انطلق لمتابعة التنسيق الأكاديمي وجداول الحصص. نسعد دائماً بتواجدك معنا.`
+      },
+      {
+        id: "t2",
+        label: "⏰ تذكير بمواعيد الحصص",
+        text: `مرحباً الأستاذ ${user.name}، نود تذكيرك بمواعيد الحصص التفاعلية القادمة المقررة على منصة انطلق، يرجى مراجعة الجدول والتأكد من فتح الفصل الافتراضي في الموعد المحدد.`
+      },
+      {
+        id: "t3",
+        label: "💰 كشف المستحقات والرواتب",
+        text: `مرحباً الأستاذ ${user.name}، تم تدقيق وتحديث كشف المستحقات المالية والساعات المنفذة الخاصة بك على منصة انطلق. يمكنك مراجعتها عبر بوابة المعلم.`
+      },
+      {
+        id: "t4",
+        label: "✍️ رسالة مخصصة",
+        text: `مرحباً الأستاذ ${user.name}، `
+      }
+    ] : [
+      {
+        id: "s1",
+        label: "👋 ترحيب ومتابعة",
+        text: `مرحباً ${user.name}، نتمنى لك كل التوفيق في دراستك عبر منصة انطلق! فريق الإشراف متواجد لدعمك والإجابة على أي استفسار يخص المواد والحصص.`
+      },
+      {
+        id: "s2",
+        label: "⏰ تذكير بحصة مباشرة",
+        text: `مرحباً ${user.name}، نود تذكيرك بموعد حصتك التفاعلية المباشرة القادمة عبر منصة انطلق، يرجى الاستعداد وتسجيل الحضور في الموعد.`
+      },
+      {
+        id: "s3",
+        label: "👨‍👩‍👦 متابعة مع ولي الأمر",
+        text: `تحية طيبة، نتواصل معكم من إدارة منصة انطلق لمتابعة التقدم الدراسي والحضور للحصص التفاعلية للطالب ${user.name}. نسعد بتواصلكم معنا دائماً.`
+      },
+      {
+        id: "s4",
+        label: "✍️ رسالة مخصصة",
+        text: `مرحباً ${user.name}، `
+      }
+    ];
+
+    let currentText = templates[0].text;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="communicate-modal" style="display:flex; padding:16px;">
+        <div class="modal-content" style="max-width:620px; width:100%; border-radius:20px; overflow:hidden;">
+          
+          <div class="modal-header" style="padding:16px 20px; background:var(--bg-card); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="message-circle" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.1rem; margin:0 0 2px 0;">تواصل مع ${isTeacher ? 'المعلم' : 'الطالب'}: ${user.name}</h3>
+                <span style="font-size:0.75rem; color:var(--text-muted);">${user.email}</span>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-communicate-modal">&times;</span>
+          </div>
+
+          <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Target Selector if Student has both phones -->
+            ${!isTeacher && user.parentPhone && user.phone ? `
+              <div>
+                <label style="font-size:0.83rem; font-weight:700; margin-bottom:6px; display:block; color:var(--text-muted);">إرسال إلى:</label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <label id="lbl-target-user" style="border:1.5px solid #10b981; padding:10px 14px; border-radius:12px; cursor:pointer; display:flex; align-items:center; gap:8px; background:rgba(16,185,129,0.06);">
+                    <input type="radio" name="communicate-target" value="user" checked>
+                    <span style="font-size:0.83rem; font-weight:700;">📱 الطالب: ${user.phone}</span>
+                  </label>
+                  <label id="lbl-target-parent" style="border:1.5px solid var(--border-color); padding:10px 14px; border-radius:12px; cursor:pointer; display:flex; align-items:center; gap:8px; background:var(--bg-card);">
+                    <input type="radio" name="communicate-target" value="parent">
+                    <span style="font-size:0.83rem; font-weight:700;">👨‍👩‍👦 ولي الأمر: ${user.parentPhone}</span>
+                  </label>
+                </div>
+              </div>
+            ` : `
+              <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); padding:10px 16px; border-radius:12px; border:1px solid var(--border-color);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="phone" style="width:16px; height:16px; color:var(--primary);"></i>
+                  <span style="font-size:0.85rem; font-weight:700;">رقم الهاتف:</span>
+                  <span style="font-size:0.88rem; font-weight:800; color:var(--text-color);">${user.phone || (user.parentPhone ? user.parentPhone + ' (ولي الأمر)' : 'غير متوفر')}</span>
+                </div>
+                ${(user.phone || user.parentPhone) ? `
+                  <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.75rem;">جاهز للواتساب ✅</span>
+                ` : `
+                  <span class="badge" style="background:rgba(239,68,68,0.12); color:var(--error); font-weight:800; font-size:0.75rem;">لا يوجد رقم هاتف ⚠️</span>
+                `}
+              </div>
+            `}
+
+            <!-- Quick Template Selector -->
+            <div>
+              <label style="font-size:0.83rem; font-weight:700; margin-bottom:8px; display:block; color:var(--text-muted);">نماذج الرسائل السريعة:</label>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;" id="communicate-templates-grid">
+                ${templates.map((tpl, idx) => `
+                  <button type="button" class="btn-secondary template-select-btn" data-index="${idx}" style="font-size:0.78rem; padding:8px 10px; text-align:start; border-radius:10px; border-color:${idx === 0 ? 'var(--primary)' : 'var(--border-color)'}; background:${idx === 0 ? 'rgba(99,102,241,0.1)' : 'transparent'}; font-weight:700; cursor:pointer;">
+                    ${tpl.label}
+                  </button>
+                `).join("")}
+              </div>
+            </div>
+
+            <!-- Message Textarea -->
+            <div>
+              <label for="communicate-textarea" style="font-size:0.83rem; font-weight:700; margin-bottom:6px; display:block; color:var(--text-muted);">نص الرسالة (يمكنك تعديلها بحرية):</label>
+              <textarea id="communicate-textarea" class="form-input" rows="4" style="width:100%; box-sizing:border-box; padding:12px; font-size:0.92rem; line-height:1.6; border-radius:12px; resize:vertical;">${currentText}</textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+              <button type="button" id="btn-send-whatsapp" class="btn-primary" style="flex:1; min-width:180px; padding:12px 18px; font-size:0.92rem; font-weight:800; background:#10b981; border:none; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                <i data-lucide="message-circle" style="width:18px; height:18px;"></i> فتح محادثة واتساب
+              </button>
+              <button type="button" id="btn-send-email" class="btn-secondary" style="padding:12px 16px; font-size:0.88rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">
+                <i data-lucide="mail" style="width:16px; height:16px;"></i> إرسال بريد
+              </button>
+              <button type="button" id="btn-copy-text" class="btn-secondary" style="padding:12px 16px; font-size:0.88rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;" title="نسخ نص الرسالة">
+                <i data-lucide="copy" style="width:16px; height:16px;"></i> نسخ
+              </button>
+            </div>
+
+          </div>
+
+          <div class="modal-footer" style="padding:12px 20px; background:var(--bg-card); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end;">
+            <button class="btn-secondary" id="cancel-communicate-btn" style="padding:8px 20px; font-size:0.88rem;">إغلاق</button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-communicate-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-communicate-btn")?.addEventListener("click", closeModal);
+
+    const textarea = document.getElementById("communicate-textarea");
+
+    // Template selection
+    const templateBtns = container.querySelectorAll(".template-select-btn");
+    templateBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-index"), 10);
+        templateBtns.forEach(b => {
+          b.style.borderColor = "var(--border-color)";
+          b.style.background = "transparent";
+        });
+        btn.style.borderColor = "var(--primary)";
+        btn.style.background = "rgba(99,102,241,0.1)";
+        if (templates[idx] && textarea) {
+          textarea.value = templates[idx].text;
+          textarea.focus();
+        }
+      });
+    });
+
+    // Radio target change
+    const radioInputs = container.querySelectorAll("input[name='communicate-target']");
+    radioInputs.forEach(radio => {
+      radio.addEventListener("change", () => {
+        currentTargetType = radio.value;
+        if (currentTargetType === "user") {
+          currentTargetPhone = cleanUserPhone;
+          document.getElementById("lbl-target-user")?.style.setProperty("border-color", "#10b981");
+          document.getElementById("lbl-target-parent")?.style.setProperty("border-color", "var(--border-color)");
+        } else {
+          currentTargetPhone = cleanParentPhone;
+          document.getElementById("lbl-target-parent")?.style.setProperty("border-color", "var(--primary)");
+          document.getElementById("lbl-target-user")?.style.setProperty("border-color", "var(--border-color)");
+        }
+      });
+    });
+
+    // Send WhatsApp
+    document.getElementById("btn-send-whatsapp")?.addEventListener("click", () => {
+      const targetPhone = currentTargetPhone;
+      if (!targetPhone) {
+        showToast("لا يتوفر رقم هاتف مسجل لهذا الحساب للتواصل عبر الواتساب.", "warning");
+        return;
+      }
+      const text = textarea ? textarea.value.trim() : "";
+      const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    });
+
+    // Send Email
+    document.getElementById("btn-send-email")?.addEventListener("click", () => {
+      const text = textarea ? textarea.value.trim() : "";
+      const subject = encodeURIComponent(`منصة انطلق - تواصل مع الإدارة`);
+      const body = encodeURIComponent(text);
+      window.location.href = `mailto:${encodeURIComponent(user.email)}?subject=${subject}&body=${body}`;
+    });
+
+    // Copy Text
+    document.getElementById("btn-copy-text")?.addEventListener("click", async () => {
+      const text = textarea ? textarea.value.trim() : "";
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("تم نسخ نص الرسالة إلى الحافظة بنجاح!", "success");
+      } catch {
+        showToast("فشل نسخ النص.", "error");
+      }
+    });
   }
 
 };

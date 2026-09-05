@@ -1606,6 +1606,17 @@ export default class AdminView {
       });
     });
 
+    // Communicate User Button (WhatsApp / Direct Communication)
+    this.container.querySelectorAll(".communicate-user-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const user = this.allMembers.find(u => u.id === id);
+        if (user && typeof this.renderCommunicateModal === "function") {
+          this.renderCommunicateModal(user);
+        }
+      });
+    });
+
     // Delete Member
     this.container.querySelectorAll(".delete-user-btn").forEach(btn => {
       btn.addEventListener("click", async () => {

@@ -44,17 +44,24 @@ export function generateWhatsAppLink(phone: string, text: string, defaultCountry
  * Build Account Registration Success WhatsApp Message
  */
 export function buildRegistrationSuccessMessage(
-  studentName: string,
+  studentName?: string,
   role: string = "student",
-  platformUrl: string = "http://localhost:3000"
+  platformUrl: string = process.env.APP_URL || "https://entlqedu.com"
 ): string {
-  const roleTitle = role === "teacher" ? "معلم" : "طالب";
-  return `مرحباً ${studentName}! 🎉
-
-تم تفعيل وتأكيد حسابك بنجاح كـ (${roleTitle}) في منصة **انطلق** للتعليم الإلكتروني 🎓.
+  if (role === "teacher") {
+    return `تم تفعيل وتأكيد حسابك بنجاح كـ (معلم) في منصة *انطلق* للتعليم الإلكتروني 🎓.
 
 يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والجلسات المباشرة:
-🔗 ${platformUrl}/#login
+https://entlqedu.com/#staff-login
+
+نتمنى لك رحلة ممتعة وتفوقاً دراسياً باهراً! 🚀✨`;
+  }
+
+  const greeting = studentName ? `مرحباً ${studentName}! 🎉\n\n` : "";
+  return `${greeting}تم تفعيل وتأكيد حسابك بنجاح كـ (طالب) في منصة *انطلق* للتعليم الإلكتروني 🎓.
+
+يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والجلسات المباشرة:
+${platformUrl}/#login
 
 نتمنى لك رحلة ممتعة وتفوقاً دراسياً باهراً! 🚀✨`;
 }
