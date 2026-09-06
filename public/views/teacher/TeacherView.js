@@ -42,6 +42,13 @@ export default class TeacherView {
       this.blogs = (allBlogs || []).filter(b => b.author?.id === state.user.id);
       this.assignedSubscriptions = assignedSubscriptions || [];
 
+      window.checkedInSessions = window.checkedInSessions || new Set();
+      [...this.sessions, ...this.privateSessions, ...this.todaySessions].forEach(s => {
+        if (s && s.isCheckedIn) {
+          window.checkedInSessions.add(String(s.id));
+        }
+      });
+
       this.earningsData = earnings || { earnings: [], stats: {} };
 
       if (this.currentViewMode === 'financial' || window.location.hash.includes("teacher-financial")) {
@@ -102,6 +109,13 @@ export default class TeacherView {
                     مرحباً بك، <span style="background:linear-gradient(135deg, var(--primary), #9333ea); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">${teacherName}</span> 👋
                   </h1>
                   
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                    <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.08); padding:4px 14px; border-radius:20px; border:1px solid rgba(99,102,241,0.18);" title="المؤهل والتخصص الأكاديمي">
+                      <i data-lucide="graduation-cap" style="width:15px;height:15px;"></i>
+                      <span>${state.user?.education || 'أستاذ وخبير تربوي متميز'}</span>
+                    </span>
+                  </div>
+
                   <p style="color:var(--text-muted); font-size:0.92rem; margin:0; line-height:1.5;">
                     تابع دوراتك التعليمية، جدول حصص البث المباشر، وحصص الطلاب الخاصة واستحقاقاتك المالية.
                   </p>
@@ -136,7 +150,7 @@ export default class TeacherView {
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:16px; margin-bottom:32px;">
             
             <!-- Stat 1: Published Courses -->
-            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض وإدارة الدورات" onclick="window.location.hash='#courses'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(79,70,229,0.05)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="book-open" style="width:24px; height:24px;"></i>
               </div>
@@ -148,10 +162,11 @@ export default class TeacherView {
                   الدورات المنشورة
                 </div>
               </div>
+              <div style="margin-inline-start:auto; color:var(--primary); opacity:0.6; font-size:0.85rem;">↗</div>
             </div>
 
             <!-- Stat 2: Scheduled Classes -->
-            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض جدول الحصص المباشرة" onclick="window.location.hash='#schedule'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05)); color:#ec4899; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="video" style="width:24px; height:24px;"></i>
               </div>
@@ -163,10 +178,11 @@ export default class TeacherView {
                   حصص مباشرة قادمة
                 </div>
               </div>
+              <div style="margin-inline-start:auto; color:#ec4899; opacity:0.6; font-size:0.85rem;">↗</div>
             </div>
 
             <!-- Stat 3: Active Students -->
-            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض قائمة الطلاب الفعالين" onclick="window.location.hash='#students'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.05)); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="users" style="width:24px; height:24px;"></i>
               </div>
@@ -178,10 +194,11 @@ export default class TeacherView {
                   الطلاب الفعالون
                 </div>
               </div>
+              <div style="margin-inline-start:auto; color:#06b6d4; opacity:0.6; font-size:0.85rem;">↗</div>
             </div>
 
             <!-- Stat 4: Completed Private Sessions -->
-            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px;">
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض سجل الحصص الخاصة" onclick="window.location.hash='#teacher-private-sessions'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="calendar-check" style="width:24px; height:24px;"></i>
               </div>
@@ -193,10 +210,11 @@ export default class TeacherView {
                   حصص خاصة مكتملة
                 </div>
               </div>
+              <div style="margin-inline-start:auto; color:#10b981; opacity:0.6; font-size:0.85rem;">↗</div>
             </div>
 
             <!-- Stat 5: Pending Earnings -->
-            <div class="glass-card stat-card-hover" id="stat-box-earnings" style="cursor:pointer; padding:20px; border-radius:20px; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.04); display:flex; align-items:center; gap:16px;" title="انقر لعرض تفاصيل السجل المالي والمستحقات">
+            <div class="glass-card stat-card-hover" id="stat-box-earnings" style="cursor:pointer; padding:20px; border-radius:20px; border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.04); display:flex; align-items:center; gap:16px;" title="انقر لعرض تفاصيل السجل المالي والمستحقات" onclick="window.location.hash='#teacher-financial'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.08)); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="wallet" style="width:24px; height:24px;"></i>
               </div>
@@ -806,42 +824,56 @@ export default class TeacherView {
     // Live only if status is live AND the session duration has not ended
     const isLive = !isCompleted && !isPastSession && (session.status === "live" || session.status === "active" || session.status === "LIVE");
 
+    const endDate = new Date(sessionEnd);
+    const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
+
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
+    const isPastSession = !isCompleted && (nowTime > sessionEnd);
+    const isDuringSession = !isCompleted && (nowTime >= sessionStart && nowTime <= sessionEnd);
+    const isCheckedIn = window.checkedInSessions?.has(session.id) || !!session.isCheckedIn;
 
     let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
     let sessionAction = "";
 
     if (isCompleted) {
-      statusTag = `<span class="session-tag" style="background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:800;">${t("session.finished") || '✅ مكتملة'}</span>`;
+      statusTag = `<span class="session-tag" style="background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:800;">${t("session.finished") || '✅ مكتملة وموثقة'}</span>`;
       sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:12px; font-size:0.8rem; padding:8px; opacity:0.85;" disabled>تم توثيق التقرير واعتماد الرصيد ✅</button>`;
     } else if (isPastSession) {
       statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
-      sessionAction = `
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-          <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:9px 12px; justify-content:center; font-weight:800; border-radius:12px; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
-            <i data-lucide="file-check" style="width:15px;height:15px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
-          </button>
-          ${isCheckedIn ? `
+      if (isCheckedIn) {
+        // Teacher was on time! Now can document the report and finalize
+        sessionAction = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
             <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم في موعد الحصة ✅
             </span>
-          ` : `
-            <button class="btn-secondary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.8rem; padding:7px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer; border-radius:10px;">
-              <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+            <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:9px 12px; justify-content:center; font-weight:800; border-radius:12px; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
+              <i data-lucide="file-check" style="width:15px;height:15px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
             </button>
-          `}
-        </div>
-      `;
-    } else if (isLive) {
-      statusTag = `<span class="session-tag live">${t("session.liveNow")}</span>`;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
+          </div>
+        `;
+      } else {
+        // Missed attendance window! (Past session end and never checked in)
+        sessionAction = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:10px 12px; color:#ef4444; font-size:0.78rem; font-weight:800; text-align:center; line-height:1.4;">
+              <i data-lucide="alert-triangle" style="width:15px; height:15px; vertical-align:middle;"></i> انتهى وقت الحصة ولم يتم تأكيد الحضور في الموعد (مسجل غياب المعلم) ⚠️
+            </div>
+            <button disabled class="btn-secondary" style="opacity:0.6; cursor:not-allowed; font-size:0.78rem; padding:8px; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted); font-weight:700;" title="لا يمكن توثيق التقرير لعدم تأكيد الحضور أثناء وقت الحصة">
+              <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> توثيق التقرير مقفل (غياب المعلم) 🔒
+            </button>
+          </div>
+        `;
+      }
+    } else if (isDuringSession) {
+      statusTag = `<span class="session-tag live">${session.status === "live" ? t("session.liveNow") : "🔴 موعد الحصة الآن (" + formattedTime + " - " + formattedEndTime + ")"}</span>`;
       if (isCheckedIn) {
         sessionAction = `
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
             <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر في الموعد) ✅
             </span>
             <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
               <button class="btn-primary" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; border-radius:12px; display:flex; align-items:center; gap:6px; border:none; color:#fff; cursor:pointer;"><i data-lucide="video" style="width:16px;height:16px;"></i> فتح Google Meet الآن 🔴</button>
@@ -850,47 +882,36 @@ export default class TeacherView {
           </div>
         `;
       } else {
+        // Teacher MUST check in right now during session window!
         sessionAction = `
           <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
             <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.85rem; padding:10px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-              <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+              <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم الآن (في وقت الحصة) ✍️
             </button>
-            <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل أزرار البث والقاعة</div>
+            <div style="font-size:0.74rem; color:var(--text-muted); text-align:center;">* متاح تأكيد الحضور الآن فقط حتى نهاية وقت الحصة (${formattedEndTime})</div>
           </div>
         `;
       }
     } else {
-      const isJoinable = canJoinSession(session);
-      const isOnTime = nowTime >= sessionTime;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
-      if (isJoinable) {
-        statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">${isOnTime ? '🕐 موعد الحصة الآن' : '⚡ تبدأ قريباً'}</span>`;
-        if (isCheckedIn) {
-          sessionAction = `
-            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-              <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
-              </span>
-              <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px;">
-                <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; font-weight:800;"><i data-lucide="play" style="width:13px;height:13px;"></i> ${t("session.goLive")}</button>
-                <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:4px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
-                <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
-                  <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
-                </button>
-              </div>
+      // Pre-session (nowTime < sessionStart)
+      const isWithinOneHour = canJoinSession(session);
+      if (isWithinOneHour) {
+        statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">⚡ تبدأ في ${formattedTime}</span>`;
+        sessionAction = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; color:var(--primary); font-size:0.78rem; font-weight:800; text-align:center;">
+              <i data-lucide="clock" style="width:14px; height:14px; vertical-align:middle;"></i> ينشط تأكيد الحضور في موعد الحصة تماماً (${formattedTime}) 🔒
             </div>
-          `;
-        } else {
-          sessionAction = `
-            <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-              <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.85rem; padding:10px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-                <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+            <div style="display:grid; grid-template-columns:1fr auto; gap:6px;">
+              <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:4px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video" style="width:13px;height:13px;"></i> معاينة Google Meet 🎥</button>
+              <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
+                <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
               </button>
-              <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل أزرار البث والقاعة</div>
             </div>
-          `;
-        }
+          </div>
+        `;
       } else {
+        statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
         sessionAction = `
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
             <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
@@ -1442,6 +1463,10 @@ export default class TeacherView {
     this.container.querySelectorAll('.complete-private-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
+        if (typeof window.showEndSessionReportModal === 'function') {
+          window.showEndSessionReportModal(id, () => this.render());
+          return;
+        }
         document.getElementById('complete-session-id').value = id;
         document.getElementById('complete-topic').value = '';
         document.getElementById('complete-covered').value = '';

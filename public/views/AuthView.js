@@ -6,6 +6,7 @@ export default class AuthView {
     this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
     this.isRegisterMode = !this.isStaffMode && (mode === "signup" || window.location.hash.includes("signup"));
     this.showPassword = false;
+    this.isLoading = false;  // Guard: prevents multiple concurrent requests
   }
 
   async render() {
@@ -384,12 +385,40 @@ export default class AuthView {
     // Submit handler
     document.getElementById("auth-submit-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // ---- MULTI-SUBMIT GUARD ----
+      if (this.isLoading) return;
+      this.isLoading = true;
+
       const submitBtn = document.getElementById("auth-submit-btn");
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.7";
-        submitBtn.innerHTML = `<span>جاري المعالجة...</span> <div class="spinner" style="width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div>`;
-      }
+
+      const setLoading = (loading) => {
+        this.isLoading = loading;
+        if (!submitBtn) return;
+        if (loading) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = "0.75";
+          submitBtn.style.cursor = "not-allowed";
+          submitBtn.style.pointerEvents = "none";
+          submitBtn.innerHTML = `
+            <span>جاري المعالجة...</span>
+            <div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.75s linear infinite;flex-shrink:0;"></div>
+          `;
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = "1";
+          submitBtn.style.cursor = "";
+          submitBtn.style.pointerEvents = "";
+          if (this.isRegisterMode) {
+            submitBtn.innerHTML = `<span>${t("auth.register") || "إنشاء الحساب والتسجيل"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+          } else {
+            submitBtn.innerHTML = `<span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+          }
+          if (window.lucide) window.lucide.createIcons();
+        }
+      };
+
+      setLoading(true);
 
       if (this.isRegisterMode) {
         const name = document.getElementById("reg-name").value;
@@ -412,15 +441,13 @@ export default class AuthView {
           });
           if (data && data.token && data.user) {
             setAuth(data.token, data.user);
+            // Navigation happens, no need to re-enable button
+          } else {
+            setLoading(false);
           }
         } catch (err) {
           console.error(err);
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            submitBtn.innerHTML = `<span>${t("auth.register") || "إنشاء الحساب والتسجيل"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
-            if (window.lucide) window.lucide.createIcons();
-          }
+          setLoading(false);
         }
       } else {
         const email = document.getElementById("login-email").value;
@@ -434,15 +461,13 @@ export default class AuthView {
           });
           if (data && data.token && data.user) {
             setAuth(data.token, data.user);
+            // Navigation happens, no need to re-enable button
+          } else {
+            setLoading(false);
           }
         } catch (err) {
           console.error(err);
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            submitBtn.innerHTML = `<span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
-            if (window.lucide) window.lucide.createIcons();
-          }
+          setLoading(false);
         }
       }
     });

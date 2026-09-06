@@ -328,7 +328,8 @@ export class CurriculumController {
         .leftJoinAndSelect("course.subject", "subject")
         .leftJoinAndSelect("course.groups", "groups")
         .leftJoinAndSelect("groups.teacher", "groupTeacher")
-        .where("course.status = :status", { status: "PUBLISHED" });
+        .where("course.status = :status", { status: "PUBLISHED" })
+        .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')");
 
       if (subjectId) {
         qb.andWhere("course.subject.id = :subjectId", { subjectId: String(subjectId) });
@@ -465,8 +466,14 @@ export class CurriculumController {
 
       for (const group of groups) {
         if (!group.course) continue;
-        // Skip archived or draft courses
-        if (group.course.status === "ARCHIVED" || group.course.status === "DRAFT") {
+        // Only published courses are visible publicly
+        if (group.course.status !== "PUBLISHED") {
+          continue;
+        }
+
+        // Verify teacher is active if course has a teacher
+        const courseTeacher = group.course.teacher || group.teacher;
+        if (courseTeacher && courseTeacher.status && courseTeacher.status !== "ACTIVE") {
           continue;
         }
 

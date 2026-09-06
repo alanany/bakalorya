@@ -20,10 +20,11 @@ export const AdminCoursesPage = {
             ${this.courses.map(course => {
           const coursePlansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
           const isPending = course.status === "PENDING_REVIEW";
+          const isArchived = course.status === "ARCHIVED";
           const isPublished = course.status === "PUBLISHED" || !course.status;
 
           return `
-              <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px; ${isPending ? 'border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.03);' : ''}">
+              <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px; ${isPending ? 'border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.03);' : isArchived ? 'border:1px solid rgba(107,114,128,0.4); opacity:0.85; background:rgba(107,114,128,0.04);' : ''}">
                 <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}"
                   style="width:72px;height:72px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;">
                 <div style="flex:1;min-width:0;">
@@ -37,6 +38,8 @@ export const AdminCoursesPage = {
                     <span class="badge" style="background:rgba(139,92,246,0.12); color:#8b5cf6; font-size:0.7rem; font-weight:800;">${coursePlansCount} خطط اشتراك مخصصة</span>
                     ${isPending ? `
                       <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.72rem; font-weight:800;">🟡 قيد المراجعة والاعتماد (PENDING_REVIEW) ⏳</span>
+                    ` : isArchived ? `
+                      <span class="badge" style="background:rgba(107,114,128,0.15); color:#6b7280; font-size:0.72rem; font-weight:800;">📦 مؤرشفة ومخفية عن الجميع (ARCHIVED)</span>
                     ` : isPublished ? `
                       <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.72rem; font-weight:800;">منشورة ومتاحة ✅</span>
                     ` : `
@@ -59,6 +62,17 @@ export const AdminCoursesPage = {
                     <button class="btn-secondary admin-reject-course-btn" data-id="${course.id}"
                       style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#ef4444; border-color:#ef4444; font-weight:700;">
                       <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض ❌
+                    </button>
+                  ` : ''}
+                  ${isArchived ? `
+                    <button class="btn-primary admin-unarchive-course-btn" data-id="${course.id}"
+                      style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800;">
+                      <i data-lucide="archive-restore" style="width:14px;height:14px;"></i> إلغاء الأرشفة وإعادة النشر 🚀
+                    </button>
+                  ` : isPublished ? `
+                    <button class="btn-secondary admin-archive-course-btn" data-id="${course.id}" data-title="${course.title}"
+                      style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#f59e0b; border-color:#f59e0b; font-weight:700;">
+                      <i data-lucide="archive" style="width:14px;height:14px;"></i> أرشفة وإخفاء 📦
                     </button>
                   ` : ''}
                   <a href="#manage-course/${course.id}" class="btn-primary"

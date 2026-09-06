@@ -24,6 +24,10 @@ export default class TeacherPrivateSessionsView {
         if (!sessionMap.has(s.id)) sessionMap.set(s.id, s);
       });
       this.privateSessions = Array.from(sessionMap.values());
+      window.checkedInSessions = window.checkedInSessions || new Set();
+      this.privateSessions.forEach(s => {
+        if (s && s.isCheckedIn) window.checkedInSessions.add(String(s.id));
+      });
 
       this.renderContent();
     } catch (err) {
@@ -135,63 +139,56 @@ export default class TeacherPrivateSessionsView {
     const actionButtons = (s) => {
         const st = (s.status || '').toLowerCase();
         const isCompleted = st === 'completed' || st.includes('cancel');
-        if (isCompleted) return '<span style="color:var(--text-muted); font-size:0.8rem;">تم الإنتهاء</span>';
+        if (isCompleted) return '<span style="color:var(--text-muted); font-size:0.8rem; font-weight:700;">تم الإنتهاء والتوثيق ✅</span>';
 
         const date = new Date(s.scheduledAt);
         const sessionTime = date.getTime();
         const durationMins = s.duration || 60;
         const durationMs = durationMins * 60 * 1000;
         const nowTime = Date.now();
-        const isPastSession = !isCompleted && (nowTime >= sessionTime + durationMs);
-        const isCheckedIn = window.checkedInSessions?.has(s.id);
+        const sessionStart = sessionTime;
+        const sessionEnd = sessionStart + durationMs;
+
+        const endDate = new Date(sessionEnd);
+        const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        const isPastSession = nowTime > sessionEnd;
+        const isDuringSession = (nowTime >= sessionStart && nowTime <= sessionEnd);
+        const isCheckedIn = window.checkedInSessions?.has(String(s.id)) || !!s.isCheckedIn;
 
         if (isPastSession) {
-          return `
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <button class="btn-primary end-session-btn" data-id="${s.id}" style="font-size:0.75rem; padding:6px 10px; background:linear-gradient(135deg,#10b981,#059669); font-weight:800; border-color:#10b981; cursor:pointer;">
-                <i data-lucide="file-check" style="width:13px;height:13px;"></i> توثيق التقرير وإنهاء 📝
-              </button>
-              ${isCheckedIn ? `
-                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:3px 6px; background:rgba(16,185,129,0.12); border-radius:6px; text-align:center;">حاضر ومسجل ✅</span>
-              ` : `
-                <button class="btn-secondary session-checkin-btn" data-id="${s.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.75rem; padding:4px 8px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer; border-radius:8px;">
-                  <i data-lucide="user-check" style="width:12px; height:12px;"></i> تأكيد حضور المعلم ✍️
-                </button>
-              `}
-            </div>
-          `;
-        }
-
-        if (st === 'live') {
-          return `
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <div style="display:flex; gap:6px;">
-                <button class="btn-primary" data-join-meet-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
-                <button class="btn-secondary end-session-btn" data-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle" style="width:13px;height:13px;"></i> إنهاء</button>
-              </div>
-              ${isCheckedIn ? `
-                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:3px 6px; background:rgba(16,185,129,0.12); border-radius:6px; text-align:center;">حاضر ومسجل ✅</span>
-              ` : `
-                <button class="btn-secondary session-checkin-btn" data-id="${s.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.76rem; padding:5px 8px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer; border-radius:8px;">
-                  <i data-lucide="user-check" style="width:13px; height:13px;"></i> تأكيد حضور المعلم ✍️
-                </button>
-              `}
-            </div>
-          `;
-        }
-
-        const isJoinable = canJoinSession(s);
-
-        if (isJoinable) {
           if (isCheckedIn) {
             return `
               <div style="display:flex; flex-direction:column; gap:6px;">
-                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
-                  <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> حاضر ومسجل ✅
+                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:3px 6px; background:rgba(16,185,129,0.12); border-radius:6px; text-align:center;">حاضر في موعد الحصة ✅</span>
+                <button class="btn-primary end-session-btn" data-id="${s.id}" style="font-size:0.75rem; padding:6px 10px; background:linear-gradient(135deg,#10b981,#059669); font-weight:800; border-color:#10b981; cursor:pointer;">
+                  <i data-lucide="file-check" style="width:13px;height:13px;"></i> توثيق التقرير وإنهاء 📝
+                </button>
+              </div>
+            `;
+          } else {
+            return `
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:0.72rem; font-weight:800; color:#ef4444; padding:4px 6px; background:rgba(239,68,68,0.1); border-radius:6px; text-align:center;">
+                  انتهت ولم يتم تأكيد الحضور (غياب) ⚠️
                 </span>
+                <button disabled class="btn-secondary" style="font-size:0.72rem; padding:4px 6px; opacity:0.6; cursor:not-allowed;" title="لا يمكن توثيق التقرير لعدم تأكيد الحضور في موعد الحصة">
+                  <i data-lucide="lock" style="width:11px;height:11px;"></i> التقرير مقفل 🔒
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        if (isDuringSession || st === 'live') {
+          if (isCheckedIn) {
+            return `
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:3px 6px; background:rgba(16,185,129,0.12); border-radius:6px; text-align:center;">حاضر في الموعد ✅</span>
                 <div style="display:flex; gap:6px;">
-                  <button class="btn-primary start-session-btn" data-id="${s.id}" style="font-size:0.78rem; padding:6px 12px;"><i data-lucide="play" style="width:13px;height:13px;"></i> بدء الحصة</button>
-                  <button class="btn-secondary" data-join-meet-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet</button>
+                  <button class="btn-primary" data-join-meet-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:13px;height:13px;"></i> Google Meet 🎥</button>
+                  <button class="btn-secondary end-session-btn" data-id="${s.id}" style="font-size:0.78rem; padding:6px 12px; color:var(--error); border-color:var(--error);"><i data-lucide="stop-circle" style="width:13px;height:13px;"></i> إنهاء</button>
                 </div>
               </div>
             `;
@@ -199,12 +196,25 @@ export default class TeacherPrivateSessionsView {
             return `
               <div class="session-actions-wrapper" data-id="${s.id}" style="display:flex; flex-direction:column; gap:6px;">
                 <button class="btn-primary session-checkin-btn" data-id="${s.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.76rem; padding:7px 10px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:800; cursor:pointer; border-radius:8px; border:none; box-shadow:0 2px 8px rgba(16,185,129,0.25);">
-                  <i data-lucide="user-check" style="width:13px; height:13px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+                  <i data-lucide="user-check" style="width:13px; height:13px;"></i> تأكيد حضور المعلم الآن ✍️
                 </button>
-                <div style="font-size:0.7rem; color:var(--text-muted); text-align:center;">* اضغط للتأكيد وتفعيل الدخول</div>
+                <div style="font-size:0.7rem; color:var(--text-muted); text-align:center;">* متاح حتى ${formattedEndTime} فقط</div>
               </div>
             `;
           }
+        }
+
+        const isJoinable = canJoinSession(s);
+
+        if (isJoinable) {
+          return `
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.72rem; font-weight:800; color:var(--primary); padding:3px 6px; background:rgba(99,102,241,0.08); border-radius:6px; text-align:center;">
+                ينشط تأكيد الحضور في الموعد تماماً (${formattedTime}) 🔒
+              </span>
+              <button class="btn-secondary" data-join-meet-id="${s.id}" style="font-size:0.75rem; padding:4px 8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:8px;"><i data-lucide="video" style="width:12px;height:12px;"></i> معاينة Meet 🎥</button>
+            </div>
+          `;
         }
 
         return `

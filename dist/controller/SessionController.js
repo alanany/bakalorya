@@ -5,6 +5,7 @@ const data_source_1 = require("../data-source");
 const Session_1 = require("../entity/Session");
 const User_1 = require("../entity/User");
 const Course_1 = require("../entity/Course");
+const SessionAttendance_1 = require("../entity/SessionAttendance");
 class SessionController {
     static async getAll(req, res) {
         try {
@@ -35,6 +36,18 @@ class SessionController {
             }
             else if (req.user && req.user.role === "teacher") {
                 finalSessions = sessions.filter(session => session.teacher?.id === req.user.id);
+            }
+            if (req.user) {
+                const attendanceRepository = data_source_1.AppDataSource.getRepository(SessionAttendance_1.SessionAttendance);
+                const myAttendances = await attendanceRepository.find({
+                    where: { user: { id: req.user.id }, status: "PRESENT" },
+                    relations: ["session"]
+                });
+                const checkedSessionIds = new Set(myAttendances.map(a => a.session?.id).filter(Boolean));
+                finalSessions = finalSessions.map((s) => ({
+                    ...s,
+                    isCheckedIn: checkedSessionIds.has(s.id)
+                }));
             }
             return res.status(200).json(finalSessions);
         }

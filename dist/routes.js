@@ -130,6 +130,8 @@ router.get("/courses/:id/enrollments", auth_1.authMiddleware, (0, auth_1.require
 router.get("/admin/courses/pending-review", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.getPendingCourses);
 router.post("/admin/courses/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.approveCourse);
 router.post("/admin/courses/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.rejectCourse);
+router.post("/admin/courses/:id/archive", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.archiveCourse);
+router.post("/admin/courses/:id/unarchive", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.unarchiveCourse);
 router.get("/admin/groups/pending-approval", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseGroupController_1.CourseGroupController.getPendingGroups);
 router.get("/admin/all-groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseGroupController_1.CourseGroupController.getAllGroups);
 router.post("/admin/groups/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseGroupController_1.CourseGroupController.approveGroup);

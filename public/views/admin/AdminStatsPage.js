@@ -50,69 +50,75 @@ export const AdminStatsPage = {
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:18px; margin-bottom:32px;">
         
         <!-- Students -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(0,86,210,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(0,86,210,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الطلاب" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'students\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/students';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="users" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">+${totalStudents.toLocaleString('ar-EG')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">إجمالي الطلاب</div>
           </div>
+          <div style="color:var(--primary); opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
         <!-- Teachers -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(6,182,212,0.2); background:linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(6,182,212,0.2); background:linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة المعلمين" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'teachers\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/teachers';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(6,182,212,0.15); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="graduation-cap" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">+${totalTeachers.toLocaleString('ar-EG')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">معلم وأستاذ معتمد</div>
           </div>
+          <div style="color:#06b6d4; opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
         <!-- Courses -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(245,158,11,0.2); background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(245,158,11,0.2); background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الدورات" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'courses\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/courses';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(245,158,11,0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="book-open" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">+${totalCourses.toLocaleString('ar-EG')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">دورة تعليمية</div>
           </div>
+          <div style="color:#f59e0b; opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
         <!-- Sessions -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(168,85,247,0.2); background:linear-gradient(135deg, rgba(168,85,247,0.06), rgba(168,85,247,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(168,85,247,0.2); background:linear-gradient(135deg, rgba(168,85,247,0.06), rgba(168,85,247,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الحصص والجلسات" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'sessions\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/sessions';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(168,85,247,0.15); color:#a855f7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="video" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">+${totalSessions.toLocaleString('ar-EG')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">حصة وبث مباشر</div>
           </div>
+          <div style="color:#a855f7; opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
         <!-- Subscriptions -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الاشتراكات" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'subscriptions\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/subscriptions';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="credit-card" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">+${totalSubs.toLocaleString('ar-EG')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">اشتراك خاص</div>
           </div>
+          <div style="color:#10b981; opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
         <!-- Success Rate -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(236,72,153,0.2); background:linear-gradient(135deg, rgba(236,72,153,0.06), rgba(236,72,153,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(236,72,153,0.2); background:linear-gradient(135deg, rgba(236,72,153,0.06), rgba(236,72,153,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى التقارير وسجلات الأداء" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'reports\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/reports';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(236,72,153,0.15); color:#ec4899; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="award" style="width:24px; height:24px;"></i>
           </div>
-          <div>
+          <div style="flex:1;">
             <div style="font-size:1.85rem; font-weight:900; color:#ec4899; line-height:1; font-family:'Outfit','Cairo',sans-serif;">99.4%</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700; margin-top:5px;">نسبة النجاح والرضا</div>
           </div>
+          <div style="color:#ec4899; opacity:0.6; font-size:0.9rem;">➔</div>
         </div>
 
       </div>

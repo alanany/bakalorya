@@ -142,8 +142,17 @@ export default class SettingsView {
 
               <div class="form-group" style="margin-top:16px;">
                 <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
+                  <i data-lucide="book-open" style="width:16px;height:16px;color:var(--primary);"></i>
+                  التخصص والمؤهل الأكاديمي (Education / Specialization)
+                </label>
+                <input type="text" id="settings-education" class="form-input" value="${state.user.education || ''}" placeholder="مثال: أستاذ تعليم ثانوي مادة الفيزياء - خبرة 10 سنوات">
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">يظهر هذا الحقل في صفحتك الشخصية للطلاب.</small>
+              </div>
+
+              <div class="form-group" style="margin-top:16px;">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
                   <i data-lucide="phone" style="width:16px;height:16px;color:var(--primary);"></i>
-                  رقم الهاتف والرمز الدولي (Phone Number & Country Key)
+                  رقم الهاتف والرمز الدولي (Phone Number &amp; Country Key)
                 </label>
                 ${renderPhoneInputGroup({
                   selectId: "settings-phone-code",
@@ -349,6 +358,11 @@ export default class SettingsView {
           name: newName,
           phone: fullPhone
         };
+
+        const educationInput = document.getElementById("settings-education");
+        if (educationInput !== null) {
+          payload.education = educationInput.value.trim();
+        }
 
         if (meetingLinkInput) {
           payload.meetingLink = meetingLinkInput.value;

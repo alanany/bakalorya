@@ -4,6 +4,7 @@ import { AppDataSource } from "../data-source";
 import { TeacherApplication } from "../entity/TeacherApplication";
 import { User } from "../entity/User";
 import { AuthRequest } from "../middleware/auth";
+import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
 
 export class TeacherApplicationController {
@@ -123,6 +124,22 @@ export class TeacherApplicationController {
         if (application.phone) {
           const msg = buildRegistrationSuccessMessage(application.name, "teacher");
           whatsappNotification = createWhatsAppNotificationPayload(application.phone, msg);
+        }
+
+        // Notify the newly created teacher with an in-app welcome notification
+        try {
+          const newTeacherUser = await userRepo.findOneBy({ email: application.email });
+          if (newTeacherUser) {
+            await NotificationController.createNotification(
+              newTeacherUser.id,
+              "مرحباً بك في فريق التدريس! 🎓",
+              `تهانينا! تم قبول طلبك للانضمام كمعلم في المنصة. حسابك مفعّل الآن ويمكنك تسجيل الدخول والبدء في إنشاء دوراتك.`,
+              "success",
+              "#settings"
+            );
+          }
+        } catch (notifErr) {
+          console.error("فشل إشعار المعلم الجديد بالقبول:", notifErr);
         }
       }
 

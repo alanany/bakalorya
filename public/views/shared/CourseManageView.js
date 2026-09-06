@@ -47,6 +47,7 @@ export default class CourseManageView {
       const statusMap = {
         'PUBLISHED': { label: '🟢 منشورة (متاحة للطلاب)', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
         'PENDING_REVIEW': { label: '🟡 قيد المراجعة والاعتماد', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+        'ARCHIVED': { label: '📦 مؤرشفة (مخفية عن الطلاب)', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
         'REJECTED': { label: '🔴 تحتاج لتعديل', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
         'DRAFT': { label: '⚪ مسودة', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' }
       };
@@ -78,6 +79,11 @@ export default class CourseManageView {
               </div>
 
               <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                ${(this.course.status === 'DRAFT' || this.course.status === 'REJECTED') ? `
+                  <button id="course-submit-review-hero-btn" class="btn-primary" style="padding:10px 18px; font-weight:800; background:#f59e0b; border-color:#f59e0b; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="send"></i> إرسال للمراجعة والاعتماد ⏳
+                  </button>
+                ` : ''}
                 <a href="${state.user.role === 'admin' ? '#admin' : '#teacher-portal'}" class="btn-secondary" style="padding:10px 18px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                   <i data-lucide="arrow-right"></i> ${state.user.role === 'admin' ? 'لوحة التحكم' : 'بوابة المعلم'}
                 </a>
@@ -1237,6 +1243,19 @@ export default class CourseManageView {
         this.activeTab = btn.getAttribute("data-tab");
         this.render();
       });
+    });
+
+    // Submit for Review Button
+    document.getElementById("course-submit-review-hero-btn")?.addEventListener("click", async () => {
+      const confirmed = confirm("هل أنت متأكد من رغبتك في إرسال هذه الدورة للاعتماد والمراجعة من قبل الإدارة؟");
+      if (!confirmed) return;
+      try {
+        const res = await apiFetch(`/courses/${this.courseId}/submit-for-review`, { method: "POST" });
+        showToast(res.message || "تم إرسال الدورة للمراجعة والاعتماد بنجاح! ⏳", "success");
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إرسال الدورة للمراجعة", "error");
+      }
     });
 
     // --- OBJECTIVES TAB EVENTS ---

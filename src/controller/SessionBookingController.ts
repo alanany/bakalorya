@@ -121,6 +121,19 @@ export class SessionBookingController {
 
       await sessionRepository.save(session);
 
+      // Notify teacher about the new booking
+      try {
+        await NotificationController.createNotification(
+          sessionTeacher.id,
+          "حصة جديدة محجوزة 🗓️",
+          `حجز الطالب "${student.name}" حصة بتاريخ ${scheduledDate.toLocaleDateString("ar")}.${topic ? ' الموضوع: ' + topic : ''}`,
+          "info",
+          "#teacher-private-sessions"
+        );
+      } catch (notifErr) {
+        console.error("فشل إشعار المعلم بالحجز:", notifErr);
+      }
+
       // Note: Booking does NOT consume credit from ledger yet.
       return res.status(201).json({
         message: "تم حجز موعد الحصة بنجاح! الرصيد متاح ولم يتم الخصم حتى إتمام الحصة.",
@@ -157,6 +170,23 @@ export class SessionBookingController {
 
       if (session.status === "COMPLETED" || session.status === "completed") {
         return res.status(400).json({ error: "تم إكمال هذه الحصة سابقاً بالفعل." });
+      }
+
+      // Check if teacher has confirmed attendance during the session window
+      if (req.user!.role !== "admin") {
+        const teacherAttendance = await attendanceRepository.findOne({
+          where: {
+            session: { id: session.id },
+            user: { id: session.teacher.id },
+            status: "PRESENT"
+          }
+        });
+
+        if (!teacherAttendance) {
+          return res.status(400).json({
+            error: "لا يمكن توثيق التقرير وإنهاء الحصة: يجب على المعلم أولاً تأكيد حضوره أثناء وقت الحصة المحدد (بين موعد البدء وموعد الانتهاء). لم يتم تسجيل حضورك في موعد الحصة."
+          });
+        }
       }
 
       session.status = "COMPLETED";
@@ -263,12 +293,38 @@ export class SessionBookingController {
             await ledgerRepository.save(ledger);
           }
 
+          // Notify teacher of late cancellation
+          try {
+            await NotificationController.createNotification(
+              session.teacher.id,
+              "إلغاء حصة من الطالب ⚠️",
+              `ألغى الطالب "${session.student?.name || 'طالب'}" الحصة المجدولة بتاريخ ${new Date(session.scheduledAt).toLocaleDateString("ar")} (unbounded إلغاء متأخر خلال ساعتين).`,
+              "warning",
+              "#teacher-private-sessions"
+            );
+          } catch (notifErr) {
+            console.error("فشل إشعار المعلم بإلغاء الطالب:", notifErr);
+          }
+
           return res.status(200).json({
             message: "تم إلغاء الحصة. نظراً للإلغاء المتأخر (قبل أقل من ساعتين)، تم خصم رصيد الحصة وفق سياسة المنصة تعويضاً عن وقت المعلم.",
             session,
             isLate: true
           });
         } else {
+          // Early cancellation (>= 2 hours): notify teacher
+          try {
+            await NotificationController.createNotification(
+              session.teacher.id,
+              "إلغاء حصة من الطالب 🔔",
+              `ألغى الطالب "${session.student?.name || 'طالب'}" الحصة المجدولة بتاريخ ${new Date(session.scheduledAt).toLocaleDateString("ar")}. تم الإلغاء في وقت مبكّر ولا يوجد خصم على الطالب.`,
+              "info",
+              "#teacher-private-sessions"
+            );
+          } catch (notifErr) {
+            console.error("فشل إشعار المعلم بإلغاء الطالب المبكّر:", notifErr);
+          }
+
           // Early cancellation (>= 2 hours): refund/keep credit
           return res.status(200).json({
             message: "تم إلغاء الحصة بنجاح وحفظ رصيد الحصة في اشتراكك لإعادة جدولتها في أي وقت مجاناً.",
@@ -292,6 +348,21 @@ export class SessionBookingController {
           ledger.reason = `تعويض حصة إضافية بسبب إلغاء المعلم للحصة المحددة`;
           ledger.createdBy = { id: req.user!.id } as User;
           await ledgerRepository.save(ledger);
+        }
+
+        // Notify student about teacher's cancellation with compensation
+        if (session.student) {
+          try {
+            await NotificationController.createNotification(
+              session.student.id,
+              "تم إلغاء حصتك من قبل المعلم ⚠️",
+              `ألغى المعلم حصتك المجدولة بتاريخ ${new Date(session.scheduledAt).toLocaleDateString("ar")}. تم إضافة حصة تعويضية إضافية لرصيدك.`,
+              "warning",
+              "#student-private-sessions"
+            );
+          } catch (notifErr) {
+            console.error("فشل إشعار الطالب بإلغاء المعلم:", notifErr);
+          }
         }
 
         return res.status(200).json({
@@ -362,7 +433,19 @@ export class SessionBookingController {
         .orderBy("session.scheduledAt", "DESC")
         .getMany();
 
-      return res.status(200).json(allSessions);
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+      const myAttendances = await attendanceRepository.find({
+        where: { user: { id: req.user!.id }, status: "PRESENT" },
+        relations: ["session"]
+      });
+      const checkedSessionIds = new Set(myAttendances.map(a => a.session?.id).filter(Boolean));
+
+      const enrichedSessions = allSessions.map(s => ({
+        ...s,
+        isCheckedIn: checkedSessionIds.has(s.id)
+      }));
+
+      return res.status(200).json(enrichedSessions);
     } catch (err) {
       console.error("getMyPrivateSessions error:", err);
       return res.status(500).json({ error: "Internal server error." });
@@ -393,7 +476,20 @@ export class SessionBookingController {
       }
 
       const sessions = await qb.getMany();
-      return res.status(200).json(sessions);
+
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+      const myAttendances = await attendanceRepository.find({
+        where: { user: { id: req.user!.id }, status: "PRESENT" },
+        relations: ["session"]
+      });
+      const checkedSessionIds = new Set(myAttendances.map(a => a.session?.id).filter(Boolean));
+
+      const enriched = sessions.map(s => ({
+        ...s,
+        isCheckedIn: checkedSessionIds.has(s.id)
+      }));
+
+      return res.status(200).json(enriched);
     } catch (err) {
       console.error("getTeacherPrivateSessions error:", err);
       return res.status(500).json({ error: "Internal server error." });
@@ -422,7 +518,19 @@ export class SessionBookingController {
         .orderBy("session.scheduledAt", "ASC")
         .getMany();
 
-      return res.status(200).json(sessions);
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+      const myAttendances = await attendanceRepository.find({
+        where: { user: { id: req.user!.id }, status: "PRESENT" },
+        relations: ["session"]
+      });
+      const checkedSessionIds = new Set(myAttendances.map(a => a.session?.id).filter(Boolean));
+
+      const enriched = sessions.map(s => ({
+        ...s,
+        isCheckedIn: checkedSessionIds.has(s.id)
+      }));
+
+      return res.status(200).json(enriched);
     } catch (err) {
       console.error("getTodayPrivateSessions error:", err);
       return res.status(500).json({ error: "Internal server error." });
@@ -523,6 +631,21 @@ export class SessionBookingController {
       session.scheduledAt = newDate;
       session.status = "RESCHEDULED";
       await sessionRepository.save(session);
+
+      // Notify student about the reschedule
+      if (session.student) {
+        try {
+          await NotificationController.createNotification(
+            session.student.id,
+            "تم تغيير موعد حصتك 🗓️",
+            `تم إعادة جدولة حصتك من ${new Date(oldDate).toLocaleDateString("ar")} إلى ${newDate.toLocaleDateString("ar")}.`,
+            "info",
+            "#student-private-sessions"
+          );
+        } catch (notifErr) {
+          console.error("فشل إشعار الطالب بإعادة الجدولة:", notifErr);
+        }
+      }
 
       return res.status(200).json({
         message: `تم إعادة جدولة الحصة من ${new Date(oldDate).toLocaleDateString("ar")} إلى ${newDate.toLocaleDateString("ar")}.`,
@@ -1608,6 +1731,27 @@ export class SessionBookingController {
 
       if (!isAuthorized) {
         return res.status(403).json({ error: "غير مصرح لك بتسجيل الحضور في هذه الحصة." });
+      }
+
+      // Strict session time window check: teacher must confirm attendance strictly during the scheduled session time
+      const sessionStart = new Date(session.scheduledAt).getTime();
+      const durationMinutes = session.duration || 60;
+      const sessionEnd = sessionStart + durationMinutes * 60 * 1000;
+      const now = Date.now();
+
+      if (req.user!.role !== "admin") {
+        if (now < sessionStart) {
+          const startTimeStr = new Date(session.scheduledAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          return res.status(400).json({
+            error: `لا يمكن تأكيد الحضور قبل موعد بدء الحصة الفعلي. يبدأ تسجيل الحضور في تمام الساعة ${startTimeStr}.`
+          });
+        }
+        if (now > sessionEnd) {
+          const endTimeStr = new Date(sessionEnd).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          return res.status(400).json({
+            error: `انتهى وقت الحصة المحدد في تمام الساعة ${endTimeStr}. لا يمكن تأكيد الحضور بعد انتهاء موعد الحصة.`
+          });
+        }
       }
 
       // Check if already registered

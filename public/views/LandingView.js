@@ -502,47 +502,51 @@ export default class LandingView {
             <div class="metrics-strip-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:40px;">
               
               <!-- Students Count -->
-              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(0,86,210,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(0,86,210,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لتسجيل حساب طالب جديد أو استعراض المنصة" onclick="const u = JSON.parse(localStorage.getItem('user') || '{}'); if (u?.role === 'STUDENT' || u?.role === 'student') window.location.hash='#student-dashboard'; else window.location.hash='#signup';">
                 <div style="width:54px; height:54px; border-radius:16px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   <i data-lucide="users" style="width:26px; height:26px;"></i>
                 </div>
-                <div>
+                <div style="flex:1;">
                   <div id="stat-students-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
                   <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">طالب مسجل بالمنصة</div>
                 </div>
+                <div style="color:var(--primary); opacity:0.6; font-size:0.9rem;">➔</div>
               </div>
 
               <!-- Success Rate -->
-              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لاستكشاف المنهج والخطط التفاعلية" onclick="document.getElementById('interactive-curriculum-explorer')?.scrollIntoView({behavior:'smooth'}) || (window.location.hash='#about');">
                 <div style="width:54px; height:54px; border-radius:16px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   <i data-lucide="award" style="width:26px; height:26px;"></i>
                 </div>
-                <div>
+                <div style="flex:1;">
                   <div id="stat-success-num" style="font-size:2.1rem; font-weight:900; color:#10b981; line-height:1; font-family:'Outfit','Cairo',sans-serif;">99.4%</div>
                   <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">نسبة النجاح في انطلق</div>
                 </div>
+                <div style="color:#10b981; opacity:0.6; font-size:0.9rem;">➔</div>
               </div>
 
               <!-- Courses Count -->
-              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(245,158,11,0.2); background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(245,158,11,0.2); background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لاستعراض مكتبة الدورات الشاملة" onclick="window.location.hash='#courses';">
                 <div style="width:54px; height:54px; border-radius:16px; background:rgba(245,158,11,0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   <i data-lucide="book-open" style="width:26px; height:26px;"></i>
                 </div>
-                <div>
+                <div style="flex:1;">
                   <div id="stat-courses-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
                   <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">دورة تعليمية شاملة</div>
                 </div>
+                <div style="color:#f59e0b; opacity:0.6; font-size:0.9rem;">➔</div>
               </div>
 
               <!-- Teachers Count -->
-              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(6,182,212,0.2); background:linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+              <div class="glass-card stat-card-hover" style="padding:24px 20px; border-radius:20px; border:1px solid rgba(6,182,212,0.2); background:linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لمشاهدة نخبة المعلمين والأساتذة" onclick="document.getElementById('top-teachers-container')?.scrollIntoView({behavior:'smooth'}) || (window.location.hash='#courses');">
                 <div style="width:54px; height:54px; border-radius:16px; background:rgba(6,182,212,0.15); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   <i data-lucide="graduation-cap" style="width:26px; height:26px;"></i>
                 </div>
-                <div>
+                <div style="flex:1;">
                   <div id="stat-teachers-num" style="font-size:2.1rem; font-weight:900; color:var(--text-color); line-height:1; font-family:'Outfit','Cairo',sans-serif;">0</div>
                   <div style="font-size:0.85rem; color:var(--text-muted); font-weight:700; margin-top:6px;">استاذ وخبير تربوي</div>
                 </div>
+                <div style="color:#06b6d4; opacity:0.6; font-size:0.9rem;">➔</div>
               </div>
 
             </div>
@@ -756,9 +760,13 @@ export default class LandingView {
         apiFetch("/categories"),
         apiFetch("/public/stats")
       ]);
-      this.courses = coursesRes.status === "fulfilled" && Array.isArray(coursesRes.value) ? coursesRes.value : [];
+      const rawCourses = coursesRes.status === "fulfilled" && Array.isArray(coursesRes.value) ? coursesRes.value : [];
+      // Only show PUBLISHED courses on landing page, never pending/draft/archived
+      this.courses = rawCourses.filter(c => c.status === "PUBLISHED" || !c.status);
       this.sessions = sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value) ? sessionsRes.value : [];
-      this.teachers = teachersRes.status === "fulfilled" && Array.isArray(teachersRes.value) ? teachersRes.value : [];
+      const rawTeachers = teachersRes.status === "fulfilled" && Array.isArray(teachersRes.value) ? teachersRes.value : [];
+      // Only show ACTIVE (approved) teachers on landing page
+      this.teachers = rawTeachers.filter(t => !t.status || t.status === "ACTIVE");
       this.blogs = blogsRes.status === "fulfilled" && Array.isArray(blogsRes.value) ? blogsRes.value : [];
       this.categories = categoriesRes.status === "fulfilled" && Array.isArray(categoriesRes.value) ? categoriesRes.value : [];
       this.platformStats = statsRes.status === "fulfilled" ? statsRes.value : null;

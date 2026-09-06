@@ -289,14 +289,23 @@ export async function joinSessionDirectly(sessionOrId) {
     return;
   }
 
-  // 3. Auto Check-in attendance in database
-  if (session.id) {
+  // 3. Auto Check-in attendance in database (Only within actual session time: sessionStart <= now <= sessionEnd)
+  const sessionStart = new Date(session.scheduledAt).getTime();
+  const sessionEnd = sessionStart + (session.duration || 60) * 60 * 1000;
+  const now = Date.now();
+
+  if (session.id && now >= sessionStart && now <= sessionEnd) {
     apiFetch(`/sessions/${session.id}/checkin`, { method: "POST" })
       .then(() => {
         window.checkedInSessions = window.checkedInSessions || new Set();
         window.checkedInSessions.add(String(session.id));
       })
       .catch(() => {});
+  } else if (session.id && now < sessionStart) {
+    const isTeacher = state.user?.role === "teacher" || (session.teacher && String(session.teacher.id) === String(state.user?.id));
+    if (isTeacher) {
+      showToast("تنبيه للمعلم: يبدأ تأكيد الحضور في موعد الحصة تماماً لتسجيل حضورك وتوثيق التقرير لاحقاً ⏳", "info");
+    }
   }
 
   showToast("جارٍ فتح Google Meet مباشرة... 🎥", "success");
@@ -318,17 +327,20 @@ document.addEventListener("click", (e) => {
 
 // ─── Global End Session & Report Modal (Settles credits & adds teacher earnings) ───
 export function showEndSessionReportModal(sessionId, onSuccess) {
-  const modalId = 'teacher-end-session-modal';
-  const existing = document.getElementById(modalId);
-  if (existing) existing.remove();
+  const isTeacher = state.user?.role === "teacher";
 
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = modalId;
-  overlay.style.display = 'flex';
-  overlay.style.backdropFilter = 'blur(8px)';
-  overlay.style.background = 'rgba(0,0,0,0.65)';
-  overlay.style.zIndex = '10000';
+  const openModal = () => {
+    const modalId = 'teacher-end-session-modal';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.style.display = 'flex';
+    overlay.style.backdropFilter = 'blur(8px)';
+    overlay.style.background = 'rgba(0,0,0,0.65)';
+    overlay.style.zIndex = '10000';
 
   overlay.innerHTML = `
     <div class="modal-content" style="max-width:560px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
@@ -424,6 +436,28 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
       showToast(err.message || "فشل إنهاء الجلسة وحفظ التقرير", "error");
     }
   });
+};
+
+  if (isTeacher) {
+    const isKnownCheckedIn = window.checkedInSessions?.has(String(sessionId));
+    if (isKnownCheckedIn) {
+      openModal();
+    } else {
+      apiFetch(`/sessions/${sessionId}/attendance`)
+        .then(data => {
+          if (data && data.isCheckedIn) {
+            window.checkedInSessions = window.checkedInSessions || new Set();
+            window.checkedInSessions.add(String(sessionId));
+            openModal();
+          } else {
+            showToast("لا يمكن توثيق التقرير وإنهاء الحصة: يجب على المعلم أولاً تأكيد حضوره أثناء وقت الحصة المحدد ⚠️", "error");
+          }
+        })
+        .catch(() => openModal());
+    }
+  } else {
+    openModal();
+  }
 }
 window.showEndSessionReportModal = showEndSessionReportModal;
 
@@ -758,6 +792,15 @@ function setupEventListeners() {
     sidebar?.classList.add("active");
     overlay?.classList.add("active");
     document.body.classList.add("sidebar-open");
+
+    // Dynamically refresh active navigation state when drawer opens
+    const currentHash = (window.location.hash || "#landing").split("?")[0];
+    sidebar?.querySelectorAll(".sidebar-nav-item").forEach(item => {
+      const itemHash = (item.getAttribute("href") || "").split("?")[0];
+      const isActive = (itemHash === "#landing" && (!currentHash || currentHash === "" || currentHash === "#" || currentHash === "#landing")) ||
+                       (itemHash !== "#landing" && currentHash.startsWith(itemHash));
+      item.classList.toggle("active", isActive);
+    });
   };
   const closeSidebar = () => {
     sidebar?.classList.remove("active");
@@ -938,156 +981,138 @@ export function updateHeader() {
   };
 
   if (sidebarList) {
+    const currentHash = (window.location.hash || "#landing").split("?")[0];
+
+    const createNavItem = (href, icon, label, badge = "", extraClass = "") => {
+      const itemBase = href.split("?")[0];
+      const isActive = (itemBase === "#landing" && (!currentHash || currentHash === "" || currentHash === "#" || currentHash === "#landing")) ||
+                       (itemBase !== "#landing" && currentHash.startsWith(itemBase));
+      return `
+        <a href="${href}" class="sidebar-nav-item ${isActive ? 'active' : ''} ${extraClass}" data-hash="${href}">
+          <span class="sidebar-nav-icon-box">
+            <i data-lucide="${icon}"></i>
+          </span>
+          <span class="sidebar-nav-text">${label}</span>
+          ${badge ? `<span class="sidebar-nav-badge">${badge}</span>` : ''}
+          <span class="sidebar-nav-arrow">
+            <i data-lucide="chevron-left"></i>
+          </span>
+        </a>
+      `;
+    };
+
+    const createNavSection = (title) => `
+      <div class="sidebar-nav-section">
+        <span class="sidebar-nav-section-dot"></span>
+        <span class="sidebar-nav-section-title">${title}</span>
+      </div>
+    `;
+
     let links = "";
     if (state.user) {
       if (state.user.role === "admin") {
         links += `
-          <a href="#admin-dashboard" class="sidebar-nav-item active" style="color:var(--primary); font-weight:800;">
-            <i data-lucide="shield"></i> ${t("nav.adminPanel")}
-          </a>
-          <a href="#admin-dashboard/stats" class="sidebar-nav-item">
-            <i data-lucide="pie-chart"></i> الإحصائيات العامة
-          </a>
-          <a href="#admin-dashboard/users" class="sidebar-nav-item">
-            <i data-lucide="users"></i> المستخدمين والمدربين
-          </a>
-          <a href="#admin-dashboard/courses" class="sidebar-nav-item">
-            <i data-lucide="book-open"></i> إدارة الكورسات
-          </a>
-          <a href="#admin-dashboard/enrollments" class="sidebar-nav-item">
-            <i data-lucide="graduation-cap"></i> طلبات تسجيل الكورسات
-          </a>
-          <a href="#admin-dashboard/subscriptions" class="sidebar-nav-item">
-            <i data-lucide="credit-card"></i> الاشتراكات والمدفوعات
-          </a>
-          <a href="#admin-dashboard/plans" class="sidebar-nav-item">
-            <i data-lucide="sparkles"></i> خطط الاشتراكات
-          </a>
-          <a href="#admin-dashboard/settings" class="sidebar-nav-item">
-            <i data-lucide="settings"></i> ⚙️ إعدادات المنصة والواتساب
-          </a>
-          <a href="#admin-dashboard/earnings" class="sidebar-nav-item">
-            <i data-lucide="wallet"></i> أرباح المعلمين
-          </a>
-          <a href="#admin-dashboard/reports" class="sidebar-nav-item">
-            <i data-lucide="flag"></i> البلاغات والشكاوى
-          </a>
+          ${createNavSection("الإشراف وإدارة النظام")}
+          ${createNavItem("#admin-dashboard", "shield-check", t("nav.adminPanel") || "لوحة التحكم الرئيسية")}
+          ${createNavItem("#admin-dashboard/stats", "pie-chart", "الإحصائيات والتحليلات")}
+          ${createNavItem("#admin-dashboard/users", "users", "المستخدمين والمعلمين")}
+          ${createNavItem("#admin-dashboard/courses", "book-open", "إدارة المقررات والكورسات")}
+          
+          ${createNavSection("الاشتراكات والعمليات")}
+          ${createNavItem("#admin-dashboard/enrollments", "graduation-cap", "طلبات تسجيل الكورسات")}
+          ${createNavItem("#admin-dashboard/subscriptions", "credit-card", "الاشتراكات والمدفوعات")}
+          ${createNavItem("#admin-dashboard/plans", "sparkles", "خطط وباقات الحصص")}
+          ${createNavItem("#admin-dashboard/earnings", "wallet", "أرباح ومستحقات المعلمين")}
+          
+          ${createNavSection("الرقابة والضبط")}
+          ${createNavItem("#admin-dashboard/reports", "flag", "البلاغات والشكاوى")}
+          ${createNavItem("#admin-dashboard/settings", "settings", "إعدادات المنصة والواتساب")}
         `;
       } else if (state.user.role === "teacher") {
         links += `
-          <a href="#teacher-portal" class="sidebar-nav-item active">
-            <i data-lucide="graduation-cap"></i> ${t("nav.teacherPortal")}
-          </a>
-          <a href="#courses" class="sidebar-nav-item">
-            <i data-lucide="book-open"></i> ${t("nav.teacher.courses")}
-          </a>
-          <a href="#students" class="sidebar-nav-item">
-            <i data-lucide="users"></i> ${t("nav.teacher.students") || "الطلاب المسجلين"}
-          </a>
-          <a href="#schedule" class="sidebar-nav-item">
-            <i data-lucide="calendar"></i> ${t("nav.schedule")}
-          </a>
-          <a href="#teacher-private-sessions" class="sidebar-nav-item" style="color:var(--primary);">
-            <i data-lucide="sparkles"></i> الحصص الخاصة والاستشارات
-          </a>
-          <a href="#teacher-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
-            <i data-lucide="users"></i> المجموعات والحصص الجماعية
-          </a>
-          <a href="#teacher-availability" class="sidebar-nav-item">
-            <i data-lucide="clock"></i> إدارة المواعيد والأوقات
-          </a>
-          <a href="#teacher-financial" class="sidebar-nav-item">
-            <i data-lucide="dollar-sign"></i> المحفظة والأرباح
-          </a>
-          <a href="#teacher-blogs" class="sidebar-nav-item">
-            <i data-lucide="pen-tool"></i> المقالات والمدونات
-          </a>
-          <a href="#assignments" class="sidebar-nav-item">
-            <i data-lucide="clipboard-list"></i> الواجبات والأنشطة
-          </a>
-          <a href="#tests" class="sidebar-nav-item">
-            <i data-lucide="check-square"></i> الاختبارات والتقييمات
-          </a>
-          <a href="#resources" class="sidebar-nav-item">
-            <i data-lucide="library"></i> المكتبة والمذكرات
-          </a>
-          <a href="#settings" class="sidebar-nav-item">
-            <i data-lucide="settings"></i> ${t("nav.settings")}
-          </a>
+          ${createNavSection("بوابة الأستاذ والمقررات")}
+          ${createNavItem("#teacher-portal", "layout-dashboard", t("nav.teacherPortal") || "لوحة المعلم الرئيسية")}
+          ${createNavItem("#courses", "book-open", t("nav.teacher.courses") || "دوراتي ومقرراتي")}
+          ${createNavItem("#students", "users", t("nav.teacher.students") || "الطلاب المسجلين")}
+          ${createNavItem("#schedule", "calendar", t("nav.schedule") || "جدول الحصص والبث")}
+          
+          ${createNavSection("الحصص والمجموعات")}
+          ${createNavItem("#teacher-private-sessions", "sparkles", "الحصص الخاصة والاستشارات", "1-on-1")}
+          ${createNavItem("#teacher-groups", "users", "المجموعات والحصص الجماعية")}
+          ${createNavItem("#teacher-availability", "clock", "إدارة المواعيد والأوقات")}
+          
+          ${createNavSection("الأكاديميا والأنشطة")}
+          ${createNavItem("#assignments", "clipboard-list", "الواجبات والمهام")}
+          ${createNavItem("#tests", "check-square", "الاختبارات والتقييمات")}
+          ${createNavItem("#resources", "library", "المكتبة والمذكرات")}
+          ${createNavItem("#teacher-blogs", "pen-tool", "المقالات والمدونات")}
+          ${createNavItem("#teacher-financial", "wallet", "المحفظة والأرباح")}
+          ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
         `;
       } else {
+        // Student role
         links += `
-          <a href="#student-dashboard" class="sidebar-nav-item">
-            <i data-lucide="layout-dashboard"></i> ${t("nav.dashboard")}
-          </a>
-          <a href="#courses" class="sidebar-nav-item" style="color:#e51d74; font-weight:800;">
-            <i data-lucide="graduation-cap"></i> المقررات الدراسية 🇪🇬
-          </a>
-          <a href="#schedule" class="sidebar-nav-item">
-            <i data-lucide="calendar"></i> ${t("nav.schedule")}
-          </a>
-          <a href="#student-subscriptions" class="sidebar-nav-item" style="color:var(--primary); font-weight:700;">
-            <i data-lucide="sparkles"></i> باقات اشتراكاتي
-          </a>
-          <a href="#student-private-sessions" class="sidebar-nav-item" style="color:#a855f7; font-weight:700;">
-            <i data-lucide="calendar"></i> جدول الحصص الخاصة
-          </a>
-          <a href="#student-groups" class="sidebar-nav-item" style="color:#6366f1; font-weight:700;">
-            <i data-lucide="users"></i> مجموعاتي والحصص الجماعية
-          </a>
-          <a href="#assignments" class="sidebar-nav-item">
-            <i data-lucide="clipboard-list"></i> ${t("nav.assignments")}
-          </a>
-          <a href="#resources" class="sidebar-nav-item">
-            <i data-lucide="library"></i> ${t("nav.resources")}
-          </a>
-          <a href="#tests" class="sidebar-nav-item">
-            <i data-lucide="check-square"></i> ${t("nav.tests")}
-          </a>
-          <a href="#notifications" class="sidebar-nav-item">
-            <i data-lucide="bell"></i> الإشعارات والتنبيهات
-          </a>
-          <a href="#settings" class="sidebar-nav-item">
-            <i data-lucide="settings"></i> ${t("nav.settings")}
-          </a>
+          ${createNavSection("المسار التعليمي")}
+          ${createNavItem("#student-dashboard", "layout-dashboard", t("nav.dashboard") || "لوحة الطالب الرئيسية")}
+          ${createNavItem("#courses", "graduation-cap", "المقررات الدراسية 🇪🇬", "شامل")}
+          ${createNavItem("#schedule", "calendar", t("nav.schedule") || "جدول الحصص والمواعيد")}
+          
+          ${createNavSection("الحصص والاشتراكات")}
+          ${createNavItem("#student-subscriptions", "sparkles", "باقات اشتراكاتي")}
+          ${createNavItem("#student-private-sessions", "calendar-check", "جدول الحصص الخاصة")}
+          ${createNavItem("#student-groups", "users", "مجموعاتي والحصص الجماعية")}
+          
+          ${createNavSection("المتابعة والتقييم")}
+          ${createNavItem("#assignments", "clipboard-list", t("nav.assignments") || "الواجبات والمهام")}
+          ${createNavItem("#tests", "check-square", t("nav.tests") || "الاختبارات الذكية")}
+          ${createNavItem("#resources", "library", t("nav.resources") || "المكتبة والملفات")}
+          ${createNavItem("#notifications", "bell", "الإشعارات والتنبيهات")}
+          ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
         `;
       }
+
+      const roleBadge = state.user.role === "admin" 
+        ? "🛡️ مشرف الإدارة" 
+        : state.user.role === "teacher" 
+          ? "👨‍🏫 أستاذ معتمد" 
+          : "👨‍🎓 طالب متميز";
+
       links += `
-        <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border-color);">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-            <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq'}" style="width:36px;height:36px;border-radius:50%;">
-            <div>
-              <div style="font-weight:700;font-size:0.9rem;">${state.user.name}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${state.user.role.toUpperCase()}</div>
+        <div class="sidebar-user-card">
+          <div class="sidebar-user-header">
+            <div class="sidebar-avatar-container">
+              <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(state.user.name)}" alt="${state.user.name}" class="sidebar-avatar-img">
+              <span class="sidebar-avatar-status" title="متصل الآن"></span>
+            </div>
+            <div class="sidebar-user-meta">
+              <div class="sidebar-user-name">${state.user.name}</div>
+              <span class="sidebar-user-badge">${roleBadge}</span>
             </div>
           </div>
-          <button class="btn-secondary" id="sidebar-logout-btn" style="width:100%; justify-content:center; color:var(--error); border-color:var(--error); font-size:0.85rem;">
-            <i data-lucide="log-out"></i> ${t("nav.logout")}
+          <button class="sidebar-logout-btn" id="sidebar-logout-btn">
+            <i data-lucide="log-out" style="width:16px;height:16px;"></i>
+            <span>${t("nav.logout") || "تسجيل الخروج"}</span>
           </button>
         </div>
       `;
     } else {
+      // Guest / Visitor
       links += `
-        <a href="#landing" class="sidebar-nav-item">
-          <i data-lucide="home"></i> الرئيسية
-        </a>
-        <a href="#courses" class="sidebar-nav-item">
-          <i data-lucide="book-open"></i> ${t("nav.courses") || "الدورات التعليمية"}
-        </a>
-        <a href="#about" class="sidebar-nav-item">
-          <i data-lucide="info"></i> عن المنصة
-        </a>
-        <a href="#faq" class="sidebar-nav-item">
-          <i data-lucide="help-circle"></i> الأسئلة الشائعة
-        </a>
-        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
-          <a href="#signup" class="btn-primary" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="user-plus"></i> إنشاء حساب جديد
+        ${createNavSection("استكشف المنصة")}
+        ${createNavItem("#landing", "home", "الصفحة الرئيسية")}
+        ${createNavItem("#courses", "book-open", t("nav.courses") || "الدورات والمناهج التعليمية")}
+        ${createNavItem("#about", "info", "عن المنصة ورؤيتنا")}
+        ${createNavItem("#faq", "help-circle", "الأسئلة الشائعة")}
+        
+        ${createNavSection("حسابك في المنصة")}
+        <div style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+          <a href="#signup" class="btn-primary sidebar-nav-item" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, var(--primary), #9333ea); color:#fff; border-radius:12px; font-weight:800; padding:12px 16px;">
+            <i data-lucide="user-plus" style="width:17px; height:17px;"></i> إنشاء حساب طالب جديد
           </a>
-          <a href="#login" class="btn-secondary" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="log-in"></i> ${t("nav.login") || "تسجيل دخول الطلاب"}
+          <a href="#login" class="sidebar-nav-item" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px; background:rgba(99,102,241,0.08); color:var(--primary); border:1px solid rgba(99,102,241,0.2); border-radius:12px; font-weight:800; padding:11px 16px;">
+            <i data-lucide="log-in" style="width:17px; height:17px;"></i> ${t("nav.login") || "تسجيل دخول الطلاب"}
           </a>
-          <a href="#staff-login" style="margin-top:4px; color:var(--text-muted); font-size:0.83rem; font-weight:700; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; padding:6px 10px; border-radius:8px; background:var(--bg-app); border:1px dashed var(--border-color);">
+          <a href="#staff-login" class="sidebar-nav-item" style="justify-content:center; color:var(--text-muted); font-size:0.83rem; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px; background:var(--bg-app); border:1px dashed var(--border-color); margin-top:2px;">
             <i data-lucide="shield-check" style="width:15px;height:15px;color:var(--primary);"></i> بوابة المعلمين والإدارة
           </a>
         </div>
@@ -1095,14 +1120,14 @@ export function updateHeader() {
     }
 
     links += `
-      <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
-        <button type="button" id="sidebar-drawer-theme-btn" style="flex:1; border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; background:var(--bg-app); cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-color); display:flex; align-items:center; justify-content:center; gap:6px;">
-          <i data-lucide="sun" class="sun-icon" style="width:16px; height:16px;"></i>
-          <i data-lucide="moon" class="moon-icon" style="width:16px; height:16px;"></i>
+      <div class="sidebar-utility-controls">
+        <button type="button" id="sidebar-drawer-theme-btn" class="sidebar-util-btn" title="تبديل المظهر">
+          <i data-lucide="sun" class="sun-icon" style="width:15px; height:15px;"></i>
+          <i data-lucide="moon" class="moon-icon" style="width:15px; height:15px;"></i>
           <span>المظهر</span>
         </button>
-        <button type="button" id="sidebar-drawer-lang-btn" style="flex:1; border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; background:var(--bg-app); cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-color); display:flex; align-items:center; justify-content:center; gap:6px;">
-          <i data-lucide="globe" style="width:16px; height:16px;"></i>
+        <button type="button" id="sidebar-drawer-lang-btn" class="sidebar-util-btn" title="تبديل اللغة">
+          <i data-lucide="globe" style="width:15px; height:15px;"></i>
           <span>${state.language === "ar" ? "English" : "العربية"}</span>
         </button>
       </div>
@@ -1117,8 +1142,17 @@ export function updateHeader() {
       document.getElementById("lang-toggle")?.click();
     });
 
-    sidebarList.querySelectorAll("a").forEach(a => {
-      a.addEventListener("click", closeSidebar);
+    sidebarList.querySelectorAll(".sidebar-nav-item").forEach(item => {
+      item.addEventListener("click", () => {
+        // Immediate visual feedback on click
+        sidebarList.querySelectorAll(".sidebar-nav-item").forEach(el => el.classList.remove("active"));
+        item.classList.add("active");
+        
+        // Gentle delay before closing drawer so user sees active response
+        setTimeout(() => {
+          closeSidebar();
+        }, 130);
+      });
     });
 
     sidebarList.querySelector("#sidebar-logout-btn")?.addEventListener("click", async (e) => {

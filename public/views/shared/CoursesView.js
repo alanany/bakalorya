@@ -259,7 +259,11 @@ export default class CoursesView {
         if (state.user && state.user.role === "teacher") {
           return c.teacher?.id === state.user.id || c.teacherId === state.user.id;
         }
-        return true;
+        if (state.user && state.user.role === "admin") {
+          return true;
+        }
+        // Students and public: ONLY PUBLISHED courses, never pending, draft, or archived
+        return c.status === "PUBLISHED" || !c.status;
       });
       this.allGradesData = Array.isArray(gradesData) ? gradesData : [];
 

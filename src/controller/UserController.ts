@@ -17,8 +17,9 @@ export class UserController {
   static async getTeachers(req: Request, res: Response) {
     try {
       const userRepository = AppDataSource.getRepository(User);
+      // Public view: only show approved/ACTIVE teachers
       const teachers = await userRepository.find({
-        where: { role: "teacher" },
+        where: { role: "teacher", status: "ACTIVE" },
         select: ["id", "name", "email", "role", "avatar", "education", "location"]
       });
       return res.json(teachers);

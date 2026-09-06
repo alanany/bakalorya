@@ -138,6 +138,8 @@ router.get("/courses/:id/enrollments", authMiddleware, requireRole(["teacher", "
 router.get("/admin/courses/pending-review", authMiddleware, requireRole(["admin"]), CourseController.getPendingCourses);
 router.post("/admin/courses/:id/approve", authMiddleware, requireRole(["admin"]), CourseController.approveCourse);
 router.post("/admin/courses/:id/reject", authMiddleware, requireRole(["admin"]), CourseController.rejectCourse);
+router.post("/admin/courses/:id/archive", authMiddleware, requireRole(["admin"]), CourseController.archiveCourse);
+router.post("/admin/courses/:id/unarchive", authMiddleware, requireRole(["admin"]), CourseController.unarchiveCourse);
 router.get("/admin/groups/pending-approval", authMiddleware, requireRole(["admin"]), CourseGroupController.getPendingGroups);
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin"]), CourseGroupController.getAllGroups);
 router.post("/admin/groups/:id/approve", authMiddleware, requireRole(["admin"]), CourseGroupController.approveGroup);

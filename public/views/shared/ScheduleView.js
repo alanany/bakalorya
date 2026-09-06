@@ -94,6 +94,11 @@ export default class ScheduleView {
     try {
       const allSessions = await apiFetch("/sessions");
 
+      window.checkedInSessions = window.checkedInSessions || new Set();
+      (allSessions || []).forEach(s => {
+        if (s && s.isCheckedIn) window.checkedInSessions.add(String(s.id));
+      });
+
       if (state.user.role === "teacher") {
         this.sessions = (allSessions || []).filter(s => s.teacher?.id === state.user.id);
         this.courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id)).catch(() => []);
@@ -180,21 +185,24 @@ export default class ScheduleView {
     }
   }
 
-  renderSessionGridCard(session, isTeacher) {
+renderSessionGridCard(session, isTeacher) {
     const date = new Date(session.scheduledAt);
     const sessionTime = date.getTime();
     const durationMins = session.duration || 60;
     const durationMs = durationMins * 60 * 1000;
     const nowTime = Date.now();
+    const sessionStart = sessionTime;
+    const sessionEnd = sessionStart + durationMs;
 
-    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
-    // If the scheduled time + duration has passed, it is strictly a past session (cannot remain live)
-    const isPastSession = !isCompleted && (nowTime >= sessionTime + durationMs);
-    // Live only if status is live AND the session duration has not ended
-    const isLive = !isCompleted && !isPastSession && (session.status === "live" || session.status === "LIVE" || session.status === "active");
-
+    const endDate = new Date(sessionEnd);
+    const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
+
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
+    const isPastSession = !isCompleted && (nowTime > sessionEnd);
+    const isDuringSession = !isCompleted && (nowTime >= sessionStart && nowTime <= sessionEnd);
+    const isCheckedIn = window.checkedInSessions?.has(String(session.id)) || !!session.isCheckedIn;
 
     let statusTag = `<span class="session-tag">${t("session.scheduled") || "Scheduled"}</span>`;
     let sessionAction = "";
@@ -204,37 +212,41 @@ export default class ScheduleView {
       sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.85; width:100%; justify-content:center;" disabled>تم إنهاء الحصة واحتساب الأرصدة ✅</button>`;
     } else if (isPastSession) {
       statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
-      if (isTeacher) {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-            <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:10px; justify-content:center; font-weight:800; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
-              <i data-lucide="file-check" style="width:16px;height:16px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
-            </button>
-            ${isCheckedIn ? `
-              <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
-              </span>
-            ` : `
-              <button class="btn-secondary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.82rem; padding:7px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">
-                <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
-              </button>
-            `}
-          </div>
-        `;
-      } else {
-        sessionAction = `<button class="btn-secondary session-action" style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.65; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted);" disabled>⌛ انتهى موعد الحصة (مغلقة)</button>`;
-      }
-    } else if (isLive) {
-      statusTag = `<span class="session-tag live">${t("session.liveNow") || "LIVE NOW"}</span>`;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
-
       if (isTeacher) {
         if (isCheckedIn) {
           sessionAction = `
             <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
               <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
+                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم في موعد الحصة ✅
+              </span>
+              <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:10px; justify-content:center; font-weight:800; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
+                <i data-lucide="file-check" style="width:16px;height:16px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
+              </button>
+            </div>
+          `;
+        } else {
+          sessionAction = `
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+              <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:10px 12px; color:#ef4444; font-size:0.78rem; font-weight:800; text-align:center; line-height:1.4;">
+                <i data-lucide="alert-triangle" style="width:15px; height:15px; vertical-align:middle;"></i> انتهى وقت الحصة ولم يؤكد الحضور في الموعد (مسجل غياب المعلم) ⚠️
+              </div>
+              <button disabled class="btn-secondary" style="opacity:0.6; cursor:not-allowed; font-size:0.78rem; padding:8px; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted); font-weight:700;" title="لا يمكن توثيق التقرير لعدم تأكيد الحضور أثناء وقت الحصة">
+                <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> توثيق التقرير مقفل (غياب المعلم) 🔒
+              </button>
+            </div>
+          `;
+        }
+      } else {
+        sessionAction = `<button class="btn-secondary session-action" style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.65; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted);" disabled>⌛ انتهى موعد الحصة (مغلقة)</button>`;
+      }
+    } else if (isDuringSession || session.status === "live" || session.status === "LIVE") {
+      statusTag = `<span class="session-tag live">${session.status === "live" ? (t("session.liveNow") || "LIVE NOW") : ("🔴 موعد الحصة الآن (" + formattedTime + " - " + formattedEndTime + ")")}</span>`;
+      if (isTeacher) {
+        if (isCheckedIn) {
+          sessionAction = `
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+              <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
+                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر في الموعد) ✅
               </span>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <button class="btn-primary" data-join-meet-id="${session.id}" style="background:var(--success); font-size:0.9rem; padding:10px; justify-content:center; border:none; cursor:pointer; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
@@ -246,9 +258,9 @@ export default class ScheduleView {
           sessionAction = `
             <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
               <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.9rem; padding:11px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-                <i data-lucide="user-check" style="width:16px; height:16px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
+                <i data-lucide="user-check" style="width:16px; height:16px;"></i> تأكيد حضور المعلم الآن (في وقت الحصة) ✍️
               </button>
-              <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر دخول البث المباشر</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* متاح تأكيد الحضور الآن فقط حتى نهاية وقت الحصة (${formattedEndTime})</div>
             </div>
           `;
         }
@@ -273,56 +285,23 @@ export default class ScheduleView {
           `;
         }
       }
-    } else if (isPastSession) {
-      statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
-      if (isTeacher) {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-            <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:10px; justify-content:center; font-weight:800; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
-              <i data-lucide="file-check" style="width:16px;height:16px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
-            </button>
-            <button class="btn-secondary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="width:100%; justify-content:center; font-size:0.82rem; padding:7px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; cursor:pointer;">
-              <i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
-            </button>
-          </div>
-        `;
-      } else {
-        sessionAction = `<button class="btn-secondary session-action" style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.65; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted);" disabled>⌛ انتهى موعد الحصة (مغلقة)</button>`;
-      }
     } else {
-      // Future / Upcoming / Starting Soon
       const teacherWindow = 60 * 60 * 1000;
       const studentWindow = 30 * 60 * 1000;
       const isTeacherJoinable = nowTime >= (sessionTime - teacherWindow);
       const isStudentJoinable = nowTime >= (sessionTime - studentWindow);
-      const isOnTime = nowTime >= sessionTime;
-      const isCheckedIn = window.checkedInSessions?.has(session.id);
 
       if (isTeacher) {
         if (isTeacherJoinable) {
-          statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">${isOnTime ? '🕐 موعد الحصة الآن' : '⚡ تبدأ قريباً'}</span>`;
-          if (isCheckedIn) {
-            sessionAction = `
-              <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-                <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-                  <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر) ✅
-                </span>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                  <button class="btn-primary start-session-btn" data-id="${session.id}" style="font-size:0.9rem; padding:10px; justify-content:center; font-weight:800;"><i data-lucide="play"></i> بدء البث 🔴</button>
-                  <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.9rem; padding:10px; justify-content:center; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
-                </div>
+          statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">⚡ تبدأ في تمام ${formattedTime}</span>`;
+          sessionAction = `
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+              <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; color:var(--primary); font-size:0.78rem; font-weight:800; text-align:center;">
+                <i data-lucide="clock" style="width:14px; height:14px; vertical-align:middle;"></i> ينشط تأكيد الحضور في موعد الحصة تماماً (${formattedTime}) 🔒
               </div>
-            `;
-          } else {
-            sessionAction = `
-              <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-                <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.9rem; padding:11px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-                  <i data-lucide="user-check" style="width:16px; height:16px;"></i> تأكيد حضور المعلم (لست غائباً) ✍️
-                </button>
-                <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر بدء البث ودخول القاعة</div>
-              </div>
-            `;
-          }
+              <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.88rem; padding:9px; justify-content:center; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video"></i> معاينة Google Meet 🎥</button>
+            </div>
+          `;
         } else {
           statusTag = `<span class="session-tag" style="background:rgba(99,102,241,0.1); color:var(--primary);">${t("session.scheduled") || "Scheduled"}</span>`;
           sessionAction = `
@@ -332,31 +311,8 @@ export default class ScheduleView {
           `;
         }
       } else {
-        if (isStudentJoinable) {
-          statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">${isOnTime ? '🕐 موعد الحصة الآن' : '⚡ تبدأ قريباً'}</span>`;
-          if (isCheckedIn) {
-            sessionAction = `
-              <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-                <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-                  <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور الطالب (حاضر) ✅
-                </span>
-                <button class="btn-primary session-action" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 15px rgba(16,185,129,0.3); font-size:0.92rem; padding:11px; justify-content:center; border:none; color:#fff; cursor:pointer; font-weight:900; display:flex; align-items:center; gap:6px; border-radius:12px;"><i data-lucide="video"></i> الانضمام عبر Google Meet 🎥</button>
-              </div>
-            `;
-          } else {
-            sessionAction = `
-              <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
-                <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="student" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.9rem; padding:11px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-                  <i data-lucide="user-check" style="width:16px; height:16px;"></i> تأكيد الحضور (لست غائباً) ✍️
-                </button>
-                <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">* اضغط لتأكيد حضورك وتفعيل زر دخول قاعة الحصة</div>
-              </div>
-            `;
-          }
-        } else {
-          statusTag = `<span class="session-tag" style="background:rgba(99,102,241,0.1); color:var(--primary);">${t("session.scheduled") || "Scheduled"}</span>`;
-          sessionAction = `<button class="btn-secondary session-action restricted-join-btn" disabled style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.85; width:100%; justify-content:center; background:rgba(99,102,241,0.06); color:var(--primary); border-color:rgba(99,102,241,0.2); font-weight:700;" title="ينشط زر الدخول قبل موعد الحصة بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> ينشط الدخول قبل الموعد بـ 30 دقيقة 🔒</button>`;
-        }
+        statusTag = `<span class="session-tag">${t("session.scheduled") || "Scheduled"}</span>`;
+        sessionAction = `<button class="btn-secondary session-action restricted-join-btn" disabled style="cursor:not-allowed; margin-top:16px; font-size:0.85rem; padding:10px; opacity:0.85; width:100%; justify-content:center; background:rgba(99,102,241,0.06); color:var(--primary); border-color:rgba(99,102,241,0.2); font-weight:700;" title="ينشط زر الدخول قبل موعد الحصة بـ 30 دقيقة فقط"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> ينشط الدخول قبل الموعد بـ 30 دقيقة 🔒</button>`;
       }
     }
 

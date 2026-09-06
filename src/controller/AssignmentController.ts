@@ -6,6 +6,7 @@ import { Course } from "../entity/Course";
 import { Lesson } from "../entity/Lesson";
 import { Enrollment } from "../entity/Enrollment";
 import { User } from "../entity/User";
+import { NotificationController } from "./NotificationController";
 
 export class AssignmentController {
     static getAssignments = async (req: Request, res: Response) => {
@@ -98,6 +99,29 @@ export class AssignmentController {
             }
 
             await AppDataSource.getRepository(Assignment).save(assignment);
+
+            // Notify all actively enrolled students about the new assignment
+            try {
+              const enrollments = await AppDataSource.getRepository(Enrollment).find({
+                where: { course: { id: courseId }, status: "active" },
+                relations: ["student"]
+              });
+              const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("ar") : null;
+              for (const enr of enrollments) {
+                if (enr.student) {
+                  await NotificationController.createNotification(
+                    enr.student.id,
+                    `واجب دراسي جديد 📝`,
+                    `تم إضافة واجب جديد بعنوان "${title}" في دورة "${course.title}". ${dueDateStr ? 'موعد التسليم: ' + dueDateStr : ''}`,
+                    "info",
+                    "#assignments"
+                  );
+                }
+              }
+            } catch (notifErr) {
+              console.error("فشل إشعار الطلاب بواجب جديد:", notifErr);
+            }
+
             res.status(201).json(assignment);
         } catch (error) {
             res.status(500).json({ error: "Failed to create assignment" });
@@ -127,6 +151,26 @@ export class AssignmentController {
             submission.content = content;
             submission.submittedAt = new Date();
             await subRepo.save(submission);
+
+            // Notify teacher that a student submitted an assignment
+            try {
+              const fullAssignment = await AppDataSource.getRepository(Assignment).findOne({
+                where: { id: assignmentId },
+                relations: ["course", "course.teacher"]
+              });
+              if (fullAssignment?.course?.teacher) {
+                const student = await AppDataSource.getRepository(User).findOneBy({ id: userId });
+                await NotificationController.createNotification(
+                  fullAssignment.course.teacher.id,
+                  `تسليم واجب جديد 📬`,
+                  `سلّم الطالب "${student?.name || 'طالب'}" واجب "${fullAssignment.title}" في دورة "${fullAssignment.course.title}".`,
+                  "info",
+                  "#assignments"
+                );
+              }
+            } catch (notifErr) {
+              console.error("فشل إشعار المعلم بتسليم الواجب:", notifErr);
+            }
 
             res.status(201).json(submission);
         } catch (error) {
@@ -159,6 +203,26 @@ export class AssignmentController {
 
             submission.grade = grade;
             await subRepo.save(submission);
+
+            // Notify student that their submission was graded
+            try {
+              const gradedSubmission = await subRepo.findOne({
+                where: { id: submissionId },
+                relations: ["student", "assignment"]
+              });
+              if (gradedSubmission?.student) {
+                await NotificationController.createNotification(
+                  gradedSubmission.student.id,
+                  `تم تقييم واجبك! 🏆`,
+                  `تم تصحيح واجبك "${gradedSubmission.assignment?.title || 'الواجب'}" وتقييمه بدرجة ${grade}.`,
+                  "success",
+                  "#assignments"
+                );
+              }
+            } catch (notifErr) {
+              console.error("فشل إشعار الطالب بتصحيح الواجب:", notifErr);
+            }
+
             res.json(submission);
         } catch (error) {
             res.status(500).json({ error: "Failed to grade submission" });

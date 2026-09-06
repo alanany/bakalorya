@@ -215,6 +215,28 @@ export default class TeacherDetailsView {
               <span style="font-size:0.84rem; font-weight:800; color:var(--text-main);">تنسيق مرن لموعد الحصة</span>
             </div>
           </div>
+        <!-- Teacher Academic Background & Specialization -->
+        <div class="glass-card" style="border-radius:20px; padding:24px 32px; margin-bottom:32px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <div style="width:42px; height:42px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="graduation-cap" style="width:22px; height:22px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">المؤهل العلمي والتخصص الأكاديمي</h3>
+              <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">الاعتماد الأكاديمي والخبرة المهنية للأستاذ بالمنصة</p>
+            </div>
+          </div>
+          <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:16px 20px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.98rem; font-weight:800; color:var(--primary);">
+              <i data-lucide="award" style="width:18px; height:18px;"></i>
+              <span>${education}</span>
+            </div>
+            ${tProfile.bio ? `
+              <p style="margin:10px 0 0 0; font-size:0.88rem; color:var(--text-muted); line-height:1.6; border-top:1px dashed var(--border-color); padding-top:10px;">
+                ${tProfile.bio}
+              </p>
+            ` : ''}
+          </div>
         </div>
 
         <!-- Custom Categories & Specialties -->

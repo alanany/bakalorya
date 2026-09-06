@@ -339,7 +339,7 @@ export default class StudentView {
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:18px; margin-bottom:32px;">
           
           <!-- Card 1: Enrolled Courses -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى مساراتك ودوراتك المسجلة" onclick="const allBtn = document.querySelector('.filter-pill-btn[data-filter=\'all\']'); if(allBtn) allBtn.click(); document.getElementById('student-enrolled-courses-section')?.scrollIntoView({behavior:'smooth'}) || (window.location.hash='#courses');">
             <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(79,70,229,0.05)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
               <i data-lucide="book-open" style="width:26px; height:26px;"></i>
             </div>
@@ -352,12 +352,12 @@ export default class StudentView {
               </div>
             </div>
             <span style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:12px; background:var(--primary-glow); color:var(--primary);">
-              مساراتك
+              مساراتك ↗
             </span>
           </div>
 
           <!-- Card 2: Completed Lessons -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى الدورات والدروس المكتملة" onclick="const compBtn = document.querySelector('.filter-pill-btn[data-filter=\'completed\']'); if(compBtn) compBtn.click(); document.getElementById('student-enrolled-courses-section')?.scrollIntoView({behavior:'smooth'}) || (window.location.hash='#courses');">
             <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
               <i data-lucide="check-circle-2" style="width:26px; height:26px;"></i>
             </div>
@@ -375,7 +375,7 @@ export default class StudentView {
           </div>
 
           <!-- Card 3: Study Hours -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لاستكشاف المزيد من ساعات المذاكرة والمناهج" onclick="window.location.hash='#courses';">
             <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.05)); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
               <i data-lucide="clock" style="width:26px; height:26px;"></i>
             </div>
@@ -393,7 +393,7 @@ export default class StudentView {
           </div>
 
           <!-- Card 4: Private Sessions Balance -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;">
+          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر لإدارة وعرض باقات الحصص الخاصة" onclick="window.location.hash='#student-subscriptions';">
             <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05)); color:#a855f7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
               <i data-lucide="sparkles" style="width:26px; height:26px;"></i>
             </div>
@@ -405,7 +405,7 @@ export default class StudentView {
                 رصيد الحصص الخاصة
               </div>
             </div>
-            <a href="#student-subscriptions" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; text-decoration:none;">
+            <a href="#student-subscriptions" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; text-decoration:none;" onclick="event.stopPropagation();">
               الباقات ↗
             </a>
           </div>
@@ -462,7 +462,7 @@ export default class StudentView {
           <div style="display:flex; flex-direction:column; gap:32px;">
             
             <!-- Section: My Enrolled Courses -->
-            <div>
+            <div id="student-enrolled-courses-section">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
                 <div>
                   <h2 style="font-size:1.25rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">

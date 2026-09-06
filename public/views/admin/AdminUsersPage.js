@@ -84,6 +84,7 @@ export const AdminUsersPage = {
                             <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;">${u.name}</div>
+                              ${u.education ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">🎓 ${u.education}</div>` : ''}
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
                             </div>
                           </div>
@@ -527,9 +528,13 @@ export const AdminUsersPage = {
                   <label for="member-phone" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">رقم هاتف المستخدم والواتساب</label>
                   ${renderPhoneInputGroup({ selectId: "member-phone-code", inputId: "member-phone-num", defaultCode: "+20", value: isEdit ? (user.phone || "") : "", placeholder: "01012345678", required: false })}
                 </div>
-                <div class="form-group" style="margin:0;">
-                  <label for="member-education" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">المستوى الدراسي</label>
-                  ${renderEducationSelectHTML({ id: "member-education", selectedValue: isEdit ? (user.education || "Entlq 3") : "Entlq 3", style: "padding:8px 12px; font-size:0.88rem;" })}
+                <div class="form-group" id="student-education-group" style="margin:0; display:${initialRole === 'student' ? 'block' : 'none'};">
+                  <label for="member-education" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">المرحلة والصف الدراسي المقيد به الطالب</label>
+                  ${renderEducationSelectHTML({ id: "member-education", selectedValue: isEdit && user.role === 'student' ? (user.education || "Entlq 3") : "Entlq 3", style: "padding:8px 12px; font-size:0.88rem;" })}
+                </div>
+                <div class="form-group" id="teacher-education-group" style="margin:0; display:${initialRole === 'teacher' ? 'block' : 'none'};">
+                  <label for="member-teacher-education" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">المؤهل والتخصص الأكاديمي للمعلم</label>
+                  <input type="text" id="member-teacher-education" class="form-input" value="${isEdit && user.role === 'teacher' ? (user.education || '') : ''}" placeholder="مثال: أستاذ تعليم ثانوي مادة الفيزياء - خبرة 10 سنوات" style="padding:8px 12px; font-size:0.88rem;">
                 </div>
               </div>
 
@@ -593,10 +598,15 @@ export const AdminUsersPage = {
     document.getElementById("cancel-member-modal")?.addEventListener("click", closeModal);
 
     document.getElementById("member-role")?.addEventListener("change", (e) => {
+      const selectedRole = e.target.value;
       const capGroup = document.getElementById("teacher-capabilities-group");
-      if (capGroup) capGroup.style.display = e.target.value === "teacher" ? "block" : "none";
+      if (capGroup) capGroup.style.display = selectedRole === "teacher" ? "block" : "none";
       const parentPhoneGroup = document.getElementById("parent-phone-group");
-      if (parentPhoneGroup) parentPhoneGroup.style.display = e.target.value === "student" ? "block" : "none";
+      if (parentPhoneGroup) parentPhoneGroup.style.display = selectedRole === "student" ? "block" : "none";
+      const studentEduGroup = document.getElementById("student-education-group");
+      if (studentEduGroup) studentEduGroup.style.display = selectedRole === "student" ? "block" : "none";
+      const teacherEduGroup = document.getElementById("teacher-education-group");
+      if (teacherEduGroup) teacherEduGroup.style.display = selectedRole === "teacher" ? "block" : "none";
     });
 
     document.getElementById("member-form")?.addEventListener("submit", async (e) => {
@@ -613,7 +623,9 @@ export const AdminUsersPage = {
       const parentPhoneNum = document.getElementById("member-parent-phone-num")?.value.trim() || "";
       const parentPhone = parentPhoneNum ? `${parentPhoneCode} ${parentPhoneNum}`.trim() : "";
 
-      const education = document.getElementById("member-education")?.value || "";
+      const education = role === "teacher"
+        ? (document.getElementById("member-teacher-education")?.value.trim() || "")
+        : (document.getElementById("member-education")?.value || "");
       const hourlyRate = parseFloat(document.getElementById("member-hourly-rate")?.value) || 150;
       const meetingLink = document.getElementById("member-meeting-link")?.value.trim() || "";
 

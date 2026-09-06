@@ -371,6 +371,32 @@ export class SubscriptionController {
       audit.metadata = JSON.stringify({ oldTeacher: oldTeacherName, newTeacher: newTeacher.name });
       await auditRepository.save(audit);
 
+      // Notify student that a teacher was assigned
+      try {
+        await NotificationController.createNotification(
+          subscription.student.id,
+          "تم تعيين معلمك! 👨‍🏫",
+          `تم إسناد الأستاذ "${newTeacher.name}" لاشتراكك في باقة "${subscription.plan?.name || ''}". يمكنك الآن حجز موعد حصتك الأولى.`,
+          "success",
+          "#student-private-sessions"
+        );
+      } catch (e) {
+        console.warn("فشل إشعار الطالب بتعيين المعلم:", e);
+      }
+
+      // Notify new teacher about the assigned student
+      try {
+        await NotificationController.createNotification(
+          newTeacher.id,
+          "طالب جديد مُسند إليك 👤",
+          `تم إسناد الطالب "${subscription.student.name}" إليك في اشتراك باقة "${subscription.plan?.name || ''}".`,
+          "info",
+          "#teacher-private-sessions"
+        );
+      } catch (e) {
+        console.warn("فشل إشعار المعلم بالطالب الجديد:", e);
+      }
+
       return res.status(200).json(subscription);
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -432,6 +458,34 @@ export class SubscriptionController {
       audit.entityId = subscription.id;
       audit.metadata = JSON.stringify({ studentName: subscription.student.name, plan: subscription.plan.name, receiptUrl });
       await auditRepository.save(audit);
+
+      // Notify student that their subscription was approved
+      try {
+        await NotificationController.createNotification(
+          subscription.student.id,
+          "تم قبول طلب الاشتراك وتفعيله! ✅",
+          `تم قبول إيصال الدفع وتفعيل اشتراكك في باقة "${subscription.plan.name}". رصيدك: ${subscription.plan.sessionsCount} حصة.`,
+          "success",
+          "#student-private-sessions"
+        );
+      } catch (e) {
+        console.warn("فشل إشعار الطالب باعتماد الاشتراك:", e);
+      }
+
+      // Notify teacher if one is already assigned
+      if (subscription.teacher) {
+        try {
+          await NotificationController.createNotification(
+            subscription.teacher.id,
+            "اشتراك طالبك مفعّل 📚",
+            `تم تفعيل اشتراك الطالب "${subscription.student.name}" في باقة "${subscription.plan.name}" وهو جاهز لبدء الجدولة.`,
+            "info",
+            "#teacher-private-sessions"
+          );
+        } catch (e) {
+          console.warn("فشل إشعار المعلم بتفعيل الاشتراك:", e);
+        }
+      }
 
       return res.status(200).json({ subscription, payment });
     } catch (err) {
@@ -620,6 +674,19 @@ export class SubscriptionController {
       audit.metadata = JSON.stringify({ studentName: subscription.student.name, reason });
       await auditRepository.save(audit);
 
+      // Notify student that their subscription was rejected
+      try {
+        await NotificationController.createNotification(
+          subscription.student.id,
+          "تحديث بشأن طلب اشتراكك ❌",
+          `تم رفض طلب اشتراكك في باقة "${subscription.plan?.name || 'الباقة'}". ${reason ? 'السبب: ' + reason + '.' : ''} يرجى التواصل مع الدعم أو إعادة تقديم الطلب.`,
+          "warning",
+          "#student-private-sessions"
+        );
+      } catch (e) {
+        console.warn("فشل إشعار الطالب برفض الاشتراك:", e);
+      }
+
       return res.status(200).json({ message: "تم رفض الاشتراك.", subscription });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -705,6 +772,19 @@ export class SubscriptionController {
       audit.entityId = subscription.id;
       audit.metadata = JSON.stringify({ studentName: subscription.student.name, addedSessions, cost, receiptUrl });
       await auditRepository.save(audit);
+
+      // Notify student that their subscription was renewed
+      try {
+        await NotificationController.createNotification(
+          subscription.student.id,
+          "تم تجديد اشتراكك بنجاح! 🔄",
+          `تم إضافة ${addedSessions} حصة لاشتراكك في باقة "${renewalPlan?.name || 'حصص خاصة'}". يمكنك الآن حجز حصصك الجديدة.`,
+          "success",
+          "#student-private-sessions"
+        );
+      } catch (e) {
+        console.warn("فشل إشعار الطالب بتجديد الاشتراك:", e);
+      }
 
       return res.status(200).json({ subscription, payment, message: "تم تجديد الاشتراك وإضافة الرصيد والإيصال بنجاح 🎉" });
     } catch (err) {

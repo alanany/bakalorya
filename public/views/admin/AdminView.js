@@ -166,26 +166,38 @@ export default class AdminView {
           padding: 11px 14px;
           border: 1px solid transparent;
           background: transparent;
-          border-radius: 12px;
+          border-radius: 14px;
           cursor: pointer;
           font-size: 0.88rem;
-          font-weight: 600;
+          font-weight: 700;
           color: var(--text-muted);
           text-align: start;
-          transition: all 0.2s ease;
-          margin-bottom: 3px;
+          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          margin-bottom: 4px;
           position: relative;
         }
         .admin-nav-btn:hover {
-          background: var(--bg-app);
-          color: var(--text-main);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(16, 185, 129, 0.05) 100%);
+          color: var(--primary);
+          border-color: rgba(99, 102, 241, 0.25);
+          transform: translateX(-5px);
+          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+        }
+        [dir="ltr"] .admin-nav-btn:hover {
+          transform: translateX(5px);
+        }
+        .admin-nav-btn:active {
+          transform: scale(0.97) translateX(-3px);
+        }
+        [dir="ltr"] .admin-nav-btn:active {
+          transform: scale(0.97) translateX(3px);
         }
         .admin-nav-btn.active {
-          background: var(--primary-glow);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(236, 72, 153, 0.08));
           color: var(--primary);
           font-weight: 800;
-          border: 1px solid var(--border-focus);
-          box-shadow: 0 4px 15px var(--primary-glow);
+          border: 1px solid rgba(99, 102, 241, 0.35);
+          box-shadow: 0 4px 18px rgba(99, 102, 241, 0.18);
         }
         .admin-nav-btn.active::before {
           content: '';
@@ -194,8 +206,12 @@ export default class AdminView {
           top: 20%;
           height: 60%;
           width: 4px;
-          background: var(--primary);
+          background: linear-gradient(180deg, var(--primary), #ec4899);
           border-radius: 0 4px 4px 0;
+          box-shadow: 0 0 10px var(--primary);
+        }
+        [dir="ltr"] .admin-nav-btn.active::before {
+          border-radius: 4px 0 0 4px;
         }
         .admin-nav-btn i, .admin-nav-btn svg {
           width: 18px; height: 18px;
@@ -891,7 +907,7 @@ export default class AdminView {
     this.container.querySelectorAll(".admin-reject-course-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
-        const confirmed = await confirmDialog("هل أنت تأكد من رفض هذه الدورة؟");
+        const confirmed = await confirmDialog("هل أنت متأكد من رفض هذه الدورة؟");
         if (!confirmed) return;
         try {
           const res = await apiFetch(`/admin/courses/${id}/reject`, { method: "POST" });
@@ -900,6 +916,39 @@ export default class AdminView {
           this.renderTab("courses");
         } catch (err) {
           showToast(err.message || "فشل رفض الدورة", "error");
+        }
+      });
+    });
+
+    // Admin Archive Course (Hides course from landing and all pages)
+    this.container.querySelectorAll(".admin-archive-course-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title") || "الدورة";
+        const confirmed = await confirmDialog(`هل أنت متأكد من أرشفة "${title}"؟ ستختفي الدورة فوراً من الصفحة الرئيسية وصفحات الطلاب وجميع الفهارس.`);
+        if (!confirmed) return;
+        try {
+          const res = await apiFetch(`/admin/courses/${id}/archive`, { method: "POST" });
+          showToast(res.message || "تمت أرشفة الدورة وإخفاؤها بنجاح 📦", "success");
+          await this.loadAllData();
+          this.renderTab("courses");
+        } catch (err) {
+          showToast(err.message || "فشل أرشفة الدورة", "error");
+        }
+      });
+    });
+
+    // Admin Unarchive Course (Restores course to PUBLISHED)
+    this.container.querySelectorAll(".admin-unarchive-course-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          const res = await apiFetch(`/admin/courses/${id}/unarchive`, { method: "POST" });
+          showToast(res.message || "تم إلغاء الأرشفة وإعادة إتاحة الدورة للجميع! 🎉", "success");
+          await this.loadAllData();
+          this.renderTab("courses");
+        } catch (err) {
+          showToast(err.message || "فشل إلغاء أرشفة الدورة", "error");
         }
       });
     });

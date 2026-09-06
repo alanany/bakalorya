@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>انطلق - منصة التعليم الإلكتروني</title>
   <meta name="description" content="منصة انطلق للتعليم الإلكتروني والجلسات التفاعلية المباشرة لطلاب الانطلق">
+  <!-- Favicon / Browser Tab Icon -->
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="shortcut icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
   <!-- Google Fonts: Latin + Arabic -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,11 +61,12 @@
       box-shadow: 0 6px 26px rgba(0, 86, 210, 0.5);
     }
 
-    .app-sidebar .sidebar-header img {
+    .app-sidebar .sidebar-brand-logo {
       background: #fff;
-      border-radius: 14px;
-      padding: 6px 16px;
-      height: 80px !important;
+      border-radius: 10px;
+      padding: 4px 10px;
+      height: 38px !important;
+      object-fit: contain;
     }
 
   </style>
@@ -72,10 +77,18 @@
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <aside class="app-sidebar" id="app-sidebar">
     <div class="sidebar-header">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <img src="assets/logo.png" alt="انطلق" style="height:52px; object-fit:contain;">
+      <div class="sidebar-brand-wrapper">
+        <a href="#landing" class="sidebar-brand-link" title="الصفحة الرئيسية">
+          <img src="assets/logo.png" alt="انطلق" class="sidebar-brand-logo">
+        </a>
+        <div class="sidebar-brand-meta">
+          <span class="sidebar-brand-name">منصة انطلق</span>
+          <span class="sidebar-brand-sub">بوابة التعليم التفاعلي ✨</span>
+        </div>
       </div>
-      <button class="sidebar-close-btn" id="sidebar-close-btn">&times;</button>
+      <button class="sidebar-close-btn" id="sidebar-close-btn" title="إغلاق القائمة">
+        <i data-lucide="x" style="width:18px; height:18px;"></i>
+      </button>
     </div>
     <div class="sidebar-menu-list" id="sidebar-menu-list">
       <!-- Dynamic side menu navigation links -->

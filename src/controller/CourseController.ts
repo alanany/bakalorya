@@ -9,13 +9,59 @@ import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildEnrollmentAcceptedMessage } from "../utils/whatsapp";
 
+import { JWT_SECRET } from "../middleware/auth";
+import jwt from "jsonwebtoken";
+
 export class CourseController {
   static async getAll(req: Request, res: Response) {
     try {
       const courseRepository = AppDataSource.getRepository(Course);
-      const courses = await courseRepository.find({ relations: ["teacher", "grade", "subject"] });
+      
+      // Determine requester from token if provided
+      let currentUserId: string | null = null;
+      let currentUserRole: string | null = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        if (token) {
+          try {
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            currentUserId = decoded.id;
+            currentUserRole = decoded.role;
+          } catch (e) {
+            // invalid or expired token, treat as public
+          }
+        }
+      }
+
+      // If admin, return all courses
+      if (currentUserRole === "admin") {
+        const courses = await courseRepository.find({ relations: ["teacher", "grade", "subject"] });
+        return res.status(200).json(courses);
+      }
+
+      const qb = courseRepository.createQueryBuilder("course")
+        .leftJoinAndSelect("course.teacher", "teacher")
+        .leftJoinAndSelect("course.grade", "grade")
+        .leftJoinAndSelect("course.subject", "subject");
+
+      if (currentUserRole === "teacher" && currentUserId) {
+        // Teachers see their own courses (any status) PLUS published courses from active teachers
+        qb.where(
+          "(teacher.id = :teacherId) OR (course.status = 'PUBLISHED' AND (teacher.id IS NULL OR teacher.status = 'ACTIVE'))",
+          { teacherId: currentUserId }
+        );
+      } else {
+        // Public / Students: ONLY PUBLISHED courses, NEVER pending, draft, or archived.
+        // Also ensure the teacher is ACTIVE (approved).
+        qb.where("course.status = 'PUBLISHED'")
+          .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')");
+      }
+
+      const courses = await qb.getMany();
       return res.status(200).json(courses);
     } catch (err) {
+      console.error("CourseController.getAll error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
@@ -32,6 +78,32 @@ export class CourseController {
       });
       if (!course) {
         return res.status(404).json({ error: "Course not found." });
+      }
+
+      // Check access permission for non-published or archived courses
+      if (course.status !== "PUBLISHED") {
+        let isAuthorized = false;
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+          const token = authHeader.split(" ")[1];
+          if (token) {
+            try {
+              const decoded = jwt.verify(token, JWT_SECRET) as any;
+              if (decoded.role === "admin" || (course.teacher && course.teacher.id === decoded.id)) {
+                isAuthorized = true;
+              }
+            } catch (e) {
+              // invalid token
+            }
+          }
+        }
+
+        if (!isAuthorized) {
+          if (course.status === "ARCHIVED") {
+            return res.status(403).json({ error: "هذه الدورة تمت أرشفتها وغير متاحة حالياً." });
+          }
+          return res.status(403).json({ error: "هذه الدورة قيد المراجعة والاعتماد وغير متاحة للعرض العام بعد." });
+        }
       }
 
       const lessons = await lessonRepository.find({
@@ -112,6 +184,25 @@ export class CourseController {
 
       course.status = "PENDING_REVIEW";
       await courseRepository.save(course);
+
+      // Notify all admins about the new course pending review
+      try {
+        const userRepo = AppDataSource.getRepository(User);
+        const admins = await userRepo.find({ where: { role: "admin" } });
+        const fullCourse = await courseRepository.findOne({ where: { id }, relations: ["teacher"] });
+        for (const adm of admins) {
+          await NotificationController.createNotification(
+            adm.id,
+            "دورة جديدة بانتظار المراجعة 📋",
+            `قدّم المعلم "${fullCourse?.teacher?.name || 'معلم'}" دورة "${course.title}" للمراجعة والاعتماد.`,
+            "info",
+            "#admin-dashboard/courses"
+          );
+        }
+      } catch (notifErr) {
+        console.error("Error notifying admins on submitForReview:", notifErr);
+      }
+
       return res.status(200).json({ message: "تم إرسال الدورة للمراجعة والاعتماد من قبل الإدارة بنجاح! ⏳", course });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -125,7 +216,7 @@ export class CourseController {
 
     try {
       const courseRepository = AppDataSource.getRepository(Course);
-      const course = await courseRepository.findOneBy({ id });
+      const course = await courseRepository.findOne({ where: { id }, relations: ["teacher"] });
 
       if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
 
@@ -143,6 +234,22 @@ export class CourseController {
       (course as any).rejectionReason = null;
 
       await courseRepository.save(course);
+
+      // Notify teacher that their course was approved
+      if (course.teacher) {
+        try {
+          await NotificationController.createNotification(
+            course.teacher.id,
+            "تمت الموافقة على دورتك وإطلاقها! 🎉",
+            `تهانينا! تم اعتماد ونشر دورتك "${course.title}" بنجاح. يمكن للطلاب الآن التسجيل فيها.`,
+            "success",
+            `#manage-course?id=${id}`
+          );
+        } catch (notifErr) {
+          console.error("Error notifying teacher on approveCourse:", notifErr);
+        }
+      }
+
       return res.status(200).json({ message: "تمت الموافقة على نشر الدورة وإرفاق بيانات الدفع بنجاح! 🎉", course });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -156,7 +263,7 @@ export class CourseController {
 
     try {
       const courseRepository = AppDataSource.getRepository(Course);
-      const course = await courseRepository.findOneBy({ id });
+      const course = await courseRepository.findOne({ where: { id }, relations: ["teacher"] });
 
       if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
 
@@ -164,6 +271,22 @@ export class CourseController {
       course.rejectionReason = rejectionReason || "المحتوى غير مطابق لشروط الأكاديمية.";
 
       await courseRepository.save(course);
+
+      // Notify teacher that their course was rejected
+      if (course.teacher) {
+        try {
+          await NotificationController.createNotification(
+            course.teacher.id,
+            "تحديث بشأن دورتك ⚠️",
+            `تم رفض اعتماد دورة "${course.title}". السبب: ${course.rejectionReason}. يرجى تعديل المحتوى وإعادة الإرسال للمراجعة.`,
+            "warning",
+            `#manage-course?id=${id}`
+          );
+        } catch (notifErr) {
+          console.error("Error notifying teacher on rejectCourse:", notifErr);
+        }
+      }
+
       return res.status(200).json({ message: "تم رفض الاعتماد وتوجيه الدورة للمسودة مع إرسال السبب.", course });
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
@@ -181,6 +304,74 @@ export class CourseController {
       });
       return res.status(200).json(courses);
     } catch (err) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Admin archives a course (Hides it from all public and student views)
+  static async archiveCourse(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const courseRepository = AppDataSource.getRepository(Course);
+      const course = await courseRepository.findOne({ where: { id }, relations: ["teacher"] });
+
+      if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
+
+      course.status = "ARCHIVED";
+      await courseRepository.save(course);
+
+      // Notify teacher that their course was archived
+      if (course.teacher) {
+        try {
+          await NotificationController.createNotification(
+            course.teacher.id,
+            "تم أرشفة دورتك 📦",
+            `تمت أرشفة دورة "${course.title}" وإخفاؤها من جميع صفحات المنصة بواسطة الإدارة.`,
+            "warning",
+            `#manage-course?id=${id}`
+          );
+        } catch (notifErr) {
+          console.error("Error notifying teacher on archiveCourse:", notifErr);
+        }
+      }
+
+      return res.status(200).json({ message: "تمت أرشفة الدورة بنجاح وإخفاؤها من جميع صفحات المنصة. 📦", course });
+    } catch (err) {
+      console.error("archiveCourse error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Admin unarchives a course (Restores it to PUBLISHED)
+  static async unarchiveCourse(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const courseRepository = AppDataSource.getRepository(Course);
+      const course = await courseRepository.findOne({ where: { id }, relations: ["teacher"] });
+
+      if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
+
+      course.status = "PUBLISHED";
+      await courseRepository.save(course);
+
+      // Notify teacher that their course was unarchived/republished
+      if (course.teacher) {
+        try {
+          await NotificationController.createNotification(
+            course.teacher.id,
+            "تم إعادة نشر دورتك! 🎉",
+            `تم إلغاء أرشفة دورة "${course.title}" وإعادة نشرها على المنصة بواسطة الإدارة.`,
+            "success",
+            `#manage-course?id=${id}`
+          );
+        } catch (notifErr) {
+          console.error("Error notifying teacher on unarchiveCourse:", notifErr);
+        }
+      }
+
+      return res.status(200).json({ message: "تم إلغاء أرشفة الدورة وإعادة نشرها بنجاح! 🎉", course });
+    } catch (err) {
+      console.error("unarchiveCourse error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }
   }

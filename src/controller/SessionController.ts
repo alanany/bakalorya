@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Session } from "../entity/Session";
 import { User } from "../entity/User";
 import { Course } from "../entity/Course";
+import { SessionAttendance } from "../entity/SessionAttendance";
 import { AuthRequest } from "../middleware/auth";
 
 export class SessionController {
@@ -38,6 +39,19 @@ export class SessionController {
         });
       } else if (req.user && req.user.role === "teacher") {
         finalSessions = sessions.filter(session => session.teacher?.id === req.user!.id);
+      }
+
+      if (req.user) {
+        const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+        const myAttendances = await attendanceRepository.find({
+          where: { user: { id: req.user.id }, status: "PRESENT" },
+          relations: ["session"]
+        });
+        const checkedSessionIds = new Set(myAttendances.map(a => a.session?.id).filter(Boolean));
+        finalSessions = finalSessions.map((s: any) => ({
+          ...s,
+          isCheckedIn: checkedSessionIds.has(s.id)
+        })) as any;
       }
 
       return res.status(200).json(finalSessions);
