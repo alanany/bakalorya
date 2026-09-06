@@ -228,7 +228,7 @@ router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController
 router.post("/users/avatar", auth_1.authMiddleware, uploadSingleAvatar, UserController_1.UserController.uploadAvatar);
 router.get("/users/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.getStudents);
 router.post("/teacher/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.addStudent);
-router.delete("/teacher/students/:studentId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.deleteStudent);
+router.delete("/teacher/students/:studentId", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), UserController_1.UserController.deleteStudent);
 router.get("/teacher/enrollment-requests", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.getEnrollmentRequests);
 router.patch("/teacher/enrollment-requests/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.updateEnrollmentRequest);
 router.put("/teacher/enrollment-requests/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseController_1.CourseController.updateEnrollmentRequest);

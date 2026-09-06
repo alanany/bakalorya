@@ -250,7 +250,7 @@ router.patch("/users/me", authMiddleware, UserController.updateProfile);
 router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
 router.get("/users/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.getStudents);
 router.post("/teacher/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.addStudent);
-router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["teacher", "admin"]), UserController.deleteStudent);
+router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["admin"]), UserController.deleteStudent);
 router.get("/teacher/enrollment-requests", authMiddleware, requireRole(["teacher", "admin"]), CourseController.getEnrollmentRequests);
 router.patch("/teacher/enrollment-requests/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseController.updateEnrollmentRequest);
 router.put("/teacher/enrollment-requests/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseController.updateEnrollmentRequest);

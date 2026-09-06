@@ -188,7 +188,7 @@ export default class StudentsView {
             <th style="padding:14px 16px; font-weight:800;">المستوى والمنطقة</th>
             <th style="padding:14px 16px; font-weight:800;">الدورات وحالة الاشتراك</th>
             <th style="padding:14px 16px; font-weight:800; text-align:center;">التواصل السريع</th>
-            <th style="padding:14px 20px; font-weight:800; text-align:end;">الإجراءات</th>
+            ${state.user?.role === 'admin' ? '<th style="padding:14px 20px; font-weight:800; text-align:end;">الإجراءات</th>' : ''}
           </tr>
         </thead>
         <tbody style="divide-y:1px solid var(--border-color);">
@@ -226,9 +226,11 @@ export default class StudentsView {
               <button class="toggle-ban-btn" data-id="${enroll.id}" data-status="${isBanned ? 'active' : 'banned'}" style="background:none; border:none; cursor:pointer; color:${isBanned ? 'var(--success)' : 'var(--warning)'}; padding:2px;" title="${isBanned ? 'تفعيل الاشتراك' : 'حظر الطالب'}">
                 <i data-lucide="${isBanned ? 'check-circle-2' : 'slash'}" style="width:14px; height:14px;"></i>
               </button>
-              <button class="remove-enrollment-btn" data-student-id="${student.id}" data-course-id="${enroll.course.id}" style="background:none; border:none; cursor:pointer; color:var(--error); padding:2px;" title="إزالة من هذه الدورة">
-                <i data-lucide="x-circle" style="width:14px; height:14px;"></i>
-              </button>
+              ${state.user?.role === 'admin' ? `
+                <button class="remove-enrollment-btn" data-student-id="${student.id}" data-course-id="${enroll.course.id}" style="background:none; border:none; cursor:pointer; color:var(--error); padding:2px;" title="إزالة من هذه الدورة">
+                  <i data-lucide="x-circle" style="width:14px; height:14px;"></i>
+                </button>
+              ` : ''}
             </div>
           </div>
         `;
@@ -304,12 +306,14 @@ export default class StudentsView {
           `}
         </td>
 
-        <!-- Actions -->
-        <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
-          <button class="btn-secondary delete-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; display:inline-flex; align-items:center; gap:4px;" title="${state.user?.role === 'admin' ? 'حذف الحساب' : 'إزالة من دوراتي'}">
-            <i data-lucide="${state.user?.role === 'admin' ? 'trash-2' : 'user-minus'}" style="width:13px; height:13px;"></i> ${state.user?.role === 'admin' ? 'حذف الحساب' : 'إزالة'}
-          </button>
-        </td>
+        <!-- Actions (Admin Only) -->
+        ${state.user?.role === 'admin' ? `
+          <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
+            <button class="btn-secondary delete-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; display:inline-flex; align-items:center; gap:4px;" title="حذف الحساب">
+              <i data-lucide="trash-2" style="width:13px; height:13px;"></i> حذف الحساب
+            </button>
+          </td>
+        ` : ''}
       </tr>
     `;
   }
@@ -334,9 +338,13 @@ export default class StudentsView {
       });
     });
 
-    // Remove Student from Course (Unenroll)
+    // Remove Student from Course (Unenroll) - Admin Only
     wrapper.querySelectorAll(".remove-enrollment-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") {
+          showToast("عفواً، لا يملك المعلم صلاحية إزالة الطلاب. هذه الصلاحية خاصة بالإدارة فقط.", "warning");
+          return;
+        }
         const studentId = btn.getAttribute("data-student-id");
         const courseId = btn.getAttribute("data-course-id");
         const confirmed = await confirmDialog({
@@ -354,17 +362,18 @@ export default class StudentsView {
       });
     });
 
-    // Delete / Remove Student
+    // Delete Student - Admin Only
     wrapper.querySelectorAll(".delete-student-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") {
+          showToast("عفواً، لا يملك المعلم صلاحية حذف الطلاب. هذه الصلاحية خاصة بالإدارة فقط.", "warning");
+          return;
+        }
         const studentId = btn.getAttribute("data-student-id");
         const studentName = btn.getAttribute("data-student-name");
-        const isAdmin = state.user?.role === "admin";
         
         const confirmed = await confirmDialog({
-          message: isAdmin 
-            ? `هل أنت تأكد من حذف حساب الطالب "${studentName}" نهائياً من المنصة؟`
-            : `هل تريد إزالة الطالب "${studentName}" من دوراتك؟`,
+          message: `هل أنت متأكد من حذف حساب الطالب "${studentName}" نهائياً من المنصة؟`,
           danger: true
         });
         if (!confirmed) return;
@@ -372,7 +381,7 @@ export default class StudentsView {
         btn.disabled = true;
         try {
           const res = await apiFetch(`/teacher/students/${studentId}`, { method: "DELETE" });
-          showToast(res.message || (isAdmin ? "تم حذف الحساب بنجاح." : "تم إزالة الطالب من دوراتك بنجاح."), "success");
+          showToast(res.message || "تم حذف الحساب بنجاح.", "success");
           await this.loadStudents();
         } catch (err) { btn.disabled = false; }
       });

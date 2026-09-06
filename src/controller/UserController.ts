@@ -408,11 +408,11 @@ export class UserController {
     }
   }
 
-  // Delete Student or Remove Enrollment (Teacher & Admin)
+  // Delete Student or Remove Enrollment (Admin Only)
   static async deleteStudent(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "teacher" && req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({ error: "عفواً، لا يملك المعلم صلاحية حذف أو إزالة الطلاب. هذه الصلاحية خاصة بإدارة المنصة فقط." });
       }
 
       const { studentId } = req.params;
@@ -426,28 +426,13 @@ export class UserController {
         return res.status(404).json({ error: "الطالب غير موجود." });
       }
 
-      if (req.user.role === "admin") {
-        if (courseId) {
-          await enrollmentRepo.delete({ student: { id: studentId }, course: { id: courseId as string } });
-          return res.json({ message: "تم إزالة الطالب من الدورة بنجاح." });
-        } else {
-          await enrollmentRepo.delete({ student: { id: studentId } });
-          await userRepo.delete({ id: studentId });
-          return res.json({ message: "تم حذف حساب الطالب بالكامل بنجاح." });
-        }
+      if (courseId) {
+        await enrollmentRepo.delete({ student: { id: studentId }, course: { id: courseId as string } });
+        return res.json({ message: "تم إزالة الطالب من الدورة بنجاح." });
       } else {
-        if (courseId) {
-          await enrollmentRepo.delete({ student: { id: studentId }, course: { id: courseId as string, teacher: { id: req.user.id } } });
-        } else {
-          const teacherEnrollments = await enrollmentRepo.find({
-            where: { student: { id: studentId }, course: { teacher: { id: req.user.id } } },
-            relations: ["course", "course.teacher"]
-          });
-          if (teacherEnrollments.length > 0) {
-            await enrollmentRepo.remove(teacherEnrollments);
-          }
-        }
-        return res.json({ message: "تم إزالة الطالب من دوراتك بنجاح." });
+        await enrollmentRepo.delete({ student: { id: studentId } });
+        await userRepo.delete({ id: studentId });
+        return res.json({ message: "تم حذف حساب الطالب بالكامل بنجاح." });
       }
     } catch (error) {
       console.error("Error deleting student:", error);

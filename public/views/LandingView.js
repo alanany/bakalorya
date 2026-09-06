@@ -98,7 +98,7 @@ export default class LandingView {
               <span style="font-size:0.85rem; font-weight:900; background:rgba(0,86,210,0.08); color:var(--primary); padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;">
                 <i data-lucide="compass" style="width:15px;height:15px;"></i> استكشف المناهج والمجموعات الدراسية
               </span>
-              <h2 style="font-size:clamp(1.7rem, 3.5vw, 2.4rem); font-weight:900; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
+              <h2 style="font-size:clamp(1.5rem, 3.5vw, 2.4rem); font-weight:700; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
                 اختر مرحلتك وصفك الدراسي 🎯
               </h2>
               <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0 auto; max-width:680px;">
