@@ -317,9 +317,10 @@ export default class StudentPrivateSessionsView {
           </div>
 
           <!-- Summary / Feedback if completed -->
-          ${(isPast && (session.whatWasCovered || session.teacherNotes || session.homework)) ? `
+          ${(isPast && (session.whatWasCovered || session.teacherNotes || session.homework || session.studentPerformance)) ? `
             <div style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.15); border-radius:12px; padding:12px; font-size:0.8rem; margin-bottom:14px; line-height:1.5;">
               ${session.whatWasCovered ? `<div style="margin-bottom:4px;"><strong>📝 ما تم إنجازه:</strong> ${session.whatWasCovered}</div>` : ''}
+              ${session.studentPerformance ? `<div style="margin-bottom:4px;"><strong>⭐ تقييم الأداء:</strong> ${session.studentPerformance}</div>` : ''}
               ${session.homework ? `<div style="margin-bottom:4px;"><strong>📖 الواجب:</strong> ${session.homework}</div>` : ''}
               ${session.teacherNotes ? `<div><strong>💬 ملاحظات المعلم:</strong> ${session.teacherNotes}</div>` : ''}
             </div>

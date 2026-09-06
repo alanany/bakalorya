@@ -818,11 +818,8 @@ export default class TeacherView {
     const durationMs = durationMins * 60 * 1000;
     const nowTime = Date.now();
 
-    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
-    // Strictly expired if scheduled time + duration has passed
-    const isPastSession = !isCompleted && (nowTime >= sessionTime + durationMs);
-    // Live only if status is live AND the session duration has not ended
-    const isLive = !isCompleted && !isPastSession && (session.status === "live" || session.status === "active" || session.status === "LIVE");
+    const sessionStart = sessionTime;
+    const sessionEnd = sessionStart + durationMs;
 
     const endDate = new Date(sessionEnd);
     const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -832,6 +829,7 @@ export default class TeacherView {
     const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
     const isPastSession = !isCompleted && (nowTime > sessionEnd);
     const isDuringSession = !isCompleted && (nowTime >= sessionStart && nowTime <= sessionEnd);
+    const isLive = !isCompleted && (session.status === "live" || session.status === "active" || session.status === "LIVE");
     const isCheckedIn = window.checkedInSessions?.has(session.id) || !!session.isCheckedIn;
 
     let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
