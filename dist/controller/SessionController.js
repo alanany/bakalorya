@@ -11,7 +11,7 @@ class SessionController {
         try {
             const sessionRepository = data_source_1.AppDataSource.getRepository(Session_1.Session);
             const sessions = await sessionRepository.find({
-                relations: ["teacher", "course", "student", "subscription"],
+                relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher", "student", "subscription"],
                 order: { scheduledAt: "DESC" }
             });
             let finalSessions = sessions;
@@ -19,9 +19,9 @@ class SessionController {
                 const enrollmentRepository = data_source_1.AppDataSource.getRepository("Enrollment");
                 const activeEnrollments = await enrollmentRepository.find({
                     where: { student: { id: req.user.id }, status: "active" },
-                    relations: ["course"]
+                    relations: ["course", "group", "group.course"]
                 });
-                const activeCourseIds = activeEnrollments.map(e => e.course?.id).filter(Boolean);
+                const activeCourseIds = activeEnrollments.map(e => e.course?.id || e.group?.course?.id).filter(Boolean);
                 finalSessions = sessions.filter(session => {
                     // 1. If assigned directly to this student
                     if (session.student?.id) {

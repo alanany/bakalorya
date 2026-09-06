@@ -296,7 +296,7 @@ export default class TeacherDetailsView {
                       <!-- Header Badges -->
                       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px;">
                         <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                          ${grp.course?.subject?.name ? `<span class="badge" style="background:rgba(229,29,116,0.12); color:#e51d74; font-size:0.75rem; font-weight:800;">${grp.course.subject.name}</span>` : ''}
+                          ${(grp.course?.subject?.name || grp.course?.title) ? `<span class="badge" style="background:rgba(229,29,116,0.12); color:#e51d74; font-size:0.75rem; font-weight:800;">${grp.course?.subject?.name || grp.course?.title}</span>` : ''}
                           ${grp.course?.grade?.name ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.75rem;">${grp.course.grade.name}</span>` : ''}
                         </div>
                         <div>

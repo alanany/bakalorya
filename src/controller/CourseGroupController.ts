@@ -925,7 +925,7 @@ export class CourseGroupController {
       if (courseId) {
         sessions = await sessionRepo.find({
           where: { course: { id: courseId } },
-          relations: ["teacher", "course"],
+          relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher"],
           order: { scheduledAt: "ASC" }
         });
       }

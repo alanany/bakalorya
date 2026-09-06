@@ -775,8 +775,9 @@ export default class TeacherView {
         </div>
 
         <h4 style="font-weight:800; font-size:0.95rem; margin:0; color:var(--text-main);">${session.topic || session.title || 'حصة خاصة'}</h4>
-        <div style="font-size:0.82rem; color:var(--text-muted);">
-          <i data-lucide="user" style="width:13px;height:13px;"></i> ${session.student?.name || 'طالب'}
+        <div style="font-size:0.85rem; color:var(--text-main); font-weight:800; display:flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 10px; border-radius:10px; border:1px solid var(--border-color);">
+          <i data-lucide="user" style="width:14px;height:14px;color:var(--primary);"></i>
+          <span>الطالب: <strong style="color:var(--primary);">${session.student?.name || session.subscription?.student?.name || 'طالب'}</strong></span>
         </div>
         <div style="font-size:0.82rem; color:var(--primary); font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <i data-lucide="calendar" style="width:13px;height:13px;"></i> ${formatted.dateStr} • ${formatted.timeStr} ${formatted.secondaryTZHTML}
@@ -932,7 +933,15 @@ export default class TeacherView {
           <span style="font-size: 0.75rem; color:var(--text-muted); font-weight:600;">${session.duration} ${t("session.mins")}</span>
         </div>
         <h4 class="session-title">${session.title}</h4>
-        ${session.course ? `<div style="font-size:0.75rem; color:var(--primary); font-weight:600; margin-top:2px;"><i data-lucide="book" style="width:12px;height:12px;"></i> ${session.course.title}</div>` : ""}
+        
+        <!-- Student Name & Course in Teacher Dashboard -->
+        <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; margin-bottom:6px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:8px 10px;">
+          <div style="font-size:0.84rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="${session.student ? 'user' : 'users'}" style="width:14px; height:14px; color:var(--primary);"></i>
+            <span>الطالب: <strong style="color:var(--primary);">${session.student?.name || session.subscription?.student?.name || 'طلاب المجموعة'}</strong></span>
+          </div>
+          ${session.course ? `<div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; display:flex; align-items:center; gap:5px;"><i data-lucide="book" style="width:12px;height:12px;color:#e51d74;"></i> ${session.course.subject?.name ? `المادة: <strong style="color:var(--text-main);">${session.course.subject.name}</strong> • ${session.course.title}` : `الكورس: <strong style="color:var(--text-main);">${session.course.title}</strong>`}</div>` : ""}
+        </div>
         <div class="session-time" style="margin-top:6px;">
           <i data-lucide="calendar" style="width:14px;height:14px;"></i>
           <span>${formattedDate} ${t("session.at")} ${formattedTime}</span>
