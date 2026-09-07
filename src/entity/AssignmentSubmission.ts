@@ -10,6 +10,9 @@ export class AssignmentSubmission {
     @Column("text")
     content: string;
 
+    @Column("simple-json", { nullable: true })
+    answers: Array<{ questionId?: string; questionIndex?: number; questionText?: string; answerText: string; points?: number }>;
+
     @Column("float", { nullable: true })
     grade: number;
 

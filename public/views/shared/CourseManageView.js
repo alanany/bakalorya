@@ -493,7 +493,31 @@ export default class CourseManageView {
                     </div>
 
                     <h4 style="font-size:1.05rem; font-weight:800; margin:0 0 8px 0; color:var(--text-main);">${a.title}</h4>
-                    <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; margin:0 0 16px 0; white-space:pre-wrap;">${a.description || 'لا توجد تعليمات إضافية.'}</p>
+                    
+                    ${a.questions && Array.isArray(a.questions) && a.questions.length > 0 ? `
+                      <div style="margin: 10px 0 14px 0; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:12px;">
+                        <div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                          <i data-lucide="list-checks" style="width:14px;height:14px;"></i> أسئلة الواجب (${a.questions.length} أسئلة):
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                          ${a.questions.map((q, idx) => `
+                            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.85rem; padding:6px 0; ${idx < a.questions.length - 1 ? 'border-bottom:1px dashed var(--border-color);' : ''}">
+                              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                                <span style="color:var(--text-main); line-height:1.4;"><strong style="color:var(--primary);">س${idx + 1}:</strong> ${q.text}</span>
+                                ${q.points ? `<span class="badge" style="font-size:0.72rem; padding:2px 6px; background:var(--primary-glow); color:var(--primary); font-weight:700; flex-shrink:0; margin-inline-start:6px;">${q.points} درجات</span>` : ''}
+                              </div>
+                              ${q.imageUrl ? `
+                                <div style="margin-top:4px;">
+                                  <img src="${q.imageUrl}" style="max-height:100px; max-width:180px; border-radius:6px; border:1px solid var(--border-color); cursor:pointer; object-fit:contain; background:#000;" onclick="window.open('${q.imageUrl}', '_blank')" title="انقر لفتح الصورة بحجم كامل 🔍" />
+                                </div>
+                              ` : ''}
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    ` : `
+                      <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; margin:0 0 16px 0; white-space:pre-wrap;">${a.description || 'لا توجد تعليمات إضافية.'}</p>
+                    `}
                   </div>
 
                   <div style="border-top:1px solid var(--border-color); padding-top:12px; margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
@@ -509,30 +533,48 @@ export default class CourseManageView {
       </div>
 
       <!-- Modal: Create Assignment Modal -->
-      <div class="modal-overlay" id="course-create-assignment-modal" style="display:none;">
-        <div class="modal-content" style="max-width:520px;">
+      <div class="modal-overlay" id="course-create-assignment-modal" style="display:none; z-index:99999;">
+        <div class="modal-content" style="max-width:640px; max-height:90vh; display:flex; flex-direction:column;">
           <div class="modal-header">
-            <h3 class="modal-title" style="font-weight:800;">إضافة واجب / نشاط جديد للدورة</h3>
+            <h3 class="modal-title" style="font-weight:800; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="clipboard-edit" style="color:var(--primary); width:20px; height:20px;"></i> إضافة واجب / نشاط جديد للدورة
+            </h3>
             <span class="modal-close-btn" id="close-course-assignment-modal">&times;</span>
           </div>
-          <form id="course-create-assignment-form">
-            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+          <form id="course-create-assignment-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+            <div class="modal-body" style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:14px;">
               <div class="form-group">
                 <label style="font-weight:700; margin-bottom:6px; display:block;">عنوان الواجب أو النشاط <span style="color:var(--error);">*</span></label>
                 <input type="text" id="course-assignment-title-input" class="form-input" placeholder="مثال: واجب الدرس الأول - حل مسائل النهايات" required style="padding:10px 14px;">
               </div>
 
               <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">الدرس المرتبط بالواجب (Lesson / Optional)</label>
+                <label style="font-weight:700; margin-bottom:6px; display:block;">الدرس المرتبط بالواجب (اختياري)</label>
                 <select id="course-assignment-lesson-select" class="form-select" style="padding:10px 14px;">
                   <option value="">جميع دروس الدورة (عام)</option>
                   ${(this.course.lessons || []).map(l => `<option value="${l.id}">📌 ${l.title}</option>`).join('')}
                 </select>
               </div>
 
+              <!-- Multiple Questions Section -->
+              <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:12px; margin-top:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <label style="font-weight:800; font-size:0.92rem; margin:0; display:flex; align-items:center; gap:6px; color:var(--text-main);">
+                    <i data-lucide="help-circle" style="width:16px;height:16px;color:var(--primary);"></i>
+                    أسئلة الواجب (Questions) <span style="color:var(--error);">*</span>
+                  </label>
+                  <button type="button" id="course-add-question-btn" class="btn-secondary" style="font-size:0.8rem; padding:5px 12px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; font-weight:700; cursor:pointer;">
+                    <i data-lucide="plus" style="width:14px;height:14px;"></i> + إضافة سؤال آخر
+                  </button>
+                </div>
+                <div id="course-assignment-questions-list" style="display:flex; flex-direction:column; gap:10px;">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+
               <div class="form-group">
-                <label style="font-weight:700; margin-bottom:6px; display:block;">تفاصيل وتعليمات الواجب (Description & Tasks)</label>
-                <textarea id="course-assignment-desc-input" class="form-input" rows="4" placeholder="اكتب التعليمات والأسئلة المطلوب من الطالب حلها وإرسالها..." style="padding:10px 14px; resize:vertical; font-family:inherit;"></textarea>
+                <label style="font-weight:700; margin-bottom:6px; display:block;">تفاصيل وتعليمات إضافية (اختياري)</label>
+                <textarea id="course-assignment-desc-input" class="form-input" rows="2" placeholder="اكتب أية تعليمات عامة أو توضيحات إضافية..." style="padding:10px 14px; resize:vertical; font-family:inherit;"></textarea>
               </div>
 
               <div class="form-group">
@@ -540,7 +582,7 @@ export default class CourseManageView {
                 <input type="datetime-local" id="course-assignment-due-input" class="form-input" required style="padding:10px 14px;">
               </div>
             </div>
-            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+            <div class="modal-footer" style="padding:14px 20px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
               <button type="button" class="btn-secondary" id="cancel-course-assignment-modal">إلغاء</button>
               <button type="submit" id="submit-create-course-assignment-btn" class="btn-primary" style="font-weight:800;">نشر الواجب للطلاب 🚀</button>
             </div>
@@ -1324,9 +1366,68 @@ export default class CourseManageView {
       const openBtn = document.getElementById("open-create-assignment-modal-btn");
       const closeBtn = document.getElementById("close-course-assignment-modal");
       const cancelBtn = document.getElementById("cancel-course-assignment-modal");
+      const qList = document.getElementById("course-assignment-questions-list");
+      const addQBtn = document.getElementById("course-add-question-btn");
+
+      const renderCourseQuestionRow = (idx = 1, text = '', points = '', imageUrl = '') => `
+        <div class="course-q-row" data-image-url="${imageUrl || ''}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span class="course-q-badge" style="font-weight:800; font-size:0.84rem; color:var(--primary); display:flex; align-items:center; gap:4px;">
+              <i data-lucide="help-circle" style="width:14px;height:14px;"></i> السؤال <span class="course-q-num">${idx}</span>:
+            </span>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">الدرجة:</span>
+                <input type="number" min="1" max="100" class="form-input course-q-points" placeholder="مثال: 10" value="${points || ''}" style="width:70px; padding:4px 8px; font-size:0.8rem; height:28px;">
+              </div>
+              <label class="btn-secondary upload-photo-label" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:700;">
+                <i data-lucide="image" style="width:13px;height:13px;"></i>
+                <span class="course-upload-photo-text">${imageUrl ? 'تغيير الصورة' : 'إرفاق صورة 🖼️'}</span>
+                <input type="file" class="course-q-photo-file-input" accept="image/*" style="display:none;">
+              </label>
+              <button type="button" class="btn-icon remove-course-q-btn" title="حذف السؤال" style="color:var(--error); padding:4px; background:none; border:none; cursor:pointer; display:inline-flex; align-items:center;">
+                <i data-lucide="trash-2" style="width:15px;height:15px;"></i>
+              </button>
+            </div>
+          </div>
+          <textarea class="form-input course-q-text" rows="2" placeholder="اكتب نص السؤال هنا بالتفصيل..." style="padding:8px 10px; font-size:0.86rem; resize:vertical; font-family:inherit;" required>${text || ''}</textarea>
+
+          <div class="course-q-photo-preview-container" style="${imageUrl ? 'display:flex;' : 'display:none;'} align-items:center; gap:10px; margin-top:4px; background:var(--bg-app); padding:8px 12px; border-radius:8px; border:1px solid var(--border-color);">
+            <img src="${imageUrl || ''}" class="course-q-photo-img" style="max-height:80px; max-width:130px; border-radius:6px; object-fit:contain; background:#000;" />
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">تم إرفاق صورة مع هذا السؤال</span>
+              <button type="button" class="remove-course-q-photo-btn" style="color:var(--error); background:none; border:none; padding:0; font-size:0.75rem; font-weight:700; cursor:pointer; text-align:start; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="x" style="width:12px;height:12px;"></i> حذف الصورة
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const reindexCourseQuestions = (container) => {
+        if (!container) return;
+        const rows = container.querySelectorAll(".course-q-row");
+        rows.forEach((row, i) => {
+          const numEl = row.querySelector(".course-q-num");
+          if (numEl) numEl.innerText = i + 1;
+          const removeBtn = row.querySelector(".remove-course-q-btn");
+          if (removeBtn) {
+            removeBtn.style.visibility = rows.length > 1 ? "visible" : "hidden";
+          }
+        });
+      };
+
+      const resetQuestions = () => {
+        if (qList) {
+          qList.innerHTML = renderCourseQuestionRow(1, '', '', '');
+          reindexCourseQuestions(qList);
+          if (window.lucide) window.lucide.createIcons();
+        }
+      };
 
       openBtn?.addEventListener("click", () => {
         form?.reset();
+        resetQuestions();
         const dueInput = document.getElementById("course-assignment-due-input");
         if (dueInput) {
           const now = new Date();
@@ -1339,6 +1440,80 @@ export default class CourseManageView {
       closeBtn?.addEventListener("click", () => { if (modal) modal.style.display = "none"; });
       cancelBtn?.addEventListener("click", () => { if (modal) modal.style.display = "none"; });
 
+      addQBtn?.addEventListener("click", () => {
+        if (qList) {
+          const count = qList.querySelectorAll(".course-q-row").length;
+          const temp = document.createElement("div");
+          temp.innerHTML = renderCourseQuestionRow(count + 1, '', '', '');
+          qList.appendChild(temp.firstElementChild);
+          reindexCourseQuestions(qList);
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
+
+      qList?.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-course-q-btn");
+        if (removeBtn) {
+          const row = removeBtn.closest(".course-q-row");
+          if (row && qList.querySelectorAll(".course-q-row").length > 1) {
+            row.remove();
+            reindexCourseQuestions(qList);
+          }
+        }
+
+        const removePhotoBtn = e.target.closest(".remove-course-q-photo-btn");
+        if (removePhotoBtn) {
+          const row = removePhotoBtn.closest(".course-q-row");
+          if (row) {
+            row.removeAttribute("data-image-url");
+            const prevCont = row.querySelector(".course-q-photo-preview-container");
+            if (prevCont) prevCont.style.display = "none";
+            const fileInput = row.querySelector(".course-q-photo-file-input");
+            if (fileInput) fileInput.value = "";
+            const textSpan = row.querySelector(".course-upload-photo-text");
+            if (textSpan) textSpan.innerText = "إرفاق صورة 🖼️";
+          }
+        }
+      });
+
+      // Photo upload for course assignment questions
+      qList?.addEventListener("change", async (e) => {
+        const fileInput = e.target.closest(".course-q-photo-file-input");
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+        const row = fileInput.closest(".course-q-row");
+        const file = fileInput.files[0];
+        const textSpan = row?.querySelector(".course-upload-photo-text");
+        const origText = textSpan ? textSpan.innerText : "إرفاق صورة 🖼️";
+        if (textSpan) textSpan.innerText = "جاري الرفع... ⏳";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        const token = state.token || localStorage.getItem("token");
+
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+          });
+          if (!res.ok) throw new Error("Upload failed");
+          const data = await res.json();
+          if (data.url && row) {
+            row.setAttribute("data-image-url", data.url);
+            const prevCont = row.querySelector(".course-q-photo-preview-container");
+            const prevImg = row.querySelector(".course-q-photo-img");
+            if (prevImg) prevImg.src = data.url;
+            if (prevCont) prevCont.style.display = "flex";
+            if (textSpan) textSpan.innerText = "تغيير الصورة 🖼️";
+            showToast("تم رفع صورة السؤال بنجاح! 🖼️", "success");
+            if (window.lucide) window.lucide.createIcons();
+          }
+        } catch (err) {
+          showToast("تعذر رفع الصورة، يرجى المحاولة مرة أخرى", "error");
+          if (textSpan) textSpan.innerText = origText;
+        }
+      });
+
       form?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const submitBtn = document.getElementById("submit-create-course-assignment-btn");
@@ -1349,6 +1524,27 @@ export default class CourseManageView {
 
         if (!title || !dueDate) return;
 
+        // Collect questions
+        const questions = [];
+        qList?.querySelectorAll(".course-q-row").forEach((row, i) => {
+          const text = row.querySelector(".course-q-text")?.value.trim();
+          const pointsVal = row.querySelector(".course-q-points")?.value.trim();
+          const imageUrl = row.getAttribute("data-image-url") || undefined;
+          if (text) {
+            questions.push({
+              id: 'q_' + (i + 1),
+              text,
+              points: pointsVal ? parseInt(pointsVal, 10) : undefined,
+              imageUrl: imageUrl || undefined
+            });
+          }
+        });
+
+        if (questions.length === 0) {
+          showToast("يرجى كتابة سؤال واحد على الأقل للواجب", "warning");
+          return;
+        }
+
         if (submitBtn) submitBtn.disabled = true;
         try {
           await apiFetch("/assignments", {
@@ -1356,6 +1552,7 @@ export default class CourseManageView {
             body: JSON.stringify({
               title,
               description,
+              questions,
               dueDate,
               courseId: this.courseId,
               lessonId
@@ -1394,32 +1591,106 @@ export default class CourseManageView {
 
             if (subs.length === 0) {
               listEl.innerHTML = `
-                <div style="text-align:center; padding:30px; color:var(--text-muted);">
-                  <i data-lucide="file-x" style="width:36px; height:36px; opacity:0.4; margin-bottom:8px;"></i>
-                  <p style="margin:0;">لم يقم أي طالب بتقديم إجابة لهذا الواجب حتى الآن.</p>
+                <div style="text-align:center; padding:36px 20px; color:var(--text-muted);">
+                  <i data-lucide="file-x" style="width:48px; height:48px; opacity:0.35; margin-bottom:12px;"></i>
+                  <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">لم يقم أي طالب بتقديم إجابة لهذا الواجب بعد</h4>
+                  <p style="font-size:0.85rem; line-height:1.6; max-width:460px; margin:0 auto 18px auto; color:var(--text-muted);">
+                    ستظهر هنا حلول وتسليمات الطلاب فور إرسالها من حساباتهم. يمكنك إنشاء تسليم تجريبي لتجربة واجهة تصحيح الواجب ورصد الدرجة الآن.
+                  </p>
+                  <button type="button" class="btn-secondary add-course-demo-sub-btn" style="font-size:0.84rem; padding:8px 18px; border-radius:10px; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                    <i data-lucide="flask-conical" style="width:15px; height:15px; color:var(--primary);"></i> إنشاء إجابة تجريبية لتجربة التصحيح 🧪
+                  </button>
                 </div>
               `;
+              listEl.querySelector(".add-course-demo-sub-btn")?.addEventListener("click", async () => {
+                try {
+                  await apiFetch(`/assignments/${assignmentId}/submit`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                      content: "إجابة نموذجية تجريبية لاختبار وتجربة ميزة تصحيح الواجبات ورصد الدرجات من قبل المعلم. تم حل جميع الأسئلة المطلوبة بالتفصيل."
+                    })
+                  });
+                  showToast("تم إنشاء إجابة تجريبية بنجاح! يمكنك الآن تجربة تصحيحها ورصد الدرجة 🎯", "success");
+                  btn.click();
+                } catch (demoErr) {
+                  showToast(demoErr.message || "تعذر إنشاء تسليم تجريبي", "error");
+                }
+              });
             } else {
               listEl.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; flex-direction:column; gap:14px;">
                   ${subs.map(s => `
-                    <div style="padding:14px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                      <div>
-                        <strong style="font-size:0.95rem; color:var(--text-main); display:block;">${s.student?.name || 'طالب'}</strong>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">تاريخ التسليم: ${new Date(s.submittedAt).toLocaleString('ar-EG')}</span>
-                        <div style="margin-top:6px; font-size:0.88rem; color:var(--text-main); white-space:pre-wrap;">${s.content}</div>
-                      </div>
-                      <div>
-                        ${s.grade !== null && s.grade !== undefined ? `
-                          <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.82rem;">الدرجة: ${s.grade}/100</span>
+                    <div style="padding:16px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
+                      <div style="flex:1; min-width:240px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                          <strong style="font-size:0.98rem; color:var(--text-main);">${s.student?.name || 'طالب'}</strong>
+                          <span style="font-size:0.75rem; color:var(--text-muted);">• ${new Date(s.submittedAt).toLocaleString('ar-EG')}</span>
+                        </div>
+                        
+                        ${s.answers && Array.isArray(s.answers) && s.answers.length > 0 ? `
+                          <div style="display:flex; flex-direction:column; gap:8px;">
+                            ${s.answers.map(ans => `
+                              <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
+                                <div style="font-weight:800; font-size:0.85rem; color:var(--primary); margin-bottom:4px;">
+                                  س${ans.questionIndex}: ${ans.questionText || ''}
+                                </div>
+                                <div style="font-size:0.88rem; color:var(--text-main); white-space:pre-wrap; line-height:1.5; background:var(--bg-app); padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
+                                  ✍️ ${ans.answerText || 'لم يتم كتابة إجابة'}
+                                </div>
+                              </div>
+                            `).join('')}
+                            ${s.content && s.content.includes("📌 رابط / ملاحظات:") ? `
+                              <div style="font-size:0.82rem; color:var(--text-muted); padding:6px 10px; background:var(--bg-card); border-radius:8px; border:1px solid var(--border-color);">
+                                ${s.content.split("📌 رابط / ملاحظات:")[1]}
+                              </div>
+                            ` : ''}
+                          </div>
                         ` : `
-                          <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.78rem;">قيد التقييم</span>
+                          <div style="padding:10px 14px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; font-size:0.88rem; color:var(--text-main); white-space:pre-wrap; line-height:1.5;">${s.content}</div>
                         `}
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:180px;">
+                        ${s.grade !== null && s.grade !== undefined ? `
+                          <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.84rem; padding:4px 10px; border-radius:8px;">✅ تم التصحيح: ${s.grade}/100</span>
+                        ` : `
+                          <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.8rem; padding:4px 10px; border-radius:8px;">⏳ بانتظار التصحيح</span>
+                        `}
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+                          <input type="number" min="0" max="100" class="form-input grade-input" data-sub-id="${s.id}" value="${s.grade !== null && s.grade !== undefined ? s.grade : ''}" placeholder="الدرجة" style="width:75px; padding:6px 8px; font-size:0.84rem; border-radius:8px; text-align:center; font-weight:800;">
+                          <button class="btn-primary save-grade-btn" data-sub-id="${s.id}" style="padding:6px 14px; font-size:0.8rem; border-radius:8px; font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                            <i data-lucide="check" style="width:13px; height:13px;"></i> رصد الدرجة
+                          </button>
+                        </div>
                       </div>
                     </div>
                   `).join('')}
                 </div>
               `;
+
+              listEl.querySelectorAll(".save-grade-btn").forEach(saveBtn => {
+                saveBtn.addEventListener("click", async () => {
+                  const subId = saveBtn.getAttribute("data-sub-id");
+                  const input = listEl.querySelector(`.grade-input[data-sub-id="${subId}"]`);
+                  const val = input?.value?.trim();
+                  if (val === "" || isNaN(val)) {
+                    showToast("يرجى إدخال درجة صحيحة بين 0 و 100", "warning");
+                    return;
+                  }
+                  const numGrade = Math.min(100, Math.max(0, parseInt(val, 10)));
+                  saveBtn.disabled = true;
+                  try {
+                    await apiFetch(`/submissions/${subId}/grade`, {
+                      method: "PUT",
+                      body: JSON.stringify({ grade: numGrade })
+                    });
+                    showToast(`تم تصحيح الواجب بنجاح وإشعار الطالب بالدرجة (${numGrade}/100)! 🏆`, "success");
+                    btn.click();
+                  } catch (gradeErr) {
+                    showToast(gradeErr.message || "فشل حفظ الدرجة", "error");
+                    saveBtn.disabled = false;
+                  }
+                });
+              });
             }
             if (window.lucide) window.lucide.createIcons();
           } catch (err) {

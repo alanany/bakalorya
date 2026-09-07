@@ -32,31 +32,51 @@ export class AssignmentController {
                         "assignment.id AS id",
                         "assignment.title AS title",
                         "assignment.description AS description",
+                        "assignment.questions AS questions",
                         "assignment.dueDate AS dueDate",
                         "course.title AS courseTitle",
                         "lesson.id AS lessonId",
                         "lesson.title AS lessonTitle",
                         "sub.id AS submissionId",
                         "sub.content AS submissionContent",
+                        "sub.answers AS submissionAnswers",
                         "sub.grade AS grade",
                         "sub.submittedAt AS submittedAt"
                     ])
                     .getRawMany();
 
-                return res.json(assignments.map(row => ({
-                    id: row.id,
-                    title: row.title,
-                    description: row.description,
-                    dueDate: row.dueDate,
-                    course: { title: row.courseTitle },
-                    lesson: row.lessonTitle ? { id: row.lessonId, title: row.lessonTitle } : null,
-                    submission: row.submissionId ? {
-                        id: row.submissionId,
-                        content: row.submissionContent,
-                        grade: row.grade,
-                        submittedAt: row.submittedAt
-                    } : null
-                })));
+                return res.json(assignments.map(row => {
+                    let parsedQuestions = [];
+                    try {
+                        if (row.questions) {
+                            parsedQuestions = typeof row.questions === 'string' ? JSON.parse(row.questions) : row.questions;
+                        }
+                    } catch (e) { parsedQuestions = []; }
+
+                    let parsedAnswers = [];
+                    try {
+                        if (row.submissionAnswers) {
+                            parsedAnswers = typeof row.submissionAnswers === 'string' ? JSON.parse(row.submissionAnswers) : row.submissionAnswers;
+                        }
+                    } catch (e) { parsedAnswers = []; }
+
+                    return {
+                        id: row.id,
+                        title: row.title,
+                        description: row.description,
+                        questions: parsedQuestions,
+                        dueDate: row.dueDate,
+                        course: { title: row.courseTitle },
+                        lesson: row.lessonTitle ? { id: row.lessonId, title: row.lessonTitle } : null,
+                        submission: row.submissionId ? {
+                            id: row.submissionId,
+                            content: row.submissionContent,
+                            answers: parsedAnswers,
+                            grade: row.grade,
+                            submittedAt: row.submittedAt
+                        } : null
+                    };
+                }));
             } else {
                 // Teacher / Admin
                 let query = assignmentRepo.createQueryBuilder("assignment")
@@ -78,7 +98,7 @@ export class AssignmentController {
 
     static createAssignment = async (req: Request, res: Response) => {
         try {
-            const { title, description, dueDate, courseId, lessonId } = req.body;
+            const { title, description, questions, dueDate, courseId, lessonId } = req.body;
             const courseRepo = AppDataSource.getRepository(Course);
             const course = await courseRepo.findOne({ where: { id: courseId } });
             
@@ -86,7 +106,21 @@ export class AssignmentController {
 
             const assignment = new Assignment();
             assignment.title = title;
-            assignment.description = description;
+            assignment.description = description || "";
+            if (questions && Array.isArray(questions)) {
+                assignment.questions = questions
+                    .filter((q: any) => q && q.text && q.text.trim().length > 0)
+                    .map((q: any, i: number) => ({
+                        id: q.id || `q_${i + 1}`,
+                        text: q.text.trim(),
+                        points: q.points ? Number(q.points) : undefined,
+                        imageUrl: q.imageUrl ? String(q.imageUrl).trim() : undefined
+                    }));
+
+                if (!assignment.description && assignment.questions.length > 0) {
+                    assignment.description = assignment.questions.map((q: any, i: number) => `س${i + 1}: ${q.text}${q.points ? ` (${q.points} درجة)` : ''}`).join('\n');
+                }
+            }
             assignment.dueDate = new Date(dueDate);
             assignment.course = course;
 
@@ -133,7 +167,7 @@ export class AssignmentController {
             const user = (req as any).user;
             const userId = user.id || user.userId;
             const assignmentId = parseInt(req.params.id);
-            const { content } = req.body;
+            const { content, answers } = req.body;
 
             const assignmentRepo = AppDataSource.getRepository(Assignment);
             const assignment = await assignmentRepo.findOne({ where: { id: assignmentId } });
@@ -148,7 +182,20 @@ export class AssignmentController {
                 submission.student = { id: userId } as User;
             }
 
-            submission.content = content;
+            if (answers && Array.isArray(answers) && answers.length > 0) {
+                submission.answers = answers;
+                if (!content || !content.trim()) {
+                    submission.content = answers.map((a: any, i: number) => {
+                        const qLabel = a.questionText ? `س${i + 1} (${a.questionText})` : `س${i + 1}`;
+                        return `${qLabel}:\n${a.answerText || 'لم تتم الإجابة'}`;
+                    }).join('\n\n');
+                } else {
+                    submission.content = content;
+                }
+            } else {
+                submission.content = content || "";
+            }
+
             submission.submittedAt = new Date();
             await subRepo.save(submission);
 

@@ -13,6 +13,9 @@ export class Assignment {
     @Column("text", { nullable: true })
     description: string;
 
+    @Column("simple-json", { nullable: true })
+    questions: Array<{ id: string; text: string; points?: number; imageUrl?: string }>;
+
     @Column("datetime")
     dueDate: Date;
 

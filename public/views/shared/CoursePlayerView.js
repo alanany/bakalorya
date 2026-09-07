@@ -766,7 +766,23 @@ export default class CoursePlayerView {
                     </span>
                   </div>
 
-                  <p style="font-size:0.9rem; color:var(--text-muted); margin:0 0 16px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+                  ${asg.questions && Array.isArray(asg.questions) && asg.questions.length > 0 ? `
+                    <div style="margin: 10px 0 14px 0; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:12px;">
+                      <div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="list-checks" style="width:14px;height:14px;"></i> أسئلة الواجب المطلوب حلها (${asg.questions.length} أسئلة):
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:6px;">
+                        ${asg.questions.map((q, idx) => `
+                          <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:0.85rem; padding:4px 0; ${idx < asg.questions.length - 1 ? 'border-bottom:1px dashed var(--border-color);' : ''}">
+                            <span style="color:var(--text-main); line-height:1.4;"><strong style="color:var(--primary);">س${idx + 1}:</strong> ${q.text}</span>
+                            ${q.points ? `<span class="badge" style="font-size:0.72rem; padding:2px 6px; background:var(--primary-glow); color:var(--primary); font-weight:700; flex-shrink:0; margin-inline-start:6px;">${q.points} درجات</span>` : ''}
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  ` : `
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin:0 0 16px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+                  `}
 
                   ${isSubmitted ? `
                     <div style="padding:14px 18px; border-radius:12px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
@@ -784,13 +800,33 @@ export default class CoursePlayerView {
                   ` : `
                     <form class="student-assignment-submit-form" data-assignment-id="${asg.id}" style="display:flex; flex-direction:column; gap:12px; padding:16px; background:var(--bg-card); border-radius:14px; border:1px dashed var(--primary-glow);">
                       <div style="font-size:0.85rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
-                        <i data-lucide="upload-cloud" style="width:16px; height:16px; color:var(--primary);"></i>
-                        تقديم حل الواجب وترفق ملف الإجابة:
+                        <i data-lucide="edit-3" style="width:16px; height:16px; color:var(--primary);"></i>
+                        حل وكتابة إجابات أسئلة الواجب:
                       </div>
+
+                      ${asg.questions && asg.questions.length > 0 ? `
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                          ${asg.questions.map((q, idx) => `
+                            <div class="player-q-box" data-q-id="${q.id}" data-q-index="${idx + 1}" data-q-text="${(q.text || '').replace(/"/g, '&quot;')}" style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
+                              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:4px;">
+                                <span style="font-weight:800; font-size:0.88rem; color:var(--text-main);"><strong style="color:var(--primary);">س${idx + 1}:</strong> ${q.text}</span>
+                                ${q.points ? `<span class="badge" style="font-size:0.72rem; padding:2px 6px; background:var(--primary-glow); color:var(--primary); font-weight:700;">${q.points} درجات</span>` : ''}
+                              </div>
+                              ${q.imageUrl ? `
+                                <div style="margin:6px 0;">
+                                  <img src="${q.imageUrl}" style="max-height:140px; max-width:100%; border-radius:6px; border:1px solid var(--border-color); cursor:pointer; background:#000; object-fit:contain;" onclick="window.open('${q.imageUrl}', '_blank')" title="انقر لفتح الصورة بحجم كامل 🔍" />
+                                </div>
+                              ` : ''}
+                              <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:3px;">✍️ إجابتك التحريرية على هذا السؤال:</label>
+                              <textarea class="player-q-ans-input form-input" rows="2" placeholder="اكتب إجابتك التحريرية هنا..." style="padding:6px 10px; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
+                            </div>
+                          `).join('')}
+                        </div>
+                      ` : `
+                        <textarea class="assignment-text-answer form-input" rows="2" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:10px 14px; font-size:0.88rem; font-family:inherit; resize:vertical;"></textarea>
+                      `}
                       
-                      <textarea class="assignment-text-answer form-input" rows="2" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:10px 14px; font-size:0.88rem; font-family:inherit; resize:vertical;"></textarea>
-                      
-                      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:4px;">
                         <input type="file" class="assignment-file-input form-input" style="flex:1; padding:8px 12px; font-size:0.82rem;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip">
                         <button type="submit" class="btn-primary" style="padding:10px 20px; font-weight:800; font-size:0.85rem; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;">
                           <i data-lucide="send" style="width:16px;height:16px;"></i> رفع وتسليم الإجابة 🚀
@@ -854,7 +890,23 @@ export default class CoursePlayerView {
                       </span>
                     </div>
 
-                    <p style="font-size:0.88rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+                    ${asg.questions && Array.isArray(asg.questions) && asg.questions.length > 0 ? `
+                      <div style="margin: 10px 0 14px 0; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:12px;">
+                        <div style="font-size:0.82rem; font-weight:800; color:var(--primary); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                          <i data-lucide="list-checks" style="width:14px;height:14px;"></i> أسئلة الواجب المطلوب حلها (${asg.questions.length} أسئلة):
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                          ${asg.questions.map((q, idx) => `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:0.85rem; padding:4px 0; ${idx < asg.questions.length - 1 ? 'border-bottom:1px dashed var(--border-color);' : ''}">
+                              <span style="color:var(--text-main); line-height:1.4;"><strong style="color:var(--primary);">س${idx + 1}:</strong> ${q.text}</span>
+                              ${q.points ? `<span class="badge" style="font-size:0.72rem; padding:2px 6px; background:var(--primary-glow); color:var(--primary); font-weight:700; flex-shrink:0; margin-inline-start:6px;">${q.points} درجات</span>` : ''}
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    ` : `
+                      <p style="font-size:0.88rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.6; white-space:pre-wrap;">${asg.description || 'لا توجد تعليمات تفصيلية مضافة.'}</p>
+                    `}
 
                     ${isSubmitted ? `
                       <div style="padding:12px; border-radius:10px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -866,9 +918,33 @@ export default class CoursePlayerView {
                         ` : '<span style="font-size:0.8rem; color:var(--text-muted);">بانتظار التقييم والتصحيح من المعلم</span>'}
                       </div>
                     ` : `
-                      <form class="student-assignment-submit-form" data-assignment-id="${asg.id}" style="display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--primary-glow);">
-                        <div style="font-size:0.82rem; font-weight:700; color:var(--text-main);">تسليم حل الواجب:</div>
-                        <input type="text" class="assignment-text-answer form-input" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:8px 12px; font-size:0.85rem;">
+                      <form class="student-assignment-submit-form" data-assignment-id="${asg.id}" style="display:flex; flex-direction:column; gap:12px; padding:14px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--primary-glow);">
+                        <div style="font-size:0.82rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                          <i data-lucide="edit-3" style="width:15px; height:15px; color:var(--primary);"></i>
+                          كتابة إجابات أسئلة الواجب:
+                        </div>
+
+                        ${asg.questions && asg.questions.length > 0 ? `
+                          <div style="display:flex; flex-direction:column; gap:10px;">
+                            ${asg.questions.map((q, idx) => `
+                              <div class="player-q-box" data-q-id="${q.id}" data-q-index="${idx + 1}" data-q-text="${(q.text || '').replace(/"/g, '&quot;')}" style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:4px;">
+                                  <span style="font-weight:800; font-size:0.88rem; color:var(--text-main);"><strong style="color:var(--primary);">س${idx + 1}:</strong> ${q.text}</span>
+                                  ${q.points ? `<span class="badge" style="font-size:0.72rem; padding:2px 6px; background:var(--primary-glow); color:var(--primary); font-weight:700;">${q.points} درجات</span>` : ''}
+                                </div>
+                                ${q.imageUrl ? `
+                                  <div style="margin:6px 0;">
+                                    <img src="${q.imageUrl}" style="max-height:140px; max-width:100%; border-radius:6px; border:1px solid var(--border-color); cursor:pointer; background:#000; object-fit:contain;" onclick="window.open('${q.imageUrl}', '_blank')" title="انقر لفتح الصورة بحجم كامل 🔍" />
+                                  </div>
+                                ` : ''}
+                                <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:3px;">✍️ إجابتك التحريرية على هذا السؤال:</label>
+                                <textarea class="player-q-ans-input form-input" rows="2" placeholder="اكتب إجابتك التحريرية هنا..." style="padding:6px 10px; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
+                              </div>
+                            `).join('')}
+                          </div>
+                        ` : `
+                          <input type="text" class="assignment-text-answer form-input" placeholder="اكتب إجابتك أو ملاحظاتك هنا..." style="padding:8px 12px; font-size:0.85rem;">
+                        `}
                         
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                           <input type="file" class="assignment-file-input form-input" style="flex:1; padding:6px 10px; font-size:0.8rem;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip">
@@ -1357,7 +1433,23 @@ export default class CoursePlayerView {
         const fileInput = form.querySelector(".assignment-file-input");
         const submitBtn = form.querySelector("button[type='submit']");
 
-        let textAnswer = textInput ? textInput.value.trim() : "";
+        let textAnswer = "";
+        let answers = [];
+        const qBoxes = form.querySelectorAll(".player-q-box");
+
+        if (qBoxes.length > 0) {
+          qBoxes.forEach(box => {
+            const qId = box.getAttribute("data-q-id");
+            const qIndex = parseInt(box.getAttribute("data-q-index"), 10);
+            const qText = box.getAttribute("data-q-text");
+            const answerText = box.querySelector(".player-q-ans-input")?.value.trim() || "";
+            answers.push({ questionId: qId, questionIndex: qIndex, questionText: qText, answerText });
+          });
+          textAnswer = answers.map(a => `س${a.questionIndex} (${a.questionText}):\n✍️ ${a.answerText || 'لم تتم الإجابة'}`).join('\n\n');
+        } else {
+          textAnswer = textInput ? textInput.value.trim() : "";
+        }
+
         let uploadedUrl = "";
 
         if (fileInput && fileInput.files.length > 0) {
@@ -1394,7 +1486,10 @@ export default class CoursePlayerView {
         try {
           await apiFetch(`/assignments/${assignmentId}/submit`, {
             method: "POST",
-            body: JSON.stringify({ content: finalContent })
+            body: JSON.stringify({
+              content: finalContent,
+              answers: answers.length > 0 ? answers : undefined
+            })
           });
           showToast("تم تسليم الواجب بنجاح! 🎉", "success");
           await this.render();
