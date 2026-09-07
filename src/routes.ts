@@ -110,6 +110,10 @@ router.put("/groups/:id", authMiddleware, requireRole(["teacher", "admin"]), Cou
 router.delete("/groups/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroup);
 router.get("/groups/:id/roster", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getGroupRoster);
 router.get("/groups/:id/sessions", authMiddleware, CourseGroupController.getGroupSessions);
+router.get("/groups/:id/hub", authMiddleware, CourseGroupController.getGroupHub);
+router.post("/groups/:id/announcements", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.postGroupAnnouncement);
+router.delete("/groups/:id/announcements/:announcementId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupAnnouncement);
+router.post("/groups/:id/assignments", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroupAssignment);
 router.get("/teacher/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getMyTeacherGroups);
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin"]), CourseGroupController.getAllGroups);
 
@@ -194,6 +198,7 @@ router.post("/sessions/:id/complete", authMiddleware, requireCapability("SESSION
 router.post("/sessions/:id/cancel", authMiddleware, SessionBookingController.cancelSession);
 router.post("/sessions/:id/no-show", authMiddleware, requireCapability("SESSION_TEACHER"), SessionBookingController.noShowSession);
 router.post("/sessions/:id/checkin", authMiddleware, SessionBookingController.checkInAttendance);
+router.post("/sessions/:id/check-in", authMiddleware, SessionBookingController.checkInAttendance);
 router.get("/sessions/:id/attendance", authMiddleware, SessionBookingController.getSessionAttendance);
 router.patch("/sessions/:id/reschedule", authMiddleware, SessionBookingController.rescheduleSession);
 router.put("/sessions/:id/reassign-teacher", authMiddleware, requireRole(["admin"]), SessionBookingController.reassignSessionTeacher);
@@ -275,8 +280,12 @@ router.delete("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), B
 // Assignments & Submissions
 router.get("/assignments", authMiddleware, AssignmentController.getAssignments);
 router.post("/assignments", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.createAssignment);
+router.get("/assignments/:id", authMiddleware, AssignmentController.getAssignmentById);
+router.put("/assignments/:id", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.updateAssignment);
+router.delete("/assignments/:id", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.deleteAssignment);
 router.post("/assignments/:id/submit", authMiddleware, AssignmentController.submitAssignment);
 router.get("/assignments/:id/submissions", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.getSubmissions);
+router.get("/submissions/:id", authMiddleware, AssignmentController.getSubmissionDetails);
 router.put("/submissions/:id/grade", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.gradeSubmission);
 
 // Resources (Lesson Materials)

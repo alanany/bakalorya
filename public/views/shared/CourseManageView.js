@@ -1,4 +1,6 @@
 import { apiFetch, state, showToast, t, confirmDialog } from "../../app.js";
+import { AssignmentDetailsModal } from "./AssignmentDetailsModal.js";
+import { AssignmentGradingModal } from "./AssignmentGradingModal.js";
 
 export default class CourseManageView {
   constructor(container, courseId) {
@@ -520,9 +522,12 @@ export default class CourseManageView {
                     `}
                   </div>
 
-                  <div style="border-top:1px solid var(--border-color); padding-top:12px; margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
-                    <button type="button" class="btn-secondary fetch-assignment-submissions-btn" data-id="${a.id}" data-title="${a.title}" style="font-size:0.82rem; padding:8px 14px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="users" style="width:14px;height:14px;"></i> عرض إجابات الطلاب 👨‍🎓
+                  <div style="border-top:1px solid var(--border-color); padding-top:12px; margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn-secondary course-asgn-details-btn" data-id="${a.id}" style="font-size:0.82rem; padding:8px 14px; font-weight:800; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
+                      <i data-lucide="info" style="width:14px;height:14px;"></i> التفاصيل والأسئلة 📋
+                    </button>
+                    <button type="button" class="btn-primary course-asgn-grading-btn" data-id="${a.id}" data-title="${a.title}" data-total="${a.totalPoints || 100}" style="font-size:0.82rem; padding:8px 14px; font-weight:800; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                      <i data-lucide="check-square" style="width:14px;height:14px;"></i> التصحيح ورصد الدرجات 🎯
                     </button>
                   </div>
                 </div>
@@ -1547,7 +1552,7 @@ export default class CourseManageView {
 
         if (submitBtn) submitBtn.disabled = true;
         try {
-          await apiFetch("/assignments", {
+          const created = await apiFetch("/assignments", {
             method: "POST",
             body: JSON.stringify({
               title,
@@ -1562,13 +1567,42 @@ export default class CourseManageView {
           showToast("تم نشر الواجب بنجاح! 🚀", "success");
           if (modal) modal.style.display = "none";
           await this.render();
+
+          if (created && created.id) {
+            const fresh = (this.courseAssignments || []).find(a => a.id === created.id) || created;
+            const detailsModal = new AssignmentDetailsModal(fresh, () => this.render());
+            detailsModal.open();
+          }
         } catch (err) {
           showToast(err.message || "تعذر نشر الواجب", "error");
           if (submitBtn) submitBtn.disabled = false;
         }
       });
 
-      // View Assignment Submissions
+      // Open Assignment Details / Edit / Delete Modal
+      this.container.querySelectorAll(".course-asgn-details-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = parseInt(btn.getAttribute("data-id"), 10);
+          const asgn = (this.courseAssignments || []).find(a => a.id === id);
+          if (asgn) {
+            const detailsModal = new AssignmentDetailsModal(asgn, () => this.render());
+            detailsModal.open();
+          }
+        });
+      });
+
+      // Open Assignment Grading Modal
+      this.container.querySelectorAll(".course-asgn-grading-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = parseInt(btn.getAttribute("data-id"), 10);
+          const title = btn.getAttribute("data-title");
+          const total = parseFloat(btn.getAttribute("data-total")) || 100;
+          const modal = new AssignmentGradingModal(id, title, total, () => this.render());
+          modal.open();
+        });
+      });
+
+      // View Assignment Submissions (Legacy Fallback)
       const subsModal = document.getElementById("course-assignment-subs-modal");
       const subsClose = document.getElementById("close-course-assignment-subs-modal");
       subsClose?.addEventListener("click", () => { if (subsModal) subsModal.style.display = "none"; });

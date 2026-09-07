@@ -1,4 +1,6 @@
 import { apiFetch, state, showToast, t, confirmDialog, checkPendingRequestsNotification, renderCourseCard, handleWhatsAppResponse, showEnrollmentAcceptanceModal, getCleanWhatsAppNumber, validateSessionScheduledDate, getMinSessionDateTimeISO, formatSessionDateTime, getTimezoneBadgeHTML, canJoinSession } from "../../app.js";
+import { AssignmentDetailsModal } from "../shared/AssignmentDetailsModal.js";
+import { AssignmentGradingModal } from "../shared/AssignmentGradingModal.js";
 
 export default class TeacherView {
   constructor(container) {
@@ -8,10 +10,9 @@ export default class TeacherView {
     this.privateSessions = [];
     this.todaySessions = [];
     this.availability = [];
-    this.sessionFilter = "all";
-    this.privateSessionFilter = "all";
-    this.selectedCourseForLesson = null;
+    this.blogs = [];
     this.assignedSubscriptions = [];
+    this.assignments = [];
 
     // New View State
     this.currentViewMode = 'dashboard';
@@ -21,7 +22,7 @@ export default class TeacherView {
 
   async render() {
     try {
-      const [allCourses, sessions, students, requests, allBlogs, privateSessions, todaySessions, availability, earnings, assignedSubscriptions] = await Promise.all([
+      const [allCourses, sessions, students, requests, allBlogs, privateSessions, todaySessions, availability, earnings, assignedSubscriptions, allAssignments] = await Promise.all([
         apiFetch("/courses"),
         apiFetch("/sessions"),
         apiFetch("/users/students"),
@@ -31,7 +32,8 @@ export default class TeacherView {
         apiFetch("/teacher/private-sessions/today").catch(() => []),
         apiFetch("/teacher/availability/mine").catch(() => []),
         apiFetch("/teacher/earnings").catch(() => ({ stats: { pendingAmount: 0, totalEarned: 0 } })),
-        apiFetch("/subscriptions/teacher-assigned").catch(() => [])
+        apiFetch("/subscriptions/teacher-assigned").catch(() => []),
+        apiFetch("/assignments").catch(() => [])
       ]);
 
       this.courses = (allCourses || []).filter(c => c.teacher?.id === state.user.id);
@@ -41,6 +43,7 @@ export default class TeacherView {
       this.availability = availability || [];
       this.blogs = (allBlogs || []).filter(b => b.author?.id === state.user.id);
       this.assignedSubscriptions = assignedSubscriptions || [];
+      this.assignments = allAssignments || [];
 
       window.checkedInSessions = window.checkedInSessions || new Set();
       [...this.sessions, ...this.privateSessions, ...this.todaySessions].forEach(s => {
@@ -265,6 +268,79 @@ export default class TeacherView {
                       <p style="font-size:0.8rem; margin:0;">يمكنك جدولة لقاء مباشر جديد في أي وقت مع طلابك.</p>
                     </div>
                   ` : filteredSessions.map(session => this.renderTeacherSessionCard(session)).join("")}
+                </div>
+              </div>
+
+              <!-- Teacher Assignments & Tasks Section -->
+              <div style="margin-top:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+                  <div>
+                    <h2 style="font-size:1.25rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                      <i data-lucide="clipboard-list" style="width:22px; height:22px; color:#8b5cf6;"></i>
+                      الواجبات والتكليفات المدرسية (${this.assignments?.length || 0})
+                    </h2>
+                    <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">إدارة تفاصيل وأسئلة الواجب، التعديل والحذف، ورصد درجات الطلاب</p>
+                  </div>
+
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <a href="#assignments" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:800;">
+                      <i data-lucide="plus-circle" style="width:15px;height:15px;"></i> إضافة واجب جديد ➕
+                    </a>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
+                  ${(!this.assignments || this.assignments.length === 0) ? `
+                    <div class="glass-card" style="text-align:center; padding:36px 20px; color:var(--text-muted); grid-column:1/-1; border-radius:18px; background:var(--bg-card); border:1px solid var(--border-color);">
+                      <i data-lucide="file-question" style="width:40px; height:40px; opacity:0.35; margin-bottom:8px; color:var(--primary);"></i>
+                      <div style="font-weight:800; font-size:0.95rem; color:var(--text-main); margin-bottom:4px;">لم تقم بإنشاء واجبات بعد</div>
+                      <p style="font-size:0.82rem; margin:0 0 14px 0;">أضف واجبات بأسئلة اختيار من متعدد أو مقالية أو رفع ملفات لمجموعاتك ودوراتك.</p>
+                      <a href="#assignments" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                        + إضافة أول واجب الآن
+                      </a>
+                    </div>
+                  ` : this.assignments.slice(0, 6).map(asgn => {
+                    const qCount = Array.isArray(asgn.questions) ? asgn.questions.length : 0;
+                    const dueDateStr = asgn.dueDate ? new Date(asgn.dueDate).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'غير محدد';
+                    const isOverdue = asgn.dueDate && new Date() > new Date(asgn.dueDate);
+
+                    return `
+                      <div class="glass-card" style="padding:18px 20px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
+                        <div>
+                          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:8px;">
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                              <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.72rem; font-weight:800;">
+                                ${asgn.course?.title || (asgn.group?.name ? `مجموعة: ${asgn.group.name}` : 'واجب')}
+                              </span>
+                              ${asgn.type === 'mcq' ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.72rem;">MCQ آلي</span>` : ''}
+                            </div>
+                            <span style="font-size:0.75rem; font-weight:700; color:${isOverdue ? '#ef4444' : 'var(--text-muted)'}; display:inline-flex; align-items:center; gap:4px;">
+                              <i data-lucide="clock" style="width:12px;height:12px;"></i> ${dueDateStr}
+                            </span>
+                          </div>
+
+                          <h4 style="font-size:0.98rem; font-weight:900; margin:0 0 6px 0; color:var(--text-main); line-height:1.4;">${asgn.title}</h4>
+                          
+                          <div style="display:flex; align-items:center; gap:10px; font-size:0.78rem; color:var(--text-muted); font-weight:700;">
+                            <span>📝 ${qCount} أسئلة</span>
+                            <span>•</span>
+                            <span>🎯 ${asgn.totalPoints || 100} درجة</span>
+                          </div>
+                        </div>
+
+                        <div style="border-top:1px solid var(--border-color); padding-top:10px; display:flex; gap:8px;">
+                          <button class="btn-secondary teacher-dash-asgn-details-btn" data-id="${asgn.id}"
+                            style="flex:1; justify-content:center; padding:7px 10px; border-radius:10px; font-size:0.8rem; font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
+                            <i data-lucide="info" style="width:14px;height:14px;"></i> التفاصيل والأسئلة 📋
+                          </button>
+                          <button class="btn-primary teacher-dash-asgn-grade-btn" data-id="${asgn.id}" data-title="${asgn.title}" data-total="${asgn.totalPoints || 100}"
+                            style="flex:1; justify-content:center; padding:7px 10px; border-radius:10px; font-size:0.8rem; font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                            <i data-lucide="check-square" style="width:14px;height:14px;"></i> التصحيح 🎯
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
                 </div>
               </div>
 
@@ -1276,6 +1352,29 @@ export default class TeacherView {
     document.getElementById("open-session-modal-btn-2")?.addEventListener("click", openSessionModalHandler);
     document.getElementById("close-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
     document.getElementById("cancel-session-modal")?.addEventListener("click", () => { sessionModal.style.display = "none"; });
+
+    // Teacher Dashboard Assignment Details Modal (view details, questions, edit, delete)
+    this.container.querySelectorAll(".teacher-dash-asgn-details-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"), 10);
+        const asgn = (this.assignments || []).find(a => a.id === id);
+        if (asgn) {
+          const modal = new AssignmentDetailsModal(asgn, () => this.render());
+          modal.open();
+        }
+      });
+    });
+
+    // Teacher Dashboard Assignment Grading Modal
+    this.container.querySelectorAll(".teacher-dash-asgn-grade-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"), 10);
+        const title = btn.getAttribute("data-title");
+        const total = parseFloat(btn.getAttribute("data-total")) || 100;
+        const modal = new AssignmentGradingModal(id, title, total, () => this.render());
+        modal.open();
+      });
+    });
 
 
     document.querySelectorAll(".add-session-trigger").forEach(btn => {

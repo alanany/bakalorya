@@ -159,7 +159,7 @@ export class SessionBookingController {
 
       const session = await sessionRepository.findOne({
         where: { id },
-        relations: ["teacher", "student", "subscription"]
+        relations: ["teacher", "student", "subscription", "group"]
       });
 
       if (!session) return res.status(404).json({ error: "الحصة غير موجودة." });
@@ -169,11 +169,32 @@ export class SessionBookingController {
       }
 
       if (session.status === "COMPLETED" || session.status === "completed") {
-        return res.status(400).json({ error: "تم إكمال هذه الحصة سابقاً بالفعل." });
+        if (topic !== undefined) session.topic = topic;
+        if (whatWasCovered !== undefined) session.whatWasCovered = whatWasCovered;
+        if (studentPerformance !== undefined) session.studentPerformance = studentPerformance;
+        if (homework !== undefined) session.homework = homework;
+        if (teacherNotes !== undefined) session.teacherNotes = teacherNotes;
+        await sessionRepository.save(session);
+        return res.status(200).json({ message: "تم تحديث ملخص الحصة بنجاح ✅", session });
       }
 
       // Check if teacher has confirmed attendance during the session window
-      if (req.user!.role !== "admin") {
+      if (session.group) {
+        let teacherAttendance = await attendanceRepository.findOne({
+          where: {
+            session: { id: session.id },
+            user: { id: session.teacher.id }
+          }
+        });
+        if (!teacherAttendance) {
+          teacherAttendance = new SessionAttendance();
+          teacherAttendance.session = session;
+          teacherAttendance.user = session.teacher;
+          teacherAttendance.status = "PRESENT";
+          teacherAttendance.markedBy = session.teacher;
+          await attendanceRepository.save(teacherAttendance);
+        }
+      } else if (req.user!.role !== "admin") {
         const teacherAttendance = await attendanceRepository.findOne({
           where: {
             session: { id: session.id },
@@ -1733,21 +1754,51 @@ export class SessionBookingController {
         return res.status(403).json({ error: "غير مصرح لك بتسجيل الحضور في هذه الحصة." });
       }
 
-      // Strict session time window check: teacher must confirm attendance strictly during the scheduled session time
+      // Determine user's active timezone for accurate display in Arabic messages
+      const userTz = (req.headers["x-timezone"] as string) || (req.user as any)?.timezone || session.teacher?.timezone || "Asia/Riyadh";
+
+      // If the session was already fully marked completed, reject
+      if (session.status === "COMPLETED" || session.status === "completed") {
+        return res.status(400).json({
+          error: "تم إنهاء وإغلاق هذه الحصة مسبقاً، ولا يمكن تعديل الحضور بعد الإتمام."
+        });
+      }
+
+      // Check session time window:
+      // Allow check-in starting 30 minutes before the scheduled start time (matching frontend active button),
+      // throughout the session duration, and for 30 minutes grace period after session ends,
+      // or whenever the session is marked "live" or "active".
+      const isLive = (session.status as string) === "live" || (session.status as string) === "active";
       const sessionStart = new Date(session.scheduledAt).getTime();
       const durationMinutes = session.duration || 60;
-      const sessionEnd = sessionStart + durationMinutes * 60 * 1000;
+      const checkinWindowStart = sessionStart - 30 * 60 * 1000; // 30 minutes before start
+      const gracePeriodMinutes = 30; // 30 minutes grace period after scheduled end
+      const sessionEnd = sessionStart + (durationMinutes + gracePeriodMinutes) * 60 * 1000;
       const now = Date.now();
 
-      if (req.user!.role !== "admin") {
-        if (now < sessionStart) {
-          const startTimeStr = new Date(session.scheduledAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      if (req.user!.role !== "admin" && !isLive) {
+        if (now < checkinWindowStart) {
+          const startTimeStr = new Date(session.scheduledAt).toLocaleTimeString("ar-EG", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: userTz
+          });
+          const activateTimeStr = new Date(checkinWindowStart).toLocaleTimeString("ar-EG", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: userTz
+          });
           return res.status(400).json({
-            error: `لا يمكن تأكيد الحضور قبل موعد بدء الحصة الفعلي. يبدأ تسجيل الحضور في تمام الساعة ${startTimeStr}.`
+            error: `لا يمكن تأكيد الحضور قبل موعد الحصة بـ 30 دقيقة. يبدأ تسجيل الحضور في تمام الساعة ${activateTimeStr} (موعد الحصة الفعلي هو ${startTimeStr}).`
           });
         }
         if (now > sessionEnd) {
-          const endTimeStr = new Date(sessionEnd).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+          const scheduledEndTime = sessionStart + durationMinutes * 60 * 1000;
+          const endTimeStr = new Date(scheduledEndTime).toLocaleTimeString("ar-EG", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: userTz
+          });
           return res.status(400).json({
             error: `انتهى وقت الحصة المحدد في تمام الساعة ${endTimeStr}. لا يمكن تأكيد الحضور بعد انتهاء موعد الحصة.`
           });

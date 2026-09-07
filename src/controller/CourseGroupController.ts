@@ -5,8 +5,13 @@ import { Course } from "../entity/Course";
 import { Enrollment } from "../entity/Enrollment";
 import { User } from "../entity/User";
 import { Session } from "../entity/Session";
+import { Assignment } from "../entity/Assignment";
+import { AssignmentSubmission } from "../entity/AssignmentSubmission";
+import { SessionAttendance } from "../entity/SessionAttendance";
 import { NotificationController } from "./NotificationController";
 import { AuthRequest } from "../middleware/auth";
+import { IsNull } from "typeorm";
+import crypto from "crypto";
 
 export class CourseGroupController {
   // GET /courses/:courseId/groups
@@ -779,16 +784,14 @@ export class CourseGroupController {
       await groupRepo.save(group);
 
       // Remove any previous scheduled sessions for this group/course to prevent duplication on reopen & re-close
-      if (group.course?.id) {
-        const existingSessions = await sessionRepo.find({
-          where: {
-            course: { id: group.course.id },
-            status: "SCHEDULED"
-          }
-        });
-        if (existingSessions.length > 0) {
-          await sessionRepo.remove(existingSessions);
-        }
+      const existingSessions = await sessionRepo.find({
+        where: [
+          { group: { id: group.id }, status: "SCHEDULED" },
+          ...(group.course?.id ? [{ course: { id: group.course.id }, group: IsNull(), status: "SCHEDULED" as any }] : [])
+        ]
+      });
+      if (existingSessions.length > 0) {
+        await sessionRepo.remove(existingSessions);
       }
 
       const createdSessions: Session[] = [];
@@ -800,6 +803,7 @@ export class CourseGroupController {
           sess.title = item.title || `${group.name} - حصة ${i + 1}`;
           sess.description = item.description || `حصة تفاعلية مباشرة ضمن ${group.name}`;
           sess.course = group.course;
+          sess.group = group;
           sess.teacher = teacher;
           sess.student = null as any;
           sess.scheduledAt = new Date(item.scheduledAt);
@@ -847,6 +851,7 @@ export class CourseGroupController {
             sess.title = `${group.name} - حصة ${count}`;
             sess.description = `حصة تفاعلية مباشرة ضمن ${group.name}`;
             sess.course = group.course;
+            sess.group = group;
             sess.teacher = teacher;
             sess.student = null as any;
             sess.scheduledAt = new Date(currDate);
@@ -972,6 +977,489 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error fetching group sessions:", err);
       return res.status(500).json({ error: "Failed to fetch group sessions." });
+    }
+  }
+
+  // GET /groups/:id/hub - Fetch complete data for Group Hub Page
+  static async getGroupHub(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const assignmentRepo = AppDataSource.getRepository(Assignment);
+      const submissionRepo = AppDataSource.getRepository(AssignmentSubmission);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const attendanceRepo = AppDataSource.getRepository(SessionAttendance);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: [
+          "course",
+          "course.subject",
+          "course.grade",
+          "course.teacher",
+          "teacher"
+        ]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      // Check access: Admin, Teacher of the group, or enrolled student
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      let enrollment: Enrollment | null = null;
+      if (!isAdmin && !isTeacher) {
+        enrollment = await enrollmentRepo.findOne({
+          where: { group: { id: group.id }, student: { id: currentUserId } }
+        });
+        if (!enrollment && group.course) {
+          // Check if enrolled in course without group
+          enrollment = await enrollmentRepo.findOne({
+            where: { course: { id: group.course.id }, student: { id: currentUserId } }
+          });
+        }
+
+        if (!enrollment) {
+          return res.status(403).json({ error: "غير مصرح لك بالدخول إلى هذه المجموعة. يجب الاشتراك أولاً." });
+        }
+      }
+
+      // Fetch group sessions (both explicitly assigned to this group, or course sessions if legacy)
+      const courseId = group.course?.id;
+      let sessions = await sessionRepo.find({
+        where: [
+          { group: { id: group.id } },
+          ...(courseId ? [{ course: { id: courseId }, group: IsNull() }] : [])
+        ],
+        relations: ["teacher", "group"],
+        order: { scheduledAt: "ASC" }
+      });
+
+      // Filter out duplicate sessions if any
+      const seen = new Set<string>();
+      const uniqueSessions: any[] = [];
+      for (const s of sessions) {
+        const timeKey = s.scheduledAt ? new Date(s.scheduledAt).toISOString().slice(0, 16) : s.id;
+        const key = `${s.title}_${timeKey}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueSessions.push(s);
+        }
+      }
+
+      // If student, attach attendance status for each session
+      let attendedCount = 0;
+      let completedSessionsCount = 0;
+      const now = new Date();
+
+      const sessionsWithAttendance = await Promise.all(
+        uniqueSessions.map(async (sess) => {
+          const sessDate = sess.scheduledAt ? new Date(sess.scheduledAt) : null;
+          const isCompleted = sess.status === "COMPLETED" || (sessDate && (sessDate.getTime() + (sess.duration || 60) * 60000) < now.getTime());
+          if (isCompleted) completedSessionsCount++;
+
+          let myAttendance: string | null = null;
+          if (currentUserId) {
+            const att = await attendanceRepo.findOne({
+              where: { session: { id: sess.id }, user: { id: currentUserId } }
+            });
+            if (att) {
+              myAttendance = att.status;
+              if (att.status === "PRESENT" || att.status === "LATE") {
+                attendedCount++;
+              }
+            } else if (isCompleted) {
+              myAttendance = "ABSENT";
+            }
+          }
+
+          return {
+            id: sess.id,
+            title: sess.title,
+            description: sess.description,
+            scheduledAt: sess.scheduledAt,
+            duration: sess.duration,
+            status: sess.status,
+            startedAt: sess.startedAt,
+            completedAt: sess.completedAt,
+            meetingLink: sess.meetingLink || group.meetingLink || group.course?.meetingLink,
+            topic: sess.topic,
+            whatWasCovered: sess.whatWasCovered,
+            homework: sess.homework,
+            teacherNotes: sess.teacherNotes,
+            studentPerformance: sess.studentPerformance,
+            myAttendance
+          };
+        })
+      );
+
+      // Fetch assignments for group
+      const assignments = await assignmentRepo.find({
+        where: [
+          { group: { id: group.id } },
+          ...(courseId ? [{ course: { id: courseId }, group: IsNull() }] : [])
+        ],
+        relations: ["lesson"],
+        order: { dueDate: "DESC", createdAt: "DESC" }
+      });
+
+      const assignmentsWithSubmissions = await Promise.all(
+        assignments.map(async (asgn) => {
+          let mySubmission: any = null;
+          if (currentUserId && !isTeacher && !isAdmin) {
+            const sub = await submissionRepo.findOne({
+              where: { assignment: { id: asgn.id }, student: { id: currentUserId } }
+            });
+            if (sub) {
+              const isDraft = sub.status === 'draft_graded';
+              mySubmission = {
+                id: sub.id,
+                status: isDraft ? 'submitted' : (sub.status || 'submitted'),
+                grade: isDraft ? null : sub.grade,
+                percentage: isDraft ? null : sub.percentage,
+                overallFeedback: isDraft ? null : sub.overallFeedback,
+                feedbackFileUrl: isDraft ? null : sub.feedbackFileUrl,
+                feedbackFileName: isDraft ? null : sub.feedbackFileName,
+                isLate: sub.isLate,
+                submittedAt: sub.submittedAt,
+                gradedAt: isDraft ? null : sub.gradedAt,
+                content: sub.content,
+                answers: isDraft ? (sub.answers || []).map((a: any) => ({ ...a, pointsAwarded: undefined, feedback: undefined })) : sub.answers
+              };
+            }
+          }
+
+          let submissionsCount = 0;
+          if (isTeacher || isAdmin) {
+            submissionsCount = await submissionRepo.count({
+              where: { assignment: { id: asgn.id } }
+            });
+          }
+
+          return {
+            id: asgn.id,
+            title: asgn.title,
+            description: asgn.description,
+            type: asgn.type || 'hybrid',
+            totalPoints: asgn.totalPoints || 100,
+            dueDate: asgn.dueDate,
+            questions: asgn.questions,
+            lesson: asgn.lesson ? { id: asgn.lesson.id, title: asgn.lesson.title } : null,
+            createdAt: asgn.createdAt,
+            mySubmission,
+            submissionsCount
+          };
+        })
+      );
+
+      // Fetch roster / enrolled students
+      const allEnrollments = await enrollmentRepo.find({
+        where: { group: { id: group.id } },
+        relations: ["student", "payment"],
+        order: { createdAt: "ASC" }
+      });
+
+      const activeStudents = allEnrollments
+        .filter(e => (!e.status || e.status === "active") && e.student)
+        .map(e => ({
+          id: e.student.id,
+          name: e.student.name,
+          avatar: e.student.avatar,
+          email: (isTeacher || isAdmin) ? e.student.email : undefined,
+          phone: (isTeacher || isAdmin) ? (e.student.phone || e.payment?.providerTransactionId) : undefined,
+          progress: e.progress || 0,
+          enrolledAt: e.createdAt
+        }));
+
+      const teacherData = group.teacher || group.course?.teacher;
+
+      return res.status(200).json({
+        group: {
+          id: group.id,
+          name: group.name,
+          scheduleDays: group.scheduleDays,
+          scheduleTime: group.scheduleTime,
+          scheduleText: group.scheduleText,
+          maxStudents: group.maxStudents,
+          meetingLink: group.meetingLink || group.course?.meetingLink,
+          status: group.status,
+          startDate: group.startDate,
+          endDate: group.endDate,
+          totalSessions: group.totalSessions || 24,
+          sessionDuration: group.sessionDuration || 60,
+          sessionPrice: group.sessionPrice,
+          monthlyPrice: group.monthlyPrice,
+          billingCycle: group.billingCycle,
+          announcements: group.announcements || []
+        },
+        course: group.course ? {
+          id: group.course.id,
+          title: group.course.title,
+          description: group.course.description,
+          image: group.course.image,
+          subject: group.course.subject ? { id: group.course.subject.id, name: group.course.subject.name } : null,
+          grade: group.course.grade ? { id: group.course.grade.id, name: group.course.grade.name } : null
+        } : null,
+        teacher: teacherData ? {
+          id: teacherData.id,
+          name: teacherData.name,
+          avatar: teacherData.avatar,
+          phone: (isAdmin || isTeacher) ? teacherData.phone : undefined
+        } : null,
+        sessions: sessionsWithAttendance,
+        assignments: assignmentsWithSubmissions,
+        announcements: (group.announcements || []).sort((a: any, b: any) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }),
+        stats: {
+          totalSessions: group.totalSessions || sessionsWithAttendance.length,
+          completedSessions: completedSessionsCount,
+          enrolledCount: activeStudents.length,
+          maxStudents: group.maxStudents || 25,
+          userAttendance: (!isTeacher && !isAdmin) ? {
+            attendedCount,
+            completedSessionsCount,
+            percentage: completedSessionsCount > 0 ? Math.round((attendedCount / completedSessionsCount) * 100) : 100
+          } : null
+        },
+        students: (isTeacher || isAdmin) ? activeStudents : activeStudents.map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
+        isTeacher,
+        isAdmin,
+        isStudent: !isTeacher && !isAdmin
+      });
+    } catch (err: any) {
+      console.error("Error fetching group hub data:", err);
+      return res.status(500).json({ error: "فشل تحميل بيانات صفحة المجموعة." });
+    }
+  }
+
+  // POST /groups/:id/announcements
+  static async postGroupAnnouncement(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, content, isPinned } = req.body;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      if (!title || !content) {
+        return res.status(400).json({ error: "يجب كتابة عنوان ومحتوى التنبيه." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بنشر إعلانات في هذه المجموعة." });
+      }
+
+      const authorName = (req.user as any)?.name || (isTeacher ? (group.teacher?.name || "معلم المجموعة") : "إدارة المنصة");
+      const authorRole = isAdmin ? "إدارة المنصة" : "معلم المادة";
+
+      const newAnnouncement = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `ann_${Date.now()}`,
+        title: title.trim(),
+        content: content.trim(),
+        authorName,
+        authorRole,
+        isPinned: !!isPinned,
+        createdAt: new Date().toISOString()
+      };
+
+      const announcements = group.announcements || [];
+      if (newAnnouncement.isPinned) {
+        announcements.unshift(newAnnouncement);
+      } else {
+        const firstUnpinnedIndex = announcements.findIndex((a: any) => !a.isPinned);
+        if (firstUnpinnedIndex === -1) {
+          announcements.push(newAnnouncement);
+        } else {
+          announcements.splice(firstUnpinnedIndex, 0, newAnnouncement);
+        }
+      }
+
+      group.announcements = announcements;
+      await groupRepo.save(group);
+
+      // Notify all active enrolled students
+      try {
+        const enrollments = await enrollmentRepo.find({
+          where: { group: { id: group.id }, status: "active" },
+          relations: ["student"]
+        });
+
+        for (const enr of enrollments) {
+          if (enr.student) {
+            await NotificationController.createNotification(
+              enr.student.id,
+              `تنبيه جديد في ${group.name} 📢`,
+              `${title.trim()}: ${content.trim().slice(0, 100)}...`,
+              "info",
+              `#group/${group.id}`
+            );
+          }
+        }
+      } catch (e) {}
+
+      return res.status(201).json({ message: "تم نشر التنبيه بنجاح!", announcement: newAnnouncement });
+    } catch (err: any) {
+      console.error("Error posting announcement:", err);
+      return res.status(500).json({ error: "فشل نشر الإعلان." });
+    }
+  }
+
+  // DELETE /groups/:id/announcements/:announcementId
+  static async deleteGroupAnnouncement(req: AuthRequest, res: Response) {
+    try {
+      const { id, announcementId } = req.params;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بحذف إعلانات هذه المجموعة." });
+      }
+
+      group.announcements = (group.announcements || []).filter((a: any) => a.id !== announcementId);
+      await groupRepo.save(group);
+
+      return res.status(200).json({ message: "تم حذف الإعلان بنجاح." });
+    } catch (err: any) {
+      console.error("Error deleting announcement:", err);
+      return res.status(500).json({ error: "فشل حذف الإعلان." });
+    }
+  }
+
+  // POST /groups/:id/assignments
+  static async createGroupAssignment(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, description, dueDate, questions, type } = req.body;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      if (!title || !dueDate) {
+        return res.status(400).json({ error: "يرجى إدخال عنوان وتاريخ تسليم الواجب." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const assignmentRepo = AppDataSource.getRepository(Assignment);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بإضافة واجبات لهذه المجموعة." });
+      }
+
+      const assignment = new Assignment();
+      assignment.title = title.trim();
+      assignment.description = description || "";
+      assignment.type = type || 'hybrid';
+      assignment.dueDate = new Date(dueDate);
+
+      let calculatedTotalPoints = 0;
+      if (Array.isArray(questions)) {
+        assignment.questions = questions
+          .filter((q: any) => q && q.text && q.text.trim().length > 0)
+          .map((q: any, i: number) => {
+            const pts = Number(q.points) > 0 ? Number(q.points) : 10;
+            calculatedTotalPoints += pts;
+            return {
+              id: q.id || `q_${i + 1}`,
+              type: (q.type === 'mcq' || q.type === 'essay' || q.type === 'file') ? q.type : 'essay',
+              text: q.text.trim(),
+              points: pts,
+              imageUrl: q.imageUrl ? String(q.imageUrl).trim() : undefined,
+              options: Array.isArray(q.options) ? q.options.map((opt: any, optIdx: number) => ({
+                id: opt.id || `opt_${optIdx + 1}`,
+                text: String(opt.text || "").trim(),
+                isCorrect: Boolean(opt.isCorrect)
+              })) : undefined,
+              explanation: q.explanation ? String(q.explanation).trim() : undefined,
+              allowedFileTypes: Array.isArray(q.allowedFileTypes) ? q.allowedFileTypes : undefined,
+              maxFileSizeMb: q.maxFileSizeMb ? Number(q.maxFileSizeMb) : 25,
+              rubric: q.rubric ? String(q.rubric).trim() : undefined
+            };
+          });
+
+        if (!assignment.description && assignment.questions.length > 0) {
+          assignment.description = assignment.questions.map((q: any, i: number) => `س${i + 1} (${q.type === 'mcq' ? 'اختيار من متعدد' : q.type === 'file' ? 'رفع ملف' : 'سؤال مقالي'}): ${q.text} [${q.points} درجات]`).join('\n');
+        }
+      } else {
+        assignment.questions = [];
+      }
+      assignment.totalPoints = calculatedTotalPoints || 100;
+      assignment.group = group;
+      assignment.course = group.course;
+
+      const saved = await assignmentRepo.save(assignment);
+
+      // Notify enrolled students
+      try {
+        const enrollments = await enrollmentRepo.find({
+          where: { group: { id: group.id }, status: "active" },
+          relations: ["student"]
+        });
+
+        for (const enr of enrollments) {
+          if (enr.student) {
+            await NotificationController.createNotification(
+              enr.student.id,
+              `واجب جديد: ${title.trim()} 📝`,
+              `تم تعيين واجب جديد لمجموعة "${group.name}". آخر موعد للتسليم: ${new Date(dueDate).toLocaleDateString('ar-EG')}.`,
+              "info",
+              `#group/${group.id}`
+            );
+          }
+        }
+      } catch (e) {}
+
+      return res.status(201).json({ message: "تم إضافة الواجب بنجاح للمجموعة!", assignment: saved });
+    } catch (err: any) {
+      console.error("Error creating group assignment:", err);
+      return res.status(500).json({ error: "فشل إضافة الواجب." });
     }
   }
 }

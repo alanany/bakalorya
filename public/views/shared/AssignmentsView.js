@@ -1,4 +1,7 @@
 import { apiFetch, state, showToast, t } from "../../app.js";
+import { AssignmentGradingModal } from "./AssignmentGradingModal.js";
+import { StudentFeedbackModal } from "./StudentFeedbackModal.js";
+import { AssignmentDetailsModal } from "./AssignmentDetailsModal.js";
 
 export default class AssignmentsView {
   constructor(container) {
@@ -244,18 +247,44 @@ export default class AssignmentsView {
 
     let action = "";
     if (isTeacher) {
-      action = `<button class="btn-secondary view-submissions-btn" data-id="${assignment.id}" style="width:100%; justify-content:center;">View Submissions</button>`;
+      action = `
+        <div style="display:flex; gap:8px; width:100%;">
+          <button class="btn-secondary view-assignment-details-btn" data-id="${assignment.id}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
+            <i data-lucide="info" style="width:15px;height:15px;"></i> التفاصيل والأسئلة 📋
+          </button>
+          <button class="btn-primary view-submissions-btn" data-id="${assignment.id}" data-title="${assignment.title}" data-total="${assignment.totalPoints || 100}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;">
+            <i data-lucide="check-square" style="width:15px;height:15px;"></i> التصحيح 🎯
+          </button>
+        </div>
+      `;
     } else {
       if (assignment.submission) {
-        const graded = assignment.submission.grade !== null;
+        const isGraded = assignment.submission.status === 'graded';
+        const gradeVal = assignment.submission.grade;
+        const totalPts = assignment.totalPoints || 100;
+        const pct = assignment.submission.percentage || (totalPts > 0 && gradeVal !== null ? Math.round((gradeVal / totalPts) * 100) : 0);
+
         action = `
-          <div style="background:var(--bg-app); padding:12px; border-radius:8px; border:1px solid var(--border-color); text-align:center; font-size:0.9rem;">
-            ${graded ? `<span style="color:var(--success); font-weight:700;">Graded: ${assignment.submission.grade}/100</span>` : `<span style="color:var(--info);">Submitted (Pending Grade)</span>`}
+          <div style="background:var(--bg-app); padding:12px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              ${isGraded ? `
+                <div style="color:#10b981; font-weight:900; font-size:0.92rem;">الدرجة: ${gradeVal} / ${totalPts} (${pct}%)</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">تم النشر والاعتماد ✅</div>
+              ` : `
+                <div style="color:var(--primary); font-weight:800; font-size:0.88rem;">تم التسليم بنجاح ⏳</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">بانتظار تصحيح المعلم</div>
+              `}
+            </div>
+            ${isGraded ? `
+              <button class="btn-secondary view-feedback-btn" data-id="${assignment.id}" style="font-size:0.78rem; padding:6px 12px; border-radius:8px; font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                <i data-lucide="eye" style="width:13px; height:13px;"></i> مراجعة التصحيح 🔍
+              </button>
+            ` : ''}
           </div>
         `;
       } else {
         action = `<button class="btn-primary submit-btn" data-id="${assignment.id}" data-title="${assignment.title}" style="width:100%; justify-content:center; ${isOverdue ? 'background:var(--error); box-shadow:none;' : ''}">
-          ${isOverdue ? 'Late Submit' : 'Submit Assignment'}
+          ${isOverdue ? 'تسليم متأخر ⚠️' : 'تسليم حل الواجب 📤'}
         </button>`;
       }
     }
@@ -432,7 +461,7 @@ export default class AssignmentsView {
           return;
         }
 
-        await apiFetch("/assignments", {
+        const created = await apiFetch("/assignments", {
           method: "POST",
           body: JSON.stringify({
             title: document.getElementById("assignment-title").value,
@@ -443,9 +472,15 @@ export default class AssignmentsView {
             dueDate: document.getElementById("assignment-due").value,
           })
         });
-        showToast("Assignment published!", "success");
+        showToast("تم نشر الواجب بنجاح! 🚀", "success");
         createModal.style.display = "none";
         await this.loadContent();
+
+        if (created && created.id) {
+          const fresh = (this.assignments || []).find(a => a.id === created.id) || created;
+          const detailsModal = new AssignmentDetailsModal(fresh, () => this.loadContent());
+          detailsModal.open();
+        }
       } catch (err) {}
     });
 
@@ -557,125 +592,37 @@ export default class AssignmentsView {
       if (e.target === gradingModal) gradingModal.style.display = "none";
     });
 
+    // Teacher View Assignment Details / Edit / Delete Modal
+    this.container.querySelectorAll(".view-assignment-details-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"), 10);
+        const asgn = (this.assignments || []).find(a => a.id === id);
+        if (asgn) {
+          const modal = new AssignmentDetailsModal(asgn, () => this.loadContent());
+          modal.open();
+        }
+      });
+    });
+
+    // Teacher Grading Modal
     this.container.querySelectorAll(".view-submissions-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        const listEl = document.getElementById("grading-modal-list");
-        const titleEl = document.getElementById("grading-modal-title");
-        if (titleEl) titleEl.innerText = "إجابات وتسليمات الطلاب (تصحيح الواجب)";
-        if (listEl) listEl.innerHTML = `<div style="text-align:center; padding:30px;"><i data-lucide="loader" class="spinner" style="width:32px;height:32px;"></i></div>`;
-        if (window.lucide) window.lucide.createIcons();
-        if (gradingModal) gradingModal.style.display = "flex";
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"), 10);
+        const title = btn.getAttribute("data-title") || "الواجب الدراسي";
+        const total = parseFloat(btn.getAttribute("data-total")) || 100;
+        const modal = new AssignmentGradingModal(id, title, total, () => this.loadContent());
+        modal.open();
+      });
+    });
 
-        try {
-          const subs = await apiFetch(`/assignments/${id}/submissions`);
-          if (!listEl) return;
-          if (subs.length === 0) {
-            listEl.innerHTML = `
-              <div style="text-align:center; padding:36px 20px; color:var(--text-muted);">
-                <i data-lucide="file-x" style="width:48px; height:48px; opacity:0.35; margin-bottom:12px;"></i>
-                <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">لم يقم أي طالب بتقديم إجابة لهذا الواجب حتى الآن</h4>
-                <p style="font-size:0.85rem; line-height:1.6; max-width:460px; margin:0 auto 18px auto; color:var(--text-muted);">
-                  لكي تتمكن من تصحيح الواجب ورصد الدرجة، يجب أن يقوم الطالب بالدخول وتسليم الحل أولاً. يمكنك أيضاً إنشاء تسليم تجريبي لتجربة واجهة التصحيح ورصد الدرجات الآن.
-                </p>
-                <button class="btn-secondary add-demo-sub-btn" style="font-size:0.84rem; padding:8px 18px; border-radius:10px; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                  <i data-lucide="flask-conical" style="width:15px; height:15px; color:var(--primary);"></i> إنشاء إجابة تجريبية لتجربة التصحيح 🧪
-                </button>
-              </div>
-            `;
-            listEl.querySelector(".add-demo-sub-btn")?.addEventListener("click", async () => {
-              try {
-                await apiFetch(`/assignments/${id}/submit`, {
-                  method: "POST",
-                  body: JSON.stringify({
-                    content: "إجابة نموذجية تجريبية لاختبار وتجربة ميزة تصحيح الواجبات ورصد الدرجات من قبل المعلم. تم حل جميع الأسئلة المطلوبة بالتفصيل."
-                  })
-                });
-                showToast("تم إنشاء إجابة تجريبية بنجاح! يمكنك الآن تجربة تصحيحها ورصد الدرجة 🎯", "success");
-                btn.click();
-              } catch (demoErr) {
-                showToast(demoErr.message || "تعذر إنشاء تسليم تجريبي", "error");
-              }
-            });
-          } else {
-            listEl.innerHTML = `
-              <div style="display:flex; flex-direction:column; gap:14px;">
-                ${subs.map(s => `
-                  <div style="padding:16px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
-                    <div style="flex:1; min-width:240px;">
-                      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                        <strong style="font-size:0.98rem; color:var(--text-main);">${s.student?.name || 'طالب'}</strong>
-                        <span style="font-size:0.75rem; color:var(--text-muted);">• ${new Date(s.submittedAt).toLocaleString('ar-EG')}</span>
-                      </div>
-                      
-                      ${s.answers && Array.isArray(s.answers) && s.answers.length > 0 ? `
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                          ${s.answers.map(ans => `
-                            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
-                              <div style="font-weight:800; font-size:0.85rem; color:var(--primary); margin-bottom:4px;">
-                                س${ans.questionIndex}: ${ans.questionText || ''}
-                              </div>
-                              <div style="font-size:0.88rem; color:var(--text-main); white-space:pre-wrap; line-height:1.5; background:var(--bg-app); padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                                ✍️ ${ans.answerText || 'لم يتم كتابة إجابة'}
-                              </div>
-                            </div>
-                          `).join('')}
-                          ${s.content && s.content.includes("📌 رابط / ملاحظات:") ? `
-                            <div style="font-size:0.82rem; color:var(--text-muted); padding:6px 10px; background:var(--bg-card); border-radius:8px; border:1px solid var(--border-color);">
-                              ${s.content.split("📌 رابط / ملاحظات:")[1]}
-                            </div>
-                          ` : ''}
-                        </div>
-                      ` : `
-                        <div style="padding:10px 14px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; font-size:0.88rem; color:var(--text-main); white-space:pre-wrap; line-height:1.5;">${s.content}</div>
-                      `}
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:180px;">
-                      ${s.grade !== null && s.grade !== undefined ? `
-                        <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.84rem; padding:4px 10px; border-radius:8px;">✅ تم التصحيح: ${s.grade}/100</span>
-                      ` : `
-                        <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.8rem; padding:4px 10px; border-radius:8px;">⏳ بانتظار التصحيح</span>
-                      `}
-                      <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-                        <input type="number" min="0" max="100" class="form-input asg-grade-input" data-sub-id="${s.id}" value="${s.grade !== null && s.grade !== undefined ? s.grade : ''}" placeholder="الدرجة" style="width:75px; padding:6px 8px; font-size:0.84rem; border-radius:8px; text-align:center; font-weight:800;">
-                        <button class="btn-primary asg-save-grade-btn" data-sub-id="${s.id}" style="padding:6px 14px; font-size:0.8rem; border-radius:8px; font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                          <i data-lucide="check" style="width:13px; height:13px;"></i> رصد الدرجة
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `;
-
-            listEl.querySelectorAll(".asg-save-grade-btn").forEach(saveBtn => {
-              saveBtn.addEventListener("click", async () => {
-                const subId = saveBtn.getAttribute("data-sub-id");
-                const input = listEl.querySelector(`.asg-grade-input[data-sub-id="${subId}"]`);
-                const val = input?.value?.trim();
-                if (val === "" || isNaN(val)) {
-                  showToast("يرجى إدخال درجة صحيحة بين 0 و 100", "warning");
-                  return;
-                }
-                const numGrade = Math.min(100, Math.max(0, parseInt(val, 10)));
-                saveBtn.disabled = true;
-                try {
-                  await apiFetch(`/submissions/${subId}/grade`, {
-                    method: "PUT",
-                    body: JSON.stringify({ grade: numGrade })
-                  });
-                  showToast(`تم تصحيح الواجب بنجاح وإشعار الطالب بالدرجة (${numGrade}/100)! 🏆`, "success");
-                  btn.click();
-                } catch (gradeErr) {
-                  showToast(gradeErr.message || "فشل حفظ الدرجة", "error");
-                  saveBtn.disabled = false;
-                }
-              });
-            });
-          }
-          if (window.lucide) window.lucide.createIcons();
-        } catch (err) {
-          if (listEl) listEl.innerHTML = `<div style="color:var(--error); text-align:center; padding:20px;">تعذر تحميل تسليمات الطلاب</div>`;
+    // Student View Feedback Modal
+    this.container.querySelectorAll(".view-feedback-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"), 10);
+        const asgn = (this.assignments || []).find(a => a.id === id);
+        if (asgn && asgn.submission) {
+          const modal = new StudentFeedbackModal(asgn, asgn.submission);
+          modal.open();
         }
       });
     });

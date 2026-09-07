@@ -2,6 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDat
 import { Course } from "./Course";
 import { User } from "./User";
 import { Enrollment } from "./Enrollment";
+import { Session } from "./Session";
+import { Assignment } from "./Assignment";
 
 @Entity()
 export class CourseGroup {
@@ -67,6 +69,23 @@ export class CourseGroup {
 
   @OneToMany(() => Enrollment, enrollment => enrollment.group)
   enrollments: Enrollment[];
+
+  @OneToMany(() => Session, session => session.group)
+  sessions: Session[];
+
+  @OneToMany(() => Assignment, assignment => assignment.group)
+  assignments: Assignment[];
+
+  @Column("simple-json", { nullable: true })
+  announcements: Array<{
+    id: string;
+    title: string;
+    content: string;
+    authorName: string;
+    authorRole: string;
+    createdAt: string;
+    isPinned?: boolean;
+  }>;
 
   @CreateDateColumn()
   createdAt: Date;

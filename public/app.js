@@ -42,6 +42,7 @@ import CoursesView from "./views/shared/CoursesView.js";
 import AssignmentsView from "./views/shared/AssignmentsView.js";
 import ScheduleView from "./views/shared/ScheduleView.js";
 import ClassroomView from "./views/shared/ClassroomView.js";
+import GroupHubView from "./views/shared/GroupHubView.js";
 
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
@@ -462,6 +463,150 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
 window.showEndSessionReportModal = showEndSessionReportModal;
 
 /**
+ * Display clean session summary / report modal for students.
+ */
+export function showStudentSessionReportModal(session) {
+  if (!session) return;
+
+  const modalId = 'student-session-report-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+
+  const fmt = typeof formatSessionDateTime === 'function' && session.scheduledAt
+    ? formatSessionDateTime(session.scheduledAt, null, {})
+    : {
+        dateStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleDateString('ar-EG') : '',
+        timeStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''
+      };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = modalId;
+  overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;';
+
+  const teacherName = session.teacher?.name || 'المعلم';
+  const teacherAvatar = session.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+
+  const perfMap = {
+    'Excellent': 'ممتاز 🌟',
+    'Good': 'جيد جداً 👍',
+    'Average': 'متوسط ⚖️',
+    'Needs Improvement': 'يحتاج إلى متابعة وتحسين ⚠️'
+  };
+  const perfLabel = perfMap[session.studentPerformance] || session.studentPerformance || null;
+
+  overlay.innerHTML = `
+    <div class="modal-content" style="max-width:580px; width:100%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:90vh; display:flex; flex-direction:column;">
+      
+      <!-- Header -->
+      <div style="padding:20px 24px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:44px; height:44px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="file-check-2" style="width:24px; height:24px;"></i>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <h3 style="font-size:1.15rem; font-weight:900; margin:0; color:var(--text-main);">ملخص وتقرير الحصة 📄</h3>
+              <span style="font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.25);">مكتملة وموثقة ✅</span>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin:3px 0 0 0;">${session.title || 'حصة تعليمية'} • 📅 ${fmt.dateStr} ${fmt.timeStr ? `(${fmt.timeStr})` : ''}</p>
+          </div>
+        </div>
+        <button id="close-${modalId}" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted); font-size:1.4rem; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:22px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; background:var(--bg-app);">
+        
+        <!-- Teacher Profile Bar -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border-color);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="${teacherAvatar}" alt="${teacherName}" style="width:36px; height:36px; border-radius:10px; object-fit:cover; border:1px solid rgba(99,102,241,0.25);">
+            <div>
+              <div style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${teacherName}</div>
+              <div style="font-size:0.74rem; color:var(--text-muted);">معلم الحصة</div>
+            </div>
+          </div>
+          ${perfLabel ? `
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.08); padding:4px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
+              <i data-lucide="award" style="width:14px; height:14px;"></i>
+              <span>التفاعل: ${perfLabel}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Topic -->
+        ${session.topic ? `
+          <div style="padding:14px; border-radius:14px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18);">
+            <div style="font-size:0.78rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="bookmark" style="width:14px; height:14px;"></i> موضوع الدرس (Topic):
+            </div>
+            <div style="font-size:0.95rem; font-weight:900; color:var(--text-main);">${session.topic}</div>
+          </div>
+        ` : ''}
+
+        <!-- What was covered -->
+        ${session.whatWasCovered ? `
+          <div style="padding:16px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border-color);">
+            <div style="font-size:0.82rem; font-weight:800; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="file-text" style="width:14px; height:14px; color:var(--primary);"></i> ما تم شرحه وإنجازه خلال الحصة:
+            </div>
+            <p style="font-size:0.92rem; color:var(--text-main); line-height:1.7; margin:0; white-space:pre-wrap;">${session.whatWasCovered}</p>
+          </div>
+        ` : ''}
+
+        <!-- Homework -->
+        ${session.homework ? `
+          <div style="padding:16px; border-radius:14px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25);">
+            <div style="font-size:0.84rem; font-weight:900; color:#d97706; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="book-open" style="width:15px; height:15px;"></i> الواجب والتكليف المنزلي المطلوب (Homework):
+            </div>
+            <p style="font-size:0.92rem; color:var(--text-main); line-height:1.6; margin:0; font-weight:800; white-space:pre-wrap;">${session.homework}</p>
+          </div>
+        ` : ''}
+
+        <!-- Teacher Notes -->
+        ${session.teacherNotes ? `
+          <div style="padding:14px 16px; border-radius:14px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2);">
+            <div style="font-size:0.82rem; font-weight:800; color:#10b981; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="message-square" style="width:14px; height:14px;"></i> ملاحظات وتوجيهات المعلم:
+            </div>
+            <p style="font-size:0.9rem; color:var(--text-main); line-height:1.6; margin:0; white-space:pre-wrap;">${session.teacherNotes}</p>
+          </div>
+        ` : ''}
+
+        ${!session.topic && !session.whatWasCovered && !session.homework && !session.teacherNotes ? `
+          <div style="text-align:center; padding:36px 16px; color:var(--text-muted); background:var(--bg-card); border-radius:14px; border:1px dashed var(--border-color);">
+            <i data-lucide="file-text" style="width:40px; height:40px; opacity:0.35; margin:0 auto 10px; display:block;"></i>
+            <p style="font-size:0.92rem; margin:0; font-weight:700;">تم إكمال الحصة رسمياً ولم يُضِف المعلم تفاصيل إضافية للملخص بعد.</p>
+          </div>
+        ` : ''}
+
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:14px 24px; border-top:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:flex-end; flex-shrink:0;">
+        <button id="ok-btn-${modalId}" class="btn-primary" style="padding:8px 24px; border-radius:12px; font-weight:800; font-size:0.85rem;">
+          إغلاق النافذة
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons();
+
+  const closeModal = () => overlay.remove();
+  overlay.querySelector(`#close-${modalId}`)?.addEventListener('click', closeModal);
+  overlay.querySelector(`#ok-btn-${modalId}`)?.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+}
+window.showStudentSessionReportModal = showStudentSessionReportModal;
+
+/**
  * Validate that a session scheduled date is at least 1 hour in the future.
  */
 export function validateSessionScheduledDate(scheduledAtVal) {
@@ -500,7 +645,7 @@ export function getMinSessionDateTimeISO() {
 
 // ─── Shared Course Card Renderer ──────────────────────────────────────────────
 
-export function renderCourseCard(course, { enrollmentStatus = null, isBanned = false, progress = 0, isTeacherView = false } = {}) {
+export function renderCourseCard(course, { enrollmentStatus = null, isBanned = false, progress = 0, isTeacherView = false, groupId = null } = {}) {
   const defaultImg = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80";
   const image = course.image || defaultImg;
 
@@ -520,9 +665,11 @@ export function renderCourseCard(course, { enrollmentStatus = null, isBanned = f
       </div>
     `;
   } else if (enrollmentStatus === "active") {
+    const targetUrl = groupId ? `#group/${groupId}` : `#course/${course.id}`;
+    const targetText = groupId ? `دخول قاعة المجموعة 👥` : `دخول الدورة`;
     actionButtonHTML = `
-      <a href="#course/${course.id}" class="course-price-pill" style="background:var(--primary); text-decoration:none;">
-        <i data-lucide="play" style="width:12px;height:12px;margin-inline-end:4px;"></i> دخول الدورة
+      <a href="${targetUrl}" class="course-price-pill" style="background:var(--primary); text-decoration:none;">
+        <i data-lucide="${groupId ? 'users' : 'play'}" style="width:12px;height:12px;margin-inline-end:4px;"></i> ${targetText}
       </a>
     `;
   } else if (enrollmentStatus === "pending") {
@@ -1282,6 +1429,9 @@ export async function apiFetch(endpoint, options = {}) {
   const url = `${window.location.origin}/api${cleanEndpoint}`;
   const headers = { "Content-Type": "application/json", ...options.headers };
   if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
+  try {
+    headers["X-Timezone"] = getUserTimezone();
+  } catch (e) {}
 
   // Endpoints that should fail silently without a toast
   const silentEndpoints = ["/sessions", "/teachers", "/blogs", "/resources", "/categories", "/curriculum", "/landing/explore"];
@@ -1762,7 +1912,7 @@ export async function router() {
   updateHeader();
 
   // Security
-  if (routeBase === "#student-dashboard" && !state.user) {
+  if ((routeBase === "#student-dashboard" || routeBase === "#group" || routeBase === "#group-hub") && !state.user) {
     showToast(t("error.loginRequired") || "الرجاء تسجيل الدخول أولاً.", "error");
     window.location.hash = "#landing";
     return router();
@@ -1817,6 +1967,8 @@ export async function router() {
     case "#teacher-blogs": ViewClass = TeacherBlogsView; break;
     case "#blog": ViewClass = BlogDetailsView; break;
     case "#classroom": ViewClass = ClassroomView; break;
+    case "#group":
+    case "#group-hub": ViewClass = GroupHubView; break;
     case "#admin-dashboard": ViewClass = AdminView; break;
     case "#courses": ViewClass = CoursesView; break;
     case "#manage-course": ViewClass = CourseManageView; break;

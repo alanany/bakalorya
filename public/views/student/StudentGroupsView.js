@@ -211,7 +211,7 @@ export default class StudentGroupsView {
 
     // Summary stats
     const totalGroupsCount = processedGroups.length;
-    const liveGroupsCount  = processedGroups.filter(g => g.liveSession).length;
+    const liveGroupsCount = processedGroups.filter(g => g.liveSession).length;
     const todaySessionsCount = processedGroups.reduce((acc, g) => {
       const todayStr = new Date().toDateString();
       const countToday = g.sessions.filter(s => new Date(s.scheduledAt).toDateString() === todayStr).length;
@@ -399,6 +399,12 @@ export default class StudentGroupsView {
     const totalCount = group.sessions.length;
     const completedPct = totalCount > 0 ? Math.round((group.completedCount / totalCount) * 100) : 0;
 
+    // Find latest completed session with report/summary details
+    const completedSessions = (group.sessions || []).filter(s =>
+      s.status === "completed" || s.status === "COMPLETED" || Boolean(s.completedAt) || Boolean(s.whatWasCovered || s.homework || s.topic)
+    );
+    const latestCompleted = completedSessions.length > 0 ? completedSessions[completedSessions.length - 1] : null;
+
     return `
       <div class="glass-card group-card-hover" style="border-radius:20px; border:1px solid ${group.liveSession ? 'rgba(16,185,129,0.4)' : 'var(--border-color)'}; background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; ${group.liveSession ? 'box-shadow:0 0 24px rgba(16,185,129,0.12);' : ''}">
 
@@ -422,13 +428,13 @@ export default class StudentGroupsView {
 
             <!-- Live or Status Badge -->
             ${group.isPending
-              ? `<span style="padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); white-space:nowrap; flex-shrink:0;">⏳ قيد المراجعة</span>`
-              : group.liveSession
-                ? `<span style="padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); white-space:nowrap; flex-shrink:0;">🔴 مباشر الآن</span>`
-                : group.isCompleted
-                  ? `<span style="padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; background:var(--bg-app); color:var(--text-muted); white-space:nowrap; flex-shrink:0;">✅ مكتملة</span>`
-                  : `<span style="padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.1); color:var(--primary); white-space:nowrap; flex-shrink:0;">نشطة ⚡</span>`
-            }
+        ? `<span style="padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); white-space:nowrap; flex-shrink:0;">⏳ قيد المراجعة</span>`
+        : group.liveSession
+          ? `<span style="padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); white-space:nowrap; flex-shrink:0;">🔴 مباشر الآن</span>`
+          : group.isCompleted
+            ? `<span style="padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; background:var(--bg-app); color:var(--text-muted); white-space:nowrap; flex-shrink:0;">✅ مكتملة</span>`
+            : `<span style="padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.1); color:var(--primary); white-space:nowrap; flex-shrink:0;">نشطة ⚡</span>`
+      }
           </div>
 
           <!-- Teacher Row -->
@@ -446,136 +452,88 @@ export default class StudentGroupsView {
         <!-- Card Body Info -->
         <div style="padding:16px 20px; flex:1; display:flex; flex-direction:column; gap:12px;">
 
-          <!-- Cohort Weekly Schedule Text Pill -->
-          ${group.scheduleText ? `
-            <div style="padding:8px 12px; border-radius:12px; background:rgba(229,29,116,0.06); border:1px solid rgba(229,29,116,0.15); display:flex; align-items:center; justify-content:space-between; gap:6px;">
-              <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:800; color:#e51d74;">
-                <i data-lucide="calendar" style="width:14px; height:14px;"></i>
-                <span>مواعيد الحصص:</span>
-              </div>
-              <span style="font-size:0.8rem; font-weight:800; color:var(--text-main);">${group.scheduleText}</span>
-            </div>
-          ` : ''}
-
           <!-- Pending Approval Notice (shows only for pending enrollments) -->
           ${group.isPending ? `
-            <div style="padding:14px 16px; border-radius:14px; background:rgba(245,158,11,0.08); border:1.5px solid rgba(245,158,11,0.3); display:flex; flex-direction:column; gap:6px;">
+            <div style="padding:14px 16px; border-radius:14px; background:rgba(245,158,11,0.08); border:1.5px solid rgba(245,158,11,0.3); display:flex; flex-direction:column; gap:6px; margin-top:auto;">
               <div style="display:flex; align-items:center; gap:8px; font-size:0.88rem; font-weight:900; color:#d97706;">
                 <i data-lucide="clock" style="width:16px; height:16px;"></i>
                 <span>طلبك قيد المراجعة والاعتماد ⏳</span>
               </div>
               <p style="font-size:0.8rem; color:var(--text-muted); margin:0; line-height:1.5;">
-                تم استلام طلب اشتراكك وإيصال الدفع. سيتم تفعيل مقعدك في المجموعة وإتاحة جدول الحصص فور مراجعة واعتماد الإدارة.
-              </p>
-              <p style="font-size:0.78rem; font-weight:700; color:#d97706; margin:0;">
-                ✉️ ستصلك إشعاراً فور قبول طلبك.
+                تم استلام طلب اشتراكك وإيصال الدفع. سيتم تفعيل مقعدك وإتاحة قاعة المجموعة فور مراجعة واعتماد الإدارة.
               </p>
             </div>
           ` : `
-          <!-- Next Session Pill -->
-          ${group.nextSession ? `
-            <div style="padding:10px 14px; border-radius:14px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-              <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; color:var(--primary);">
-                <i data-lucide="clock" style="width:14px; height:14px;"></i>
-                <span>الحصة القادمة:</span>
-                ${nextRel ? `
-                  <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:${nextRel.bg}; color:${nextRel.color};">
-                    ${nextRel.icon} ${nextRel.text}
-                  </span>
+            <!-- Next Session Pill -->
+            ${group.nextSession ? `
+              <div style="padding:9px 12px; border-radius:12px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:var(--primary);">
+                  <i data-lucide="clock" style="width:14px; height:14px;"></i>
+                  <span>الحصة القادمة:</span>
+                </div>
+                <span style="font-size:0.78rem; font-weight:800; color:var(--text-main);">${nextFmt?.dateStr || ''} • ${nextFmt?.timeStr || ''}</span>
+              </div>
+            ` : ''}
+
+            <!-- Latest Session Report (When completed & report available) -->
+            ${latestCompleted ? `
+              <div style="padding:12px 14px; border-radius:14px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.22); display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:800; color:#10b981;">
+                    <i data-lucide="file-check-2" style="width:15px; height:15px;"></i>
+                    <span>تقرير آخر حصة منجزة:</span>
+                  </div>
+                  <button class="view-session-report-btn" data-session-id="${latestCompleted.id}"
+                    style="background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3); padding:4px 10px; border-radius:10px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:transform 0.1s;"
+                    onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='none'">
+                    <i data-lucide="file-text" style="width:13px; height:13px;"></i>
+                    <span>عرض الملخص 📋</span>
+                  </button>
+                </div>
+
+                ${latestCompleted.topic ? `
+                  <div style="font-size:0.84rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${latestCompleted.topic}">
+                    📌 ${latestCompleted.topic}
+                  </div>
+                ` : latestCompleted.whatWasCovered ? `
+                  <div style="font-size:0.82rem; color:var(--text-main); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${latestCompleted.whatWasCovered}">
+                    📝 ${latestCompleted.whatWasCovered}
+                  </div>
+                ` : `
+                  <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">
+                    ${latestCompleted.title || 'تم إكمال الحصة وتوثيقها بنجاح'} ✅
+                  </div>
+                `}
+
+                ${latestCompleted.homework ? `
+                  <div style="font-size:0.78rem; font-weight:800; color:#d97706; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:8px; border:1px solid rgba(245,158,11,0.2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    📚 الواجب: ${latestCompleted.homework}
+                  </div>
                 ` : ''}
               </div>
-              <span style="font-size:0.8rem; font-weight:800; color:var(--text-main);">${nextFmt?.dateStr || ''} • ${nextFmt?.timeStr || ''}</span>
-            </div>
-          ` : !group.scheduleText ? `
-            <div style="padding:8px 12px; border-radius:12px; background:rgba(34,197,94,0.06); color:#22c55e; font-size:0.8rem; font-weight:700; text-align:center;">
-              🎉 تم إكمال جميع حصص هذه المجموعة
-            </div>
-          ` : ''}
+            ` : ''}
 
-          <!-- Progress Bar -->
-          <div>
-            <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">
-              <span>تقدم الحصص</span>
-              <span>${group.completedCount} من ${totalCount} حصة (${completedPct}%)</span>
-            </div>
-            <div style="width:100%; height:6px; background:var(--bg-app); border-radius:10px; overflow:hidden;">
-              <div style="width:${completedPct}%; height:100%; background:linear-gradient(90deg, #6366f1, #10b981); border-radius:10px;"></div>
-            </div>
-          </div>
-
-          <!-- Live Join Action Button -->
-          ${group.liveSession ? `
-            <div style="display:flex; flex-direction:column; gap:6px;">
+            <!-- Live Session Quick Join Button (If Live) -->
+            ${group.liveSession ? `
               <button class="btn-primary" data-join-meet-id="${group.liveSession.id}"
-                style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:11px 16px; border-radius:14px; font-size:0.88rem; font-weight:800; border:none; background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
-                <i data-lucide="video" style="width:16px; height:16px;"></i>
-                الانضمام عبر Google Meet الآن 🔴
+                style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:10px 16px; border-radius:14px; font-size:0.85rem; font-weight:800; border:none; background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
+                <i data-lucide="video" style="width:15px; height:15px;"></i>
+                الانضمام للبث المباشر الآن 🔴
               </button>
-              <button class="btn-secondary session-checkin-btn" data-id="${group.liveSession.id}"
-                style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:9px; border-radius:12px; font-size:0.82rem; font-weight:800; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer;">
-                <i data-lucide="user-check" style="width:15px; height:15px;"></i>
-                تأكيد الحضور (لست غائباً) ✍️
-              </button>
-            </div>
-          ` : ''}
+            ` : ''}
 
-          <!-- Expand / Collapse Schedule Button -->
-          <button class="toggle-schedule-btn" data-key="${group.key}" ${group.isPending ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}
-            style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; margin-top:auto; transition:background 0.2s;">
-            <i data-lucide="${isExpanded ? 'chevron-up' : 'calendar'}" style="width:14px; height:14px;"></i>
-            ${isExpanded ? 'إخفاء جدول الحصص ▲' : `عرض جدول الحصص بالتفصيل (${totalCount}) ▼`}
-          </button>
+            <!-- Primary Action: Enter Group Hub -->
+            ${group.id ? `
+              <a href="#group/${group.id}" class="btn-primary"
+                style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px 16px; border-radius:14px; font-size:0.9rem; font-weight:900; text-decoration:none; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; box-shadow:0 4px 14px rgba(99,102,241,0.25); margin-top:auto; transition:transform 0.15s;"
+                onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                <i data-lucide="layout-dashboard" style="width:17px; height:17px;"></i>
+                <span>دخول قاعة المجموعة 🚀</span>
+              </a>
+            ` : ''}
           `}
 
         </div>
-
-        <!-- Collapsible Schedule Details Drawer -->
-        ${isExpanded ? `
-          <div style="padding:16px 20px; border-top:1px dashed var(--border-color); background:rgba(0,0,0,0.02); display:flex; flex-direction:column; gap:8px;">
-            <div style="font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:4px;">
-              📅 مواعيد حصص المجموعة بالتفصيل:
-            </div>
-            ${group.sessions.map((s, idx) => {
-              const sTime  = new Date(s.scheduledAt).getTime();
-              const diffM  = (sTime - now) / 60000;
-              const durM   = s.duration || 60;
-              const isPast = diffM < -durM;
-              const isNow  = (s.status === "live" || s.status === "active") || (diffM <= 0 && diffM > -durM);
-              const isSoon = diffM > 0 && diffM <= 30;
-              const fmt    = formatSessionDateTime(s.scheduledAt, null, {});
-              const sRel   = !isPast ? this.getRelativeDateLabel(s.scheduledAt) : null;
-
-              let badgeText = isPast ? '✅ مكتملة' : isNow ? '🔴 مباشر' : isSoon ? '⚡ قريباً' : sRel ? `${sRel.icon} ${sRel.text}` : '⏳ قادمة';
-              let badgeColor = isPast ? '#22c55e' : isNow || isSoon ? '#10b981' : sRel ? sRel.color : 'var(--primary)';
-              let badgeBg    = isPast ? 'rgba(34,197,94,0.1)' : isNow || isSoon ? 'rgba(16,185,129,0.12)' : sRel ? sRel.bg : 'rgba(99,102,241,0.1)';
-
-              return `
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border-color); font-size:0.8rem; flex-wrap:wrap;">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-weight:900; color:var(--primary); font-size:0.75rem;">#${idx + 1}</span>
-                    <span style="font-weight:700; color:${isPast ? 'var(--text-muted)' : 'var(--text-main)'};">${fmt.dateStr}</span>
-                    <span style="color:var(--text-muted); font-size:0.75rem;">🕐 ${fmt.timeStr}</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:12px; background:${badgeBg}; color:${badgeColor};">
-                      ${badgeText}
-                    </span>
-                    ${(isNow || isSoon) ? `
-                      <button data-join-meet-id="${s.id}"
-                        style="font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; background:#10b981; color:#fff; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px;">
-                        Google Meet 🎥
-                      </button>
-                      <button class="session-checkin-btn" data-id="${s.id}"
-                        style="font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); cursor:pointer;">
-                        تأكيد الحضور ✍️
-                      </button>
-                    ` : ''}
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        ` : ''}
 
       </div>
     `;
@@ -599,40 +557,18 @@ export default class StudentGroupsView {
       });
     });
 
-    // Toggle Expand Schedule
-    this.container.querySelectorAll(".toggle-schedule-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const key = btn.getAttribute("data-key");
-        if (this.expandedGroupKeys.has(key)) {
-          this.expandedGroupKeys.delete(key);
-        } else {
-          this.expandedGroupKeys.add(key);
+    // Session report view modal
+    this.container.querySelectorAll(".view-session-report-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const sId = btn.getAttribute("data-session-id");
+        let foundSession = null;
+        for (const g of this.groupsData) {
+          const s = (g.sessions || []).find(x => String(x.id) === String(sId));
+          if (s) { foundSession = s; break; }
         }
-        this.renderUI();
-      });
-    });
-
-    // Attendance Check-in Buttons
-    this.container.querySelectorAll('.session-checkin-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        btn.disabled = true;
-        btn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:12px;height:12px;"></i> جاري...`;
-        if (window.lucide) window.lucide.createIcons();
-
-        try {
-          const res = await apiFetch(`/sessions/${id}/checkin`, { method: "POST" });
-          showToast(res.message || "تم تأكيد حضورك رسمياً بنجاح، ولن يتم احتسابك غائباً ✅", "success");
-          btn.outerHTML = `
-            <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; gap:4px;">
-              <i data-lucide="check-circle-2" style="width:12px; height:12px;"></i> حاضر ✅
-            </span>
-          `;
-          if (window.lucide) window.lucide.createIcons();
-        } catch (err) {
-          btn.disabled = false;
-          btn.innerHTML = `تأكيد الحضور ✍️`;
-          showToast(err.message || "تعذر تأكيد الحضور.", "error");
+        if (foundSession && typeof window.showStudentSessionReportModal === "function") {
+          window.showStudentSessionReportModal(foundSession);
         }
       });
     });

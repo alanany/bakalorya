@@ -7,14 +7,49 @@ export class AssignmentSubmission {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column("text")
+    @Column("text", { nullable: true })
     content: string;
 
+    @Column({ default: "submitted" })
+    status: string; // 'submitted' | 'draft_graded' | 'graded'
+
     @Column("simple-json", { nullable: true })
-    answers: Array<{ questionId?: string; questionIndex?: number; questionText?: string; answerText: string; points?: number }>;
+    answers: Array<{
+        questionId: string;
+        questionIndex?: number;
+        questionText?: string;
+        type: 'mcq' | 'essay' | 'file';
+        selectedOptionId?: string;
+        selectedOptionIds?: string[];
+        answerText?: string;
+        fileUrl?: string;
+        fileName?: string;
+        pointsAwarded?: number;
+        maxPoints?: number;
+        isCorrect?: boolean;
+        feedback?: string;
+    }>;
 
     @Column("float", { nullable: true })
     grade: number;
+
+    @Column("float", { nullable: true })
+    percentage: number;
+
+    @Column("text", { nullable: true })
+    overallFeedback: string;
+
+    @Column({ nullable: true })
+    feedbackFileUrl?: string;
+
+    @Column({ nullable: true })
+    feedbackFileName?: string;
+
+    @Column("boolean", { default: false })
+    isLate: boolean;
+
+    @Column("datetime", { nullable: true })
+    gradedAt?: Date;
 
     @CreateDateColumn()
     submittedAt: Date;

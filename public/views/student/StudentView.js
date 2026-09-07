@@ -186,6 +186,10 @@ export default class StudentView {
     }
 
     const todaySessions = this.filterTodaySessions(this.rawSessions);
+    const recentReportSessions = (this.rawSessions || [])
+      .filter(s => (s.status === "completed" || s.status === "COMPLETED" || Boolean(s.completedAt) || Boolean(s.whatWasCovered || s.homework || s.topic)))
+      .sort((a, b) => new Date(b.scheduledAt || b.completedAt || 0) - new Date(a.scheduledAt || a.completedAt || 0))
+      .slice(0, 3);
     const pendingAssignments = this.assignments.filter(a => !a.submission);
     
     // Active / spotlight course (the first in-progress enrolled course)
@@ -501,7 +505,7 @@ export default class StudentView {
                 </div>
               ` : `
                 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px;">
-                  ${displayEnrollments.map(e => this.renderCourseCard(e.course, e.progress, true, e.status)).join('')}
+                  ${displayEnrollments.map(e => this.renderCourseCard(e.course, e.progress, true, e.status, e.group?.id)).join('')}
                 </div>
               `}
             </div>
@@ -595,6 +599,43 @@ export default class StudentView {
                 </div>
               `}
             </div>
+
+            <!-- Recent Completed Session Reports Card (Reports & Homework) -->
+            ${recentReportSessions.length > 0 ? `
+              <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                  <h3 style="font-size:1rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="clipboard-check" style="width:18px; height:18px; color:#10b981;"></i>
+                    آخر ملخصات وتقارير الحصص 📑
+                  </h3>
+                  <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">الواجبات والتوجيهات</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  ${recentReportSessions.map(s => `
+                    <div style="padding:12px 14px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <strong style="font-size:0.84rem; color:var(--text-main); line-height:1.3;">${s.title || 'حصة تعليمية'}</strong>
+                        <button class="view-session-report-btn" data-id="${s.id}"
+                          style="background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.25); padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
+                          <i data-lucide="file-text" style="width:13px; height:13px;"></i> عرض الملخص 📋
+                        </button>
+                      </div>
+                      <div style="font-size:0.76rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                        <span>👨‍🏫 ${s.teacher?.name || 'المعلم'}</span>
+                        <span>•</span>
+                        <span>📅 ${s.scheduledAt ? new Date(s.scheduledAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : ''}</span>
+                      </div>
+                      ${s.topic ? `<div style="font-size:0.8rem; font-weight:700; color:var(--primary);">📌 ${s.topic}</div>` : ''}
+                      ${s.homework ? `
+                        <div style="font-size:0.78rem; font-weight:800; color:#d97706; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:8px; border:1px solid rgba(245,158,11,0.2);">
+                          📚 الواجب: ${s.homework}
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
 
 
             <!-- Quick Learning Hub & Shortcuts -->
@@ -731,10 +772,11 @@ export default class StudentView {
     });
   }
 
-  renderCourseCard(course, progress = 0, showContinue = false, enrollmentStatus = "active") {
+  renderCourseCard(course, progress = 0, showContinue = false, enrollmentStatus = "active", groupId = null) {
     return renderCourseCard(course, {
       progress: progress || 0,
-      enrollmentStatus: showContinue ? (enrollmentStatus || "active") : null
+      enrollmentStatus: showContinue ? (enrollmentStatus || "active") : null,
+      groupId: groupId || null
     });
   }
 
@@ -748,19 +790,23 @@ export default class StudentView {
     const diffMins = Math.ceil(diffMs / (1000 * 60));
     const isPastSession = diffMins < -durationMins;
 
-    const isLive = !isPastSession && (session.status === "live" || session.status === "active");
-    const isStartingSoon = diffMins <= 30 && !isPastSession;
+    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || Boolean(session.completedAt);
+    const isLive = !isCompleted && !isPastSession && (session.status === "live" || session.status === "active");
+    const isStartingSoon = !isCompleted && diffMins <= 30 && !isPastSession;
     const teacherTz = session.teacher?.timezone || "Africa/Cairo";
     const formatted = formatSessionDateTime(session.scheduledAt, null, { secondaryTz: teacherTz });
 
     return `
-      <div class="glass-card" style="padding:14px; display:flex; flex-direction:column; gap:8px; border-radius:16px; border:1px solid ${isLive ? 'rgba(16,185,129,0.4)' : 'var(--border-color)'}; background:${isLive ? 'rgba(16,185,129,0.06)' : 'var(--bg-app)'};">
+      <div class="glass-card" style="padding:14px; display:flex; flex-direction:column; gap:8px; border-radius:16px; border:1px solid ${isLive ? 'rgba(16,185,129,0.4)' : isCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'}; background:${isLive ? 'rgba(16,185,129,0.06)' : isCompleted ? 'rgba(16,185,129,0.03)' : 'var(--bg-app)'};">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
           <span style="font-size:0.85rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="video" style="width:14px; height:14px; color:var(--primary);"></i>
+            <i data-lucide="video" style="width:14px; height:14px; color:${isCompleted ? '#10b981' : 'var(--primary)'};"></i>
             ${session.title || 'حصة تدريبية'}
           </span>
-          ${formatted.badgeHTML}
+          ${isCompleted
+            ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-weight:800; font-size:0.75rem;">✅ مكتملة وموثقة</span>`
+            : formatted.badgeHTML
+          }
         </div>
 
         <div style="font-size:0.78rem; color:var(--text-muted); display:flex; flex-direction:column; gap:2px;">
@@ -768,8 +814,25 @@ export default class StudentView {
           <div>⏰ الموعد: ${formatted.timeStr} ${formatted.secondaryTZHTML}</div>
         </div>
 
+        ${isCompleted && (session.topic || session.whatWasCovered || session.homework) ? `
+          <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:12px; padding:10px 12px; font-size:0.78rem; display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+            ${session.topic ? `<div style="font-weight:800; color:var(--text-main); font-size:0.82rem;">📌 ${session.topic}</div>` : ''}
+            ${session.whatWasCovered ? `<div style="color:var(--text-muted); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">📝 ${session.whatWasCovered}</div>` : ''}
+            ${session.homework ? `
+              <div style="color:#d97706; font-weight:800; margin-top:2px; background:rgba(245,158,11,0.1); padding:4px 8px; border-radius:8px; border:1px solid rgba(245,158,11,0.2);">
+                📚 الواجب: ${session.homework}
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
         <div class="session-actions-wrapper" data-id="${session.id}" style="margin-top:4px; display:flex; flex-direction:column; gap:6px;">
-          ${(isLive || isStartingSoon) ? (
+          ${isCompleted ? `
+            <button class="btn-primary view-session-report-btn" data-id="${session.id}" style="width:100%; padding:9px 12px; font-size:0.82rem; font-weight:800; justify-content:center; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; display:flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 3px 10px rgba(16,185,129,0.25);">
+              <i data-lucide="file-text" style="width:15px; height:15px;"></i>
+              عرض ملخص الحصة والواجب 📋
+            </button>
+          ` : (isLive || isStartingSoon) ? (
             window.checkedInSessions?.has(session.id) ? `
               <span style="font-size:0.75rem; font-weight:800; color:#10b981; padding:4px 8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%; box-sizing:border-box;">
                 <i data-lucide="check-circle-2" style="width:13px; height:13px;"></i> تم تأكيد حضورك (حاضر) ✅
@@ -836,6 +899,18 @@ export default class StudentView {
           btn.innerHTML = `<i data-lucide="user-check" style="width:14px; height:14px;"></i> تأكيد الحضور (لست غائباً) ✍️`;
           if (window.lucide) window.lucide.createIcons();
           showToast(err.message || "تعذر تأكيد الحضور.", "error");
+        }
+      });
+    });
+
+    // Session report view modal
+    this.container.querySelectorAll('.view-session-report-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const session = (this.rawSessions || []).find(s => String(s.id) === String(id));
+        if (session && typeof window.showStudentSessionReportModal === 'function') {
+          window.showStudentSessionReportModal(session);
         }
       });
     });

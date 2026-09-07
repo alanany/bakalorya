@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Up
 import { User } from "./User";
 import { Course } from "./Course";
 import { Subscription } from "./Subscription";
+import { CourseGroup } from "./CourseGroup";
 
 @Entity()
 export class Session {
@@ -22,6 +23,9 @@ export class Session {
 
   @ManyToOne(() => Course, { eager: true, nullable: true, onDelete: "CASCADE" })
   course: Course;
+
+  @ManyToOne(() => CourseGroup, group => group.sessions, { eager: true, nullable: true, onDelete: "CASCADE" })
+  group: CourseGroup | null;
 
   @ManyToOne(() => Subscription, { eager: true, nullable: true, onDelete: "SET NULL" })
   subscription: Subscription;
