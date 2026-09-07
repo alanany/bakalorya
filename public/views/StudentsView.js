@@ -28,9 +28,11 @@ export default class StudentsView {
               <input type="text" id="students-search-input" class="form-input" placeholder="بحث بالاسم، الإيميل أو الهاتف..." style="padding:10px 40px 10px 14px; font-size:0.88rem; border-radius:30px; background:var(--bg-card);">
             </div>
 
+            ${state.user?.role === 'admin' ? `
             <button class="btn-primary" id="open-add-student-modal-btn" style="padding:10px 22px; font-weight:800; font-size:0.88rem; border-radius:30px; display:inline-flex; align-items:center; gap:8px;">
               <i data-lucide="user-plus"></i> إضافة طالب جديد
             </button>
+            ` : ''}
           </div>
         </div>
 
@@ -168,9 +170,11 @@ export default class StudentsView {
         <div style="text-align:center; color:var(--text-muted); padding:60px 20px;">
           <i data-lucide="users" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"></i>
           <p style="font-size:1.05rem; font-weight:700; margin-bottom:12px;">${this.searchQuery ? "لا توجد نتائج تطابق البحث" : "لا يوجد طلاب مسجلون حتى الآن"}</p>
+          ${state.user?.role === 'admin' ? `
           <button class="btn-primary" id="empty-add-student-btn" style="font-size:0.88rem; padding:8px 20px; border-radius:30px;">
             <i data-lucide="user-plus"></i> إضافة طالب الآن
           </button>
+          ` : ''}
         </div>
       `;
       if (window.lucide) window.lucide.createIcons();
@@ -389,6 +393,7 @@ export default class StudentsView {
   }
 
   renderAddStudentModal() {
+    if (state.user?.role !== "admin") return;
     const modalWrapper = this.container.querySelector("#add-student-modal-wrapper");
     if (!modalWrapper) return;
 

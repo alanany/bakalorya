@@ -116,6 +116,8 @@ router.delete("/groups/:id/announcements/:announcementId", authMiddleware, requi
 router.post("/groups/:id/videos", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.uploadGroupVideo);
 router.delete("/groups/:id/videos/:videoId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupVideo);
 router.post("/groups/:id/assignments", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroupAssignment);
+router.post("/groups/:id/resources", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.uploadGroupResource);
+router.delete("/groups/:id/resources/:resourceId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupResource);
 router.get("/teacher/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getMyTeacherGroups);
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin"]), CourseGroupController.getAllGroups);
 
@@ -256,7 +258,7 @@ router.get("/teachers/:id", UserController.getTeacherById);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
 router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
 router.get("/users/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.getStudents);
-router.post("/teacher/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.addStudent);
+router.post("/teacher/students", authMiddleware, requireRole(["admin"]), UserController.addStudent);
 router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["admin"]), UserController.deleteStudent);
 router.get("/teacher/enrollment-requests", authMiddleware, requireRole(["teacher", "admin"]), CourseController.getEnrollmentRequests);
 router.patch("/teacher/enrollment-requests/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseController.updateEnrollmentRequest);

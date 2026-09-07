@@ -113,8 +113,20 @@ export class AssignmentController {
                         .where("courseTeacher.id = :teacherId OR groupTeacher.id = :teacherId", { teacherId: userId });
                 }
 
+                query = query.orderBy("assignment.createdAt", "DESC");
+
                 const assignments = await query.getMany();
-                return res.json(assignments);
+                const subRepo = AppDataSource.getRepository(AssignmentSubmission);
+                const enriched = await Promise.all(assignments.map(async (asgn) => {
+                    const submissionsCount = await subRepo.count({ where: { assignment: { id: asgn.id } } });
+                    const gradedCount = await subRepo.count({ where: { assignment: { id: asgn.id }, status: 'graded' } });
+                    return {
+                        ...asgn,
+                        submissionsCount,
+                        gradedCount
+                    };
+                }));
+                return res.json(enriched);
             }
         } catch (error) {
             console.error(error);

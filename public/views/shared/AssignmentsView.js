@@ -248,13 +248,32 @@ export default class AssignmentsView {
     let action = "";
     if (isTeacher) {
       action = `
-        <div style="display:flex; gap:8px; width:100%;">
-          <button class="btn-secondary view-assignment-details-btn" data-id="${assignment.id}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
-            <i data-lucide="info" style="width:15px;height:15px;"></i> التفاصيل والأسئلة 📋
-          </button>
-          <button class="btn-primary view-submissions-btn" data-id="${assignment.id}" data-title="${assignment.title}" data-total="${assignment.totalPoints || 100}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;">
-            <i data-lucide="check-square" style="width:15px;height:15px;"></i> التصحيح 🎯
-          </button>
+        <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+          <!-- Statistics: Sent & Corrected -->
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; background:var(--bg-app); padding:6px 10px; border-radius:10px; border:1px solid var(--border-color); font-size:0.75rem;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">
+                المستلم: <strong>${assignment.submissionsCount || 0}</strong>
+              </span>
+              <span class="badge" style="background:${(assignment.gradedCount || 0) > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)'}; color:${(assignment.gradedCount || 0) > 0 ? '#10b981' : 'var(--text-muted)'}; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px;">
+                المصحح: <strong>${assignment.gradedCount || 0}</strong>
+              </span>
+            </div>
+            ${(assignment.submissionsCount || 0) > (assignment.gradedCount || 0) ? `
+              <span style="color:#f59e0b; font-weight:800; font-size:0.72rem;">بانتظار: ${(assignment.submissionsCount || 0) - (assignment.gradedCount || 0)} ⏳</span>
+            ` : (assignment.submissionsCount || 0) > 0 ? `
+              <span style="color:#10b981; font-weight:800; font-size:0.72rem;">مكتمل 🏆</span>
+            ` : ''}
+          </div>
+
+          <div style="display:flex; gap:8px; width:100%;">
+            <button class="btn-secondary view-assignment-details-btn" data-id="${assignment.id}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
+              <i data-lucide="info" style="width:15px;height:15px;"></i> التفاصيل والأسئلة 📋
+            </button>
+            <button class="btn-primary view-submissions-btn" data-id="${assignment.id}" data-title="${assignment.title}" data-total="${assignment.totalPoints || 100}" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.82rem;">
+              <i data-lucide="check-square" style="width:15px;height:15px;"></i> التصحيح 🎯
+            </button>
+          </div>
         </div>
       `;
     } else {
@@ -618,8 +637,8 @@ export default class AssignmentsView {
     // Student View Feedback Modal
     this.container.querySelectorAll(".view-feedback-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        const id = parseInt(btn.getAttribute("data-id"), 10);
-        const asgn = (this.assignments || []).find(a => a.id === id);
+        const id = btn.getAttribute("data-id");
+        const asgn = (this.assignments || []).find(a => String(a.id) === String(id));
         if (asgn && asgn.submission) {
           const modal = new StudentFeedbackModal(asgn, asgn.submission);
           modal.open();

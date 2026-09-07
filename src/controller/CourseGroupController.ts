@@ -1165,9 +1165,13 @@ export class CourseGroupController {
           }
 
           let submissionsCount = 0;
+          let gradedCount = 0;
           if (isTeacher || isAdmin) {
             submissionsCount = await submissionRepo.count({
               where: { assignment: { id: asgn.id } }
+            });
+            gradedCount = await submissionRepo.count({
+              where: { assignment: { id: asgn.id }, status: 'graded' }
             });
           }
 
@@ -1182,7 +1186,8 @@ export class CourseGroupController {
             lesson: asgn.lesson ? { id: asgn.lesson.id, title: asgn.lesson.title } : null,
             createdAt: asgn.createdAt,
             mySubmission,
-            submissionsCount
+            submissionsCount,
+            gradedCount
           };
         })
       );
@@ -1247,6 +1252,9 @@ export class CourseGroupController {
         announcements: (group.announcements || []).sort((a: any, b: any) => {
           if (a.isPinned && !b.isPinned) return -1;
           if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }),
+        resources: (group.resources || []).sort((a: any, b: any) => {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }),
         stats: {
@@ -1469,6 +1477,134 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error deleting announcement:", err);
       return res.status(500).json({ error: "فشل حذف الإعلان." });
+    }
+  }
+
+  // POST /groups/:id/resources - Upload file or image for the group
+  static async uploadGroupResource(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, description, fileUrl, fileName, fileType, fileSize } = req.body;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      if (!title || !fileUrl) {
+        return res.status(400).json({ error: "عنوان الملف ورابط الملف مطلوبان." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك برفع ملفات لهذه المجموعة." });
+      }
+
+      // Auto-detect fileType if not supplied
+      let resolvedType = fileType;
+      if (!resolvedType) {
+        const lowerUrl = (fileUrl + " " + (fileName || "")).toLowerCase();
+        if (lowerUrl.match(/\.(png|jpe?g|gif|webp|svg|bmp|heic)(\?.*)?$/i) || lowerUrl.includes("image/")) {
+          resolvedType = "image";
+        } else if (lowerUrl.match(/\.pdf(\?.*)?$/i) || lowerUrl.includes("application/pdf")) {
+          resolvedType = "pdf";
+        } else if (lowerUrl.match(/\.(doc|docx|ppt|pptx|xls|xlsx|txt|rtf)(\?.*)?$/i)) {
+          resolvedType = "document";
+        } else {
+          resolvedType = "other";
+        }
+      }
+
+      const authorName = (req.user as any)?.name || (isTeacher ? (group.teacher?.name || "معلم المجموعة") : "إدارة المنصة");
+
+      const newResource = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `res_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        title: title.trim(),
+        description: description ? description.trim() : "",
+        fileUrl: fileUrl.trim(),
+        fileName: fileName ? fileName.trim() : (fileUrl.split("/").pop() || "ملف_مرفق"),
+        fileType: resolvedType,
+        fileSize: fileSize ? String(fileSize) : undefined,
+        uploadedBy: authorName,
+        uploadedById: currentUserId,
+        createdAt: new Date().toISOString()
+      };
+
+      const resources = group.resources || [];
+      resources.unshift(newResource);
+      group.resources = resources;
+
+      await groupRepo.save(group);
+
+      // Notify active enrolled students
+      try {
+        const enrollments = await enrollmentRepo.find({
+          where: { group: { id: group.id }, status: "active" },
+          relations: ["student"]
+        });
+
+        for (const enr of enrollments) {
+          if (enr.student) {
+            await NotificationController.createNotification(
+              enr.student.id,
+              `ملف أو ملزمة جديدة: ${title.trim()} 📁`,
+              `قام ${authorName} بإضافة ملف أو صورة جديدة في "${group.name}".`,
+              "info",
+              `#group/${group.id}`
+            );
+          }
+        }
+      } catch (e) {}
+
+      return res.status(201).json({ message: "تم رفع الملف بنجاح للمجموعة! 📁✅", resource: newResource });
+    } catch (err: any) {
+      console.error("Error uploading group resource:", err);
+      return res.status(500).json({ error: "فشل رفع الملف." });
+    }
+  }
+
+  // DELETE /groups/:id/resources/:resourceId - Delete group resource
+  static async deleteGroupResource(req: AuthRequest, res: Response) {
+    try {
+      const { id, resourceId } = req.params;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بحذف ملفات هذه المجموعة." });
+      }
+
+      group.resources = (group.resources || []).filter((r: any) => r.id !== resourceId);
+      await groupRepo.save(group);
+
+      return res.status(200).json({ message: "تم حذف الملف بنجاح." });
+    } catch (err: any) {
+      console.error("Error deleting group resource:", err);
+      return res.status(500).json({ error: "فشل حذف الملف." });
     }
   }
 

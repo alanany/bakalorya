@@ -8,6 +8,7 @@
  */
 
 import { apiFetch, showToast } from "../../app.js";
+import { StudentFeedbackModal } from "./StudentFeedbackModal.js";
 
 export class AssignmentGradingModal {
   constructor(assignmentId, assignmentTitle, totalPoints = 100, onGradedCallback = null) {
@@ -15,6 +16,7 @@ export class AssignmentGradingModal {
     this.assignmentTitle = assignmentTitle;
     this.totalPoints = totalPoints || 100;
     this.onGradedCallback = onGradedCallback;
+    this.assignment = null;
     this.submissions = [];
     this.activeSubmission = null;
     this.modalEl = null;
@@ -91,6 +93,11 @@ export class AssignmentGradingModal {
       if (e.target === this.modalEl) this.close();
     });
 
+    this.assignment = await apiFetch(`/assignments/${this.assignmentId}`).catch(() => null);
+    if (this.assignment && this.assignment.totalPoints) {
+      this.totalPoints = this.assignment.totalPoints;
+    }
+
     await this.fetchSubmissions();
   }
 
@@ -164,7 +171,7 @@ export class AssignmentGradingModal {
       // Bind click on items
       listContainer.querySelectorAll(".roster-sub-item").forEach(item => {
         item.addEventListener("click", () => {
-          const subId = parseInt(item.getAttribute("data-sub-id"), 10);
+          const subId = item.getAttribute("data-sub-id");
           this.selectSubmission(subId);
         });
       });
@@ -182,12 +189,12 @@ export class AssignmentGradingModal {
   }
 
   selectSubmission(subId) {
-    this.activeSubmission = this.submissions.find(s => s.id === subId);
+    this.activeSubmission = this.submissions.find(s => String(s.id) === String(subId));
     if (!this.activeSubmission) return;
 
     // Highlight active in sidebar
     this.modalEl?.querySelectorAll(".roster-sub-item").forEach(item => {
-      const isSelected = parseInt(item.getAttribute("data-sub-id"), 10) === subId;
+      const isSelected = String(item.getAttribute("data-sub-id")) === String(subId);
       item.style.borderColor = isSelected ? "var(--primary)" : "var(--border-color)";
       item.style.background = isSelected ? "var(--bg-app)" : "var(--bg-card)";
       item.style.boxShadow = isSelected ? "0 4px 14px rgba(99,102,241,0.15)" : "none";
@@ -209,6 +216,31 @@ export class AssignmentGradingModal {
     workspace.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:20px; max-width:900px; margin:0 auto; width:100%;">
         
+        <!-- Re-correction Banner / Published Notice -->
+        ${isGraded ? `
+          <div style="background:linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.06) 100%); border:1px solid rgba(16,185,129,0.3); border-radius:16px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; box-shadow:0 4px 16px rgba(16,185,129,0.08);">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(16,185,129,0.2); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="check-check" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <div style="font-weight:900; font-size:0.95rem; color:#10b981; display:flex; align-items:center; gap:8px;">
+                  <span>تم تصحيح هذا الواجب ونشر النتيجة للطالب مسبقاً ✅</span>
+                  <span class="badge" style="background:#10b981; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:6px;">الدرجة الحالية: ${sub.grade !== null ? sub.grade : 0} / ${this.totalPoints}</span>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:3px;">
+                  يمكنك تعديل أي درجات أو ملاحظات أو إرفاق ملف تصحيح جديد وتحديث النتيجة للطالب في أي وقت.
+                </div>
+              </div>
+            </div>
+
+            <button type="button" id="preview-student-report-top-btn" class="btn-secondary" style="font-size:0.84rem; padding:8px 16px; border-radius:12px; font-weight:800; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-card); border-color:rgba(16,185,129,0.35); color:#10b981;">
+              <i data-lucide="eye" style="width:16px; height:16px;"></i>
+              <span>معاينة ما يراه الطالب 👁️</span>
+            </button>
+          </div>
+        ` : ''}
+
         <!-- Student Info Header Card -->
         <div class="glass-card" style="padding:18px 22px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-app); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
           <div style="display:flex; align-items:center; gap:14px;">
@@ -392,17 +424,23 @@ export class AssignmentGradingModal {
             </div>
           </div>
 
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <!-- Preview Student Report Button -->
+            <button type="button" id="preview-student-report-bar-btn" class="btn-secondary" style="padding:10px 16px; border-radius:12px; font-weight:800; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="معاينة نموذج التقرير الذي يظهر للطالب">
+              <i data-lucide="eye" style="width:16px; height:16px; color:var(--primary);"></i>
+              <span>معاينة تقرير الطالب 👁️</span>
+            </button>
+
             <!-- Save Draft Button -->
             <button type="button" id="save-grading-draft-btn" class="btn-secondary" style="padding:10px 18px; border-radius:12px; font-weight:800; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
               <i data-lucide="bookmark" style="width:16px; height:16px;"></i>
               <span>حفظ كمسودة (Draft) 💾</span>
             </button>
 
-            <!-- Publish Results Button -->
-            <button type="button" id="publish-grading-results-btn" class="btn-primary" style="padding:10px 22px; border-radius:12px; font-weight:900; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
-              <i data-lucide="send" style="width:16px; height:16px;"></i>
-              <span>نشر النتيجة للطالب 🚀</span>
+            <!-- Publish / Re-publish Results Button -->
+            <button type="button" id="publish-grading-results-btn" class="btn-primary" style="padding:10px 22px; border-radius:12px; font-weight:900; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; cursor:pointer; ${isGraded ? 'background:linear-gradient(135deg, #10b981 0%, #059669 100%);' : ''}">
+              <i data-lucide="${isGraded ? 'refresh-cw' : 'send'}" style="width:16px; height:16px;"></i>
+              <span>${isGraded ? 'تحديث النتيجة وإعادة الإرسال للطالب 🔄' : 'نشر النتيجة للطالب 🚀'}</span>
             </button>
           </div>
 
@@ -480,15 +518,83 @@ export class AssignmentGradingModal {
       }
     });
 
+    // Preview Student Report
+    workspace.querySelector("#preview-student-report-top-btn")?.addEventListener("click", () => {
+      this.openStudentPreview();
+    });
+    workspace.querySelector("#preview-student-report-bar-btn")?.addEventListener("click", () => {
+      this.openStudentPreview();
+    });
+
     // Save as Draft
     workspace.querySelector("#save-grading-draft-btn")?.addEventListener("click", () => {
       this.submitGrading("draft_graded");
     });
 
-    // Publish Results
+    // Publish / Re-publish Results
     workspace.querySelector("#publish-grading-results-btn")?.addEventListener("click", () => {
       this.submitGrading("graded");
     });
+  }
+
+  buildCurrentSubmissionForPreview() {
+    if (!this.activeSubmission) return null;
+    const workspace = this.modalEl?.querySelector("#grading-workspace");
+    const sub = { ...this.activeSubmission };
+    const answers = Array.isArray(sub.answers) ? sub.answers.map(a => ({ ...a })) : [];
+
+    if (workspace) {
+      workspace.querySelectorAll(".question-grading-box").forEach(box => {
+        const qIdx = parseInt(box.getAttribute("data-q-idx"), 10);
+        const scoreInp = box.querySelector(".q-score-input");
+        const feedbackInp = box.querySelector(".q-feedback-input");
+
+        if (answers[qIdx]) {
+          if (scoreInp && scoreInp.value.trim() !== '') {
+            answers[qIdx].pointsAwarded = parseFloat(scoreInp.value.trim());
+          }
+          if (feedbackInp) {
+            answers[qIdx].feedback = feedbackInp.value.trim();
+          }
+        }
+      });
+
+      const totalEl = workspace.querySelector("#calculated-total-score");
+      let calculatedGrade = 0;
+      if (answers.length > 0) {
+        answers.forEach(a => {
+          if (a.pointsAwarded !== undefined && a.pointsAwarded !== null) {
+            calculatedGrade += Number(a.pointsAwarded);
+          }
+        });
+      } else if (totalEl) {
+        calculatedGrade = parseFloat(totalEl.innerText) || 0;
+      }
+
+      sub.grade = calculatedGrade;
+      sub.percentage = this.totalPoints > 0 ? Math.round((calculatedGrade / this.totalPoints) * 100) : 100;
+      sub.overallFeedback = workspace.querySelector("#overall-feedback-input")?.value.trim() || sub.overallFeedback || "";
+      sub.feedbackFileUrl = workspace.querySelector("#teacher-feedback-file-url")?.value || sub.feedbackFileUrl || "";
+      sub.feedbackFileName = workspace.querySelector("#teacher-feedback-file-name")?.value || sub.feedbackFileName || "";
+      sub.answers = answers;
+      sub.status = "graded";
+      sub.gradedAt = sub.gradedAt || new Date().toISOString();
+    }
+
+    return sub;
+  }
+
+  openStudentPreview() {
+    const previewSub = this.buildCurrentSubmissionForPreview();
+    if (!previewSub) return;
+    const asgn = this.assignment || {
+      id: this.assignmentId,
+      title: this.assignmentTitle,
+      totalPoints: this.totalPoints,
+      questions: this.assignment?.questions || []
+    };
+    const modal = new StudentFeedbackModal(asgn, previewSub);
+    modal.open();
   }
 
   async submitGrading(targetStatus) {
@@ -551,7 +657,8 @@ export class AssignmentGradingModal {
         })
       });
 
-      showToast(targetStatus === "graded" ? "تم نشر النتيجة وإشعار الطالب فوراً! 🏆" : "تم حفظ مسودة التصحيح بنجاح 💾", "success");
+      const wasGraded = sub.status === "graded";
+      showToast(targetStatus === "graded" ? (wasGraded ? "تم تحديث النتيجة وإعادة إرسالها للطالب بنجاح! 🔄" : "تم نشر النتيجة وإشعار الطالب فوراً! 🏆") : "تم حفظ مسودة التصحيح بنجاح 💾", "success");
       await this.fetchSubmissions();
       this.selectSubmission(sub.id);
     } catch (err) {

@@ -87,6 +87,20 @@ export class CourseGroup {
     isPinned?: boolean;
   }>;
 
+  @Column("simple-json", { nullable: true })
+  resources: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    fileUrl: string;
+    fileName: string;
+    fileType: string; // 'image' | 'pdf' | 'document' | 'other'
+    fileSize?: string;
+    uploadedBy: string;
+    uploadedById?: string;
+    createdAt: string;
+  }>;
+
   @CreateDateColumn()
   createdAt: Date;
 

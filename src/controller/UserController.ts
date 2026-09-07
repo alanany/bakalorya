@@ -288,11 +288,11 @@ export class UserController {
     }
   }
 
-  // Add Student (Teacher & Admin)
+  // Add Student (Admin only)
   static async addStudent(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "teacher" && req.user?.role !== "admin") {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized. Admin only." });
       }
 
       const { name, email, password, phone, parentPhone, location, education, courseId } = req.body;
@@ -343,21 +343,7 @@ export class UserController {
 
       // Determine target course for enrollment
       let targetCourse: Course | null = null;
-      if (req.user.role === "teacher") {
-        const teacherCourses = await courseRepo.find({
-          where: { teacher: { id: req.user.id } },
-          relations: ["teacher"]
-        });
-
-        if (courseId) {
-          targetCourse = teacherCourses.find(c => String(c.id) === String(courseId)) || null;
-          if (!targetCourse && teacherCourses.length > 0) {
-            targetCourse = teacherCourses[0];
-          }
-        } else if (teacherCourses.length > 0) {
-          targetCourse = teacherCourses[0];
-        }
-      } else if (courseId) {
+      if (courseId) {
         targetCourse = await courseRepo.findOne({
           where: { id: courseId },
           relations: ["teacher"]

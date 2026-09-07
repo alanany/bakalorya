@@ -1189,7 +1189,6 @@ export function updateHeader() {
           ${createNavItem("#teacher-availability", "clock", "إدارة المواعيد والأوقات")}
           
           ${createNavSection("الأكاديميا والأنشطة")}
-          ${createNavItem("#assignments", "clipboard-list", "الواجبات والمهام")}
           ${createNavItem("#tests", "check-square", "الاختبارات والتقييمات")}
           ${createNavItem("#resources", "library", "المكتبة والمذكرات")}
           ${createNavItem("#teacher-blogs", "pen-tool", "المقالات والمدونات")}
@@ -1210,7 +1209,6 @@ export function updateHeader() {
           ${createNavItem("#student-groups", "users", "مجموعاتي والحصص الجماعية")}
           
           ${createNavSection("المتابعة والتقييم")}
-          ${createNavItem("#assignments", "clipboard-list", t("nav.assignments") || "الواجبات والمهام")}
           ${createNavItem("#tests", "check-square", t("nav.tests") || "الاختبارات الذكية")}
           ${createNavItem("#resources", "library", t("nav.resources") || "المكتبة والملفات")}
           ${createNavItem("#notifications", "bell", "الإشعارات والتنبيهات")}

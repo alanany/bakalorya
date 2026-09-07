@@ -12,6 +12,8 @@ export default class GroupHubView {
     this.sessionFilter = "all"; // 'all', 'upcoming', 'completed'
     this.videoSearchQuery = "";
     this.videoChapterFilter = "all";
+    this.resourceSearchQuery = "";
+    this.resourceTypeFilter = "all";
     this.loading = true;
   }
 
@@ -61,7 +63,7 @@ export default class GroupHubView {
   renderUI() {
     if (!this.hubData) return;
 
-    const { group, course, teacher, videos = [], sessions = [], assignments = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
+    const { group, course, teacher, videos = [], sessions = [], assignments = [], resources = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
     const now = new Date();
 
     // Find Live Session or Next Upcoming Session
@@ -205,6 +207,7 @@ export default class GroupHubView {
               ${this.renderTabButton("videos", "🎥 فيديوهات وشروحات المعلم", videos.length)}
               ${this.renderTabButton("sessions", "📅 جدول وحصص المجموعة", sessions.length)}
               ${this.renderTabButton("assignments", "📝 الواجبات والمهام", assignments.length)}
+              ${this.renderTabButton("resources", "📁 ملفات ومذكرات المجموعة", resources.length)}
               ${this.renderTabButton("announcements", "📢 حائط الإعلانات", announcements.length)}
               ${this.renderTabButton("attendance", "📊 سجل الحضور والتقييم")}
               ${this.renderTabButton("roster", "👥 أعضاء المجموعة", students.length)}
@@ -247,6 +250,8 @@ export default class GroupHubView {
         return this.renderVideosTab();
       case "assignments":
         return this.renderAssignmentsTab();
+      case "resources":
+        return this.renderResourcesTab();
       case "announcements":
         return this.renderAnnouncementsTab();
       case "attendance":
@@ -679,26 +684,65 @@ export default class GroupHubView {
                   <!-- Submission Info or Action -->
                   <div style="margin-top:auto; padding-top:12px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
                     ${sub ? `
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-size:0.85rem; font-weight:800; color:${sub.status === 'graded' ? '#10b981' : 'var(--text-muted)'};">
-                          ${sub.status === 'graded'
-            ? `الدرجة: <strong>${sub.grade !== null ? sub.grade : 0}</strong> / ${asgn.totalPoints || 100} (${sub.percentage || 0}%)`
-            : 'قيد المراجعة والتصحيح ⏳'}
+                      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div>
+                          ${sub.status === 'graded' ? `
+                            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                              <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:900; font-size:0.75rem; padding:3px 8px; border-radius:8px; border:1px solid rgba(16,185,129,0.3);">
+                                تم التصحيح والاعتماد 🏆
+                              </span>
+                              <span style="font-size:0.88rem; font-weight:900; color:var(--text-main);">
+                                <strong style="color:#10b981;">${sub.grade !== null ? sub.grade : 0}</strong> / ${asgn.totalPoints || 100} (${sub.percentage !== null && sub.percentage !== undefined ? sub.percentage : (asgn.totalPoints ? Math.round(((sub.grade || 0)/asgn.totalPoints)*100) : 0)}%)
+                              </span>
+                            </div>
+                            ${sub.overallFeedback ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">💬 ${sub.overallFeedback}</div>` : ''}
+                          ` : `
+                            <span class="badge" style="background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:8px;">
+                              تم تسليم الحل • قيد المراجعة والتصحيح ⏳
+                            </span>
+                          `}
                         </div>
                         ${sub.status === 'graded' ? `
-                          <button class="btn-secondary view-student-feedback-btn" data-id="${asgn.id}"
-                            style="padding:5px 12px; border-radius:10px; font-weight:800; font-size:0.78rem; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                            <i data-lucide="eye" style="width:13px; height:13px;"></i>
-                            <span>مراجعة التصحيح 🔍</span>
+                          <button class="btn-primary view-student-feedback-btn" data-id="${asgn.id}"
+                            style="padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                            <i data-lucide="file-check-2" style="width:14px; height:14px;"></i>
+                            <span>مراجعة تقرير التصحيح 📋</span>
                           </button>
                         ` : ''}
                       </div>
                     ` : (isTeacher || isAdmin) ? `
-                      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                        <div style="font-size:0.82rem; font-weight:800; color:var(--text-muted);">
-                          المسلّمون: <span style="color:var(--primary); font-weight:900;">${asgn.submissionsCount || 0} طالب</span>
+                      <div style="display:flex; flex-direction:column; gap:10px;">
+                        <!-- Submission & Correction Statistics (إحصائيات التسليم والتصحيح) -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; background:var(--bg-app); padding:8px 12px; border-radius:12px; border:1px solid var(--border-color);">
+                          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <!-- Count Sent (المسلّمون / تم الإرسال) -->
+                            <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.78rem; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(99,102,241,0.25);">
+                              <i data-lucide="send" style="width:13px; height:13px;"></i>
+                              <span>تم الإرسال (المستلم): <strong style="font-weight:900;">${asgn.submissionsCount || 0}</strong></span>
+                            </span>
+
+                            <!-- Count Corrected (المصحح) -->
+                            <span class="badge" style="background:${(asgn.gradedCount || 0) > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)'}; color:${(asgn.gradedCount || 0) > 0 ? '#10b981' : 'var(--text-muted)'}; font-weight:800; font-size:0.78rem; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:5px; border:1px solid ${(asgn.gradedCount || 0) > 0 ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'};">
+                              <i data-lucide="check-check" style="width:13px; height:13px;"></i>
+                              <span>تم التصحيح: <strong style="font-weight:900;">${asgn.gradedCount || 0}</strong></span>
+                            </span>
+                          </div>
+
+                          ${(asgn.submissionsCount || 0) > (asgn.gradedCount || 0) ? `
+                            <span class="badge" style="background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:800; font-size:0.74rem; padding:3px 8px; border-radius:6px; border:1px solid rgba(245,158,11,0.3);">
+                              بانتظار التصحيح: ${(asgn.submissionsCount || 0) - (asgn.gradedCount || 0)} ⏳
+                            </span>
+                          ` : (asgn.submissionsCount || 0) > 0 ? `
+                            <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.74rem; padding:3px 8px; border-radius:6px;">
+                              تم تصحيح الكل 🏆
+                            </span>
+                          ` : `
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">لا توجد تسليمات بعد</span>
+                          `}
                         </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px;">
                           <button class="btn-secondary open-assignment-details-btn" data-id="${asgn.id}"
                             style="padding:6px 12px; border-radius:10px; font-weight:800; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="عرض تفاصيل وأسئلة الواجب وتعديلها أو حذفها">
                             <i data-lucide="info" style="width:14px; height:14px;"></i>
@@ -706,9 +750,9 @@ export default class GroupHubView {
                           </button>
 
                           <button class="btn-primary open-teacher-grading-btn" data-id="${asgn.id}" data-title="${asgn.title}" data-total="${asgn.totalPoints || 100}"
-                            style="padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                            style="padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
                             <i data-lucide="check-square" style="width:14px; height:14px;"></i>
-                            <span>التصحيح 🎯</span>
+                            <span>التصحيح ورصد الدرجات 🎯</span>
                           </button>
                         </div>
                       </div>
@@ -725,6 +769,258 @@ export default class GroupHubView {
     }).join('')}
           </div>
         `}
+      </div>
+    `;
+  }
+
+  // ── Tab: Group Files & Resources (ملفات ومذكرات المجموعة) ─────────────────
+  renderResourcesTab() {
+    const { resources = [], isTeacher, isAdmin } = this.hubData;
+    const canManage = isTeacher || isAdmin;
+
+    const filteredResources = resources.filter(res => {
+      const q = (this.resourceSearchQuery || "").toLowerCase().trim();
+      const matchesQuery = !q || (res.title || "").toLowerCase().includes(q) || (res.description || "").toLowerCase().includes(q) || (res.fileName || "").toLowerCase().includes(q);
+      
+      let matchesType = true;
+      if (this.resourceTypeFilter && this.resourceTypeFilter !== "all") {
+        if (this.resourceTypeFilter === "image") {
+          matchesType = res.fileType === "image";
+        } else if (this.resourceTypeFilter === "pdf") {
+          matchesType = res.fileType === "pdf";
+        } else if (this.resourceTypeFilter === "document") {
+          matchesType = res.fileType === "document" || res.fileType === "other";
+        }
+      }
+      return matchesQuery && matchesType;
+    });
+
+    const imageCount = resources.filter(r => r.fileType === "image").length;
+    const pdfCount = resources.filter(r => r.fileType === "pdf").length;
+    const docCount = resources.filter(r => r.fileType === "document" || r.fileType === "other").length;
+
+    const formatDate = (dateVal) => {
+      if (!dateVal) return '';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+    };
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        
+        <!-- Header & Top Action Bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div>
+            <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="folder" style="width:22px; height:22px; color:var(--primary);"></i>
+              <span>ملفات ومذكرات ومصادر المجموعة 📁</span>
+            </h3>
+            <p style="color:var(--text-muted); font-size:0.84rem; margin:4px 0 0;">
+              المذكرات والملخصات (PDF)، أوراق العمل والواجبات الإضافية، والصور والخرائط الذهنية المرفوعة للطلاب.
+            </p>
+          </div>
+
+          ${canManage ? `
+            <button id="open-upload-resource-modal-btn" class="btn-primary"
+              style="display:inline-flex; align-items:center; gap:8px; padding:10px 22px; border-radius:14px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5); color:#fff; box-shadow:0 4px 15px rgba(99,102,241,0.3); transition:transform 0.15s;"
+              onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+              <i data-lucide="upload-cloud" style="width:18px; height:18px;"></i>
+              <span>رفع ملف أو صورة جديدة 📤</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <!-- Filter & Search Controls Bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; background:var(--bg-card); padding:14px 18px; border-radius:18px; border:1px solid var(--border-color);">
+          
+          <!-- Search Input -->
+          <div style="position:relative; flex:1; min-width:240px; max-width:420px;">
+            <input type="text" id="resource-search-input" class="form-input" value="${this.resourceSearchQuery || ''}" placeholder="ابحث في أسماء الملفات والمذكرات..."
+              style="width:100%; padding:9px 14px 9px 38px; border-radius:12px; font-size:0.85rem; box-sizing:border-box; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main);">
+            <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+          </div>
+
+          <!-- Type Filter Pills -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="resource-type-filter-btn ${(!this.resourceTypeFilter || this.resourceTypeFilter === 'all') ? 'active' : ''}" data-type="all"
+              style="padding:6px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.8rem; font-weight:800; cursor:pointer; font-family:'Cairo', sans-serif;
+              background:${(!this.resourceTypeFilter || this.resourceTypeFilter === 'all') ? 'var(--primary)' : 'var(--bg-app)'};
+              color:${(!this.resourceTypeFilter || this.resourceTypeFilter === 'all') ? '#fff' : 'var(--text-muted)'}; transition:all 0.15s;">
+              الكل (${resources.length})
+            </button>
+
+            <button class="resource-type-filter-btn ${this.resourceTypeFilter === 'image' ? 'active' : ''}" data-type="image"
+              style="padding:6px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.8rem; font-weight:800; cursor:pointer; font-family:'Cairo', sans-serif;
+              background:${this.resourceTypeFilter === 'image' ? 'var(--primary)' : 'var(--bg-app)'};
+              color:${this.resourceTypeFilter === 'image' ? '#fff' : 'var(--text-muted)'}; transition:all 0.15s;">
+              🖼️ صور ورسومات (${imageCount})
+            </button>
+
+            <button class="resource-type-filter-btn ${this.resourceTypeFilter === 'pdf' ? 'active' : ''}" data-type="pdf"
+              style="padding:6px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.8rem; font-weight:800; cursor:pointer; font-family:'Cairo', sans-serif;
+              background:${this.resourceTypeFilter === 'pdf' ? 'var(--primary)' : 'var(--bg-app)'};
+              color:${this.resourceTypeFilter === 'pdf' ? '#fff' : 'var(--text-muted)'}; transition:all 0.15s;">
+              📕 مذكرات PDF (${pdfCount})
+            </button>
+
+            <button class="resource-type-filter-btn ${this.resourceTypeFilter === 'document' ? 'active' : ''}" data-type="document"
+              style="padding:6px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.8rem; font-weight:800; cursor:pointer; font-family:'Cairo', sans-serif;
+              background:${this.resourceTypeFilter === 'document' ? 'var(--primary)' : 'var(--bg-app)'};
+              color:${this.resourceTypeFilter === 'document' ? '#fff' : 'var(--text-muted)'}; transition:all 0.15s;">
+              📑 مستندات أخرى (${docCount})
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Resources Cards Grid -->
+        ${filteredResources.length === 0 ? `
+          <div class="glass-card" style="padding:60px 24px; text-align:center; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+            <div style="width:64px; height:64px; border-radius:20px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px;">
+              <i data-lucide="folder-open" style="width:32px; height:32px;"></i>
+            </div>
+            <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-bottom:6px;">
+              ${resources.length === 0 ? 'لا توجد ملفات أو مذكرات مرفوعة حتى الآن' : 'لا توجد نتائج تطابق بحثك'}
+            </h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; max-width:440px; margin:0 auto 18px;">
+              ${resources.length === 0 ? 'يقوم المعلم برفع المذكرات وأوراق العمل والصور التوضيحية هنا لتتمكن من تحميلها وتصفحها في أي وقت.' : 'جرب تغيير كلمة البحث أو الفلتر المختار أعلاه.'}
+            </p>
+            ${canManage && resources.length === 0 ? `
+              <button id="open-upload-first-resource-btn" class="btn-primary" style="padding:9px 22px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer;">
+                رفع أول ملف للمجموعة 📤
+              </button>
+            ` : ''}
+          </div>
+        ` : `
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:18px;">
+            ${filteredResources.map(res => {
+              const isImage = res.fileType === 'image';
+              const isPdf = res.fileType === 'pdf';
+              const cleanFileName = res.fileName || (res.fileUrl ? res.fileUrl.split('/').pop() : 'ملف_مرفق');
+
+              return `
+                <div class="glass-card" style="border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s;"
+                  onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 30px rgba(0,0,0,0.08)'"
+                  onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                  
+                  <!-- Card Top Preview Banner -->
+                  ${isImage ? `
+                    <div class="resource-img-preview-trigger" data-id="${res.id}" style="cursor:pointer; position:relative; width:100%; height:180px; overflow:hidden; background:#0f172a;" title="انقر للمعاينة المكبرة">
+                      <img src="${res.fileUrl}" alt="${res.title}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;"
+                        onmouseover="this.style.transform='scale(1.06)'" onmouseout="this.style.transform='scale(1)'">
+                      <div style="position:absolute; inset:0; background:linear-gradient(to top, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0.1) 60%); display:flex; align-items:flex-end; padding:12px; opacity:0; transition:opacity 0.2s;"
+                        onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
+                        <span style="font-size:0.8rem; font-weight:800; color:#fff; display:inline-flex; align-items:center; gap:6px; background:rgba(0,0,0,0.6); padding:4px 12px; border-radius:10px; backdrop-filter:blur(4px);">
+                          <i data-lucide="zoom-in" style="width:14px; height:14px;"></i>
+                          <span>معاينة مكبرة</span>
+                        </span>
+                      </div>
+                      <span style="position:absolute; top:12px; right:12px; background:rgba(15,23,42,0.75); backdrop-filter:blur(8px); color:#38bdf8; padding:3px 10px; border-radius:10px; font-size:0.72rem; font-weight:800; border:1px solid rgba(56,189,248,0.3);">
+                        🖼️ صورة توضيحية
+                      </span>
+                    </div>
+                  ` : isPdf ? `
+                    <div style="position:relative; width:100%; height:130px; background:linear-gradient(135deg, rgba(239,68,68,0.06), rgba(220,38,38,0.16)); display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border-color);">
+                      <div style="width:60px; height:60px; border-radius:16px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); display:flex; align-items:center; justify-content:center; color:#ef4444; box-shadow:0 6px 18px rgba(239,68,68,0.15);">
+                        <i data-lucide="file-text" style="width:32px; height:32px;"></i>
+                      </div>
+                      <span style="position:absolute; top:12px; right:12px; background:rgba(239,68,68,0.12); color:#ef4444; padding:3px 10px; border-radius:10px; font-size:0.72rem; font-weight:900; border:1px solid rgba(239,68,68,0.25);">
+                        📕 مستند PDF
+                      </span>
+                    </div>
+                  ` : `
+                    <div style="position:relative; width:100%; height:130px; background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(79,70,229,0.16)); display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border-color);">
+                      <div style="width:60px; height:60px; border-radius:16px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); display:flex; align-items:center; justify-content:center; color:var(--primary); box-shadow:0 6px 18px rgba(99,102,241,0.15);">
+                        <i data-lucide="file" style="width:32px; height:32px;"></i>
+                      </div>
+                      <span style="position:absolute; top:12px; right:12px; background:rgba(99,102,241,0.12); color:var(--primary); padding:3px 10px; border-radius:10px; font-size:0.72rem; font-weight:900; border:1px solid rgba(99,102,241,0.25);">
+                        📑 ملف / مذكرة
+                      </span>
+                    </div>
+                  `}
+
+                  <!-- Card Body -->
+                  <div style="padding:16px 18px; display:flex; flex-direction:column; flex:1; justify-content:space-between; gap:12px;">
+                    <div>
+                      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
+                        <h4 style="font-size:0.98rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.4;">
+                          ${res.title}
+                        </h4>
+                        ${canManage ? `
+                          <button class="delete-resource-btn" data-id="${res.id}"
+                            style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:6px; transition:color 0.15s;"
+                            title="حذف هذا الملف" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">
+                            <i data-lucide="trash-2" style="width:15px; height:15px;"></i>
+                          </button>
+                        ` : ''}
+                      </div>
+
+                      ${res.description ? `
+                        <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin:0 0 10px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                          ${res.description}
+                        </p>
+                      ` : ''}
+
+                      <!-- Meta Info -->
+                      <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                        <span style="display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="user" style="width:12px; height:12px;"></i>
+                          <span>${res.uploadedBy || 'المعلم'}</span>
+                        </span>
+                        <span>•</span>
+                        <span style="display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="calendar" style="width:12px; height:12px;"></i>
+                          <span>${formatDate(res.createdAt)}</span>
+                        </span>
+                        ${res.fileSize ? `
+                          <span>•</span>
+                          <span style="direction:ltr;">${res.fileSize}</span>
+                        ` : ''}
+                      </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display:flex; gap:8px; margin-top:8px; padding-top:12px; border-top:1px solid var(--border-color);">
+                      ${isImage ? `
+                        <button class="preview-resource-img-btn btn-secondary" data-id="${res.id}"
+                          style="flex:1; padding:8px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                          <i data-lucide="eye" style="width:14px; height:14px;"></i>
+                          <span>معاينة</span>
+                        </button>
+                        <a href="${res.fileUrl}" download="${cleanFileName}" target="_blank" class="btn-primary"
+                          style="flex:1; padding:8px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                          <i data-lucide="download" style="width:14px; height:14px;"></i>
+                          <span>تحميل</span>
+                        </a>
+                      ` : isPdf ? `
+                        <a href="${res.fileUrl}" target="_blank" class="btn-secondary"
+                          style="flex:1; padding:8px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                          <i data-lucide="book-open" style="width:14px; height:14px; color:#ef4444;"></i>
+                          <span>قراءة 📖</span>
+                        </a>
+                        <a href="${res.fileUrl}" download="${cleanFileName}" target="_blank" class="btn-primary"
+                          style="flex:1; padding:8px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:linear-gradient(135deg, #ef4444, #dc2626); border-color:#dc2626;">
+                          <i data-lucide="download" style="width:14px; height:14px;"></i>
+                          <span>تحميل ⬇️</span>
+                        </a>
+                      ` : `
+                        <a href="${res.fileUrl}" download="${cleanFileName}" target="_blank" class="btn-primary"
+                          style="flex:1; padding:8px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                          <i data-lucide="download" style="width:14px; height:14px;"></i>
+                          <span>تحميل واستعراض ⬇️</span>
+                        </a>
+                      `}
+                    </div>
+
+                  </div>
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+
       </div>
     `;
   }
@@ -1025,6 +1321,35 @@ export default class GroupHubView {
     // Video events binding
     this.bindVideoEvents();
 
+    // Resources Search & Type Filter
+    const resourceSearchInput = this.container.querySelector("#resource-search-input");
+    if (resourceSearchInput) {
+      resourceSearchInput.addEventListener("input", (e) => {
+        this.resourceSearchQuery = e.target.value;
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "resources") {
+          container.innerHTML = this.renderResourcesTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindResourceEvents();
+        }
+      });
+    }
+
+    this.container.querySelectorAll(".resource-type-filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.resourceTypeFilter = btn.getAttribute("data-type");
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "resources") {
+          container.innerHTML = this.renderResourcesTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindResourceEvents();
+        }
+      });
+    });
+
+    // Resource events binding
+    this.bindResourceEvents();
+
     // Sessions filter
     this.container.querySelectorAll(".session-filter-pill").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1160,8 +1485,8 @@ export default class GroupHubView {
     // Student View Feedback Button
     this.container.querySelectorAll(".view-student-feedback-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        const asgnId = parseInt(btn.getAttribute("data-id"), 10);
-        const asgn = (this.hubData.assignments || []).find(a => a.id === asgnId);
+        const asgnId = btn.getAttribute("data-id");
+        const asgn = (this.hubData.assignments || []).find(a => String(a.id) === String(asgnId));
         if (asgn && asgn.mySubmission) {
           const modal = new StudentFeedbackModal(asgn, asgn.mySubmission);
           modal.open();
@@ -1484,6 +1809,390 @@ export default class GroupHubView {
           submitBtn.disabled = false;
           submitBtn.innerText = "نشر الفيديو الآن 🚀";
         }
+      }
+    });
+  }
+
+  // ── Resource Events & Modals ──────────────────────────────────────────
+  bindResourceEvents() {
+    // Open upload resource modal
+    const uploadBtn = this.container.querySelector("#open-upload-resource-modal-btn");
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", () => this.openUploadResourceModal());
+    }
+    const uploadFirstBtn = this.container.querySelector("#open-upload-first-resource-btn");
+    if (uploadFirstBtn) {
+      uploadFirstBtn.addEventListener("click", () => this.openUploadResourceModal());
+    }
+
+    // Image lightbox preview trigger
+    this.container.querySelectorAll(".resource-img-preview-trigger, .preview-resource-img-btn").forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const resId = el.getAttribute("data-id");
+        const res = (this.hubData.resources || []).find(r => String(r.id) === String(resId));
+        if (res) {
+          this.openResourceLightbox(res);
+        }
+      });
+    });
+
+    // Delete resource
+    this.container.querySelectorAll(".delete-resource-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const resId = btn.getAttribute("data-id");
+        const ok = await confirmDialog({
+          title: "حذف الملف أو المذكرة",
+          message: "هل أنت متأكد من حذف هذا الملف نهائياً من المجموعة؟ لن يتمكن الطلاب من الوصول إليه بعد الحذف.",
+          confirmText: "نعم، حذف الملف",
+          isDestructive: true
+        });
+        if (!ok) return;
+
+        try {
+          btn.disabled = true;
+          await apiFetch(`/groups/${this.groupId}/resources/${resId}`, { method: "DELETE" });
+          showToast("تم حذف الملف بنجاح 🗑️", "success");
+          this.render();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الملف.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  // Upload Group Resource Modal (Teacher / Admin)
+  openUploadResourceModal() {
+    let modal = document.getElementById("upload-group-resource-modal");
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.id = "upload-group-resource-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:620px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="file-plus" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">رفع ملف أو صورة للمجموعة 📁</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">مذكرات، أوراق عمل، شيتات (PDF)، وصور توضيحية لطلاب المجموعة</div>
+            </div>
+          </div>
+          <button id="close-upload-resource-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="upload-resource-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- File Title -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                عنوان الملف أو المذكرة: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="res-title-input" required placeholder="مثلاً: ملخص قوانين الحركة والفيزياء الفصل الأول..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+            </div>
+
+            <!-- File Description -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                وصف أو تعليمات للطلاب (اختياري):
+              </label>
+              <textarea id="res-desc-input" rows="2" placeholder="ملاحظات توضيحية للطلاب حول هذا الملف أو طريقة استخدامه..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- Upload Area -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                الملف أو الصورة: <span style="color:#ef4444;">*</span>
+              </label>
+              
+              <div id="dropzone-box" style="border:2px dashed var(--border-color); border-radius:16px; padding:24px 16px; text-align:center; background:var(--bg-app); cursor:pointer; transition:all 0.2s;"
+                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                
+                <input type="file" id="res-file-picker" style="display:none;" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt">
+                
+                <div id="dropzone-prompt">
+                  <div style="width:48px; height:48px; border-radius:14px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px;">
+                    <i data-lucide="upload-cloud" style="width:24px; height:24px;"></i>
+                  </div>
+                  <div style="font-size:0.92rem; font-weight:800; color:var(--text-main); margin-bottom:4px;">اضغط لاختيار ملف أو صورة من جهازك 📎</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">يدعم: صور (PNG, JPG, WebP)، مستندات PDF، مذكرات Word، وغيرها</div>
+                </div>
+
+                <div id="dropzone-status" style="display:none; flex-direction:column; align-items:center; gap:8px;">
+                  <div id="dropzone-preview-box"></div>
+                  <div id="dropzone-filename" style="font-size:0.88rem; font-weight:800; color:var(--text-main);"></div>
+                  <div id="dropzone-filesize" style="font-size:0.75rem; color:var(--text-muted);"></div>
+                  <button type="button" id="change-file-btn" style="background:transparent; border:none; color:var(--primary); font-size:0.8rem; font-weight:800; cursor:pointer; text-decoration:underline;">
+                    تغيير الملف 🔄
+                  </button>
+                </div>
+              </div>
+
+              <!-- Hidden inputs to store upload result -->
+              <input type="hidden" id="uploaded-file-url" required>
+              <input type="hidden" id="uploaded-file-name">
+              <input type="hidden" id="uploaded-file-type">
+              <input type="hidden" id="uploaded-file-size">
+            </div>
+
+            <!-- Alternative / Direct External URL Option -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">
+                  أو استخدم رابطاً خارجياً مباشر (Google Drive / Dropbox):
+                </label>
+              </div>
+              <input type="url" id="res-external-url-input" placeholder="https://drive.google.com/... أو رابط مباشر للملف"
+                style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.82rem; box-sizing:border-box; direction:ltr; text-align:left;">
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; align-items:center; gap:12px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-upload-res-btn" class="btn-secondary" style="padding:10px 20px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer;">
+              إلغاء
+            </button>
+            <button type="submit" id="submit-upload-res-btn" class="btn-primary"
+              style="display:inline-flex; align-items:center; gap:6px; padding:10px 24px; border-radius:12px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer;">
+              <i data-lucide="check" style="width:16px; height:16px;"></i>
+              <span>نشر الملف للمجموعة 🚀</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-upload-resource-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-upload-res-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    const filePicker = modal.querySelector("#res-file-picker");
+    const dropzoneBox = modal.querySelector("#dropzone-box");
+    const dropzonePrompt = modal.querySelector("#dropzone-prompt");
+    const dropzoneStatus = modal.querySelector("#dropzone-status");
+    const previewBox = modal.querySelector("#dropzone-preview-box");
+    const filenameEl = modal.querySelector("#dropzone-filename");
+    const filesizeEl = modal.querySelector("#dropzone-filesize");
+    const changeBtn = modal.querySelector("#change-file-btn");
+    const urlInp = modal.querySelector("#uploaded-file-url");
+    const nameInp = modal.querySelector("#uploaded-file-name");
+    const typeInp = modal.querySelector("#uploaded-file-type");
+    const sizeInp = modal.querySelector("#uploaded-file-size");
+    const titleInp = modal.querySelector("#res-title-input");
+    const extUrlInp = modal.querySelector("#res-external-url-input");
+
+    dropzoneBox.addEventListener("click", (e) => {
+      if (e.target !== changeBtn) filePicker.click();
+    });
+    changeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      filePicker.click();
+    });
+
+    filePicker.addEventListener("change", async () => {
+      const file = filePicker.files[0];
+      if (!file) return;
+
+      // Auto-fill title if empty
+      if (!titleInp.value.trim()) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        titleInp.value = cleanName;
+      }
+
+      // Format file size
+      const formatBytes = (bytes) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      };
+
+      dropzonePrompt.style.display = "none";
+      dropzoneStatus.style.display = "flex";
+      previewBox.innerHTML = `
+        <div style="font-size:0.85rem; color:var(--primary); font-weight:800; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="loader-2" class="spin" style="width:20px; height:20px;"></i>
+          <span>جاري رفع الملف إلى السيرفر... ⏳</span>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("token");
+
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token },
+          body: formData
+        });
+        if (!res.ok) throw new Error("فشل رفع الملف إلى السيرفر");
+        const data = await res.json();
+
+        urlInp.value = data.url;
+        nameInp.value = file.name;
+        sizeInp.value = formatBytes(file.size);
+
+        // Determine type
+        let fType = "other";
+        if (file.type.startsWith("image/")) fType = "image";
+        else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) fType = "pdf";
+        else if (file.name.match(/\.(doc|docx|ppt|pptx|xls|xlsx|txt)$/i)) fType = "document";
+        typeInp.value = fType;
+
+        filenameEl.textContent = file.name;
+        filesizeEl.textContent = formatBytes(file.size);
+
+        if (fType === "image") {
+          previewBox.innerHTML = `
+            <img src="${data.url}" alt="${file.name}" style="max-height:100px; max-width:180px; object-fit:cover; border-radius:12px; border:2px solid var(--border-color); box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+          `;
+        } else if (fType === "pdf") {
+          previewBox.innerHTML = `
+            <div style="width:50px; height:50px; border-radius:12px; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="file-text" style="width:26px; height:26px;"></i>
+            </div>
+          `;
+        } else {
+          previewBox.innerHTML = `
+            <div style="width:50px; height:50px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="file" style="width:26px; height:26px;"></i>
+            </div>
+          `;
+        }
+        if (window.lucide) window.lucide.createIcons();
+        showToast("تم رفع الملف بنجاح! 📎", "success");
+      } catch (err) {
+        showToast(err.message || "فشل رفع الملف.", "error");
+        dropzonePrompt.style.display = "block";
+        dropzoneStatus.style.display = "none";
+      }
+    });
+
+    extUrlInp.addEventListener("input", () => {
+      const val = extUrlInp.value.trim();
+      if (val) {
+        urlInp.value = val;
+        nameInp.value = val.split("/").pop() || "ملف خارجي";
+        if (val.match(/\.(png|jpe?g|gif|webp|svg)/i)) typeInp.value = "image";
+        else if (val.match(/\.pdf/i)) typeInp.value = "pdf";
+        else typeInp.value = "other";
+      }
+    });
+
+    modal.querySelector("#upload-resource-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = titleInp.value.trim();
+      const description = modal.querySelector("#res-desc-input")?.value.trim();
+      const fileUrl = urlInp.value.trim() || extUrlInp.value.trim();
+      const fileName = nameInp.value.trim();
+      const fileType = typeInp.value.trim();
+      const fileSize = sizeInp.value.trim();
+
+      if (!fileUrl) {
+        showToast("يرجى اختيار ملف لرفعه أو إدخال رابط الملف أولاً.", "warning");
+        return;
+      }
+
+      const submitBtn = modal.querySelector("#submit-upload-res-btn");
+      try {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>جاري النشر...</span>`;
+
+        await apiFetch(`/groups/${this.groupId}/resources`, {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            description,
+            fileUrl,
+            fileName,
+            fileType,
+            fileSize
+          })
+        });
+
+        showToast("تم نشر الملف بنجاح وإشعار طلاب المجموعة! 📁🚀", "success");
+        modal.remove();
+        this.render();
+      } catch (err) {
+        showToast(err.message || "فشل نشر الملف للمجموعة.", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="check" style="width:16px; height:16px;"></i><span>نشر الملف للمجموعة 🚀</span>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+  }
+
+  // Open Image Lightbox
+  openResourceLightbox(res) {
+    let modal = document.getElementById("resource-lightbox-modal");
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.id = "resource-lightbox-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.92); backdrop-filter:blur(10px); z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; font-family:'Cairo', sans-serif;";
+
+    modal.innerHTML = `
+      <div style="position:absolute; top:20px; right:24px; left:24px; display:flex; justify-content:space-between; align-items:center; z-index:10; color:#fff;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="image" style="width:20px; height:20px;"></i>
+          </div>
+          <div>
+            <h3 style="font-size:1.1rem; font-weight:900; margin:0; text-shadow:0 2px 10px rgba(0,0,0,0.8);">${res.title}</h3>
+            <div style="font-size:0.78rem; opacity:0.8;">بواسطة ${res.uploadedBy || 'المعلم'} ${res.fileSize ? `• ${res.fileSize}` : ''}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <a href="${res.fileUrl}" download="${res.fileName || 'صورة'}" target="_blank" class="btn-primary" style="padding:8px 16px; border-radius:12px; font-size:0.82rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; text-decoration:none; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:#fff;">
+            <i data-lucide="download" style="width:14px; height:14px;"></i>
+            <span>تحميل الصورة</span>
+          </a>
+          <button id="close-lightbox-btn" style="background:rgba(255,255,255,0.15); border:none; color:#fff; width:36px; height:36px; border-radius:12px; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">
+            &times;
+          </button>
+        </div>
+      </div>
+
+      <div style="max-width:92vw; max-height:82vh; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <img src="${res.fileUrl}" alt="${res.title}" style="max-width:100%; max-height:82vh; object-fit:contain;">
+      </div>
+
+      ${res.description ? `
+        <div style="margin-top:16px; max-width:800px; text-align:center; color:#f1f5f9; font-size:0.9rem; background:rgba(0,0,0,0.5); padding:8px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.1);">
+          ${res.description}
+        </div>
+      ` : ''}
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-lightbox-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal || e.target.parentElement === modal) {
+        if (e.target.tagName !== 'IMG' && !e.target.closest('.btn-primary') && !e.target.closest('#close-lightbox-btn')) closeModal();
       }
     });
   }
