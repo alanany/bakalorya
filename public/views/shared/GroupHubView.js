@@ -8,8 +8,10 @@ export default class GroupHubView {
     this.container = container;
     this.groupId = groupId;
     this.hubData = null;
-    this.activeTab = "sessions"; // 'sessions', 'assignments', 'announcements', 'attendance', 'roster'
+    this.activeTab = "videos"; // 'videos', 'sessions', 'assignments', 'announcements', 'attendance', 'roster'
     this.sessionFilter = "all"; // 'all', 'upcoming', 'completed'
+    this.videoSearchQuery = "";
+    this.videoChapterFilter = "all";
     this.loading = true;
   }
 
@@ -59,7 +61,7 @@ export default class GroupHubView {
   renderUI() {
     if (!this.hubData) return;
 
-    const { group, course, teacher, sessions = [], assignments = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
+    const { group, course, teacher, videos = [], sessions = [], assignments = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
     const now = new Date();
 
     // Find Live Session or Next Upcoming Session
@@ -200,6 +202,7 @@ export default class GroupHubView {
 
             <!-- Sub-Navigation Tabs Bar -->
             <div style="display:flex; gap:6px; padding:8px 16px; background:var(--bg-app); border-bottom:1px solid var(--border-color); overflow-x:auto;">
+              ${this.renderTabButton("videos", "🎥 فيديوهات وشروحات المعلم", videos.length)}
               ${this.renderTabButton("sessions", "📅 جدول وحصص المجموعة", sessions.length)}
               ${this.renderTabButton("assignments", "📝 الواجبات والمهام", assignments.length)}
               ${this.renderTabButton("announcements", "📢 حائط الإعلانات", announcements.length)}
@@ -240,6 +243,8 @@ export default class GroupHubView {
 
   renderActiveTabContent() {
     switch (this.activeTab) {
+      case "videos":
+        return this.renderVideosTab();
       case "assignments":
         return this.renderAssignmentsTab();
       case "announcements":
@@ -252,6 +257,223 @@ export default class GroupHubView {
       default:
         return this.renderSessionsTab();
     }
+  }
+
+  // ── Tab 0: Videos (Sorted Newer First) ─────────────────────────────────
+  renderVideosTab() {
+    const { videos = [], isTeacher, isAdmin } = this.hubData;
+    const canManageVideos = isTeacher || isAdmin;
+
+    // Ensure sorted newer first
+    const sortedVideos = [...(videos || [])].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+    // Extract all chapters / units
+    const chapters = Array.from(new Set(sortedVideos.map(v => v.chapter || "عام").filter(Boolean)));
+
+    // Apply client filters
+    const filteredVideos = sortedVideos.filter(v => {
+      const q = (this.videoSearchQuery || '').toLowerCase().trim();
+      const matchesQuery = !q || (v.title || '').toLowerCase().includes(q) || (v.description || '').toLowerCase().includes(q);
+      const matchesChapter = !this.videoChapterFilter || this.videoChapterFilter === 'all' || (v.chapter || 'عام') === this.videoChapterFilter;
+      return matchesQuery && matchesChapter;
+    });
+
+    const getYouTubeId = (url) => {
+      if (!url) return null;
+      const m = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      return m ? m[1] : null;
+    };
+
+    const formatRelativeDate = (dateVal) => {
+      if (!dateVal) return '';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '';
+      const now = new Date();
+      const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'اليوم ⚡';
+      if (diffDays === 1) return 'أمس';
+      if (diffDays < 7) return `منذ ${diffDays} أيام`;
+      return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    };
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        
+        <!-- Header: Title & Upload Button for Teacher -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div>
+            <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="video" style="width:20px; height:20px; color:#ef4444;"></i>
+              <span>فيديوهات وشروحات المعلم 🎥</span>
+            </h3>
+            <p style="color:var(--text-muted); font-size:0.84rem; margin:4px 0 0;">
+              الشروحات المسجلة والمراجعات وحلول الأسئلة الخاصة بهذه المجموعة (مرتبة من الأحدث للأقدم)
+            </p>
+          </div>
+
+          ${canManageVideos ? `
+            <button id="open-upload-video-modal-btn" class="btn-primary"
+              style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; box-shadow:0 4px 15px rgba(239,68,68,0.3); transition:transform 0.15s;"
+              onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+              <i data-lucide="plus-circle" style="width:16px; height:16px;"></i>
+              <span>إضافة / رفع فيديو جديد 🎥</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; background:var(--bg-card); padding:12px 16px; border-radius:16px; border:1px solid var(--border-color);">
+          
+          <!-- Search Input -->
+          <div style="position:relative; flex:1; min-width:240px; max-width:400px;">
+            <input type="text" id="video-search-input" class="form-input" value="${this.videoSearchQuery || ''}" placeholder="ابحث في الفيديوهات والشروحات..."
+              style="width:100%; padding:8px 14px 8px 36px; border-radius:12px; font-size:0.85rem; box-sizing:border-box;">
+            <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
+          </div>
+
+          <!-- Unit / Chapter Filter -->
+          ${chapters.length > 0 ? `
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.78rem; font-weight:800; color:var(--text-muted);">الوحدة:</span>
+              <select id="video-chapter-filter" class="form-input" style="padding:7px 12px; border-radius:12px; font-size:0.82rem; font-weight:700;">
+                <option value="all" ${this.videoChapterFilter === 'all' ? 'selected' : ''}>جميع الوحدات (${sortedVideos.length})</option>
+                ${chapters.map(ch => `
+                  <option value="${ch}" ${this.videoChapterFilter === ch ? 'selected' : ''}>${ch}</option>
+                `).join('')}
+              </select>
+            </div>
+          ` : ''}
+
+          <!-- Count Badge -->
+          <div style="font-size:0.8rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.08); padding:6px 12px; border-radius:12px;">
+            ${filteredVideos.length} فيديو
+          </div>
+        </div>
+
+        <!-- Videos Grid -->
+        ${filteredVideos.length === 0 ? `
+          <div class="glass-card" style="text-align:center; padding:60px 24px; border-radius:24px; color:var(--text-muted); border:1px dashed var(--border-color);">
+            <div style="width:64px; height:64px; border-radius:20px; background:rgba(239,68,68,0.08); color:#ef4444; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i data-lucide="video-off" style="width:32px; height:32px;"></i>
+            </div>
+            <h4 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0 0 8px 0;">
+              ${this.videoSearchQuery ? 'لا توجد نتائج تطابق بحثك' : 'لا توجد فيديوهات مسجلة بعد'}
+            </h4>
+            <p style="font-size:0.88rem; max-width:400px; margin:0 auto 20px; line-height:1.6;">
+              ${this.videoSearchQuery ? 'جرب البحث بكلمات أخرى أو اختر جميع الوحدات.' : 'سيقوم المعلم برفع الشروحات وحصص المراجعة المسجلة هنا تباعاً لطلاب المجموعة.'}
+            </p>
+            ${canManageVideos && !this.videoSearchQuery ? `
+              <button id="open-upload-first-video-btn" class="btn-primary" style="padding:10px 22px; border-radius:14px; font-weight:800; font-size:0.88rem; background:linear-gradient(135deg, #ef4444, #dc2626); border:none; cursor:pointer;">
+                رفع أول فيديو الآن 📤
+              </button>
+            ` : ''}
+          </div>
+        ` : `
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+            ${filteredVideos.map((v, idx) => {
+              const ytId = getYouTubeId(v.videoUrl);
+              const thumbUrl = ytId
+                ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+                : (v.photo || this.hubData.course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600');
+              const relDate = formatRelativeDate(v.createdAt);
+
+              return `
+                <div class="glass-card video-card-item" style="border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s; box-shadow:0 4px 16px rgba(0,0,0,0.04);"
+                  onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'"
+                  onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.04)'">
+
+                  <!-- Thumbnail with Overlay Play & Badges -->
+                  <div class="watch-video-trigger" data-id="${v.id}" style="position:relative; aspect-ratio:16/9; background:#0f172a; overflow:hidden; cursor:pointer;">
+                    <img src="${thumbUrl}" alt="${v.title}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;"
+                      onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='none'">
+                    
+                    <!-- Dark Gradient Overlay -->
+                    <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%);"></div>
+
+                    <!-- Center Play Button Overlay -->
+                    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+                      <div style="width:52px; height:52px; border-radius:50%; background:rgba(239,68,68,0.9); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(239,68,68,0.4); transition:transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'">
+                        <i data-lucide="play" style="width:24px; height:24px; margin-inline-start:3px;"></i>
+                      </div>
+                    </div>
+
+                    <!-- Top Date Badge (Newer First visual indicator) -->
+                    ${relDate ? `
+                      <span style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); color:#fff; font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">
+                        📅 ${relDate}
+                      </span>
+                    ` : ''}
+
+                    <!-- Duration Badge -->
+                    ${v.duration ? `
+                      <span style="position:absolute; bottom:12px; left:12px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); color:#fff; font-size:0.74rem; font-weight:800; padding:3px 9px; border-radius:8px;">
+                        ⏱️ ${v.duration}
+                      </span>
+                    ` : ''}
+                  </div>
+
+                  <!-- Video Meta Content -->
+                  <div style="padding:16px 18px; flex:1; display:flex; flex-direction:column; gap:10px;">
+                    
+                    <!-- Chapter & Order Badge -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                      <span style="font-size:0.72rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.08); padding:3px 10px; border-radius:10px; border:1px solid rgba(99,102,241,0.18);">
+                        📁 ${v.chapter || 'فيديو شرح'}
+                      </span>
+                      <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
+                        فيديو #${sortedVideos.length - idx}
+                      </span>
+                    </div>
+
+                    <!-- Video Title -->
+                    <h4 class="watch-video-trigger" data-id="${v.id}" style="font-size:0.98rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.4; cursor:pointer; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="${v.title}">
+                      ${v.title}
+                    </h4>
+
+                    <!-- Video Description Snippet -->
+                    ${v.description ? `
+                      <p style="font-size:0.82rem; color:var(--text-muted); margin:0; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                        ${v.description}
+                      </p>
+                    ` : ''}
+
+                    <!-- Action Bar -->
+                    <div style="margin-top:auto; padding-top:12px; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                      <button class="watch-video-trigger btn-primary" data-id="${v.id}"
+                        style="background:linear-gradient(135deg, #ef4444, #dc2626); border:none; padding:8px 16px; border-radius:12px; font-size:0.8rem; font-weight:800; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 3px 10px rgba(239,68,68,0.25);">
+                        <i data-lucide="play-circle" style="width:14px; height:14px;"></i>
+                        <span>مشاهدة 🎬</span>
+                      </button>
+
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        ${v.resourceUrl ? `
+                          <a href="${v.resourceUrl}" target="_blank" rel="noopener" class="btn-secondary"
+                            style="padding:7px 12px; border-radius:10px; font-size:0.75rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="تحميل المذكرة المرفقة">
+                            <i data-lucide="paperclip" style="width:13px; height:13px;"></i>
+                            <span>المذكرة 📎</span>
+                          </a>
+                        ` : ''}
+
+                        ${canManageVideos ? `
+                          <button class="delete-video-btn btn-secondary" data-id="${v.id}"
+                            style="padding:7px 10px; border-radius:10px; color:var(--error); border-color:rgba(239,68,68,0.25); background:rgba(239,68,68,0.06); cursor:pointer;" title="حذف هذا الفيديو">
+                            <i data-lucide="trash-2" style="width:13px; height:13px;"></i>
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+
+      </div>
+    `;
   }
 
   // ── Tab 1: Sessions & Live Classes ──────────────────────────────────────
@@ -773,6 +995,36 @@ export default class GroupHubView {
       });
     });
 
+    // Videos Search & Chapter Filter
+    const videoSearchInput = this.container.querySelector("#video-search-input");
+    if (videoSearchInput) {
+      videoSearchInput.addEventListener("input", (e) => {
+        this.videoSearchQuery = e.target.value;
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "videos") {
+          container.innerHTML = this.renderVideosTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindVideoEvents();
+        }
+      });
+    }
+
+    const videoChapterFilter = this.container.querySelector("#video-chapter-filter");
+    if (videoChapterFilter) {
+      videoChapterFilter.addEventListener("change", (e) => {
+        this.videoChapterFilter = e.target.value;
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "videos") {
+          container.innerHTML = this.renderVideosTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindVideoEvents();
+        }
+      });
+    }
+
+    // Video events binding
+    this.bindVideoEvents();
+
     // Sessions filter
     this.container.querySelectorAll(".session-filter-pill").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -915,6 +1167,324 @@ export default class GroupHubView {
           modal.open();
         }
       });
+    });
+  }
+
+  // ── Video Events & Modals ─────────────────────────────────────────────
+  bindVideoEvents() {
+    // Open upload modal
+    const uploadBtn = this.container.querySelector("#open-upload-video-modal-btn");
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", () => this.openUploadVideoModal());
+    }
+    const uploadFirstBtn = this.container.querySelector("#open-upload-first-video-btn");
+    if (uploadFirstBtn) {
+      uploadFirstBtn.addEventListener("click", () => this.openUploadVideoModal());
+    }
+
+    // Watch video triggers
+    this.container.querySelectorAll(".watch-video-trigger").forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const videoId = el.getAttribute("data-id");
+        const video = (this.hubData.videos || []).find(v => String(v.id) === String(videoId));
+        if (video) {
+          this.openWatchVideoModal(video);
+        }
+      });
+    });
+
+    // Delete video
+    this.container.querySelectorAll(".delete-video-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const videoId = btn.getAttribute("data-id");
+        if (!confirm("هل أنت متأكد من حذف هذا الفيديو نهائياً من المجموعة؟")) return;
+
+        try {
+          btn.disabled = true;
+          await apiFetch(`/groups/${this.groupId}/videos/${videoId}`, { method: "DELETE" });
+          showToast("تم حذف الفيديو بنجاح 🗑️", "success");
+          this.render();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الفيديو.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  // Watch Video Modal (Modal Theater)
+  openWatchVideoModal(video) {
+    let modal = document.getElementById("watch-video-modal");
+    if (modal) modal.remove();
+
+    const getYouTubeId = (url) => {
+      if (!url) return null;
+      const m = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      return m ? m[1] : null;
+    };
+
+    const getVimeoId = (url) => {
+      if (!url) return null;
+      const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+      return m ? m[1] : null;
+    };
+
+    const getDriveId = (url) => {
+      if (!url) return null;
+      const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : null;
+    };
+
+    const ytId = getYouTubeId(video.videoUrl);
+    const vimeoId = getVimeoId(video.videoUrl);
+    const driveId = getDriveId(video.videoUrl);
+
+    let playerHtml = '';
+    if (ytId) {
+      playerHtml = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"></iframe>`;
+    } else if (vimeoId) {
+      playerHtml = `<iframe src="https://player.vimeo.com/video/${vimeoId}?autoplay=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"></iframe>`;
+    } else if (driveId) {
+      playerHtml = `<iframe src="https://drive.google.com/file/d/${driveId}/preview" frameborder="0" allow="autoplay" allowfullscreen style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"></iframe>`;
+    } else if (video.videoUrl && (video.videoUrl.endsWith(".mp4") || video.videoUrl.endsWith(".webm") || video.videoUrl.endsWith(".ogg") || video.videoUrl.includes("/uploads/"))) {
+      playerHtml = `<video src="${video.videoUrl}" controls autoplay style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; background:#000;"></video>`;
+    } else {
+      playerHtml = `<iframe src="${video.videoUrl}" frameborder="0" allowfullscreen style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"></iframe>`;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "watch-video-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.88); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:960px; max-height:94vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 25px 60px rgba(0,0,0,0.5); overflow:hidden;">
+        
+        <!-- Modal Header -->
+        <div style="padding:16px 22px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+            <div style="width:36px; height:36px; border-radius:10px; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center; font-weight:900; flex-shrink:0;">
+              <i data-lucide="play" style="width:18px; height:18px;"></i>
+            </div>
+            <div style="min-width:0;">
+              <h3 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${video.title}
+              </h3>
+              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:flex; gap:12px; margin-top:2px;">
+                <span>📁 ${video.chapter || 'فيديو شرح'}</span>
+                ${video.duration ? `<span>⏱️ ${video.duration}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <button id="close-watch-video-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1; padding:4px 8px; border-radius:8px;">&times;</button>
+        </div>
+
+        <!-- Video Player Box (16:9 ratio) -->
+        <div style="position:relative; width:100%; padding-top:56.25%; background:#000; flex-shrink:0;">
+          ${playerHtml}
+        </div>
+
+        <!-- Video Footer & Description -->
+        <div style="padding:18px 24px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:14px;">
+          ${video.description ? `
+            <div>
+              <h4 style="font-size:0.85rem; font-weight:800; color:var(--text-muted); margin:0 0 6px 0;">وصف الحصة والشرح:</h4>
+              <p style="font-size:0.9rem; color:var(--text-main); line-height:1.6; margin:0; white-space:pre-wrap;">${video.description}</p>
+            </div>
+          ` : ''}
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:auto; padding-top:12px; border-top:1px solid var(--border-color);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${video.resourceUrl ? `
+                <a href="${video.resourceUrl}" target="_blank" rel="noopener" class="btn-primary" style="padding:8px 16px; border-radius:12px; font-size:0.82rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+                  <i data-lucide="paperclip" style="width:14px; height:14px;"></i>
+                  <span>تحميل المذكرة / المرفقات 📎</span>
+                </a>
+              ` : ''}
+              <a href="${video.videoUrl}" target="_blank" rel="noopener" class="btn-secondary" style="padding:8px 16px; border-radius:12px; font-size:0.82rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+                <i data-lucide="external-link" style="width:14px; height:14px;"></i>
+                <span>فتح المصدر الخارجي ↗️</span>
+              </a>
+            </div>
+
+            <button id="close-watch-video-modal-bottom-btn" class="btn-secondary" style="padding:8px 18px; border-radius:12px; font-size:0.82rem; font-weight:800; cursor:pointer;">
+              إغلاق ✖
+            </button>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => {
+      const iframe = modal.querySelector("iframe");
+      if (iframe) iframe.src = "";
+      const vid = modal.querySelector("video");
+      if (vid) vid.pause();
+      modal.remove();
+    };
+
+    modal.querySelector("#close-watch-video-modal-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#close-watch-video-modal-bottom-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  }
+
+  // Upload Group Video Modal (Teacher/Admin)
+  openUploadVideoModal() {
+    let modal = document.getElementById("upload-group-video-modal");
+    if (modal) modal.remove();
+
+    const existingChapters = Array.from(new Set((this.hubData.videos || []).map(v => v.chapter || "عام").filter(Boolean)));
+
+    modal = document.createElement("div");
+    modal.id = "upload-group-video-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:620px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="video" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">إضافة فيديو شرح جديد للمجموعة 🎥</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">سيظهر في أول تبويب للطلاب مرتباً من الأحدث للأقدم</div>
+            </div>
+          </div>
+          <button id="close-upload-video-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="upload-video-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Video Title -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                عنوان الفيديو / الدرس: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="video-title-input" required placeholder="مثلاً: شرح الدرس الأول - الحركة في خط مستقيم..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+            </div>
+
+            <!-- Video URL -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط الفيديو (YouTube / Vimeo / Google Drive / MP4): <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="url" id="video-url-input" required placeholder="https://www.youtube.com/watch?v=... أو رابط مباشر"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box; direction:ltr; text-align:left;">
+            </div>
+
+            <!-- Unit / Chapter & Duration -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">الوحدة / الباب:</label>
+                <input type="text" id="video-chapter-input" placeholder="مثلاً: الوحدة الأولى" list="chapter-suggestions"
+                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+                <datalist id="chapter-suggestions">
+                  ${existingChapters.map(ch => `<option value="${ch}">`).join('')}
+                </datalist>
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">المدة التقديرية:</label>
+                <input type="text" id="video-duration-input" placeholder="مثلاً: 45 دقيقة"
+                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Resource / Notes URL -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط المذكرة أو أوراق الشرح المرفقة (اختياري - PDF / Drive):
+              </label>
+              <input type="url" id="video-resource-input" placeholder="https://drive.google.com/..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box; direction:ltr; text-align:left;">
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                ملاحظات أو وصف الفيديو:
+              </label>
+              <textarea id="video-description-input" rows="3" placeholder="اكتب نبذة عن النقاط التي تمت تغطيتها في هذا الفيديو..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+
+          </div>
+
+          <!-- Modal Footer -->
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-upload-video-btn" class="btn-secondary" style="padding:9px 18px; border-radius:12px; font-weight:800; font-size:0.88rem; cursor:pointer;">
+              إلغاء
+            </button>
+            <button type="submit" id="submit-upload-video-btn" class="btn-primary" style="padding:9px 24px; border-radius:12px; font-weight:800; font-size:0.88rem; background:linear-gradient(135deg, #ef4444, #dc2626); border:none; color:#fff; cursor:pointer; box-shadow:0 4px 14px rgba(239,68,68,0.35);">
+              نشر الفيديو الآن 🚀
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-upload-video-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-upload-video-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    const form = modal.querySelector("#upload-video-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = modal.querySelector("#video-title-input")?.value.trim();
+      const videoUrl = modal.querySelector("#video-url-input")?.value.trim();
+      const chapter = modal.querySelector("#video-chapter-input")?.value.trim();
+      const duration = modal.querySelector("#video-duration-input")?.value.trim();
+      const resourceUrl = modal.querySelector("#video-resource-input")?.value.trim();
+      const description = modal.querySelector("#video-description-input")?.value.trim();
+
+      if (!title || !videoUrl) {
+        showToast("يرجى ملء عنوان ورابط الفيديو.", "warning");
+        return;
+      }
+
+      const submitBtn = modal.querySelector("#submit-upload-video-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري النشر... ⏳";
+      }
+
+      try {
+        await apiFetch(`/groups/${this.groupId}/videos`, {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            videoUrl,
+            chapter,
+            duration,
+            resourceUrl,
+            description
+          })
+        });
+
+        showToast("تمت إضافة الفيديو ونشره للطلاب بنجاح! 🎥🎉", "success");
+        closeModal();
+        this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إضافة الفيديو.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "نشر الفيديو الآن 🚀";
+        }
+      }
     });
   }
 

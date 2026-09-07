@@ -8,6 +8,7 @@ import { Session } from "../entity/Session";
 import { Assignment } from "../entity/Assignment";
 import { AssignmentSubmission } from "../entity/AssignmentSubmission";
 import { SessionAttendance } from "../entity/SessionAttendance";
+import { Lesson } from "../entity/Lesson";
 import { NotificationController } from "./NotificationController";
 import { AuthRequest } from "../middleware/auth";
 import { IsNull } from "typeorm";
@@ -1099,7 +1100,7 @@ export class CourseGroupController {
         })
       );
 
-      // Fetch assignments for group
+      // Fetch group assignments
       const assignments = await assignmentRepo.find({
         where: [
           { group: { id: group.id } },
@@ -1108,6 +1109,34 @@ export class CourseGroupController {
         relations: ["lesson"],
         order: { dueDate: "DESC", createdAt: "DESC" }
       });
+
+      // Fetch lessons / videos for course (sorted newer first)
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+      let videos: any[] = [];
+      if (courseId) {
+        const courseLessons = await lessonRepo.find({
+          where: { course: { id: courseId } },
+          order: { createdAt: "DESC" }
+        });
+
+        videos = (courseLessons || [])
+          .filter((l: any) => l.videoUrl && l.videoUrl.trim().length > 0)
+          .map((l: any) => ({
+            id: l.id,
+            title: l.title,
+            description: l.description,
+            videoUrl: l.videoUrl,
+            duration: l.duration,
+            chapter: l.chapter,
+            photo: l.photo,
+            notes: l.notes,
+            resourceUrl: l.resourceUrl,
+            resourceTitle: l.resourceTitle,
+            createdAt: l.createdAt,
+            updatedAt: l.updatedAt
+          }))
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
 
       const assignmentsWithSubmissions = await Promise.all(
         assignments.map(async (asgn) => {
@@ -1212,6 +1241,7 @@ export class CourseGroupController {
           avatar: teacherData.avatar,
           phone: (isAdmin || isTeacher) ? teacherData.phone : undefined
         } : null,
+        videos, // Videos uploaded by teacher sorted newer first
         sessions: sessionsWithAttendance,
         assignments: assignmentsWithSubmissions,
         announcements: (group.announcements || []).sort((a: any, b: any) => {
@@ -1238,6 +1268,87 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error fetching group hub data:", err);
       return res.status(500).json({ error: "فشل تحميل بيانات صفحة المجموعة." });
+    }
+  }
+
+  // POST /groups/:id/videos - Upload / Add a video lesson for group
+  static async uploadGroupVideo(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, description, videoUrl, duration, chapter, photo, notes, resourceUrl, resourceTitle } = req.body;
+
+      if (!title || !videoUrl) {
+        return res.status(400).json({ error: "عنوان الفيديو ورابط الفيديو مطلوبان." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group || !group.course) {
+        return res.status(404).json({ error: "المجموعة أو الدورة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك برفع فيديوهات لهذه المجموعة." });
+      }
+
+      const lesson = new Lesson();
+      lesson.title = title.trim();
+      lesson.description = description || null;
+      lesson.videoUrl = videoUrl.trim();
+      lesson.duration = duration || "0:00";
+      lesson.chapter = chapter || "فيديوهات وشروحات";
+      lesson.photo = photo || null;
+      lesson.notes = notes || null;
+      lesson.resourceUrl = resourceUrl || null;
+      lesson.resourceTitle = resourceTitle || null;
+      lesson.course = group.course;
+
+      await lessonRepo.save(lesson);
+
+      return res.status(201).json({ message: "تم رفع ونشر الفيديو بنجاح! 🎥✅", video: lesson });
+    } catch (err: any) {
+      console.error("Error uploading group video:", err);
+      return res.status(500).json({ error: "فشل رفع الفيديو." });
+    }
+  }
+
+  // DELETE /groups/:id/videos/:videoId - Delete a group video
+  static async deleteGroupVideo(req: AuthRequest, res: Response) {
+    try {
+      const { id, videoId } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group) return res.status(404).json({ error: "المجموعة غير موجودة." });
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بحذف الفيديوهات." });
+      }
+
+      const lesson = await lessonRepo.findOne({ where: { id: videoId } });
+      if (!lesson) return res.status(404).json({ error: "الفيديو غير موجود." });
+
+      await lessonRepo.remove(lesson);
+      return res.status(200).json({ message: "تم حذف الفيديو بنجاح." });
+    } catch (err: any) {
+      return res.status(500).json({ error: "فشل حذف الفيديو." });
     }
   }
 

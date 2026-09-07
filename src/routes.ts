@@ -113,6 +113,8 @@ router.get("/groups/:id/sessions", authMiddleware, CourseGroupController.getGrou
 router.get("/groups/:id/hub", authMiddleware, CourseGroupController.getGroupHub);
 router.post("/groups/:id/announcements", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.postGroupAnnouncement);
 router.delete("/groups/:id/announcements/:announcementId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupAnnouncement);
+router.post("/groups/:id/videos", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.uploadGroupVideo);
+router.delete("/groups/:id/videos/:videoId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupVideo);
 router.post("/groups/:id/assignments", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroupAssignment);
 router.get("/teacher/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getMyTeacherGroups);
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin"]), CourseGroupController.getAllGroups);
