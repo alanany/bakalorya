@@ -287,6 +287,25 @@ export default class StudentView {
     // Private sessions summary
     const totalRemainingCredits = this.subscriptions.reduce((sum, s) => sum + (s.remainingCredits || 0), 0);
 
+    // Circular metrics calculations
+    const completedLessons = this.stats?.completedLessonsCount || 0;
+    const studyHours = this.stats?.studyHours || 0;
+    const groupCount = this.enrollments.length;
+    const privateCredits = totalRemainingCredits;
+
+    // Calculate circular stroke offsets for circumference 226 (r=36)
+    const lessonsPct = Math.min(100, Math.max(15, Math.round((completedLessons / Math.max(completedLessons + 5, 20)) * 100)));
+    const lessonsOffset = Math.round(226 - (226 * lessonsPct / 100));
+
+    const groupsPct = Math.min(100, Math.max(20, Math.min(100, groupCount * 25)));
+    const groupsOffset = Math.round(226 - (226 * groupsPct / 100));
+
+    const hoursPct = Math.min(100, Math.max(15, Math.min(100, studyHours * 10)));
+    const hoursOffset = Math.round(226 - (226 * hoursPct / 100));
+
+    const creditsPct = Math.min(100, Math.max(15, Math.min(100, privateCredits * 20)));
+    const creditsOffset = Math.round(226 - (226 * creditsPct / 100));
+
     const userTz = getUserTimezone();
     const tzInfo = getTimezoneInfo(userTz);
 
@@ -312,30 +331,89 @@ export default class StudentView {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .creative-live-stage {
-          position: relative;
+        .circular-metrics-hub {
+          padding: 20px 24px;
           border-radius: 26px;
-          background: radial-gradient(circle at 95% 5%, rgba(16,185,129,0.12) 0%, transparent 40%), radial-gradient(circle at 5% 95%, rgba(99,102,241,0.08) 0%, transparent 40%), var(--bg-card);
-          border: 1.5px solid rgba(16, 185, 129, 0.35);
-          box-shadow: 0 20px 48px -12px rgba(16, 185, 129, 0.14);
-          overflow: hidden;
-          padding: 26px 28px;
-          margin-bottom: 34px;
-        }
-        .creative-cohort-card {
-          border-radius: 24px;
           border: 1px solid var(--border-color);
           background: var(--bg-card);
+          margin-bottom: 26px;
+          display: flex;
+          justify-content: space-around;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 20px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+        }
+        .circle-stat-pod {
           display: flex;
           flex-direction: column;
-          overflow: hidden;
-          transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.035);
-          position: relative;
+          align-items: center;
+          gap: 6px;
+          text-decoration: none;
+          cursor: pointer;
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .creative-cohort-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 20px 42px -8px rgba(0,0,0,0.08);
+        .circle-stat-pod:hover {
+          transform: translateY(-4px) scale(1.03);
+        }
+        .circle-ring-wrapper {
+          position: relative;
+          width: 84px;
+          height: 84px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          transition: box-shadow 0.25s ease;
+        }
+        .circle-stat-pod:hover .circle-ring-wrapper {
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+        }
+        .circle-ring-value {
+          position: absolute;
+          text-align: center;
+          font-family: 'Outfit', sans-serif;
+          font-size: 1.25rem;
+          font-weight: 900;
+          color: var(--text-main);
+          line-height: 1;
+        }
+        .circle-stat-label {
+          font-size: 0.82rem;
+          font-weight: 800;
+          color: var(--text-main);
+          text-align: center;
+        }
+        .circle-stat-sub {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-weight: 700;
+          text-align: center;
+        }
+        .creative-live-stage {
+          position: relative;
+          border-radius: 24px;
+          background: radial-gradient(circle at 95% 5%, rgba(16,185,129,0.12) 0%, transparent 40%), radial-gradient(circle at 5% 95%, rgba(99,102,241,0.08) 0%, transparent 40%), var(--bg-card);
+          border: 1.5px solid rgba(16, 185, 129, 0.35);
+          box-shadow: 0 16px 40px -12px rgba(16, 185, 129, 0.12);
+          overflow: hidden;
+          padding: 22px 24px;
+          margin-bottom: 28px;
+        }
+        .compact-cohort-card {
+          border-radius: 20px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-card);
+          padding: 18px;
+          display: flex;
+          flex-direction: column;
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.03);
+          cursor: pointer;
+        }
+        .compact-cohort-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 16px 32px rgba(0,0,0,0.07);
           border-color: rgba(99,102,241,0.35);
         }
         .creative-session-card {
@@ -358,15 +436,29 @@ export default class StudentView {
           background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 100%);
           box-shadow: 0 14px 36px rgba(16, 185, 129, 0.18);
         }
-        .stat-card-hover {
-          transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
-        }
-        .stat-card-hover:hover {
-          transform: translateY(-4px) !important;
-          box-shadow: 0 16px 32px rgba(99,102,241,0.1) !important;
-          border-color: rgba(99,102,241,0.3) !important;
-        }
       </style>
+
+      <!-- SVG Gradients for Circular Gauges -->
+      <svg width="0" height="0" style="position:absolute; pointer-events:none;">
+        <defs>
+          <linearGradient id="circ-emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981" />
+            <stop offset="100%" stop-color="#059669" />
+          </linearGradient>
+          <linearGradient id="circ-indigo" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#6366f1" />
+            <stop offset="100%" stop-color="#8b5cf6" />
+          </linearGradient>
+          <linearGradient id="circ-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#0284c7" />
+          </linearGradient>
+          <linearGradient id="circ-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ec4899" />
+            <stop offset="100%" stop-color="#a855f7" />
+          </linearGradient>
+        </defs>
+      </svg>
 
       <div class="student-dashboard-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
         
@@ -389,7 +481,7 @@ export default class StudentView {
         ` : ''}
 
         <!-- 1. Hero Studio Banner -->
-        <div class="glass-card hero-student-banner" style="position:relative; overflow:hidden; border-radius:28px; padding:30px 34px; margin-bottom:28px; background:linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(147,51,234,0.08) 50%, rgba(16,185,129,0.08) 100%); border:1.5px solid var(--border-focus); box-shadow:0 12px 36px rgba(79,70,229,0.08);">
+        <div class="glass-card hero-student-banner" style="position:relative; overflow:hidden; border-radius:28px; padding:30px 34px; margin-bottom:24px; background:linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(147,51,234,0.08) 50%, rgba(16,185,129,0.08) 100%); border:1.5px solid var(--border-focus); box-shadow:0 12px 36px rgba(79,70,229,0.08);">
           
           <!-- Decorative Floating Glow Orbs -->
           <div style="position:absolute; top:-30px; left:-30px; width:160px; height:160px; background:radial-gradient(circle, rgba(79,70,229,0.25) 0%, rgba(79,70,229,0) 70%); border-radius:50%; pointer-events:none;"></div>
@@ -483,314 +575,273 @@ export default class StudentView {
           </div>
         </div>
 
-        <!-- 2. Metrics & Performance Row (Gamified Cards) -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:18px; margin-bottom:32px;">
+        <!-- 2. Reduced Cards: Sleek Circular Metrics Hub (دوائر الإنجاز والتقدم الذكي) -->
+        <div class="glass-card circular-metrics-hub">
           
-          <!-- Card 1: Enrolled Courses -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer;" title="انقر للانتقال إلى مجموعاتك ودوراتك" onclick="window.location.hash='#student-groups';">
-            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(79,70,229,0.05)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="book-open" style="width:26px; height:26px;"></i>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:1.6rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${this.enrollments.length}
-              </div>
-              <div style="font-size:0.82rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
-                الكورسات والمجموعات
+          <!-- Circle 1: Completed Lessons -->
+          <a href="#student-groups" class="circle-stat-pod" title="عرض كافة الدروس والمجموعات">
+            <div class="circle-ring-wrapper">
+              <svg width="84" height="84" viewBox="0 0 84 84">
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="rgba(16,185,129,0.12)" stroke-width="6.5" />
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="url(#circ-emerald)" stroke-width="6.5" stroke-dasharray="226" stroke-dashoffset="${lessonsOffset}" stroke-linecap="round" style="transform:rotate(-90deg); transform-origin:42px 42px; transition:stroke-dashoffset 0.8s ease;" />
+              </svg>
+              <div class="circle-ring-value" style="color:#10b981;">
+                ${completedLessons}
               </div>
             </div>
-            <span style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:12px; background:var(--primary-glow); color:var(--primary);">
-              مجموعاتك ↗
-            </span>
-          </div>
+            <div style="text-align:center;">
+              <div class="circle-stat-label">الدروس المكتملة</div>
+              <div class="circle-stat-sub">إنجاز رائع 🏆</div>
+            </div>
+          </a>
 
-          <!-- Card 2: Completed Lessons -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer;" title="انقر للانتقال إلى مجموعاتك ودوراتك" onclick="window.location.hash='#student-groups';">
-            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="check-circle-2" style="width:26px; height:26px;"></i>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:1.6rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${this.stats.completedLessonsCount || 0}
-              </div>
-              <div style="font-size:0.82rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
-                الدروس المكتملة
+          <!-- Circle 2: Enrolled Cohorts & Courses -->
+          <a href="#student-groups" class="circle-stat-pod" title="عرض مجموعاتك وأفواجك الدراسية">
+            <div class="circle-ring-wrapper">
+              <svg width="84" height="84" viewBox="0 0 84 84">
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="rgba(99,102,241,0.12)" stroke-width="6.5" />
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="url(#circ-indigo)" stroke-width="6.5" stroke-dasharray="226" stroke-dashoffset="${groupsOffset}" stroke-linecap="round" style="transform:rotate(-90deg); transform-origin:42px 42px; transition:stroke-dashoffset 0.8s ease;" />
+              </svg>
+              <div class="circle-ring-value" style="color:var(--primary);">
+                ${groupCount}
               </div>
             </div>
-            <span style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981;">
-              إنجاز رائع 🏆
-            </span>
-          </div>
+            <div style="text-align:center;">
+              <div class="circle-stat-label">أفواجي التعليمية</div>
+              <div class="circle-stat-sub">مجموعاتك ↗</div>
+            </div>
+          </a>
 
-          <!-- Card 3: Study Hours -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer;" title="انقر لاستكشاف المزيد من ساعات المذاكرة والمناهج" onclick="window.location.hash='#courses';">
-            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.05)); color:#06b6d4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="clock" style="width:26px; height:26px;"></i>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:1.6rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${this.stats.studyHours || 0}<span style="font-size:0.95rem; font-weight:700; color:var(--text-muted); margin-inline-start:4px;">ساعة</span>
-              </div>
-              <div style="font-size:0.82rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
-                ساعات المذاكرة
+          <!-- Circle 3: Study Hours -->
+          <a href="#courses" class="circle-stat-pod" title="عرض ساعات المذاكرة والمناهج">
+            <div class="circle-ring-wrapper">
+              <svg width="84" height="84" viewBox="0 0 84 84">
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="rgba(6,182,212,0.12)" stroke-width="6.5" />
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="url(#circ-cyan)" stroke-width="6.5" stroke-dasharray="226" stroke-dashoffset="${hoursOffset}" stroke-linecap="round" style="transform:rotate(-90deg); transform-origin:42px 42px; transition:stroke-dashoffset 0.8s ease;" />
+              </svg>
+              <div class="circle-ring-value" style="color:#06b6d4;">
+                ${studyHours}<span style="font-size:0.75rem; font-weight:700;">س</span>
               </div>
             </div>
-            <span style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:12px; background:rgba(6,182,212,0.12); color:#06b6d4;">
-              وقت الاستثمار ⚡
-            </span>
-          </div>
+            <div style="text-align:center;">
+              <div class="circle-stat-label">ساعات المذاكرة</div>
+              <div class="circle-stat-sub">استثمار الوقت ⚡</div>
+            </div>
+          </a>
 
-          <!-- Card 4: Private Sessions Balance -->
-          <div class="glass-card stat-card-hover" style="padding:22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer;" title="انقر لإدارة وعرض باقات الحصص الخاصة" onclick="window.location.hash='#student-subscriptions';">
-            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05)); color:#a855f7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="sparkles" style="width:26px; height:26px;"></i>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:1.6rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${totalRemainingCredits}<span style="font-size:0.95rem; font-weight:700; color:var(--text-muted); margin-inline-start:4px;">حصة</span>
-              </div>
-              <div style="font-size:0.82rem; font-weight:700; color:var(--text-muted); margin-top:2px;">
-                رصيد الحصص الخاصة
+          <!-- Circle 4: Private Sessions Balance -->
+          <a href="#student-subscriptions" class="circle-stat-pod" title="عرض باقات الحصص الخاصة">
+            <div class="circle-ring-wrapper">
+              <svg width="84" height="84" viewBox="0 0 84 84">
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="rgba(168,85,247,0.12)" stroke-width="6.5" />
+                <circle cx="42" cy="42" r="36" fill="transparent" stroke="url(#circ-purple)" stroke-width="6.5" stroke-dasharray="226" stroke-dashoffset="${creditsOffset}" stroke-linecap="round" style="transform:rotate(-90deg); transform-origin:42px 42px; transition:stroke-dashoffset 0.8s ease;" />
+              </svg>
+              <div class="circle-ring-value" style="color:#a855f7;">
+                ${privateCredits}
               </div>
             </div>
-            <a href="#student-subscriptions" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:12px; background:rgba(168,85,247,0.15); color:#a855f7; text-decoration:none;" onclick="event.stopPropagation();">
-              الباقات ↗
-            </a>
-          </div>
+            <div style="text-align:center;">
+              <div class="circle-stat-label">الحصص الخاصة</div>
+              <div class="circle-stat-sub">الباقات المتاحة 💎</div>
+            </div>
+          </a>
 
-        </div> <!-- Close Gamified Metrics Grid -->
+        </div>
 
         <!-- 3. Priority 1: Today's Live Broadcast Studio (استوديو البث المباشر لليوم) -->
         <div class="creative-live-stage">
           
           <!-- Section Header -->
-          <div style="position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:16px;">
-            <div style="display:flex; align-items:center; gap:14px;">
-              <div style="position:relative; width:48px; height:48px; border-radius:16px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(16,185,129,0.35); flex-shrink:0;">
-                <i data-lucide="radio" style="width:24px; height:24px;"></i>
-                <span style="position:absolute; top:-3px; right:-3px; width:12px; height:12px; border-radius:50%; background:#ef4444; border:2px solid #fff; box-shadow:0 0 8px #ef4444;"></span>
+          <div style="position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="position:relative; width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #10b981, #059669); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(16,185,129,0.35); flex-shrink:0;">
+                <i data-lucide="radio" style="width:22px; height:22px;"></i>
+                <span style="position:absolute; top:-2px; right:-2px; width:12px; height:12px; border-radius:50%; background:#ef4444; border:2px solid #fff; box-shadow:0 0 8px #ef4444;"></span>
               </div>
               <div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <h2 style="font-size:1.35rem; font-weight:900; margin:0; color:var(--text-main); letter-spacing:-0.02em;">
+                  <h2 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main); letter-spacing:-0.02em;">
                     استوديو البث والحصص المباشرة لليوم
                   </h2>
-                  <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:900; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
+                  <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:12px; font-size:0.75rem; font-weight:900; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
                     <span style="width:6px; height:6px; border-radius:50%; background:#10b981; box-shadow:0 0 6px #10b981;"></span>
                     ${todaySessions.length > 0 ? `${todaySessions.length} حصص مجدولة` : 'اليوم'}
                   </span>
                 </div>
-                <p style="color:var(--text-muted); font-size:0.86rem; margin:3px 0 0 0;">
-                  قاعة الحضور والتفاعل الحي • سجّل حضورك وانضم مباشرة للبث التفاعلي مع أساتذتك
+                <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">
+                  قاعة الحضور والتفاعل الحي • سجّل حضورك وانضم مباشرة للبث عبر Google Meet
                 </p>
               </div>
             </div>
 
             <div style="display:flex; align-items:center; gap:10px;">
-              <a href="#schedule" class="btn-secondary" style="font-size:0.82rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); transition:all 0.2s;">
-                <i data-lucide="calendar" style="width:15px; height:15px; color:var(--primary);"></i>
-                <span>الجدول الدراسي الكامل 📅</span>
+              <a href="#schedule" class="btn-secondary" style="font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); transition:all 0.2s;">
+                <i data-lucide="calendar" style="width:14px; height:14px; color:var(--primary);"></i>
+                <span>الجدول الكامل 📅</span>
               </a>
             </div>
           </div>
 
           <!-- Section Content -->
           ${todaySessions.length === 0 ? `
-            <div style="position:relative; z-index:1; padding:28px 32px; border-radius:22px; background:var(--bg-card); border:1px dashed var(--border-focus); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
-              <div style="display:flex; align-items:center; gap:18px; max-width:600px;">
-                <div style="width:54px; height:54px; border-radius:18px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(16,185,129,0.1)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.6rem;">
+            <div style="position:relative; z-index:1; padding:18px 24px; border-radius:18px; background:var(--bg-card); border:1px dashed var(--border-focus); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(99,102,241,0.1)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.3rem;">
                   ☕
                 </div>
                 <div>
-                  <h4 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0 0 4px 0;">
-                    يوم هادئ ومخصص للمذاكرة المستقلة والإنجاز ✨
+                  <h4 style="font-size:0.96rem; font-weight:800; color:var(--text-main); margin:0 0 2px 0;">
+                    لا توجد حصص بث مباشر مقررة لليوم ✨
                   </h4>
-                  <p style="font-size:0.85rem; color:var(--text-muted); margin:0; line-height:1.5;">
-                    لا توجد حصص بث مباشر مقررة اليوم. استغل هذا الوقت لمتابعة أحدث شروحات مجموعاتك وحل الواجبات المعلقة أو حجز حصة خاصة مع معلمك.
+                  <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
+                    يوم هادئ ومخصص للمذاكرة المستقلة، متابعة شروحات المجموعات، وحل الواجبات.
                   </p>
                 </div>
               </div>
 
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="#student-groups" class="btn-primary" style="padding:10px 18px; border-radius:14px; font-size:0.82rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                  <i data-lucide="play-circle" style="width:16px; height:16px;"></i>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="#student-groups" class="btn-primary" style="padding:8px 16px; border-radius:12px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="play-circle" style="width:14px; height:14px;"></i>
                   <span>شروحات وفيديوهات المجموعات 🎥</span>
-                </a>
-                <a href="#student-private-sessions" class="btn-secondary" style="padding:10px 18px; border-radius:14px; font-size:0.82rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                  <i data-lucide="user-plus" style="width:16px; height:16px; color:var(--primary);"></i>
-                  <span>طلب حصة خاصة 🎯</span>
                 </a>
               </div>
             </div>
           ` : `
-            <div style="position:relative; z-index:1; display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:20px;">
+            <div style="position:relative; z-index:1; display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:18px;">
               ${todaySessions.map(s => this.renderSessionCard(s)).join('')}
             </div>
           `}
 
         </div>
 
-        <!-- 4. Priority 2: Creative Groups Showcase (أفواج ومجموعاتي الدراسية) -->
-        <div style="margin-bottom:36px;">
+        <!-- 4. Priority 2: Reduced Compact Groups Showcase (أفواج ومجموعاتي الدراسية) -->
+        <div style="margin-bottom:32px;">
           
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.12)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i data-lucide="layers" style="width:22px; height:22px;"></i>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.12)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="layers" style="width:20px; height:20px;"></i>
               </div>
               <div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <h2 style="font-size:1.3rem; font-weight:900; margin:0; color:var(--text-main); letter-spacing:-0.02em;">
+                  <h2 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main); letter-spacing:-0.02em;">
                     أفواج ومجموعاتي الدراسية
                   </h2>
-                  <span style="font-size:0.75rem; font-weight:900; padding:3px 10px; border-radius:12px; background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
-                    ${recentGroups.length} مجموعات
+                  <span style="font-size:0.75rem; font-weight:900; padding:2px 9px; border-radius:12px; background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
+                    ${recentGroups.length} أفواج
                   </span>
                 </div>
-                <p style="color:var(--text-muted); font-size:0.85rem; margin:3px 0 0 0;">
-                  بنوك الشروحات المسجلة ولقاءات البث المباشر المخصصة لفوجك (مرتبة من الأحدث)
+                <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">
+                  بنوك الشروحات المسجلة ولقاءات البث المباشر المخصصة لفوجك
                 </p>
               </div>
             </div>
 
-            <a href="#student-groups" class="btn-secondary" style="font-size:0.84rem; font-weight:800; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:14px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); transition:all 0.2s;">
-              <span>عرض كافة المجموعات (${recentGroups.length})</span>
-              <i data-lucide="arrow-left" style="width:15px; height:15px;"></i>
+            <a href="#student-groups" class="btn-secondary" style="font-size:0.82rem; font-weight:800; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); transition:all 0.2s;">
+              <span>كافة المجموعات (${recentGroups.length})</span>
+              <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
             </a>
           </div>
 
           ${recentGroups.length === 0 ? `
-            <div class="glass-card" style="text-align:center; padding:48px 24px; border-radius:24px; color:var(--text-muted); border:1px dashed var(--border-color); background:var(--bg-card);">
-              <div style="width:60px; height:60px; border-radius:20px; background:rgba(99,102,241,0.08); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-                <i data-lucide="users" style="width:30px; height:30px;"></i>
+            <div class="glass-card" style="text-align:center; padding:36px 20px; border-radius:20px; color:var(--text-muted); border:1px dashed var(--border-color); background:var(--bg-card);">
+              <div style="width:54px; height:54px; border-radius:50%; background:rgba(99,102,241,0.08); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                <i data-lucide="users" style="width:26px; height:26px;"></i>
               </div>
-              <h4 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0 0 8px;">لا توجد مجموعات مسجلة حالياً</h4>
-              <p style="font-size:0.88rem; max-width:420px; margin:0 auto 20px; line-height:1.6;">
-                انضم الآن إلى أقوى الأفواج والمجموعات التعليمية للتفاعل المباشر مع نخبة المعلمين ومشاهدة بنوك الشروحات.
+              <h4 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0 0 6px;">لا توجد مجموعات مسجلة حالياً</h4>
+              <p style="font-size:0.84rem; max-width:400px; margin:0 auto 16px; line-height:1.5;">
+                انضم الآن إلى أقوى الأفواج والمجموعات التعليمية للتفاعل المباشر مع نخبة المعلمين.
               </p>
-              <a href="#courses" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; border-radius:24px; font-size:0.88rem; font-weight:800; text-decoration:none;">
-                <i data-lucide="compass" style="width:16px; height:16px;"></i> استكشف المناهج المتاحة
+              <a href="#courses" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:8px 20px; border-radius:20px; font-size:0.84rem; font-weight:800; text-decoration:none;">
+                <i data-lucide="compass" style="width:15px; height:15px;"></i> استكشف المناهج
               </a>
             </div>
           ` : `
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:22px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px;">
               ${recentGroups.slice(0, 4).map((g, idx) => {
                 const teacherAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(g.teacher?.name || 'teacher')}`;
                 const groupLink = g.id ? `#group/${g.id}` : '#student-groups';
                 const nextFmt = g.nextSession ? formatSessionDateTime(g.nextSession.scheduledAt, null, {}) : null;
 
                 const gradients = [
-                  'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                  'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)',
-                  'linear-gradient(135deg, #d97706 0%, #ea580c 100%)',
-                  'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)'
+                  'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                  'linear-gradient(135deg, #0284c7, #0d9488)',
+                  'linear-gradient(135deg, #d97706, #ea580c)',
+                  'linear-gradient(135deg, #ec4899, #8b5cf6)'
                 ];
                 const grad = gradients[idx % gradients.length];
 
                 return `
-                  <div class="creative-cohort-card">
+                  <div class="compact-cohort-card" onclick="window.location.hash='${groupLink}'">
 
-                    <!-- Top Chromatic Strip -->
-                    <div style="height:6px; width:100%; background:${grad};"></div>
-
-                    <!-- Card Header -->
-                    <div style="padding:18px 22px 14px; background:linear-gradient(180deg, rgba(99,102,241,0.03) 0%, transparent 100%); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                    <!-- Top Row: Circular Emblem + Tags -->
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
                       
-                      <div style="flex:1; min-width:0;">
-                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-                          <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-block;">
-                            ${g.courseTitle || 'مجموعة دراسية'}
-                          </span>
-                          ${g.gradeName ? `<span style="font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(16,185,129,0.1); color:#10b981;">${g.gradeName}</span>` : ''}
-                        </div>
-
-                        <h3 style="font-size:1.08rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.3; cursor:pointer;" onclick="window.location.hash='${groupLink}'">
-                          👥 ${g.title}
-                        </h3>
-                      </div>
-
-                      ${g.liveSession ? `
-                        <span style="padding:4px 10px; border-radius:20px; font-size:0.72rem; font-weight:900; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.35); display:inline-flex; align-items:center; gap:4px; white-space:nowrap; animation:pulseRed 2s infinite;">
-                          <span style="width:6px; height:6px; border-radius:50%; background:#ef4444;"></span>
-                          مباشر الآن
-                        </span>
-                      ` : g.status === 'pending' ? `
-                        <span style="padding:3px 10px; border-radius:14px; font-size:0.72rem; font-weight:800; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">
-                          ⏳ قيد المراجعة
-                        </span>
-                      ` : `
-                        <span style="padding:3px 10px; border-radius:14px; font-size:0.72rem; font-weight:800; background:rgba(16,185,129,0.1); color:#10b981; white-space:nowrap;">
-                          نشطة ⚡
-                        </span>
-                      `}
-                    </div>
-
-                    <!-- Card Body -->
-                    <div style="padding:18px 22px; flex:1; display:flex; flex-direction:column; gap:14px;">
-                      
-                      <!-- Teacher Info Pod -->
-                      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color);">
-                        <img src="${teacherAvatar}" alt="${g.teacher?.name || ''}" style="width:38px; height:38px; border-radius:12px; object-fit:cover; border:1.5px solid rgba(99,102,241,0.25);">
-                        <div style="flex:1; min-width:0;">
-                          <div style="font-size:0.86rem; font-weight:900; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${g.teacher?.name || 'الأستاذ'}
-                          </div>
-                          <div style="font-size:0.73rem; color:var(--text-muted); font-weight:700;">معلم المجموعة الأكاديمي</div>
-                        </div>
-                        <div style="font-size:0.75rem; color:var(--primary); font-weight:800; background:var(--primary-glow); padding:3px 8px; border-radius:8px;">
-                          معتمد ⭐
-                        </div>
-                      </div>
-
-                      <!-- Group Features Grid -->
-                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.76rem;">
-                        <div style="padding:8px 12px; border-radius:12px; background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.12); display:flex; align-items:center; gap:6px;">
-                          <i data-lucide="video" style="width:14px; height:14px; color:var(--primary);"></i>
-                          <span style="color:var(--text-main); font-weight:800;">شروحات المعلم 🎥</span>
-                        </div>
-
-                        <div style="padding:8px 12px; border-radius:12px; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.12); display:flex; align-items:center; gap:6px;">
-                          <i data-lucide="check-circle" style="width:14px; height:14px; color:#10b981;"></i>
-                          <span style="color:var(--text-main); font-weight:800;">واجبات وتصحيح 🎯</span>
-                        </div>
-                      </div>
-
-                      <!-- Schedule / Next Session Pill -->
-                      ${g.scheduleText ? `
-                        <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted); font-weight:700; padding:6px 10px; border-radius:10px; background:rgba(0,0,0,0.02);">
-                          <i data-lucide="calendar" style="width:15px; height:15px; color:var(--primary); flex-shrink:0;"></i>
-                          <span style="line-height:1.4;">${g.scheduleText}</span>
-                        </div>
-                      ` : ''}
-
-                      ${nextFmt ? `
-                        <div style="padding:10px 14px; border-radius:14px; background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(16,185,129,0.04)); border:1px solid rgba(99,102,241,0.15); display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:0.78rem;">
-                          <div style="display:flex; align-items:center; gap:6px; color:var(--primary); font-weight:800;">
-                            <i data-lucide="clock" style="width:14px; height:14px;"></i>
-                            <span>الحصة القادمة:</span>
-                          </div>
-                          <span style="color:var(--text-main); font-weight:900;">${nextFmt.dateStr} • ${nextFmt.timeStr}</span>
-                        </div>
-                      ` : ''}
-
-                      <!-- Action Button -->
-                      <div style="margin-top:auto; padding-top:8px; display:flex; gap:10px; align-items:center;">
-                        <a href="${groupLink}" class="btn-primary"
-                          style="flex:1; padding:11px 16px; border-radius:14px; font-size:0.86rem; font-weight:900; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(99,102,241,0.25); transition:all 0.2s;"
-                          onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
-                          <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
-                          <span>دخول قاعة المجموعة وفيديوهاتها 🚀</span>
-                        </a>
-
-                        ${(g.liveSession && g.meetingLink) ? `
-                          <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-primary"
-                            style="padding:11px 16px; border-radius:14px; font-size:0.86rem; font-weight:900; background:linear-gradient(135deg, #10b981, #059669); color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 16px rgba(16,185,129,0.35); flex-shrink:0;">
-                            <i data-lucide="video" style="width:16px; height:16px;"></i>
-                            <span>بث مباشر 🔴</span>
-                          </a>
+                      <!-- Circular Cohort Emblem -->
+                      <div style="position:relative; width:56px; height:56px; border-radius:50%; padding:2.5px; background:${grad}; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(99,102,241,0.2); flex-shrink:0;">
+                        <img src="${teacherAvatar}" alt="${g.teacher?.name || ''}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; background:var(--bg-card);">
+                        ${g.liveSession ? `
+                          <span style="position:absolute; bottom:-2px; right:-2px; width:14px; height:14px; border-radius:50%; background:#ef4444; border:2px solid #fff; box-shadow:0 0 8px #ef4444; animation:pulseRed 2s infinite;"></span>
                         ` : ''}
                       </div>
 
+                      <!-- Badges -->
+                      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        ${g.liveSession ? `
+                          <span style="padding:3px 9px; border-radius:20px; font-size:0.7rem; font-weight:900; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.35); animation:pulseRed 2s infinite;">
+                            🔴 مباشر الآن
+                          </span>
+                        ` : `
+                          <span style="padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:800; background:rgba(99,102,241,0.1); color:var(--primary);">
+                            ${g.gradeName || 'فوج دراسي'}
+                          </span>
+                        `}
+                        <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">
+                          👨‍🏫 ${g.teacher?.name || 'الأستاذ'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Group Title & Subject -->
+                    <div style="margin-top:12px; margin-bottom:8px;">
+                      <h3 style="font-size:1.02rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${g.title}
+                      </h3>
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        📚 ${g.courseTitle || 'دورة المنهج'}
+                      </div>
+                    </div>
+
+                    <!-- Next Session or Schedule -->
+                    ${nextFmt ? `
+                      <div style="font-size:0.74rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.06); padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; margin-bottom:12px; width:fit-content;">
+                        <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                        <span>${nextFmt.dateStr} • ${nextFmt.timeStr}</span>
+                      </div>
+                    ` : g.scheduleText ? `
+                      <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        🗓️ ${g.scheduleText}
+                      </div>
+                    ` : `
+                      <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:12px;">
+                        🎥 بنك الفيديوهات والشروحات متاح
+                      </div>
+                    `}
+
+                    <!-- Single Compact Button -->
+                    <div style="margin-top:auto; display:flex; gap:8px;">
+                      <a href="${groupLink}" class="btn-primary" onclick="event.stopPropagation();"
+                        style="flex:1; padding:8px 12px; border-radius:12px; font-size:0.82rem; font-weight:900; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 3px 12px rgba(99,102,241,0.2);">
+                        <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
+                        <span>دخول قاعة الفوج 🚀</span>
+                      </a>
+                      ${(g.liveSession && g.meetingLink) ? `
+                        <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-primary" onclick="event.stopPropagation();"
+                          style="padding:8px 12px; border-radius:12px; font-size:0.82rem; font-weight:900; background:linear-gradient(135deg, #10b981, #059669); color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
+                          <i data-lucide="video" style="width:14px; height:14px;"></i>
+                          <span>بث 🔴</span>
+                        </a>
+                      ` : ''}
                     </div>
 
                   </div>
@@ -800,7 +851,7 @@ export default class StudentView {
           `}
         </div>
 
-        <!-- 4. Main Two-Column Hub Layout -->
+        <!-- 5. Main Two-Column Hub Layout -->
         <div style="display:grid; grid-template-columns: 1fr 360px; gap:28px; align-items:start;" class="dashboard-main-grid-layout">
           
           <!-- Left Column (Main Track) -->
