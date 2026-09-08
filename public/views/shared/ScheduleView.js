@@ -22,9 +22,6 @@ export default class ScheduleView {
             <h2 class="dashboard-section-title" style="font-size:2rem; margin:0;">
               <i data-lucide="calendar"></i> ${t("nav.schedule")}
             </h2>
-            ${state.user.role === 'teacher' || state.user.role === 'admin' ?
-          `<button class="btn-primary" id="open-session-modal-btn"><i data-lucide="calendar-plus"></i> ${t("teacher.planSession")}</button>` : ''
-        }
           </div>
           
           <div style="display:flex; align-items:center; gap:6px; margin-bottom:24px; flex-wrap:wrap; background:var(--bg-card); padding:8px 12px; border-radius:30px; border:1px solid var(--border-color); width:fit-content;">

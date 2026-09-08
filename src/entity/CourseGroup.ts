@@ -4,6 +4,7 @@ import { User } from "./User";
 import { Enrollment } from "./Enrollment";
 import { Session } from "./Session";
 import { Assignment } from "./Assignment";
+import { Lesson } from "./Lesson";
 
 @Entity()
 export class CourseGroup {
@@ -75,6 +76,9 @@ export class CourseGroup {
 
   @OneToMany(() => Assignment, assignment => assignment.group)
   assignments: Assignment[];
+
+  @OneToMany(() => Lesson, lesson => lesson.group)
+  lessons: Lesson[];
 
   @Column("simple-json", { nullable: true })
   announcements: Array<{

@@ -514,17 +514,36 @@ export default class GroupHubView {
             </button>
           </div>
 
-          <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">
-            إجمالي الحصص المجدولة: <span style="font-weight:900; color:var(--text-main);">${sessions.length} حصة</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">
+              إجمالي الحصص المجدولة: <span style="font-weight:900; color:var(--text-main);">${sessions.length} حصة</span>
+            </div>
+            ${(isTeacher || isAdmin) ? `
+              <button id="open-add-group-session-modal-btn" class="btn-primary"
+                style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; font-weight:800; font-size:0.82rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5); color:#fff;">
+                <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                <span>إضافة حصة للمجموعة ➕</span>
+              </button>
+            ` : ''}
           </div>
         </div>
 
         <!-- Sessions Grid / List -->
         ${filteredSessions.length === 0 ? `
           <div class="glass-card" style="padding:60px 24px; text-align:center; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
-            <i data-lucide="calendar-x" style="width:40px; height:40px; color:var(--text-muted); margin-bottom:12px;"></i>
-            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">لا توجد حصص في هذا التصنيف</h3>
-            <p style="color:var(--text-muted); font-size:0.85rem;">تابع إعلانات المعلم لمعرفة المواعيد الجديدة.</p>
+            <div style="width:64px; height:64px; border-radius:20px; background:rgba(99,102,241,0.08); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i data-lucide="calendar-x" style="width:32px; height:32px;"></i>
+            </div>
+            <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-bottom:8px;">لا توجد حصص في هذا التصنيف</h3>
+            <p style="color:var(--text-muted); font-size:0.88rem; max-width:420px; margin:0 auto 20px; line-height:1.6;">
+              ${this.sessionFilter === 'all' ? 'لم يتم جدولة حصص لهذه المجموعة بعد. يمكنك إضافة حصص جديدة أو الانتظار حتى موعد بدء التدريس.' : 'لا توجد حصص تطابق التصفية المحددة حالياً.'}
+            </p>
+            ${(isTeacher || isAdmin) && this.sessionFilter === 'all' ? `
+              <button id="open-add-first-session-btn" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5);">
+                <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                <span>إضافة أول حصة للمجموعة الآن 📅</span>
+              </button>
+            ` : ''}
           </div>
         ` : `
           <div style="display:flex; flex-direction:column; gap:12px;">
@@ -596,6 +615,14 @@ export default class GroupHubView {
                         لم يحن الموعد بعد ⏳
                       </span>
                     `}
+
+                    ${(isTeacher || isAdmin) ? `
+                      <button class="delete-group-session-btn" data-id="${s.id}" data-title="${s.title}"
+                        style="padding:8px 10px; border-radius:12px; color:#ef4444; border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.06); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s;"
+                        title="حذف الحصة من المجموعة">
+                        <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                      </button>
+                    ` : ''}
                   </div>
 
                 </div>
@@ -1398,6 +1425,35 @@ export default class GroupHubView {
       });
     });
 
+    // Add Session Button (for Teacher / Admin)
+    const addSessionBtn = this.container.querySelector("#open-add-group-session-modal-btn");
+    if (addSessionBtn) {
+      addSessionBtn.addEventListener("click", () => this.openAddSessionModal());
+    }
+    const addFirstSessionBtn = this.container.querySelector("#open-add-first-session-btn");
+    if (addFirstSessionBtn) {
+      addFirstSessionBtn.addEventListener("click", () => this.openAddSessionModal());
+    }
+
+    // Delete Session Button (for Teacher / Admin)
+    this.container.querySelectorAll(".delete-group-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const sessId = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title") || "الحصة";
+        const ok = await confirmDialog(`هل أنت متأكد من رغبتك في حذف "${title}" نهائياً من جدول هذه المجموعة؟`);
+        if (!ok) return;
+
+        try {
+          await apiFetch(`/groups/${this.groupId}/sessions/${sessId}`, { method: "DELETE" });
+          showToast("تم حذف الحصة من جدول المجموعة بنجاح.", "success");
+          this.activeTab = "sessions";
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الحصة.", "error");
+        }
+      });
+    });
+
     // Post Announcement Form
     const annForm = this.container.querySelector("#group-announcement-form");
     if (annForm) {
@@ -1808,6 +1864,157 @@ export default class GroupHubView {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerText = "نشر الفيديو الآن 🚀";
+        }
+      }
+    });
+  }
+
+  openAddSessionModal() {
+    let modal = document.getElementById("add-group-session-modal");
+    if (modal) modal.remove();
+
+    const group = this.hubData?.group;
+    const defaultMeetingLink = group?.meetingLink || "";
+    const sessionCount = (this.hubData?.sessions || []).length + 1;
+
+    // Suggest next date/time tomorrow at same group time
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(18, 0, 0, 0);
+    const tzOffset = tomorrow.getTimezoneOffset() * 60000;
+    const defaultDatetime = new Date(tomorrow.getTime() - tzOffset).toISOString().slice(0, 16);
+
+    modal = document.createElement("div");
+    modal.id = "add-group-session-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:560px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="calendar-plus" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">إضافة حصة جديدة للمجموعة 📅</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">ستُضاف الحصة حصراً إلى جدول طلاب "${group?.name || 'هذه المجموعة'}"</div>
+            </div>
+          </div>
+          <button id="close-add-session-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="add-group-session-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                عنوان الحصة: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="session-title-input" required value="${group?.name || 'مجموعة'} - حصة ${sessionCount}"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  موعد انعقاد الحصة: <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="datetime-local" id="session-date-input" required value="${defaultDatetime}"
+                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  مدة الحصة (بالدقائق): <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="number" id="session-duration-input" required min="15" max="240" value="${group?.sessionDuration || 60}"
+                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط الاجتماع المباشر (Google Meet / Zoom):
+              </label>
+              <input type="url" id="session-meeting-link-input" value="${defaultMeetingLink}" placeholder="https://meet.google.com/... أو اتركه فارغاً لاستخدام رابط المجموعة الافتراضي"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box; direction:ltr; text-align:left;">
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                وصف الحصة / موضوع الشرح:
+              </label>
+              <textarea id="session-description-input" rows="3" placeholder="موضوع الدرس وما سيتم شرحه للطلاب في هذه الحصة..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo', sans-serif; font-size:0.88rem; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+
+          </div>
+
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-add-session-btn" class="btn-secondary" style="padding:9px 18px; border-radius:12px; font-weight:800; font-size:0.88rem; cursor:pointer;">
+              إلغاء
+            </button>
+            <button type="submit" id="submit-add-session-btn" class="btn-primary" style="padding:9px 24px; border-radius:12px; font-weight:900; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5); color:#fff;">
+              حفظ وإضافة الحصة 📅
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-add-session-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-add-session-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    const form = modal.querySelector("#add-group-session-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = modal.querySelector("#session-title-input")?.value.trim();
+      const scheduledAt = modal.querySelector("#session-date-input")?.value;
+      const duration = modal.querySelector("#session-duration-input")?.value;
+      const meetingLink = modal.querySelector("#session-meeting-link-input")?.value.trim();
+      const description = modal.querySelector("#session-description-input")?.value.trim();
+
+      if (!title || !scheduledAt) {
+        showToast("يرجى إدخال عنوان الحصة وموعدها.", "warning");
+        return;
+      }
+
+      const submitBtn = modal.querySelector("#submit-add-session-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري الحفظ... ⏳";
+      }
+
+      try {
+        await apiFetch(`/groups/${this.groupId}/sessions`, {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            scheduledAt,
+            duration: Number(duration) || 60,
+            meetingLink: meetingLink || undefined,
+            description
+          })
+        });
+
+        showToast("تمت إضافة الحصة إلى جدول المجموعة بنجاح! 📅✅", "success");
+        closeModal();
+        this.activeTab = "sessions";
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إضافة الحصة.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "حفظ وإضافة الحصة 📅";
         }
       }
     });

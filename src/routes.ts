@@ -110,6 +110,8 @@ router.put("/groups/:id", authMiddleware, requireRole(["teacher", "admin"]), Cou
 router.delete("/groups/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroup);
 router.get("/groups/:id/roster", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getGroupRoster);
 router.get("/groups/:id/sessions", authMiddleware, CourseGroupController.getGroupSessions);
+router.post("/groups/:id/sessions", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroupSession);
+router.delete("/groups/:id/sessions/:sessionId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupSession);
 router.get("/groups/:id/hub", authMiddleware, CourseGroupController.getGroupHub);
 router.post("/groups/:id/announcements", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.postGroupAnnouncement);
 router.delete("/groups/:id/announcements/:announcementId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupAnnouncement);
@@ -224,6 +226,7 @@ router.post("/upload", authMiddleware, uploadSingleFile, UploadController.upload
 
 // Live Sessions
 router.get("/sessions", optionalAuthMiddleware, SessionController.getAll);
+router.get("/sessions/:id/reminder-data", authMiddleware, requireRole(["admin", "teacher"]), SessionController.getSessionReminderData);
 router.post("/sessions", authMiddleware, requireRole(["teacher", "admin"]), SessionController.create);
 router.put("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), SessionController.update);
 router.delete("/sessions/:id", authMiddleware, requireRole(["teacher", "admin"]), SessionController.delete);
@@ -282,6 +285,7 @@ router.put("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), Blog
 router.delete("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), BlogController.delete);
 
 // Assignments & Submissions
+router.get("/assignments/teacher-review", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.getTeacherAssignmentsReview);
 router.get("/assignments", authMiddleware, AssignmentController.getAssignments);
 router.post("/assignments", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.createAssignment);
 router.get("/assignments/:id", authMiddleware, AssignmentController.getAssignmentById);

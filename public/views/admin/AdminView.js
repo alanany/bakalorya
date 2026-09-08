@@ -1318,6 +1318,16 @@ export default class AdminView {
       this.renderGroupSessionModal();
     });
 
+    // Admin WhatsApp Session Reminder Modal
+    this.container.querySelectorAll(".admin-session-whatsapp-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        if (sessionId) {
+          this.renderSessionWhatsAppModal(sessionId);
+        }
+      });
+    });
+
     // Admin Reassign Teacher to Session
     this.container.querySelectorAll(".admin-reassign-teacher-btn").forEach(btn => {
       btn.addEventListener("click", () => {

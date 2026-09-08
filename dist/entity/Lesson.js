@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Lesson = void 0;
 const typeorm_1 = require("typeorm");
 const Course_1 = require("./Course");
+const CourseGroup_1 = require("./CourseGroup");
 let Lesson = class Lesson {
     id;
     title;
@@ -27,6 +28,7 @@ let Lesson = class Lesson {
     questions;
     objectives; // Learning objectives for this specific lesson
     course;
+    group;
     createdAt;
     updatedAt;
 };
@@ -87,6 +89,10 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)
 ], Lesson.prototype, "course", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => CourseGroup_1.CourseGroup, group => group.lessons, { nullable: true, onDelete: "CASCADE" }),
+    __metadata("design:type", Object)
+], Lesson.prototype, "group", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

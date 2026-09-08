@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { IsNull } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { Course } from "../entity/Course";
 import { Lesson } from "../entity/Lesson";
@@ -107,7 +108,7 @@ export class CourseController {
       }
 
       const lessons = await lessonRepository.find({
-        where: { course: { id } },
+        where: { course: { id }, group: IsNull() },
         order: { order: "ASC" },
       });
 

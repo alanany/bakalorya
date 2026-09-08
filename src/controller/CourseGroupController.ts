@@ -784,12 +784,9 @@ export class CourseGroupController {
       group.status = "IN_PROGRESS";
       await groupRepo.save(group);
 
-      // Remove any previous scheduled sessions for this group/course to prevent duplication on reopen & re-close
+      // Remove any previous scheduled sessions for this group
       const existingSessions = await sessionRepo.find({
-        where: [
-          { group: { id: group.id }, status: "SCHEDULED" },
-          ...(group.course?.id ? [{ course: { id: group.course.id }, group: IsNull(), status: "SCHEDULED" as any }] : [])
-        ]
+        where: { group: { id: group.id }, status: "SCHEDULED" }
       });
       if (existingSessions.length > 0) {
         await sessionRepo.remove(existingSessions);
@@ -926,15 +923,11 @@ export class CourseGroupController {
         return res.status(404).json({ error: "Group not found." });
       }
 
-      const courseId = group.course?.id;
-      let sessions: Session[] = [];
-      if (courseId) {
-        sessions = await sessionRepo.find({
-          where: { course: { id: courseId } },
-          relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher"],
-          order: { scheduledAt: "ASC" }
-        });
-      }
+      let sessions: Session[] = await sessionRepo.find({
+        where: { group: { id: group.id } },
+        relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher"],
+        order: { scheduledAt: "ASC" }
+      });
 
       // De-duplicate any legacy duplicated sessions
       const seen = new Set<string>();
@@ -1031,13 +1024,9 @@ export class CourseGroupController {
         }
       }
 
-      // Fetch group sessions (both explicitly assigned to this group, or course sessions if legacy)
-      const courseId = group.course?.id;
+      // Fetch group sessions (strictly for this specific group)
       let sessions = await sessionRepo.find({
-        where: [
-          { group: { id: group.id } },
-          ...(courseId ? [{ course: { id: courseId }, group: IsNull() }] : [])
-        ],
+        where: { group: { id: group.id } },
         relations: ["teacher", "group"],
         order: { scheduledAt: "ASC" }
       });
@@ -1100,43 +1089,37 @@ export class CourseGroupController {
         })
       );
 
-      // Fetch group assignments
+      // Fetch group assignments (strictly for this specific group)
       const assignments = await assignmentRepo.find({
-        where: [
-          { group: { id: group.id } },
-          ...(courseId ? [{ course: { id: courseId }, group: IsNull() }] : [])
-        ],
+        where: { group: { id: group.id } },
         relations: ["lesson"],
         order: { dueDate: "DESC", createdAt: "DESC" }
       });
 
-      // Fetch lessons / videos for course (sorted newer first)
+      // Fetch lessons / videos strictly for this group (sorted newer first)
       const lessonRepo = AppDataSource.getRepository(Lesson);
-      let videos: any[] = [];
-      if (courseId) {
-        const courseLessons = await lessonRepo.find({
-          where: { course: { id: courseId } },
-          order: { createdAt: "DESC" }
-        });
+      const groupLessons = await lessonRepo.find({
+        where: { group: { id: group.id } },
+        order: { createdAt: "DESC" }
+      });
 
-        videos = (courseLessons || [])
-          .filter((l: any) => l.videoUrl && l.videoUrl.trim().length > 0)
-          .map((l: any) => ({
-            id: l.id,
-            title: l.title,
-            description: l.description,
-            videoUrl: l.videoUrl,
-            duration: l.duration,
-            chapter: l.chapter,
-            photo: l.photo,
-            notes: l.notes,
-            resourceUrl: l.resourceUrl,
-            resourceTitle: l.resourceTitle,
-            createdAt: l.createdAt,
-            updatedAt: l.updatedAt
-          }))
-          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
+      const videos = (groupLessons || [])
+        .filter((l: any) => l.videoUrl && l.videoUrl.trim().length > 0)
+        .map((l: any) => ({
+          id: l.id,
+          title: l.title,
+          description: l.description,
+          videoUrl: l.videoUrl,
+          duration: l.duration,
+          chapter: l.chapter,
+          photo: l.photo,
+          notes: l.notes,
+          resourceUrl: l.resourceUrl,
+          resourceTitle: l.resourceTitle,
+          createdAt: l.createdAt,
+          updatedAt: l.updatedAt
+        }))
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       const assignmentsWithSubmissions = await Promise.all(
         assignments.map(async (asgn) => {
@@ -1319,10 +1302,11 @@ export class CourseGroupController {
       lesson.resourceUrl = resourceUrl || null;
       lesson.resourceTitle = resourceTitle || null;
       lesson.course = group.course;
+      lesson.group = group;
 
       await lessonRepo.save(lesson);
 
-      return res.status(201).json({ message: "تم رفع ونشر الفيديو بنجاح! 🎥✅", video: lesson });
+      return res.status(201).json({ message: "تم رفع ونشر الفيديو بنجاح للمجموعة! 🎥✅", video: lesson });
     } catch (err: any) {
       console.error("Error uploading group video:", err);
       return res.status(500).json({ error: "فشل رفع الفيديو." });
@@ -1350,8 +1334,10 @@ export class CourseGroupController {
         return res.status(403).json({ error: "غير مصرح لك بحذف الفيديوهات." });
       }
 
-      const lesson = await lessonRepo.findOne({ where: { id: videoId } });
-      if (!lesson) return res.status(404).json({ error: "الفيديو غير موجود." });
+      const lesson = await lessonRepo.findOne({
+        where: { id: videoId, group: { id: group.id } }
+      });
+      if (!lesson) return res.status(404).json({ error: "الفيديو غير موجود في هذه المجموعة." });
 
       await lessonRepo.remove(lesson);
       return res.status(200).json({ message: "تم حذف الفيديو بنجاح." });
@@ -1707,6 +1693,122 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error creating group assignment:", err);
       return res.status(500).json({ error: "فشل إضافة الواجب." });
+    }
+  }
+
+  // POST /groups/:id/sessions - Add a new session specifically to this group
+  static async createGroupSession(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, description, scheduledAt, duration, meetingLink } = req.body;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      if (!title || !scheduledAt) {
+        return res.status(400).json({ error: "يرجى إدخال عنوان الحصة وموعد انعقادها." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بإضافة حصص لهذه المجموعة." });
+      }
+
+      const teacher = group.teacher || group.course?.teacher;
+      const sess = new Session();
+      sess.title = title.trim();
+      sess.description = description ? description.trim() : `حصة تفاعلية مباشرة ضمن ${group.name}`;
+      sess.course = group.course;
+      sess.group = group;
+      sess.teacher = teacher as any;
+      sess.student = null as any;
+      sess.scheduledAt = new Date(scheduledAt);
+      sess.duration = Number(duration) || group.sessionDuration || 60;
+      sess.meetingLink = meetingLink ? meetingLink.trim() : (group.meetingLink || group.course?.meetingLink || null);
+      sess.status = "SCHEDULED";
+
+      const saved = await sessionRepo.save(sess);
+
+      // Notify enrolled students
+      try {
+        const enrollments = await enrollmentRepo.find({
+          where: { group: { id: group.id }, status: "active" },
+          relations: ["student"]
+        });
+        const dateStr = new Date(scheduledAt).toLocaleDateString("ar-EG", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        for (const enr of enrollments) {
+          if (enr.student) {
+            await NotificationController.createNotification(
+              enr.student.id,
+              `حصة مباشرة جديدة: ${title.trim()} 📅`,
+              `تمت إضافة حصة جديدة في "${group.name}" في موعد: ${dateStr}.`,
+              "info",
+              `#group/${group.id}`
+            );
+          }
+        }
+      } catch (e) {}
+
+      return res.status(201).json({ message: "تمت إضافة الحصة للمجموعة بنجاح! 📅✅", session: saved });
+    } catch (err: any) {
+      console.error("Error creating group session:", err);
+      return res.status(500).json({ error: "فشل إضافة الحصة للمجموعة." });
+    }
+  }
+
+  // DELETE /groups/:id/sessions/:sessionId - Delete a group session
+  static async deleteGroupSession(req: AuthRequest, res: Response) {
+    try {
+      const { id, sessionId } = req.params;
+      const currentUserId = req.user?.id;
+      const currentUserRole = req.user?.role;
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const sessionRepo = AppDataSource.getRepository(Session);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["teacher", "course", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
+      const isAdmin = currentUserRole === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بحذف حصص هذه المجموعة." });
+      }
+
+      const session = await sessionRepo.findOne({
+        where: { id: sessionId, group: { id: group.id } }
+      });
+
+      if (!session) {
+        return res.status(404).json({ error: "الحصة غير موجودة في هذه المجموعة." });
+      }
+
+      await sessionRepo.remove(session);
+      return res.status(200).json({ message: "تم حذف الحصة بنجاح." });
+    } catch (err: any) {
+      console.error("Error deleting group session:", err);
+      return res.status(500).json({ error: "فشل حذف الحصة." });
     }
   }
 }

@@ -26,6 +26,7 @@ import TeacherPrivateSessionsView from "./views/teacher/TeacherPrivateSessionsVi
 import TeacherAvailabilityView from "./views/teacher/TeacherAvailabilityView.js";
 import TeacherBlogsView from "./views/teacher/TeacherBlogsView.js";
 import TeacherApplyView from "./views/teacher/TeacherApplyView.js";
+import TeacherAssignmentsReviewView from "./views/teacher/TeacherAssignmentsReviewView.js";
 
 // ── Student Views ─────────────────────────────────────────────────────────────
 import StudentView from "./views/student/StudentView.js";
@@ -1952,6 +1953,7 @@ export async function router() {
     case "#teacher-financial": ViewClass = TeacherView; break;
     case "#teacher-private-sessions": ViewClass = TeacherPrivateSessionsView; break;
     case "#teacher-groups": ViewClass = TeacherGroupsView; break;
+    case "#teacher-assignments": ViewClass = TeacherAssignmentsReviewView; break;
     case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;
@@ -1972,7 +1974,7 @@ export async function router() {
     case "#manage-course": ViewClass = CourseManageView; break;
     case "#course-preview": ViewClass = CourseLandingView; break;
     case "#schedule": ViewClass = ScheduleView; break;
-    case "#assignments": ViewClass = AssignmentsView; break;
+    case "#assignments": ViewClass = (state.user?.role === 'teacher' ? TeacherAssignmentsReviewView : AssignmentsView); break;
     case "#resources": ViewClass = ResourcesView; break;
     case "#tests": ViewClass = TestsView; break;
     case "#students": ViewClass = StudentsView; break;

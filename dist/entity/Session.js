@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Course_1 = require("./Course");
 const Subscription_1 = require("./Subscription");
+const CourseGroup_1 = require("./CourseGroup");
 let Session = class Session {
     id;
     title;
@@ -21,6 +22,7 @@ let Session = class Session {
     teacher;
     student; // Nullable for group course sessions; set for 1-on-1 private sessions
     course;
+    group;
     subscription;
     scheduledAt;
     duration; // in minutes
@@ -62,6 +64,10 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, nullable: true, onDelete: "CASCADE" }),
     __metadata("design:type", Course_1.Course)
 ], Session.prototype, "course", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => CourseGroup_1.CourseGroup, group => group.sessions, { eager: true, nullable: true, onDelete: "CASCADE" }),
+    __metadata("design:type", Object)
+], Session.prototype, "group", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Subscription_1.Subscription, { eager: true, nullable: true, onDelete: "SET NULL" }),
     __metadata("design:type", Subscription_1.Subscription)

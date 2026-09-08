@@ -109,3 +109,86 @@ export function createWhatsAppNotificationPayload(
     messageText
   };
 }
+
+/**
+ * Build Teacher Session Reminder WhatsApp Message
+ */
+export function buildTeacherSessionReminderMessage(data: {
+  teacherName: string;
+  sessionTitle: string;
+  studentOrGroupName: string;
+  scheduledDateStr: string;
+  scheduledTimeStr: string;
+  meetingLink: string;
+}): string {
+  const teacher = data.teacherName ? `أستاذ ${data.teacherName}` : "أستاذنا العزيز";
+  const meet = data.meetingLink
+    ? `🔗 رابط قاعة Google Meet:\n${data.meetingLink}`
+    : "🔗 رابط الحصة: يرجى التحقق من لوحة التحكم أو إضافة الرابط";
+
+  return `مرحباً ${teacher} 🌸
+تذكير بموعد حصتك القادمة على منصة بكالوريا:
+
+📚 عنوان الحصة: *${data.sessionTitle}*
+👥 مع: *${data.studentOrGroupName}*
+⏰ الموعد: *${data.scheduledDateStr}* - الساعة *${data.scheduledTimeStr}*
+${meet}
+
+يرجى التواجد قبل موعد الحصة بـ 5 دقائق لتجهيز القاعة وتأكيد الحضور للطلاب.
+نتمنى لك وللطلاب حصة موفقة ومثمرة! 🌟`;
+}
+
+/**
+ * Build Student Session Reminder WhatsApp Message
+ */
+export function buildStudentSessionReminderMessage(data: {
+  studentName: string;
+  sessionTitle: string;
+  teacherName: string;
+  scheduledDateStr: string;
+  scheduledTimeStr: string;
+  meetingLink: string;
+}): string {
+  const student = data.studentName ? `يا بطل ${data.studentName}` : "عزيزي الطالب";
+  const teacher = data.teacherName ? ` مع الأستاذ: *${data.teacherName}*` : "";
+  const meet = data.meetingLink
+    ? `🔗 رابط الانضمام المباشر للحصة:\n${data.meetingLink}`
+    : "🔗 رابط الحصة: متاح داخل حسابك بالمنصة";
+
+  return `أهلاً بك ${student} 👋
+حصتك الدراسية ستبدأ قريباً! جاهز للتميّز؟ 🚀
+
+📚 الحصة: *${data.sessionTitle}*${teacher}
+⏰ التوقيت: *${data.scheduledDateStr}* - الساعة *${data.scheduledTimeStr}*
+${meet}
+
+💡 نصائح سريعة قبل البدء:
+- تأكد من تجهيز كراسك وأدواتك.
+- اختر مكاناً هادئاً وتأكد من عمل المايكروفون والسماعات.
+
+نراك في القاعة، بالتوفيق والتألق الدائم! 🎓✨`;
+}
+
+/**
+ * Build Group Broadcast Reminder WhatsApp Message
+ */
+export function buildGroupBroadcastReminderMessage(data: {
+  groupTitle: string;
+  teacherName: string;
+  scheduledDateStr: string;
+  scheduledTimeStr: string;
+  meetingLink: string;
+}): string {
+  const teacher = data.teacherName ? ` مع الأستاذ: *${data.teacherName}*` : "";
+  const meet = data.meetingLink ? `🔗 رابط الانضمام المباشر:\n${data.meetingLink}` : "";
+
+  return `أعزاءنا طلاب *${data.groupTitle}* 🎓👋
+تذكير بموعد حصتكم القادمة${teacher}:
+
+⏰ التوقيت: *${data.scheduledDateStr}* - الساعة *${data.scheduledTimeStr}*
+${meet}
+
+يرجى الدخول قبل الموعد بـ 5 دقائق وتجهيز الأدوات.
+نتمنى لكم جميعاً التوفيق والتفوق! 🌟`;
+}
+

@@ -18,17 +18,25 @@ export class AssignmentController {
 
             if (user.role === 'student') {
                 const enrollmentRepo = AppDataSource.getRepository(Enrollment);
-                const enrollments = await enrollmentRepo.find({ where: { student: { id: userId } }, relations: ["course"] });
+                const enrollments = await enrollmentRepo.find({ where: { student: { id: userId } }, relations: ["course", "group"] });
                 const courseIds = enrollments.map(e => e.course?.id).filter(Boolean);
+                const groupIds = enrollments.map(e => e.group?.id).filter(Boolean);
                 
                 if (courseIds.length === 0) return res.json([]);
 
                 // Fetch assignments for enrolled courses with student's submissions
-                const assignments = await assignmentRepo.createQueryBuilder("assignment")
+                const qb = assignmentRepo.createQueryBuilder("assignment")
                     .leftJoinAndSelect("assignment.course", "course")
                     .leftJoinAndSelect("assignment.lesson", "lesson")
-                    .leftJoinAndSelect(AssignmentSubmission, "sub", "sub.assignmentId = assignment.id AND sub.studentId = :studentId", { studentId: userId })
-                    .where("assignment.courseId IN (:...courseIds)", { courseIds })
+                    .leftJoinAndSelect(AssignmentSubmission, "sub", "sub.assignmentId = assignment.id AND sub.studentId = :studentId", { studentId: userId });
+
+                if (groupIds.length > 0) {
+                    qb.where("assignment.courseId IN (:...courseIds) AND (assignment.groupId IS NULL OR assignment.groupId IN (:...groupIds))", { courseIds, groupIds });
+                } else {
+                    qb.where("assignment.courseId IN (:...courseIds) AND assignment.groupId IS NULL", { courseIds });
+                }
+
+                const assignments = await qb
                     .select([
                         "assignment.id AS id",
                         "assignment.title AS title",
@@ -387,6 +395,120 @@ export class AssignmentController {
             res.json(submissions);
         } catch (error) {
             res.status(500).json({ error: "Failed to fetch submissions" });
+        }
+    };
+
+    static getTeacherAssignmentsReview = async (req: Request, res: Response) => {
+        try {
+            const user = (req as any).user;
+            const userId = user.id || user.userId;
+            const assignmentRepo = AppDataSource.getRepository(Assignment);
+            const subRepo = AppDataSource.getRepository(AssignmentSubmission);
+            const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+            let query = assignmentRepo.createQueryBuilder("assignment")
+                .leftJoinAndSelect("assignment.course", "course")
+                .leftJoinAndSelect("assignment.lesson", "lesson")
+                .leftJoinAndSelect("assignment.group", "group");
+
+            if (user.role === 'teacher') {
+                query = query
+                    .leftJoin("course.teacher", "courseTeacher")
+                    .leftJoin("group.teacher", "groupTeacher")
+                    .where("courseTeacher.id = :teacherId OR groupTeacher.id = :teacherId", { teacherId: userId });
+            }
+
+            query = query.orderBy("assignment.createdAt", "DESC");
+            const assignments = await query.getMany();
+
+            let totalSubmissions = 0;
+            let totalGraded = 0;
+            let totalPendingGrading = 0;
+            let totalNotDelivered = 0;
+
+            const enriched = await Promise.all(assignments.map(async (asgn) => {
+                let enrollments: Enrollment[] = [];
+                if (asgn.group?.id) {
+                    enrollments = await enrollmentRepo.find({
+                        where: { group: { id: asgn.group.id }, status: "active" },
+                        relations: ["student"]
+                    });
+                } else if (asgn.course?.id) {
+                    enrollments = await enrollmentRepo.find({
+                        where: { course: { id: asgn.course.id }, status: "active" },
+                        relations: ["student"]
+                    });
+                }
+
+                const submissions = await subRepo.find({
+                    where: { assignment: { id: asgn.id } },
+                    relations: ["student"],
+                    order: { submittedAt: "DESC" }
+                });
+
+                const submittedStudentIds = new Set(submissions.map(s => s.student?.id).filter(Boolean));
+                
+                const delivered = submissions.map(s => ({
+                    id: s.id,
+                    status: s.status,
+                    grade: s.grade,
+                    percentage: s.percentage,
+                    submittedAt: s.submittedAt,
+                    student: {
+                        id: s.student?.id,
+                        name: s.student?.name || "طالب",
+                        avatar: s.student?.avatar,
+                        email: s.student?.email,
+                        phone: s.student?.phone
+                    }
+                }));
+
+                const notDelivered = enrollments
+                    .filter(e => e.student && !submittedStudentIds.has(e.student.id))
+                    .map(e => ({
+                        id: e.student.id,
+                        name: e.student.name || "طالب",
+                        avatar: e.student.avatar,
+                        email: e.student.email,
+                        phone: e.student.phone
+                    }));
+
+                const submissionsCount = submissions.length;
+                const gradedCount = submissions.filter(s => s.status === 'graded').length;
+                const pendingGradingCount = Math.max(0, submissionsCount - gradedCount);
+                const notDeliveredCount = notDelivered.length;
+                const totalStudentsCount = enrollments.length;
+
+                totalSubmissions += submissionsCount;
+                totalGraded += gradedCount;
+                totalPendingGrading += pendingGradingCount;
+                totalNotDelivered += notDeliveredCount;
+
+                return {
+                    ...asgn,
+                    totalStudentsCount,
+                    submissionsCount,
+                    gradedCount,
+                    pendingGradingCount,
+                    notDeliveredCount,
+                    delivered,
+                    notDelivered
+                };
+            }));
+
+            res.json({
+                stats: {
+                    totalAssignments: assignments.length,
+                    totalSubmissions,
+                    totalGraded,
+                    totalPendingGrading,
+                    totalNotDelivered
+                },
+                assignments: enriched
+            });
+        } catch (error) {
+            console.error("Failed to fetch teacher assignments review:", error);
+            res.status(500).json({ error: "Failed to fetch assignments review data" });
         }
     };
 

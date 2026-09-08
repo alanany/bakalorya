@@ -1,5 +1,71 @@
 import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from '../../app.js';
 
+/**
+ * Calculates estimated remaining time or status for a session.
+ * Displays during the whole day before the session (~36 hours prior) and throughout the session.
+ */
+export function getSessionCountdownInfo(scheduledAt, status) {
+  const normStatus = (status || "").toLowerCase();
+  const isCancelled = normStatus.includes("cancel");
+  const isCompleted = normStatus === "completed";
+
+  if (!scheduledAt || isCancelled || isCompleted) {
+    return { shouldShow: false, text: "", isNear: false, isLive: false };
+  }
+
+  const now = new Date();
+  const sessionTime = new Date(scheduledAt);
+  const diffMs = sessionTime.getTime() - now.getTime();
+  const diffMinutes = Math.round(diffMs / (60 * 1000));
+  const diffHours = Math.floor(diffMinutes / 60);
+  const remMinutes = diffMinutes % 60;
+
+  // Show starting from the day before the session (within ~36 hours prior),
+  // up until session end (+120 minutes after start)
+  const isWithinReminderWindow = diffMs >= -120 * 60 * 1000 && diffMs <= 36 * 60 * 60 * 1000;
+
+  if (!isWithinReminderWindow) {
+    return { shouldShow: false, text: "", isNear: false, isLive: false };
+  }
+
+  let text = "";
+  let isNear = false;
+  let isLive = false;
+
+  if (diffMinutes > 0) {
+    if (diffHours >= 24) {
+      const days = Math.floor(diffHours / 24);
+      const h = diffHours % 24;
+      text = `تبدأ بعد ${days === 1 ? 'يوم' : days + ' أيام'}${h > 0 ? ' و ' + h + ' س' : ''} (غداً)`;
+    } else if (diffHours >= 1) {
+      if (diffHours === 1) {
+        text = remMinutes > 0 ? `تبدأ بعد ساعة و${remMinutes} د` : `تبدأ بعد ساعة`;
+      } else if (diffHours === 2) {
+        text = remMinutes > 0 ? `تبدأ بعد ساعتين و${remMinutes} د` : `تبدأ بعد ساعتين`;
+      } else {
+        text = remMinutes > 0 ? `تبدأ بعد ${diffHours} س و${remMinutes} د` : `تبدأ بعد ${diffHours} س`;
+      }
+      if (diffHours <= 2) isNear = true;
+    } else {
+      text = `تبدأ خلال ${diffMinutes} دقيقة ⚡`;
+      isNear = true;
+    }
+  } else if (diffMinutes >= -120) {
+    text = `جارية الآن 🔴 (منذ ${Math.abs(diffMinutes)} د)`;
+    isLive = true;
+  } else {
+    text = "انتهى وقت الحصة";
+  }
+
+  return {
+    shouldShow: true,
+    text,
+    isNear,
+    isLive,
+    diffMinutes
+  };
+}
+
 // ── AdminSessionsPage ─────────────────────────────────────────────────────────────
 // Methods extracted from AdminView.js — assigned to AdminView.prototype
 
@@ -1176,6 +1242,7 @@ export const AdminSessionsPage = {
                 const dt = formatDateTime(s.scheduledAt);
                 const isCompleted = s.status === 'COMPLETED' || s.status === 'completed';
                 const isLive = s.status === 'live';
+                const countdown = getSessionCountdownInfo(s.scheduledAt, s.status);
 
                 return `
                   <div style="padding:12px 16px; border-radius:14px; background:var(--bg-app); border:1px solid ${isLive ? '#10b981' : isCompleted ? 'rgba(107,114,128,0.2)' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -1197,6 +1264,15 @@ export const AdminSessionsPage = {
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px; margin-inline-start:auto;">
+                      ${countdown.shouldShow ? `
+                        <span style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:8px; background:${countdown.isNear ? 'rgba(245,158,11,0.12)' : countdown.isLive ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.1)'}; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.25)' : countdown.isLive ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:3px;">
+                          <i data-lucide="${countdown.isLive ? 'radio' : 'clock'}" style="width:11px;height:11px;"></i>
+                          ${countdown.text}
+                        </span>
+                        <button class="btn-secondary admin-session-whatsapp-btn" data-id="${s.id}" style="font-size:0.72rem; padding:4px 9px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; font-weight:800; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إرسال تذكير واتساب للمعلم والطلاب">
+                          <i data-lucide="message-circle" style="width:11px;height:11px;"></i> تذكير واتساب 📲
+                        </button>
+                      ` : ''}
                       ${isLive ? `
                         <span style="font-size:0.75rem; font-weight:900; background:rgba(16,185,129,0.15); color:#10b981; padding:3px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:4px;">
                           <span style="width:6px; height:6px; border-radius:50%; background:#10b981;"></span> مباشر الآن 🔴
@@ -1261,6 +1337,15 @@ export const AdminSessionsPage = {
     document.getElementById("admin-modal-regenerate-teaching-btn")?.addEventListener("click", () => {
       closeModal();
       if (group) this.renderStartTeachingModal(group);
+    });
+
+    container.querySelectorAll(".admin-session-whatsapp-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        if (sessionId) {
+          this.renderSessionWhatsAppModal(sessionId);
+        }
+      });
     });
   },
 
@@ -1820,6 +1905,8 @@ export const AdminSessionsPage = {
           return String(tId) === String(sessTeacherId) && s.scheduledAt && new Date(s.scheduledAt).getTime() === new Date(sess.scheduledAt).getTime();
         }).length : 1;
 
+        const countdown = getSessionCountdownInfo(sess.scheduledAt, sess.status);
+
         return `
                       <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
@@ -1834,6 +1921,17 @@ export const AdminSessionsPage = {
                           <div>👨‍🏫 ${teacherName}</div>
                           <div>👤 ${studentName}</div>
                         </div>
+                        ${countdown.shouldShow ? `
+                          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:${countdown.isNear ? 'rgba(245,158,11,0.08)' : countdown.isLive ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.22)' : countdown.isLive ? 'rgba(239,68,68,0.22)' : 'rgba(16,185,129,0.22)'}; padding:5px 8px; border-radius:10px; margin-top:2px;">
+                            <span style="font-size:0.72rem; font-weight:800; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; display:inline-flex; align-items:center; gap:4px;">
+                              <i data-lucide="${countdown.isLive ? 'radio' : 'clock'}" style="width:12px;height:12px;"></i>
+                              ${countdown.text}
+                            </span>
+                            <button class="btn-secondary admin-session-whatsapp-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:3px 8px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; font-weight:800; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(16,185,129,0.3);" title="إرسال تذكير واتساب للمعلم والطلاب">
+                              <i data-lucide="message-circle" style="width:11px;height:11px;"></i> تذكير واتساب 📲
+                            </button>
+                          </div>
+                        ` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px; justify-content:flex-end;">
                           ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
                             <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px;">تغيير المعلم</button>
@@ -1876,6 +1974,7 @@ export const AdminSessionsPage = {
       const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
       const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
       const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
+      const countdown = getSessionCountdownInfo(sess.scheduledAt, sess.status);
 
       return `
                       <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">
@@ -1897,7 +1996,17 @@ export const AdminSessionsPage = {
                           ${getStatusBadge(sess.status)}
                         </td>
                         <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
-                          <div style="display:inline-flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
+                          <div style="display:inline-flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; align-items:center;">
+                            ${countdown.shouldShow ? `
+                              <span style="font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:10px; background:${countdown.isNear ? 'rgba(245,158,11,0.12)' : countdown.isLive ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.1)'}; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.25)' : countdown.isLive ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:4px;" title="الوقت التقديري المتبقي لبدء الحصة">
+                                <i data-lucide="${countdown.isLive ? 'radio' : 'clock'}" style="width:12px;height:12px;"></i>
+                                ${countdown.text}
+                              </span>
+                              <button class="btn-secondary admin-session-whatsapp-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 11px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3);" title="إرسال تذكير واتساب مخصص للمعلم والطالب">
+                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i>
+                                <span>تذكير واتساب 📲</span>
+                              </button>
+                            ` : ''}
                             ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
                               <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--primary); color:var(--primary); font-weight:700;">
                                 <i data-lucide="user-check" style="width:12px;height:12px;"></i> تغيير المعلم
@@ -3475,6 +3584,434 @@ export const AdminSessionsPage = {
 
       await doSubmit(false);
     });
+  },
+
+  // ── 7. WhatsApp Session Reminders Modal ──────────────────────────────────────
+  async renderSessionWhatsAppModal(sessionId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="session-whatsapp-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:99999;">
+        <div class="modal-content" style="max-width:920px; width:95%; max-height:92vh; display:flex; flex-direction:column; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; background:var(--bg-card); box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+          <div style="padding:50px 30px; text-align:center;">
+            <div class="spinner" style="width:40px; height:40px; margin:0 auto 16px;"></div>
+            <h4 style="font-weight:800; color:var(--text-main); margin-bottom:6px;">جاري تجهيز تذكيرات واتساب للحصة... 📲</h4>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">يتم استخراج أرقام الهواتف وصياغة الرسائل المخصصة للمعلم والطلاب...</p>
+          </div>
+        </div>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+
+    let reminderData = null;
+    try {
+      reminderData = await apiFetch(`/sessions/${sessionId}/reminder-data`);
+    } catch (err) {
+      console.warn("API reminder-data fetch failed, falling back to cached session data:", err);
+    }
+
+    // Local fallback if API fails
+    if (!reminderData || !reminderData.session) {
+      const sess = (this.allSessions || []).find(s => String(s.id) === String(sessionId));
+      if (!sess) {
+        showToast("تعذر العثور على بيانات الحصة المحددة.", "error");
+        container.innerHTML = "";
+        return;
+      }
+      const teacher = sess.teacher || sess.course?.teacher;
+      const teacherName = teacher?.name || "معلم المنصة";
+      const teacherPhone = teacher?.phone || "";
+      const studentName = sess.student?.name || (sess.course ? "طلاب الفوج الجماعي" : "طالب المنصة");
+      const studentPhone = sess.student?.phone || "";
+      const meetLink = (sess.meetingLink || sess.course?.meetingLink || teacher?.meetingLink || "").trim();
+      const schedDate = sess.scheduledAt ? new Date(sess.scheduledAt) : new Date();
+      const dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      const title = sess.title || sess.course?.title || "حصة دراسية مباشرة";
+
+      const tMsg = `مرحباً أستاذ ${teacherName} 🌸\nتذكير بموعد حصتك القادمة على منصة بكالوريا:\n\n📚 عنوان الحصة: *${title}*\n👥 مع: *${studentName}*\n⏰ الموعد: *${dateStr}* - الساعة *${timeStr}*\n🔗 رابط Google Meet:\n${meetLink || "داخل حسابك بالمنصة"}\n\nيرجى التواجد قبل الحصة بـ 5 دقائق لتجهيز القاعة وتأكيد الحضور للطلاب. بالتوفيق! 🌟`;
+      const sMsg = `أهلاً بك يا بطل ${studentName} 👋\nحصتك الدراسية ستبدأ قريباً! جاهز للتميّز؟ 🚀\n\n📚 الحصة: *${title}* مع الأستاذ: *${teacherName}*\n⏰ التوقيت: *${dateStr}* - الساعة *${timeStr}*\n🔗 رابط الانضمام المباشر للحصة:\n${meetLink || "متاح داخل حسابك بالمنصة"}\n\n💡 نصائح سريعة قبل البدء:\n- تأكد من تجهيز كراسك وأدواتك.\n- اختر مكاناً هادئاً وتأكد من عمل المايكروفون والسماعات.\n\nنراك في القاعة، بالتوفيق والتألق الدائم! 🎓✨`;
+
+      reminderData = {
+        session: { id: sess.id, title, scheduledAt: sess.scheduledAt, duration: sess.duration || 60, meetingLink: meetLink, status: sess.status },
+        teacher: {
+          id: teacher?.id || null,
+          name: teacherName,
+          phone: teacherPhone,
+          formattedPhone: getCleanWhatsAppNumber(teacherPhone),
+          whatsappUrl: `https://wa.me/${getCleanWhatsAppNumber(teacherPhone)}?text=${encodeURIComponent(tMsg)}`,
+          messageText: tMsg
+        },
+        isGroup: !sess.student,
+        student: sess.student ? {
+          id: sess.student.id,
+          name: studentName,
+          phone: studentPhone,
+          formattedPhone: getCleanWhatsAppNumber(studentPhone),
+          whatsappUrl: `https://wa.me/${getCleanWhatsAppNumber(studentPhone)}?text=${encodeURIComponent(sMsg)}`,
+          messageText: sMsg
+        } : null,
+        students: [],
+        groupBroadcastText: `أعزاءنا طلاب *${title}* 🎓👋\nتذكير بموعد حصتكم القادمة مع الأستاذ: *${teacherName}*:\n\n⏰ التوقيت: *${dateStr}* - الساعة *${timeStr}*\n🔗 رابط الانضمام: ${meetLink}\n\nيرجى الدخول قبل الموعد بـ 5 دقائق وتجهيز الأدوات. بالتوفيق! 🌟`
+      };
+    }
+
+    const { session, teacher, student, isGroup, students, groupBroadcastText } = reminderData;
+    const countdown = getSessionCountdownInfo(session.scheduledAt, session.status);
+    const dateFormatted = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' }) : '-';
+
+    const closeModal = () => {
+      const modal = document.getElementById("session-whatsapp-modal");
+      if (modal) modal.remove();
+    };
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="session-whatsapp-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:99999;">
+        <div class="modal-content" style="max-width:920px; width:95%; max-height:92vh; display:flex; flex-direction:column; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; background:var(--bg-card); box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+          
+          <!-- Modal Header -->
+          <div class="modal-header" style="padding:20px 26px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.06)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:48px; height:48px; border-radius:16px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(16,185,129,0.35); flex-shrink:0;">
+                <i data-lucide="message-circle" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.2rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                  <span>تذكير الحصة عبر واتساب</span>
+                  ${countdown.shouldShow ? `
+                    <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px; background:${countdown.isNear ? 'rgba(245,158,11,0.15)' : countdown.isLive ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.3)' : countdown.isLive ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'};">
+                      ${countdown.text}
+                    </span>
+                  ` : ''}
+                </h3>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
+                  📖 <strong>${session.title}</strong> • ⏰ ${dateFormatted}
+                </p>
+              </div>
+            </div>
+            <button class="close-btn" id="close-session-whatsapp-modal" style="background:none; border:none; font-size:1.6rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+          </div>
+
+          <!-- Modal Body (Scrollable) -->
+          <div style="padding:22px 26px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:20px;">
+            
+            <!-- Session Quick Overview Bar -->
+            <div style="background:var(--bg-app); border-radius:14px; padding:12px 18px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">🔗 رابط Google Meet:</span>
+                ${session.meetingLink ? `
+                  <a href="${session.meetingLink}" target="_blank" style="font-size:0.82rem; color:var(--primary); font-weight:700; text-decoration:underline; word-break:break-all;">
+                    ${session.meetingLink}
+                  </a>
+                ` : `
+                  <span style="font-size:0.8rem; color:#ef4444; font-weight:700;">⚠️ لم يتم تحديد رابط الحصة بعد (سيتم التنبيه لمراجعته بالمنصة)</span>
+                `}
+              </div>
+              ${session.meetingLink ? `
+                <button class="btn-secondary" id="test-meet-link-btn" style="padding:5px 12px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="external-link" style="width:12px;height:12px;"></i> تجربة فتح الرابط
+                </button>
+              ` : ''}
+            </div>
+
+            <!-- Two Column Grid for Teacher and Student(s) -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:20px;">
+              
+              <!-- 👨‍🏫 TEACHER CARD -->
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(99,102,241,0.25); background:rgba(99,102,241,0.02); display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:10px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+                      👨‍🏫
+                    </div>
+                    <div>
+                      <h4 style="font-weight:900; margin:0; font-size:0.95rem; color:var(--text-main);">تذكير الأستاذ: ${teacher.name}</h4>
+                      <span style="font-size:0.75rem; color:var(--text-muted);">رسالة تنظيمية بموعد الحصة وقاعة Google Meet</span>
+                    </div>
+                  </div>
+                  <span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.75rem; font-weight:800;">معلم الحصة</span>
+                </div>
+
+                <!-- Teacher Phone Input -->
+                <div>
+                  <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-main); margin-bottom:4px;">
+                    رقم هاتف المعلم (WhatsApp):
+                  </label>
+                  <input type="tel" id="whatsapp-teacher-phone-input" class="form-input" style="width:100%; padding:8px 12px; font-size:0.88rem; direction:ltr; text-align:right;" placeholder="مثال: +213555123456 أو 0555123456" value="${teacher.phone || ''}">
+                  ${!teacher.phone ? `<span style="font-size:0.72rem; color:#ef4444; margin-top:3px; display:block;">⚠️ رقم هاتف المعلم غير مسجل، يرجى كتابته هنا لإرسال التذكير</span>` : ''}
+                </div>
+
+                <!-- Teacher Message Preview -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:0.8rem; font-weight:800; color:var(--text-main);">نص الرسالة المخصصة للمعلم:</label>
+                    <button type="button" class="btn-secondary" id="copy-teacher-msg-btn" style="padding:3px 8px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      <i data-lucide="copy" style="width:11px;height:11px;"></i> نسخ النص
+                    </button>
+                  </div>
+                  <textarea id="whatsapp-teacher-msg-input" class="form-input" rows="8" style="width:100%; font-size:0.82rem; line-height:1.6; padding:10px; border-radius:10px; resize:vertical; background:var(--bg-app);">${teacher.messageText || ''}</textarea>
+                </div>
+
+                <!-- Teacher Send Button -->
+                <div style="margin-top:auto; padding-top:6px;">
+                  <button type="button" class="btn-primary" id="send-teacher-whatsapp-btn" style="width:100%; padding:11px; font-size:0.88rem; font-weight:900; background:linear-gradient(135deg, #10b981, #059669); border:none; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                    <i data-lucide="send" style="width:15px; height:15px;"></i>
+                    <span>إرسال للأستاذ عبر واتساب 📲</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 👨‍🎓 STUDENT(S) CARD -->
+              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(16,185,129,0.25); background:rgba(16,185,129,0.02); display:flex; flex-direction:column; gap:12px;">
+                
+                ${!isGroup && student ? `
+                  <!-- Single Private Student -->
+                  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div style="width:36px; height:36px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; font-weight:900;">
+                        👨‍🎓
+                      </div>
+                      <div>
+                        <h4 style="font-weight:900; margin:0; font-size:0.95rem; color:var(--text-main);">تذكير الطالب: ${student.name}</h4>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">حصة خاصة 1-على-1 • رسالة تحفيزية برابط الحصة</span>
+                      </div>
+                    </div>
+                    <span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-size:0.75rem; font-weight:800;">طالب خاص</span>
+                  </div>
+
+                  <!-- Student Phone Input -->
+                  <div>
+                    <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-main); margin-bottom:4px;">
+                      رقم هاتف الطالب (WhatsApp):
+                    </label>
+                    <input type="tel" id="whatsapp-student-phone-input" class="form-input" style="width:100%; padding:8px 12px; font-size:0.88rem; direction:ltr; text-align:right;" placeholder="مثال: +213555123456 أو 0555123456" value="${student.phone || ''}">
+                    ${!student.phone ? `<span style="font-size:0.72rem; color:#ef4444; margin-top:3px; display:block;">⚠️ رقم هاتف الطالب غير مسجل، يرجى كتابته هنا لإرسال التذكير</span>` : ''}
+                  </div>
+
+                  <!-- Student Message Preview -->
+                  <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <label style="font-size:0.8rem; font-weight:800; color:var(--text-main);">نص الرسالة المخصصة للطالب:</label>
+                      <button type="button" class="btn-secondary" id="copy-student-msg-btn" style="padding:3px 8px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="copy" style="width:11px;height:11px;"></i> نسخ النص
+                      </button>
+                    </div>
+                    <textarea id="whatsapp-student-msg-input" class="form-input" rows="8" style="width:100%; font-size:0.82rem; line-height:1.6; padding:10px; border-radius:10px; resize:vertical; background:var(--bg-app);">${student.messageText || ''}</textarea>
+                  </div>
+
+                  <!-- Student Send Button -->
+                  <div style="margin-top:auto; padding-top:6px;">
+                    <button type="button" class="btn-primary" id="send-student-whatsapp-btn" style="width:100%; padding:11px; font-size:0.88rem; font-weight:900; background:linear-gradient(135deg, #10b981, #059669); border:none; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                      <i data-lucide="send" style="width:15px; height:15px;"></i>
+                      <span>إرسال للطالب عبر واتساب 📲</span>
+                    </button>
+                  </div>
+                ` : `
+                  <!-- Group Students Hub -->
+                  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div style="width:36px; height:36px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; font-weight:900;">
+                        👥
+                      </div>
+                      <div>
+                        <h4 style="font-weight:900; margin:0; font-size:0.95rem; color:var(--text-main);">طلاب الفوج (${students.length} طالب)</h4>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">إرسال فردي مخصص لكل طالب أو نسخ رسالة الفوج الجماعية</span>
+                      </div>
+                    </div>
+                    <span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-size:0.75rem; font-weight:800;">فوج دراسي</span>
+                  </div>
+
+                  <!-- Group Broadcast Box -->
+                  <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                      <label style="font-size:0.78rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:5px;">
+                        <span>📢 رسالة الفوج الجماعية (للنشر في جروب الواتساب):</span>
+                      </label>
+                      <button type="button" class="btn-secondary" id="copy-group-broadcast-btn" style="padding:3px 8px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="copy" style="width:11px;height:11px;"></i> نسخ رسالة الجروب
+                      </button>
+                    </div>
+                    <textarea id="whatsapp-group-broadcast-msg" class="form-input" rows="4" style="width:100%; font-size:0.8rem; line-height:1.5; padding:8px; border-radius:8px; resize:vertical;">${groupBroadcastText}</textarea>
+                  </div>
+
+                  <!-- Individual Students List -->
+                  <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                      <label style="font-size:0.8rem; font-weight:800; color:var(--text-main);">
+                        قائمة الطلاب المسجلين (${students.length}):
+                      </label>
+                      <span style="font-size:0.72rem; color:var(--text-muted);">كل طالب يصله تنبيه مخصص باسمه</span>
+                    </div>
+
+                    ${students.length === 0 ? `
+                      <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.82rem; background:var(--bg-app); border-radius:10px;">
+                        لا يوجد طلاب مقيدين في هذا الفوج حالياً
+                      </div>
+                    ` : `
+                      <div style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-inline-end:4px;">
+                        ${students.map((st, idx) => `
+                          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-app); padding:8px 12px; border-radius:10px; border:1px solid var(--border-color); gap:8px;">
+                            <div style="flex:1; min-width:0;">
+                              <strong style="font-size:0.84rem; color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${idx + 1}. ${st.name}
+                              </strong>
+                              <span style="font-size:0.74rem; color:var(--text-muted); direction:ltr; display:block; text-align:right;">
+                                📞 ${st.phone || 'بدون رقم هاتف'}
+                              </span>
+                            </div>
+                            <div style="display:inline-flex; gap:5px; flex-shrink:0;">
+                              <button type="button" class="btn-secondary copy-student-individual-btn" data-text="${encodeURIComponent(st.messageText)}" style="padding:4px 7px; font-size:0.72rem;" title="نسخ رسالة هذا الطالب">
+                                <i data-lucide="copy" style="width:11px;height:11px;"></i>
+                              </button>
+                              <button type="button" class="btn-primary send-student-individual-btn" data-phone="${st.phone || ''}" data-msg="${encodeURIComponent(st.messageText)}" style="padding:5px 10px; font-size:0.74rem; font-weight:800; background:#10b981; border-color:#10b981; display:inline-flex; align-items:center; gap:4px; border-radius:8px;" title="إرسال عبر واتساب لهذا الطالب">
+                                <i data-lucide="send" style="width:11px;height:11px;"></i>
+                                <span>إرسال 📲</span>
+                              </button>
+                            </div>
+                          </div>
+                        `).join('')}
+                      </div>
+                    `}
+                  </div>
+                `}
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Modal Footer -->
+          <div style="padding:14px 26px; border-top:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="info" style="width:14px;height:14px;"></i>
+              <span>يتم فتح محادثة WhatsApp مباشرة مع كل طرف بصيغة رسالة جاهزة ومخصصة له بنقرة واحدة.</span>
+            </div>
+            <button class="btn-secondary" id="cancel-session-whatsapp-btn" style="padding:8px 18px; font-weight:700;">
+              إغلاق
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Attach Event Listeners inside modal
+    document.getElementById("close-session-whatsapp-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-session-whatsapp-btn")?.addEventListener("click", closeModal);
+
+    // Test Google Meet Link
+    document.getElementById("test-meet-link-btn")?.addEventListener("click", () => {
+      if (session.meetingLink) {
+        window.open(session.meetingLink, "_blank", "noopener,noreferrer");
+      }
+    });
+
+    // Copy Teacher Message
+    document.getElementById("copy-teacher-msg-btn")?.addEventListener("click", async () => {
+      const msg = document.getElementById("whatsapp-teacher-msg-input")?.value || "";
+      if (msg) {
+        await navigator.clipboard.writeText(msg).catch(() => {});
+        showToast("تم نسخ رسالة المعلم إلى الحافظة بنجاح! 📋", "success");
+      }
+    });
+
+    // Send Teacher WhatsApp
+    document.getElementById("send-teacher-whatsapp-btn")?.addEventListener("click", () => {
+      const phoneInput = document.getElementById("whatsapp-teacher-phone-input");
+      const msgInput = document.getElementById("whatsapp-teacher-msg-input");
+      const phone = (phoneInput?.value || "").trim();
+      const msg = (msgInput?.value || "").trim();
+
+      const cleanedPhone = getCleanWhatsAppNumber(phone);
+      if (!cleanedPhone) {
+        showToast("يرجى كتابة رقم هاتف صحيح للمعلم مع مفتاح الدولة.", "warning");
+        phoneInput?.focus();
+        return;
+      }
+
+      const waUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+      showToast("تم فتح محادثة WhatsApp لتذكير المعلم! 🚀", "success");
+    });
+
+    // Single Student Actions
+    if (!isGroup && student) {
+      document.getElementById("copy-student-msg-btn")?.addEventListener("click", async () => {
+        const msg = document.getElementById("whatsapp-student-msg-input")?.value || "";
+        if (msg) {
+          await navigator.clipboard.writeText(msg).catch(() => {});
+          showToast("تم نسخ رسالة الطالب إلى الحافظة بنجاح! 📋", "success");
+        }
+      });
+
+      document.getElementById("send-student-whatsapp-btn")?.addEventListener("click", () => {
+        const phoneInput = document.getElementById("whatsapp-student-phone-input");
+        const msgInput = document.getElementById("whatsapp-student-msg-input");
+        const phone = (phoneInput?.value || "").trim();
+        const msg = (msgInput?.value || "").trim();
+
+        const cleanedPhone = getCleanWhatsAppNumber(phone);
+        if (!cleanedPhone) {
+          showToast("يرجى كتابة رقم هاتف صحيح للطالب مع مفتاح الدولة.", "warning");
+          phoneInput?.focus();
+          return;
+        }
+
+        const waUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, "_blank", "noopener,noreferrer");
+        showToast("تم فتح محادثة WhatsApp لتذكير الطالب! 🚀", "success");
+      });
+    }
+
+    // Group Broadcast Actions
+    if (isGroup) {
+      document.getElementById("copy-group-broadcast-btn")?.addEventListener("click", async () => {
+        const msg = document.getElementById("whatsapp-group-broadcast-msg")?.value || "";
+        if (msg) {
+          await navigator.clipboard.writeText(msg).catch(() => {});
+          showToast("تم نسخ رسالة الفوج الجماعية بنجاح! يمكنك لصقها الآن في جروب الواتساب 📋", "success");
+        }
+      });
+
+      // Individual student buttons
+      container.querySelectorAll(".send-student-individual-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const rawPhone = btn.getAttribute("data-phone") || "";
+          const msg = decodeURIComponent(btn.getAttribute("data-msg") || "");
+          const cleanedPhone = getCleanWhatsAppNumber(rawPhone);
+
+          if (!cleanedPhone) {
+            const promptPhone = prompt("رقم هاتف الطالب غير مسجل، يرجى كتابة رقمه هنا:");
+            if (!promptPhone) return;
+            const cleanedPrompt = getCleanWhatsAppNumber(promptPhone);
+            if (!cleanedPrompt) {
+              showToast("رقم هاتف غير صالح.", "warning");
+              return;
+            }
+            window.open(`https://wa.me/${cleanedPrompt}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+            return;
+          }
+
+          window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+          showToast("تم فتح واتساب لتذكير الطالب! 🚀", "success");
+        });
+      });
+
+      container.querySelectorAll(".copy-student-individual-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const msg = decodeURIComponent(btn.getAttribute("data-text") || "");
+          if (msg) {
+            await navigator.clipboard.writeText(msg).catch(() => {});
+            showToast("تم نسخ رسالة الطالب بنجاح! 📋", "success");
+          }
+        });
+      });
+    }
   }
 
 };
+

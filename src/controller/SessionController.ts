@@ -3,15 +3,24 @@ import { AppDataSource } from "../data-source";
 import { Session } from "../entity/Session";
 import { User } from "../entity/User";
 import { Course } from "../entity/Course";
+import { CourseGroup } from "../entity/CourseGroup";
+import { Enrollment } from "../entity/Enrollment";
 import { SessionAttendance } from "../entity/SessionAttendance";
 import { AuthRequest } from "../middleware/auth";
+import {
+  formatPhoneForWhatsApp,
+  generateWhatsAppLink,
+  buildTeacherSessionReminderMessage,
+  buildStudentSessionReminderMessage,
+  buildGroupBroadcastReminderMessage
+} from "../utils/whatsapp";
 
 export class SessionController {
   static async getAll(req: AuthRequest, res: Response) {
     try {
       const sessionRepository = AppDataSource.getRepository(Session);
       const sessions = await sessionRepository.find({
-        relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher", "student", "subscription"],
+        relations: ["teacher", "course", "course.subject", "course.grade", "course.teacher", "student", "subscription", "group"],
         order: { scheduledAt: "DESC" }
       });
 
@@ -25,13 +34,18 @@ export class SessionController {
         }) as any[];
         
         const activeCourseIds = activeEnrollments.map(e => e.course?.id || e.group?.course?.id).filter(Boolean);
+        const activeGroupIds = activeEnrollments.map(e => e.group?.id).filter(Boolean);
         
         finalSessions = sessions.filter(session => {
-          // 1. If assigned directly to this student
+          // 1. If assigned directly to this student (1-on-1 private)
           if (session.student?.id) {
             return session.student.id === req.user!.id;
           }
-          // 2. If session belongs to a course, student must have an active enrollment
+          // 2. If session belongs to a group, student MUST be enrolled in THAT group
+          if (session.group?.id) {
+            return activeGroupIds.includes(session.group.id);
+          }
+          // 3. If legacy session belongs to a course without a group, student must have an active enrollment
           if (session.course?.id) {
             return activeCourseIds.includes(session.course.id);
           }
@@ -61,10 +75,10 @@ export class SessionController {
   }
 
   static async create(req: AuthRequest, res: Response) {
-    const { title, description, scheduledAt, duration, courseId } = req.body;
+    const { title, description, scheduledAt, duration, courseId, groupId } = req.body;
 
     if (!title || !scheduledAt) {
-      return res.status(400).json({ error: "Missing title or scheduledAt date." });
+      return res.status(400).json({ error: "Missing required fields (title, scheduledAt)." });
     }
 
     const scheduledDate = new Date(scheduledAt);
@@ -83,6 +97,7 @@ export class SessionController {
       const sessionRepository = AppDataSource.getRepository(Session);
       const userRepository = AppDataSource.getRepository(User);
       const courseRepository = AppDataSource.getRepository(Course);
+      const groupRepository = AppDataSource.getRepository(CourseGroup);
 
       const teacher = await userRepository.findOneBy({ id: req.user!.id });
       if (!teacher) {
@@ -97,7 +112,15 @@ export class SessionController {
       session.duration = duration || 60;
       session.status = "scheduled";
 
-      if (courseId) {
+      if (groupId) {
+        const group = await groupRepository.findOne({ where: { id: groupId }, relations: ["course"] });
+        if (group) {
+          session.group = group;
+          if (group.course) session.course = group.course;
+        }
+      }
+
+      if (!session.course && courseId) {
         const course = await courseRepository.findOneBy({ id: courseId });
         if (course) {
           session.course = course;
@@ -114,14 +137,15 @@ export class SessionController {
 
   static async update(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { title, description, scheduledAt, duration, courseId } = req.body;
+    const { title, description, scheduledAt, duration, courseId, groupId } = req.body;
 
     try {
       const sessionRepository = AppDataSource.getRepository(Session);
       const courseRepository = AppDataSource.getRepository(Course);
+      const groupRepository = AppDataSource.getRepository(CourseGroup);
       const session = await sessionRepository.findOne({
         where: { id },
-        relations: ["teacher", "course"]
+        relations: ["teacher", "course", "group"]
       });
 
       if (!session) {
@@ -153,6 +177,15 @@ export class SessionController {
       if (courseId) {
         const course = await courseRepository.findOneBy({ id: String(courseId) });
         if (course) session.course = course;
+      }
+
+      if (groupId !== undefined) {
+        if (groupId) {
+          const group = await groupRepository.findOne({ where: { id: groupId } });
+          if (group) session.group = group;
+        } else {
+          session.group = null;
+        }
       }
 
       await sessionRepository.save(session);
@@ -219,6 +252,173 @@ export class SessionController {
       return res.status(200).json(session);
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  static async getSessionReminderData(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const session = await sessionRepository.findOne({
+        where: { id },
+        relations: [
+          "teacher",
+          "student",
+          "group",
+          "group.teacher",
+          "group.course",
+          "course",
+          "course.teacher",
+          "course.grade",
+          "course.subject"
+        ]
+      });
+
+      if (!session) {
+        return res.status(404).json({ error: "الحصة غير موجودة." });
+      }
+
+      const teacher = session.teacher || session.group?.teacher || session.course?.teacher;
+      const teacherName = teacher?.name || "معلم المنصة";
+      const teacherPhone = teacher?.phone || "";
+
+      const rawMeetingLink = (
+        session.meetingLink ||
+        session.group?.meetingLink ||
+        session.course?.meetingLink ||
+        teacher?.meetingLink ||
+        ""
+      ).trim();
+
+      let meetingLink = rawMeetingLink;
+      if (meetingLink && !meetingLink.startsWith("http://") && !meetingLink.startsWith("https://")) {
+        meetingLink = "https://" + meetingLink;
+      }
+
+      // Format date and time
+      const schedDate = session.scheduledAt ? new Date(session.scheduledAt) : new Date();
+      const dateStr = schedDate.toLocaleDateString("ar-EG", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+      const timeStr = schedDate.toLocaleTimeString("ar-EG", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      const sessionTitle = session.title || session.group?.name || session.course?.title || "حصة دراسية مباشرة";
+      const studentOrGroupName = session.student?.name || session.group?.name || session.course?.title || "المجموعة الدراسية";
+
+      // Teacher WhatsApp message
+      const teacherMessage = buildTeacherSessionReminderMessage({
+        teacherName,
+        sessionTitle,
+        studentOrGroupName,
+        scheduledDateStr: dateStr,
+        scheduledTimeStr: timeStr,
+        meetingLink
+      });
+
+      const teacherPayload = {
+        id: teacher?.id || null,
+        name: teacherName,
+        phone: teacherPhone,
+        formattedPhone: formatPhoneForWhatsApp(teacherPhone),
+        whatsappUrl: generateWhatsAppLink(teacherPhone, teacherMessage),
+        messageText: teacherMessage
+      };
+
+      let isGroup = !session.student;
+      let singleStudent: any = null;
+      let groupStudents: any[] = [];
+
+      if (session.student) {
+        const studentName = session.student.name || "طالب المنصة";
+        const studentPhone = session.student.phone || "";
+        const studentMessage = buildStudentSessionReminderMessage({
+          studentName,
+          sessionTitle,
+          teacherName,
+          scheduledDateStr: dateStr,
+          scheduledTimeStr: timeStr,
+          meetingLink
+        });
+
+        singleStudent = {
+          id: session.student.id,
+          name: studentName,
+          phone: studentPhone,
+          formattedPhone: formatPhoneForWhatsApp(studentPhone),
+          whatsappUrl: generateWhatsAppLink(studentPhone, studentMessage),
+          messageText: studentMessage
+        };
+      } else if (session.group?.id || session.course?.id) {
+        isGroup = true;
+        const enrollmentRepository = AppDataSource.getRepository(Enrollment);
+        const filterWhere: any = { status: "active" };
+        if (session.group?.id) {
+          filterWhere.group = { id: session.group.id };
+        } else if (session.course?.id) {
+          filterWhere.course = { id: session.course.id };
+        }
+
+        const enrollments = await enrollmentRepository.find({
+          where: filterWhere,
+          relations: ["student"]
+        });
+
+        groupStudents = enrollments.map(e => {
+          const sName = e.student?.name || "طالب";
+          const sPhone = e.student?.phone || "";
+          const sMsg = buildStudentSessionReminderMessage({
+            studentName: sName,
+            sessionTitle,
+            teacherName,
+            scheduledDateStr: dateStr,
+            scheduledTimeStr: timeStr,
+            meetingLink
+          });
+
+          return {
+            enrollmentId: e.id,
+            id: e.student?.id || null,
+            name: sName,
+            phone: sPhone,
+            formattedPhone: formatPhoneForWhatsApp(sPhone),
+            whatsappUrl: generateWhatsAppLink(sPhone, sMsg),
+            messageText: sMsg
+          };
+        });
+      }
+
+      const groupBroadcastText = buildGroupBroadcastReminderMessage({
+        groupTitle: session.group?.name || session.course?.title || sessionTitle,
+        teacherName,
+        scheduledDateStr: dateStr,
+        scheduledTimeStr: timeStr,
+        meetingLink
+      });
+
+      return res.status(200).json({
+        session: {
+          id: session.id,
+          title: sessionTitle,
+          scheduledAt: session.scheduledAt,
+          duration: session.duration || 60,
+          meetingLink,
+          status: session.status
+        },
+        teacher: teacherPayload,
+        isGroup,
+        student: singleStudent,
+        students: groupStudents,
+        groupBroadcastText
+      });
+    } catch (err: any) {
+      console.error("Error in getSessionReminderData:", err);
+      return res.status(500).json({ error: "فشل استخراج بيانات تذكير الواتساب للحصة." });
     }
   }
 }

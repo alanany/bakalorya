@@ -256,7 +256,7 @@ export default class TeacherView {
             </div>
 
             <!-- Stat 3: Assignments & Tasks -->
-            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid ${totalPendingGradingCount > 0 ? 'rgba(245,158,11,0.3)' : 'var(--border-color)'}; background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض وتصحيح الواجبات" onclick="document.getElementById('teacher-assignments-section')?.scrollIntoView({behavior:'smooth'})">
+            <div class="glass-card stat-card-hover" style="padding:20px; border-radius:20px; border:1px solid ${totalPendingGradingCount > 0 ? 'rgba(245,158,11,0.3)' : 'var(--border-color)'}; background:var(--bg-card); display:flex; align-items:center; gap:16px; cursor:pointer;" title="انقر لعرض ومتابعة الواجبات، والتسليمات بانتظار التصحيح" onclick="window.location.hash='#teacher-assignments'">
               <div style="width:50px; height:50px; border-radius:16px; background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05)); color:#8b5cf6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="clipboard-check" style="width:24px; height:24px;"></i>
               </div>
@@ -268,7 +268,7 @@ export default class TeacherView {
                   ${totalPendingGradingCount > 0 ? `<span style="color:#d97706; font-weight:800;">${totalPendingGradingCount} بانتظار التصحيح ⏳</span>` : 'الواجبات والتكليفات'}
                 </div>
               </div>
-              <div style="color:#8b5cf6; opacity:0.6; font-size:0.85rem;">↓</div>
+              <div style="color:#8b5cf6; opacity:0.6; font-size:0.85rem;">↗</div>
             </div>
 
             <!-- Stat 4: Active Students -->
@@ -304,144 +304,62 @@ export default class TeacherView {
 
           </div>
 
-          <!-- 4. Main Two-Column Command Grid Layout -->
-          <div class="dashboard-main-grid-layout" style="display:grid; grid-template-columns: 1fr 370px; gap:28px; align-items:start;">
+          <!-- 4. Main Command Layout -->
+          <div style="display:flex; flex-direction:column; gap:36px;">
             
-            <!-- Left Column: Primary Sections -->
-            <div style="display:flex; flex-direction:column; gap:36px;">
-              
-              <!-- SECTION 1: حصص اليوم المباشرة (Day Sessions - Timetable Style) 🔴📅 -->
-              <div id="today-sessions-section">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                  <div>
-                    <h2 style="font-size:1.28rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                      <i data-lucide="calendar-days" style="width:22px; height:22px; color:var(--primary);"></i>
-                      <span>حصص اليوم المباشرة (${allTodaySessions.length})</span>
-                      ${allTodaySessions.length > 0 ? `<span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:8px;">اليوم 🟢</span>` : ''}
-                    </h2>
-                    <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">جميع الحصص الجماعية والخاصة المجدولة لليوم بتنسيق جدول الحصص (Timetable)</p>
-                  </div>
-
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <a href="#schedule" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="calendar"></i> الجدول الأسبوعي الكامل ↗
-                    </a>
-                  </div>
+            <!-- SECTION 1: حصص اليوم المباشرة (Day Sessions - Timetable Style) 🔴📅 -->
+            <div id="today-sessions-section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h2 style="font-size:1.28rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="calendar-days" style="width:22px; height:22px; color:var(--primary);"></i>
+                    <span>حصص اليوم المباشرة (${allTodaySessions.length})</span>
+                    ${allTodaySessions.length > 0 ? `<span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:8px;">اليوم 🟢</span>` : ''}
+                  </h2>
+                  <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">جميع الحصص الجماعية والخاصة المجدولة لليوم بتنسيق جدول الحصص (Timetable)</p>
                 </div>
 
-                <!-- Timetable Day Row Container -->
-                <div class="glass-card timetable-day-row" style="padding:18px 22px; border-radius:20px; border:1px solid var(--primary); background:rgba(99,102,241,0.02); transition:all 0.2s;">
-                  
-                  <!-- Day Row Header like Timetable -->
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color); flex-wrap:wrap; gap:10px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                      <span style="font-weight:900; font-size:1.15rem; color:var(--primary);">
-                        ${new Date().toLocaleDateString('ar-EG', { weekday: 'long' })}
-                      </span>
-                      <span style="font-size:0.85rem; color:var(--text-muted); font-weight:700; background:var(--bg-app); padding:3px 10px; border-radius:12px; border:1px solid var(--border-color);">
-                        ${new Date().toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                      <span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:12px;">اليوم 🟢</span>
-                    </div>
-                    <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted); background:var(--bg-app); padding:3px 10px; border-radius:10px; border:1px solid var(--border-color);">
-                      ${allTodaySessions.length > 0 ? `${allTodaySessions.length} حصص` : 'لا توجد حصص اليوم'}
-                    </span>
-                  </div>
-
-                  <!-- Sessions in Columns (Timetable Style) -->
-                  ${allTodaySessions.length === 0 ? `
-                    <div style="padding:24px 20px; text-align:center; color:var(--text-muted); font-size:0.85rem; background:var(--bg-app); border-radius:14px; border:1px dashed var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">
-                      <i data-lucide="calendar-x" style="width:28px; height:28px; opacity:0.5; color:var(--primary);"></i>
-                      <div style="font-weight:800; color:var(--text-main);">لا توجد حصص مباشرة مجدولة لليوم</div>
-                      <div style="font-size:0.78rem;">يمكنك متابعة جدول الحصص الأسبوعي أو مراجعة واجبات وتكليفات الطلاب.</div>
-                    </div>
-                  ` : `
-                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; width:100%;">
-                      ${allTodaySessions.map(sess => this.renderTodaySessionCard(sess)).join('')}
-                    </div>
-                  `}
-
-                </div>
-              </div>
-
-              <!-- SECTION 2: آخر الواجبات والتكليفات المدرسية (Latest Assignments) 📝🎯 -->
-              <div id="teacher-assignments-section">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                  <div>
-                    <h2 style="font-size:1.28rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                      <i data-lucide="clipboard-check" style="width:22px; height:22px; color:#8b5cf6;"></i>
-                      <span>آخر الواجبات والتكليفات (${this.assignments?.length || 0})</span>
-                      ${totalPendingGradingCount > 0 ? `
-                        <span style="font-size:0.75rem; font-weight:900; background:rgba(245,158,11,0.15); color:#d97706; padding:2px 8px; border-radius:8px; border:1px solid rgba(245,158,11,0.3);">
-                          ${totalPendingGradingCount} حل بانتظار التصحيح ⏳
-                        </span>
-                      ` : ''}
-                    </h2>
-                    <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">متابعة إرسال الطلاب لحلول الواجبات، وتصحيح الإجابات ورصد الدرجات فورياً</p>
-                  </div>
-
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <a href="#assignments" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:800; background:linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                      <i data-lucide="plus-circle" style="width:15px; height:15px;"></i> إضافة واجب جديد ➕
-                    </a>
-                  </div>
-                </div>
-
-                ${(!this.assignments || this.assignments.length === 0) ? `
-                  <div class="glass-card" style="text-align:center; padding:38px 24px; color:var(--text-muted); border-radius:20px; background:var(--bg-card); border:1px solid var(--border-color);">
-                    <div style="width:56px; height:56px; border-radius:18px; background:rgba(139,92,246,0.1); color:#8b5cf6; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px;">
-                      <i data-lucide="file-question" style="width:28px; height:28px;"></i>
-                    </div>
-                    <div style="font-weight:900; font-size:1.05rem; color:var(--text-main); margin-bottom:4px;">لم تقم بإنشاء واجبات بعد</div>
-                    <p style="font-size:0.84rem; margin:0 0 16px 0;">أضف واجبات بأسئلة اختيار من متعدد، أسئلة مقالية أو رفع ملفات لمجموعاتك.</p>
-                    <a href="#assignments" class="btn-secondary" style="font-size:0.82rem; padding:8px 18px; border-radius:12px; font-weight:800; text-decoration:none;">
-                      + إضافة أول واجب الآن 📝
-                    </a>
-                  </div>
-                ` : `
-                  <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:16px;">
-                    ${this.assignments.slice(0, 6).map(asgn => this.renderTeacherAssignmentCard(asgn)).join('')}
-                  </div>
-                `}
-              </div>
-
-            </div>
-
-            <!-- Right Column: My Study Groups Section 👥✨ -->
-            <div style="display:flex; flex-direction:column; gap:24px;">
-
-              <!-- Groups Section in Right Sidebar -->
-              <div id="teacher-groups-section" class="glass-card" style="padding:22px; border-radius:22px; border:1px solid var(--border-color); background:var(--bg-card);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
-                  <h3 style="font-size:1.1rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="users" style="width:20px; height:20px; color:var(--primary);"></i>
-                    <span>مجموعاتي الدراسية (${this.groups?.length || 0})</span>
-                  </h3>
-                  <a href="#teacher-groups" class="btn-secondary" style="font-size:0.78rem; padding:6px 12px; border-radius:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; border-color:var(--primary); color:var(--primary);">
-                    إدارة الكل ↗
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <a href="#schedule" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="calendar"></i> الجدول الأسبوعي الكامل ↗
                   </a>
                 </div>
-
-                ${(!this.groups || this.groups.length === 0) ? `
-                  <div style="text-align:center; padding:32px 16px; background:var(--bg-app); border-radius:16px; border:1px dashed var(--border-color); color:var(--text-muted);">
-                    <div style="width:48px; height:48px; border-radius:14px; background:rgba(99,102,241,0.08); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px;">
-                      <i data-lucide="users" style="width:24px; height:24px;"></i>
-                    </div>
-                    <div style="font-weight:900; font-size:0.95rem; color:var(--text-main); margin-bottom:4px;">لم تنشئ مجموعات بعد</div>
-                    <p style="font-size:0.8rem; margin:0 0 14px 0; line-height:1.4;">أنشئ مجموعات دراسية لتنظيم مواعيد الحصص ومشاركة المذكرات ومتابعة الحضور.</p>
-                    <a href="#teacher-groups" class="btn-primary" style="font-size:0.8rem; padding:8px 16px; border-radius:12px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      + إنشاء أول مجموعة 👥
-                    </a>
-                  </div>
-                ` : `
-                  <div style="display:flex; flex-direction:column; gap:14px;">
-                    ${this.groups.map(grp => this.renderTeacherGroupCard(grp)).join('')}
-                  </div>
-                `}
               </div>
 
-            </div>
+              <!-- Timetable Day Row Container -->
+              <div class="glass-card timetable-day-row" style="padding:18px 22px; border-radius:20px; border:1px solid var(--primary); background:rgba(99,102,241,0.02); transition:all 0.2s;">
+                
+                <!-- Day Row Header like Timetable -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color); flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-weight:900; font-size:1.15rem; color:var(--primary);">
+                      ${new Date().toLocaleDateString('ar-EG', { weekday: 'long' })}
+                    </span>
+                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight:700; background:var(--bg-app); padding:3px 10px; border-radius:12px; border:1px solid var(--border-color);">
+                      ${new Date().toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:12px;">اليوم 🟢</span>
+                  </div>
+                  <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted); background:var(--bg-app); padding:3px 10px; border-radius:10px; border:1px solid var(--border-color);">
+                    ${allTodaySessions.length > 0 ? `${allTodaySessions.length} حصص` : 'لا توجد حصص اليوم'}
+                  </span>
+                </div>
 
+                <!-- Sessions in Columns (Timetable Style) -->
+                ${allTodaySessions.length === 0 ? `
+                  <div style="padding:24px 20px; text-align:center; color:var(--text-muted); font-size:0.85rem; background:var(--bg-app); border-radius:14px; border:1px dashed var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">
+                    <i data-lucide="calendar-x" style="width:28px; height:28px; opacity:0.5; color:var(--primary);"></i>
+                    <div style="font-weight:800; color:var(--text-main);">لا توجد حصص مباشرة مجدولة لليوم</div>
+                    <div style="font-size:0.78rem;">يمكنك متابعة جدول الحصص الأسبوعي أو مراجعة واجبات وتكليفات الطلاب.</div>
+                  </div>
+                ` : `
+                  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; width:100%;">
+                    ${allTodaySessions.map(sess => this.renderTodaySessionCard(sess)).join('')}
+                  </div>
+                `}
+
+              </div>
+            </div>
           </div>
         </div>
 

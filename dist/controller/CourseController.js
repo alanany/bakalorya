@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CourseController = void 0;
+const typeorm_1 = require("typeorm");
 const data_source_1 = require("../data-source");
 const Course_1 = require("../entity/Course");
 const Lesson_1 = require("../entity/Lesson");
@@ -100,7 +101,7 @@ class CourseController {
                 }
             }
             const lessons = await lessonRepository.find({
-                where: { course: { id } },
+                where: { course: { id }, group: (0, typeorm_1.IsNull)() },
                 order: { order: "ASC" },
             });
             return res.status(200).json({ ...course, lessons });
