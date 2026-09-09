@@ -9,7 +9,7 @@ export const AdminCoursesPage = {
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <h3 style="font-weight:700;">${t("admin.tab.courses")} (${this.courses.length})</h3>
-        <button class="btn-primary" id="open-admin-add-course-modal-btn" style="padding:10px 18px; font-weight:800; gap:8px;">
+        <button class="btn-primary" id="open-admin-add-course-modal-btn" onclick="if(window.adminViewInstance) window.adminViewInstance.renderAddCourseModal();" style="padding:10px 18px; font-weight:800; gap:8px;">
           <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة تعليمية جديدة ➕
         </button>
       </div>
@@ -492,20 +492,15 @@ export const AdminCoursesPage = {
     });
   },
 
-  updateAddCourseModalTeachers() {
-    const selectEl = document.getElementById("admin-course-teacher-id");
-    if (!selectEl) return;
-    const teachers = (this.allMembers || []).filter(m => m.role === "teacher");
-    selectEl.innerHTML = `
-      <option value="">🏛️ دورة عامة على المنصة (بدون معلم خاص)</option>
-      ${teachers.map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join('')}
-    `;
-  },
-
   renderAddCourseModal() {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
     const categories = this.categories || [];
-    return `
-      <div class="modal-overlay" id="admin-course-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
+    const teachers = (this.allMembers || []).filter(m => m.role === "teacher");
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="admin-course-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:9999;">
         <div class="modal-content" style="max-width:680px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
           <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
             <div style="display:flex; align-items:center; gap:14px;">
@@ -617,7 +612,7 @@ export const AdminCoursesPage = {
                 </label>
                 <select id="admin-course-teacher-id" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;">
                   <option value="">🏛️ دورة عامة على المنصة (بدون معلم خاص)</option>
-                  ${(this.allMembers || []).filter(m => m.role === 'teacher').map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join('')}
+                  ${teachers.map(t => `<option value="${t.id}">${t.name} (${t.email})</option>`).join('')}
                 </select>
               </div>
 
@@ -700,7 +695,7 @@ export const AdminCoursesPage = {
                     <button type="button" class="btn-secondary" id="admin-btn-trigger-upload" style="padding:8px 20px; border-radius:30px; font-size:0.85rem; margin:0 auto; display:inline-flex; align-items:center; gap:6px;">
                       <i data-lucide="upload-cloud" style="width:16px; height:16px;"></i> اختيار صورة غلاف الدورة
                     </button>
-                    <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصغار المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 0;">الصيغ المقبولة: JPG, PNG, WEBP (الحد الأقصى 5 ميجابايت)</p>
                   </div>
 
                   <div id="admin-image-upload-loading" style="display:none; padding:10px; color:var(--primary); font-weight:700; font-size:0.88rem;">
@@ -744,6 +739,207 @@ export const AdminCoursesPage = {
         </div>
       </div>
     `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+
+    document.getElementById("close-admin-course-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-admin-course-modal")?.addEventListener("click", closeModal);
+
+    const form = document.getElementById("admin-course-form");
+    if (!form) return;
+
+    // Pricing radio listeners (Free vs Paid)
+    const pricingRadios = form.querySelectorAll("input[name='admin-course-pricing-type']");
+    const paidFields = form.querySelector("#admin-course-paid-fields");
+    const freeLabel = form.querySelector("#admin-pricing-free-label");
+    const paidLabel = form.querySelector("#admin-pricing-paid-label");
+
+    pricingRadios.forEach(radio => {
+      radio.addEventListener("change", (e) => {
+        const isPaid = e.target.value === "paid";
+        if (paidFields) paidFields.style.display = isPaid ? "flex" : "none";
+        if (freeLabel) freeLabel.style.borderColor = isPaid ? "var(--border-color)" : "var(--primary)";
+        if (paidLabel) paidLabel.style.borderColor = isPaid ? "var(--primary)" : "var(--border-color)";
+      });
+    });
+
+    // Custom Category Toggle
+    form.querySelector("#admin-course-category-select")?.addEventListener("change", (e) => {
+      const customWrapper = form.querySelector("#admin-course-category-custom-wrapper");
+      if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
+    });
+
+    // Direct URL Toggle
+    form.querySelector("#admin-toggle-url-input-btn")?.addEventListener("click", () => {
+      const urlWrapper = form.querySelector("#admin-url-input-wrapper");
+      if (urlWrapper) urlWrapper.style.display = urlWrapper.style.display === "none" ? "block" : "none";
+    });
+
+    // Dropzone and Image Upload
+    const dropzone = form.querySelector("#admin-course-dropzone");
+    const fileInput = form.querySelector("#admin-course-image-file");
+
+    dropzone?.addEventListener("click", (e) => {
+      if (e.target.closest("#admin-remove-course-image-btn") || e.target.closest("#admin-url-input-wrapper")) return;
+      fileInput?.click();
+    });
+
+    form.querySelector("#admin-btn-trigger-upload")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput?.click();
+    });
+
+    dropzone?.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--primary)";
+      dropzone.style.background = "rgba(99,102,241,0.08)";
+    });
+    dropzone?.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--border-color)";
+      dropzone.style.background = "var(--bg-app)";
+    });
+    dropzone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = "var(--border-color)";
+      dropzone.style.background = "var(--bg-app)";
+      if (e.dataTransfer?.files?.length > 0) {
+        if (fileInput) {
+          fileInput.files = e.dataTransfer.files;
+          fileInput.dispatchEvent(new Event("change"));
+        }
+      }
+    });
+
+    fileInput?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const idleBox = form.querySelector("#admin-image-upload-idle");
+      const loadingBox = form.querySelector("#admin-image-upload-loading");
+      const previewWrapper = form.querySelector("#admin-image-preview-wrapper");
+      const previewImg = form.querySelector("#admin-course-preview-img");
+
+      if (idleBox) idleBox.style.display = "none";
+      if (loadingBox) loadingBox.style.display = "block";
+
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const token = state.token || localStorage.getItem("token");
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.url) {
+          const hiddenImg = form.querySelector("#admin-course-image");
+          if (hiddenImg) hiddenImg.value = uploadData.url;
+          if (previewImg) previewImg.src = uploadData.url;
+          if (loadingBox) loadingBox.style.display = "none";
+          if (previewWrapper) previewWrapper.style.display = "block";
+          showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
+        } else {
+          throw new Error(uploadData.error || "فشل رفع الصورة");
+        }
+      } catch (err) {
+        if (loadingBox) loadingBox.style.display = "none";
+        if (idleBox) idleBox.style.display = "block";
+        showToast(err.message || "فشل رفع صورة الغلاف", "error");
+      }
+    });
+
+    form.querySelector("#admin-remove-course-image-btn")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const hiddenImg = form.querySelector("#admin-course-image");
+      if (hiddenImg) hiddenImg.value = "";
+      if (fileInput) fileInput.value = "";
+      const directUrl = form.querySelector("#admin-course-image-url-direct");
+      if (directUrl) directUrl.value = "";
+      const previewWrapper = form.querySelector("#admin-image-preview-wrapper");
+      const idleBox = form.querySelector("#admin-image-upload-idle");
+      if (previewWrapper) previewWrapper.style.display = "none";
+      if (idleBox) idleBox.style.display = "block";
+    });
+
+    form.querySelector("#admin-course-image-url-direct")?.addEventListener("input", (e) => {
+      const url = e.target.value.trim();
+      const hiddenImg = form.querySelector("#admin-course-image");
+      const previewImg = form.querySelector("#admin-course-preview-img");
+      const previewWrapper = form.querySelector("#admin-image-preview-wrapper");
+      const idleBox = form.querySelector("#admin-image-upload-idle");
+
+      if (url) {
+        if (hiddenImg) hiddenImg.value = url;
+        if (previewImg) previewImg.src = url;
+        if (previewWrapper) previewWrapper.style.display = "block";
+        if (idleBox) idleBox.style.display = "none";
+      }
+    });
+
+    let isSubmitting = false;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (isSubmitting) return;
+      isSubmitting = true;
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
+      const title = form.querySelector("#admin-course-title").value.trim();
+      const catSelectEl = form.querySelector("#admin-course-category-select");
+      const catCustomEl = form.querySelector("#admin-course-category-custom");
+      const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
+      if (!category) {
+        showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error");
+        isSubmitting = false;
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+      const degree = form.querySelector("#admin-course-degree").value;
+      const teacherId = form.querySelector("#admin-course-teacher-id").value;
+      const description = form.querySelector("#admin-course-desc").value.trim();
+      let image = form.querySelector("#admin-course-image")?.value || form.querySelector("#admin-course-image-url-direct")?.value.trim() || "";
+      const meetingLink = form.querySelector("#admin-course-meeting-link").value.trim();
+
+      const pricingType = form.querySelector("input[name='admin-course-pricing-type']:checked")?.value || "free";
+      const isFree = pricingType === "free";
+      const price = isFree ? 0 : parseFloat(form.querySelector("#admin-course-price")?.value || "0");
+      const currency = form.querySelector("#admin-course-currency")?.value || "EGP";
+      const paymentDetails = form.querySelector("#admin-course-payment-details")?.value.trim() || "";
+
+      const payload = {
+        title,
+        category,
+        degree,
+        teacherId,
+        image,
+        meetingLink,
+        description,
+        isFree,
+        price,
+        currency,
+        paymentDetails
+      };
+
+      try {
+        await apiFetch("/admin/courses", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        showToast("تم إنشاء ونشر الدورة بنجاح! 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("courses");
+      } catch (err) {
+        showToast(err.message || "فشل إنشاء الدورة", "error");
+      } finally {
+        isSubmitting = false;
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
   },
 
   // ── 4.5 Groups Management Tab ────────────────────────────────────────────────

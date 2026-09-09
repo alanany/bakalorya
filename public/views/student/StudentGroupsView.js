@@ -39,7 +39,7 @@ export default class StudentGroupsView {
             scheduleText: g.scheduleText || `${g.scheduleDays || 'الأحد، الثلاثاء'} الساعة ${g.scheduleTime || '6:00م'}`,
             scheduleDays: g.scheduleDays,
             scheduleTime: g.scheduleTime,
-            maxStudents: g.maxStudents || 25,
+            maxStudents: (g.maxStudents !== undefined && g.maxStudents !== null) ? g.maxStudents : 25,
             teacher: g.teacher || course?.teacher || state.user,
             meetingLink: g.meetingLink || course?.meetingLink || null,
             course: course,
@@ -67,7 +67,7 @@ export default class StudentGroupsView {
               scheduleText: g.scheduleText || `${g.scheduleDays || 'الأحد، الثلاثاء'} الساعة ${g.scheduleTime || '6:00م'}`,
               scheduleDays: g.scheduleDays,
               scheduleTime: g.scheduleTime,
-              maxStudents: g.maxStudents || 25,
+              maxStudents: (g.maxStudents !== undefined && g.maxStudents !== null) ? g.maxStudents : 25,
               teacher: g.teacher || course?.teacher || state.user,
               meetingLink: null, // no meeting link until approved
               course: course,
@@ -420,6 +420,7 @@ export default class StudentGroupsView {
                 </span>
                 ${group.grade ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981;">${group.grade.name}</span>` : ''}
                 ${group.subject ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(229,29,116,0.12); color:#e51d74;">${group.subject.name}</span>` : ''}
+                ${group.maxStudents === 1 ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(236,72,153,0.15); color:#ec4899; border:1px solid rgba(236,72,153,0.3);">🎯 1-on-1 فردية</span>` : ''}
               </div>
               <h3 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.3;">
                 👥 ${group.title}

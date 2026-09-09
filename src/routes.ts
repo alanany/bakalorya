@@ -122,6 +122,7 @@ router.post("/groups/:id/resources", authMiddleware, requireRole(["teacher", "ad
 router.delete("/groups/:id/resources/:resourceId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupResource);
 router.get("/teacher/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.getMyTeacherGroups);
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin"]), CourseGroupController.getAllGroups);
+router.post("/teachers/:teacherId/request-private-group", authMiddleware, CourseGroupController.requestPrivateGroup);
 
 // Admin Platform Settings
 router.get("/admin/settings", authMiddleware, requireRole(["admin"]), PlatformSettingController.getAdminSettings);

@@ -158,6 +158,126 @@ export class CourseGroupController {
     }
   }
 
+  // POST /teachers/:teacherId/request-private-group
+  // Student requests a 1-on-1 private group with a teacher -> submitted to Admin for approval
+  static async requestPrivateGroup(req: AuthRequest, res: Response) {
+    try {
+      const { teacherId } = req.params;
+      const { topic, scheduledAt, duration, notes, courseId } = req.body;
+
+      if (!req.user) {
+        return res.status(401).json({ error: "الرجاء تسجيل الدخول أولاً." });
+      }
+
+      const userRepo = AppDataSource.getRepository(User);
+      const courseRepo = AppDataSource.getRepository(Course);
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const teacher = await userRepo.findOne({
+        where: { id: teacherId, role: "teacher" }
+      });
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم غير موجود." });
+      }
+
+      const student = await userRepo.findOneBy({ id: req.user.id });
+      if (!student) {
+        return res.status(404).json({ error: "حساب الطالب غير موجود." });
+      }
+
+      // Find or create a course for the teacher
+      let course: Course | null = null;
+      if (courseId) {
+        course = await courseRepo.findOne({ where: { id: courseId }, relations: ["teacher"] });
+      }
+      if (!course) {
+        course = await courseRepo.findOne({ where: { teacher: { id: teacherId } }, relations: ["teacher"] });
+      }
+      if (!course) {
+        course = await courseRepo.findOne({ where: { status: "PUBLISHED" }, relations: ["teacher"] });
+      }
+      if (!course) {
+        course = new Course();
+        course.title = `حصص خاصة 1-on-1 - أ/ ${teacher.name}`;
+        course.description = `حصة خاصة فردية مع الأستاذ ${teacher.name}`;
+        course.category = "حصص خاصة";
+        course.degree = teacher.education || "جميع المراحل والصفوف";
+        course.teacher = teacher;
+        course.price = teacher.hourlyRate || 150;
+        course.isFree = false;
+        course.status = "PUBLISHED";
+        course = await courseRepo.save(course);
+      }
+
+      const schedDate = scheduledAt ? new Date(scheduledAt) : new Date();
+      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const dayName = !isNaN(schedDate.getTime()) ? dayNames[schedDate.getDay()] : "يحدد لاحقاً";
+      const timeStr = !isNaN(schedDate.getTime()) 
+        ? schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) 
+        : "6:00 م";
+      const cleanTopic = (topic && topic.trim()) ? topic.trim() : "حصة خاصة 1-on-1";
+
+      const group = new CourseGroup();
+      group.name = `حصة خاصة 1-on-1: ${cleanTopic} (${student.name})`;
+      group.course = course;
+      group.teacher = teacher;
+      group.maxStudents = 1; // Exactly 1 student seat as requested
+      group.status = "PENDING_APPROVAL";
+      group.scheduleDays = dayName;
+      group.scheduleTime = timeStr;
+      group.scheduleText = `حصة خاصة فردية (1-on-1) - ${dayName} ${timeStr}`;
+      group.startDate = !isNaN(schedDate.getTime()) ? schedDate : new Date();
+      group.sessionDuration = duration ? parseInt(duration, 10) : 60;
+      group.totalSessions = 1;
+      group.sessionPrice = teacher.hourlyRate || 150;
+      group.studentHourlyRate = teacher.hourlyRate || 150;
+      group.teacherHourlyRate = teacher.hourlyRate ? Math.round(teacher.hourlyRate * 0.7) : 100;
+      group.monthlyPrice = group.sessionPrice;
+      group.platformCommissionPercent = 30;
+      group.meetingLink = teacher.meetingLink || "";
+
+      const savedGroup = await groupRepo.save(group);
+
+      // Create pending enrollment for the student in this 1-on-1 group
+      const enrollment = new Enrollment();
+      enrollment.student = student;
+      enrollment.course = course;
+      enrollment.group = savedGroup;
+      enrollment.status = "pending";
+      await enrollmentRepo.save(enrollment);
+
+      // Notify Admins
+      const admins = await userRepo.find({ where: { role: "admin" } });
+      for (const admin of admins) {
+        await NotificationController.createNotification(
+          admin.id,
+          "طلب حصة خاصة جديدة (1-on-1) 🎯",
+          `طلب الطالب (${student.name}) إنشاء مجموعة فردية (1-on-1) مع المعلم (${teacher.name}) لموضوع "${cleanTopic}". المجموعة قيد الانتظار للاعتماد.`,
+          "info",
+          "#admin-dashboard/groups"
+        ).catch(() => {});
+      }
+
+      // Notify Teacher
+      await NotificationController.createNotification(
+        teacher.id,
+        "طلب حصة خاصة جديدة (1-on-1) 🎯",
+        `طلب الطالب (${student.name}) حجز حصة خاصة 1-on-1 معك في موضوع "${cleanTopic}". تم إرسال الطلب للإدارة لاعتماد المجموعة.`,
+        "info",
+        "#teacher-groups"
+      ).catch(() => {});
+
+      return res.status(201).json({
+        message: "تم إرسال طلب الحصة الخاصة بنجاح للإدارة لاعتماد مجموعة فردية (1-on-1) مع المعلم! 🚀",
+        group: savedGroup
+      });
+    } catch (err: any) {
+      console.error("Error in requestPrivateGroup:", err);
+      return res.status(500).json({ error: "فشل إرسال طلب الحصة الخاصة." });
+    }
+  }
+
   // GET /admin/groups/pending-approval
   static async getPendingGroups(req: AuthRequest, res: Response) {
     try {

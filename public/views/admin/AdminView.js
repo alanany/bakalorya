@@ -16,6 +16,7 @@ export default class AdminView {
   constructor(container, initialTab = "stats") {
     this.container = container;
     this.activeTab = initialTab || "stats";
+    window.adminViewInstance = this;
     this.stats = {};
     this.allMembers = [];
     this.courses = [];
@@ -472,9 +473,7 @@ export default class AdminView {
       </div>
 
       <!-- Modals Container -->
-      <div id="admin-modal-container">
-        ${this.renderAddCourseModal()}
-      </div>
+      <div id="admin-modal-container"></div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
@@ -538,7 +537,6 @@ export default class AdminView {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
       }
-      this.updateAddCourseModalTeachers();
     } catch (err) {
       console.error("loadAllData error:", err);
     }
@@ -647,246 +645,11 @@ export default class AdminView {
   }
 
   bindActionEvents() {
-    // Admin Add Course Modal Open & Close
-    this.container.querySelector("#open-admin-add-course-modal-btn")?.addEventListener("click", () => {
-      const modal = document.getElementById("admin-course-modal");
-      if (modal) {
-        modal.style.display = "flex";
-        // Reset form & upload preview on modal open
-        const form = document.getElementById("admin-course-form");
-        if (form) form.reset();
-        const imgHidden = document.getElementById("admin-course-image");
-        if (imgHidden) imgHidden.value = "";
-        const idleBox = document.getElementById("admin-image-upload-idle");
-        const loadingBox = document.getElementById("admin-image-upload-loading");
-        const previewWrapper = document.getElementById("admin-image-preview-wrapper");
-        if (idleBox) idleBox.style.display = "block";
-        if (loadingBox) loadingBox.style.display = "none";
-        if (previewWrapper) previewWrapper.style.display = "none";
-
-        // Reset pricing UI
-        const paidFields = document.getElementById("admin-course-paid-fields");
-        if (paidFields) paidFields.style.display = "none";
-        const freeLabel = document.getElementById("admin-pricing-free-label");
-        const paidLabel = document.getElementById("admin-pricing-paid-label");
-        if (freeLabel) freeLabel.style.borderColor = "var(--primary)";
-        if (paidLabel) paidLabel.style.borderColor = "var(--border-color)";
-      }
+    // Admin Add Course Modal Open
+    this.container.querySelector("#open-admin-add-course-modal-btn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      this.renderAddCourseModal();
     });
-
-    document.getElementById("close-admin-course-modal")?.addEventListener("click", () => {
-      const modal = document.getElementById("admin-course-modal");
-      if (modal) modal.style.display = "none";
-    });
-
-    document.getElementById("cancel-admin-course-modal")?.addEventListener("click", () => {
-      const modal = document.getElementById("admin-course-modal");
-      if (modal) modal.style.display = "none";
-    });
-
-    // Submit Admin Course Form & Attach Upload Listeners to Fresh Form
-    const adminCourseForm = document.getElementById("admin-course-form");
-    if (adminCourseForm) {
-      const freshForm = adminCourseForm.cloneNode(true);
-      adminCourseForm.parentNode.replaceChild(freshForm, adminCourseForm);
-      let isSubmitting = false;
-
-      // Pricing radio listeners (Free vs Paid)
-      const pricingRadios = freshForm.querySelectorAll("input[name='admin-course-pricing-type']");
-      const paidFields = freshForm.querySelector("#admin-course-paid-fields");
-      const freeLabel = freshForm.querySelector("#admin-pricing-free-label");
-      const paidLabel = freshForm.querySelector("#admin-pricing-paid-label");
-
-      pricingRadios.forEach(radio => {
-        radio.addEventListener("change", (e) => {
-          const isPaid = e.target.value === "paid";
-          if (paidFields) paidFields.style.display = isPaid ? "flex" : "none";
-          if (freeLabel) freeLabel.style.borderColor = isPaid ? "var(--border-color)" : "var(--primary)";
-          if (paidLabel) paidLabel.style.borderColor = isPaid ? "var(--primary)" : "var(--border-color)";
-        });
-      });
-
-      // Toggle custom category in admin course modal
-      freshForm.querySelector("#admin-course-category-select")?.addEventListener("change", (e) => {
-        const customWrapper = freshForm.querySelector("#admin-course-category-custom-wrapper");
-        if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
-      });
-
-      // Toggle direct URL input in admin course modal
-      freshForm.querySelector("#admin-toggle-url-input-btn")?.addEventListener("click", () => {
-        const urlWrapper = freshForm.querySelector("#admin-url-input-wrapper");
-        if (urlWrapper) urlWrapper.style.display = urlWrapper.style.display === "none" ? "block" : "none";
-      });
-
-      // Dropzone click trigger & file input
-      const dropzone = freshForm.querySelector("#admin-course-dropzone");
-      const fileInput = freshForm.querySelector("#admin-course-image-file");
-
-      dropzone?.addEventListener("click", (e) => {
-        if (e.target.closest("#admin-remove-course-image-btn") || e.target.closest("#admin-url-input-wrapper")) return;
-        fileInput?.click();
-      });
-
-      freshForm.querySelector("#admin-btn-trigger-upload")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        fileInput?.click();
-      });
-
-      // Drag and Drop support
-      dropzone?.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropzone.style.borderColor = "var(--primary)";
-        dropzone.style.background = "rgba(99,102,241,0.08)";
-      });
-      dropzone?.addEventListener("dragleave", (e) => {
-        e.preventDefault();
-        dropzone.style.borderColor = "var(--border-color)";
-        dropzone.style.background = "var(--bg-app)";
-      });
-      dropzone?.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropzone.style.borderColor = "var(--border-color)";
-        dropzone.style.background = "var(--bg-app)";
-        if (e.dataTransfer?.files?.length > 0) {
-          if (fileInput) {
-            fileInput.files = e.dataTransfer.files;
-            fileInput.dispatchEvent(new Event("change"));
-          }
-        }
-      });
-
-      // Handle Image Upload
-      fileInput?.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
-        const loadingBox = freshForm.querySelector("#admin-image-upload-loading");
-        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
-        const previewImg = freshForm.querySelector("#admin-course-preview-img");
-
-        if (idleBox) idleBox.style.display = "none";
-        if (loadingBox) loadingBox.style.display = "block";
-
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-          const token = state.token || localStorage.getItem("token");
-          const uploadRes = await fetch("/api/upload", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData
-          });
-          const uploadData = await uploadRes.json();
-          if (uploadData.url) {
-            const hiddenImg = freshForm.querySelector("#admin-course-image");
-            if (hiddenImg) hiddenImg.value = uploadData.url;
-            if (previewImg) previewImg.src = uploadData.url;
-            if (loadingBox) loadingBox.style.display = "none";
-            if (previewWrapper) previewWrapper.style.display = "block";
-            showToast("تم رفع صورة الغلاف بنجاح! 📸", "success");
-          } else {
-            throw new Error(uploadData.error || "فشل رفع الصورة");
-          }
-        } catch (err) {
-          if (loadingBox) loadingBox.style.display = "none";
-          if (idleBox) idleBox.style.display = "block";
-          showToast(err.message || "فشل رفع صورة الغلاف", "error");
-        }
-      });
-
-      // Remove cover image
-      freshForm.querySelector("#admin-remove-course-image-btn")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const hiddenImg = freshForm.querySelector("#admin-course-image");
-        if (hiddenImg) hiddenImg.value = "";
-        if (fileInput) fileInput.value = "";
-        const directUrl = freshForm.querySelector("#admin-course-image-url-direct");
-        if (directUrl) directUrl.value = "";
-        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
-        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
-        if (previewWrapper) previewWrapper.style.display = "none";
-        if (idleBox) idleBox.style.display = "block";
-      });
-
-      // Direct URL Input handler
-      freshForm.querySelector("#admin-course-image-url-direct")?.addEventListener("input", (e) => {
-        const url = e.target.value.trim();
-        const hiddenImg = freshForm.querySelector("#admin-course-image");
-        const previewImg = freshForm.querySelector("#admin-course-preview-img");
-        const previewWrapper = freshForm.querySelector("#admin-image-preview-wrapper");
-        const idleBox = freshForm.querySelector("#admin-image-upload-idle");
-
-        if (url) {
-          if (hiddenImg) hiddenImg.value = url;
-          if (previewImg) previewImg.src = url;
-          if (previewWrapper) previewWrapper.style.display = "block";
-          if (idleBox) idleBox.style.display = "none";
-        }
-      });
-
-      freshForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (isSubmitting) return;
-        isSubmitting = true;
-        const submitBtn = freshForm.querySelector("button[type='submit']");
-        if (submitBtn) submitBtn.disabled = true;
-
-        const title = freshForm.querySelector("#admin-course-title").value.trim();
-        const catSelectEl = freshForm.querySelector("#admin-course-category-select");
-        const catCustomEl = freshForm.querySelector("#admin-course-category-custom");
-        const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
-        if (!category) {
-          showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error");
-          isSubmitting = false;
-          if (submitBtn) submitBtn.disabled = false;
-          return;
-        }
-        const degree = freshForm.querySelector("#admin-course-degree").value;
-        const teacherId = freshForm.querySelector("#admin-course-teacher-id").value;
-        const description = freshForm.querySelector("#admin-course-desc").value.trim();
-        let image = freshForm.querySelector("#admin-course-image")?.value || freshForm.querySelector("#admin-course-image-url-direct")?.value.trim() || "";
-        const meetingLink = freshForm.querySelector("#admin-course-meeting-link").value.trim();
-
-        // Pricing extraction
-        const pricingType = freshForm.querySelector("input[name='admin-course-pricing-type']:checked")?.value || "free";
-        const isFree = pricingType === "free";
-        const price = isFree ? 0 : parseFloat(freshForm.querySelector("#admin-course-price")?.value || "0");
-        const currency = freshForm.querySelector("#admin-course-currency")?.value || "EGP";
-        const paymentDetails = freshForm.querySelector("#admin-course-payment-details")?.value.trim() || "";
-
-        const payload = {
-          title,
-          category,
-          degree,
-          teacherId,
-          image,
-          meetingLink,
-          description,
-          isFree,
-          price,
-          currency,
-          paymentDetails
-        };
-
-        try {
-          await apiFetch("/admin/courses", {
-            method: "POST",
-            body: JSON.stringify(payload)
-          });
-          showToast("تم إنشاء ونشر الدورة بنجاح! 🎉", "success");
-          const modal = document.getElementById("admin-course-modal");
-          if (modal) modal.style.display = "none";
-          await this.loadAllData();
-          this.renderTab("courses");
-        } catch (err) {
-          showToast(err.message || "فشل إنشاء الدورة", "error");
-        } finally {
-          isSubmitting = false;
-          if (submitBtn) submitBtn.disabled = false;
-        }
-      });
-    }
 
     // Admin Approve Teacher Course Submission
     this.container.querySelectorAll(".admin-approve-course-btn").forEach(btn => {

@@ -286,6 +286,11 @@ export const AdminSessionsPage = {
                         <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800;">${courseTitle}</span>
                         ${gradeName ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.75rem;">${gradeName}</span>` : ''}
                         ${subjectName ? `<span class="badge" style="background:rgba(229,29,116,0.12); color:#e51d74; font-size:0.75rem;">${subjectName}</span>` : ''}
+                        ${pg.maxStudents === 1 ? `
+                          <span class="badge" style="background:rgba(236,72,153,0.15); color:#ec4899; font-size:0.75rem; font-weight:900; border:1px solid rgba(236,72,153,0.3);">
+                            🎯 حصة خاصة فردية (1-on-1) - مقعد واحد
+                          </span>
+                        ` : ''}
                       </div>
                       <h4 style="margin:0 0 4px 0; font-size:1.05rem; font-weight:900; color:var(--text-main);">👥 ${pg.name}</h4>
                       <div style="font-size:0.82rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap;">
@@ -1461,10 +1466,10 @@ export const AdminSessionsPage = {
 
     const currentDaysStr = group.scheduleDays || "الأحد، الثلاثاء";
     const initialDays = currentDaysStr.split(/[،,]/).map(d => d.trim()).filter(Boolean);
-    const initialSessions = group.totalSessions || 24;
+    const initialSessions = (group.totalSessions !== undefined && group.totalSessions !== null) ? group.totalSessions : 24;
     const initialStudentRate = group.studentHourlyRate || group.sessionPrice || 50;
     const initialTeacherRate = group.teacherHourlyRate || group.teacher?.hourlyRate || 120;
-    const initialMaxSeats = group.maxStudents || 25;
+    const initialMaxSeats = (group.maxStudents !== undefined && group.maxStudents !== null) ? group.maxStudents : 25;
     const initialDuration = group.sessionDuration || 60;
     const initialTime = group.scheduleTime || "6:00م";
 
@@ -1486,11 +1491,12 @@ export const AdminSessionsPage = {
           <!-- Modal Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
             <div>
-              <div style="display:flex; gap:6px; margin-bottom:4px;">
+              <div style="display:flex; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
                 <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.75rem; font-weight:800;">
                   مراجعة وتعديل واعتماد المجموعة الدراسية ✏️✅
                 </span>
                 ${group.course?.title ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.75rem;">${group.course.title}</span>` : ''}
+                ${group.maxStudents === 1 ? `<span class="badge" style="background:rgba(236,72,153,0.15); color:#ec4899; font-size:0.75rem; font-weight:900; border:1px solid rgba(236,72,153,0.3);">🎯 حصة خاصة فردية (1-on-1)</span>` : ''}
               </div>
               <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">
                 👥 ${group.name || group.title}
@@ -1503,6 +1509,12 @@ export const AdminSessionsPage = {
               &times;
             </button>
           </div>
+
+          ${group.maxStudents === 1 ? `
+            <div style="padding:10px 14px; border-radius:14px; background:rgba(236,72,153,0.08); border:1px solid rgba(236,72,153,0.25); color:#ec4899; font-size:0.82rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <span>🎯 تم طلب هذه الحصة كحصة خاصة فردية (1-on-1) - تم ضبط سعة المقاعد على 1 تلقائياً.</span>
+            </div>
+          ` : ''}
 
           <!-- Form Body -->
           <form id="admin-approve-group-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">

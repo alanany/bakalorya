@@ -117,6 +117,7 @@ router.post("/groups/:id/resources", auth_1.authMiddleware, (0, auth_1.requireRo
 router.delete("/groups/:id/resources/:resourceId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.deleteGroupResource);
 router.get("/teacher/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.getMyTeacherGroups);
 router.get("/admin/all-groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseGroupController_1.CourseGroupController.getAllGroups);
+router.post("/teachers/:teacherId/request-private-group", auth_1.authMiddleware, CourseGroupController_1.CourseGroupController.requestPrivateGroup);
 // Admin Platform Settings
 router.get("/admin/settings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), PlatformSettingController_1.PlatformSettingController.getAdminSettings);
 router.put("/admin/settings", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), PlatformSettingController_1.PlatformSettingController.updateSettings);

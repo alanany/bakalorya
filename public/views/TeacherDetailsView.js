@@ -9,6 +9,7 @@ export default class TeacherDetailsView {
     this.teacher = null;
     this.courses = [];
     this.blogs = [];
+    window.currentTeacherDetailsView = this;
   }
 
   async render() {
@@ -149,7 +150,7 @@ export default class TeacherDetailsView {
 
               <!-- Quick Contact Actions -->
               <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                <button type="button" class="btn-primary teacher-request-private-btn"
+                <button type="button" class="btn-primary teacher-request-private-btn" onclick="window.currentTeacherDetailsView?.openRequestPrivateSessionModal()"
                   style="padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.3); cursor:pointer;">
                   <i data-lucide="sparkles"></i> طلب حصة خاصة (1-on-1) 🎯
                 </button>
@@ -183,7 +184,7 @@ export default class TeacherDetailsView {
             </div>
 
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button type="button" class="btn-primary teacher-request-private-btn"
+              <button type="button" class="btn-primary teacher-request-private-btn" onclick="window.currentTeacherDetailsView?.openRequestPrivateSessionModal()"
                 style="padding:12px 24px; border-radius:30px; font-size:0.92rem; font-weight:900; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35); cursor:pointer;">
                 <i data-lucide="calendar-plus"></i> طلب حجز حصة خاصة الآن 🚀
               </button>
@@ -583,9 +584,10 @@ export default class TeacherDetailsView {
 
     // Request Private Session Buttons
     this.container.querySelectorAll(".teacher-request-private-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.onclick = (e) => {
+        e.preventDefault();
         this.openRequestPrivateSessionModal();
-      });
+      };
     });
 
     this.container.querySelector("#submit-teacher-review-form")?.addEventListener("submit", async (e) => {
@@ -608,203 +610,249 @@ export default class TeacherDetailsView {
 
   // ── Open Request Private Session Modal ────────────────────────────────────────
   async openRequestPrivateSessionModal() {
-    if (!state.user) {
-      showToast("يرجى تسجيل الدخول أولاً لطلب حجز حصة خاصة.", "info");
-      window.location.hash = "#auth/login";
-      return;
-    }
-
-    const tProfile = this.teacher || {};
-    const name = tProfile.name || "الأستاذ";
-    const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
-    const phone = tProfile.phone || "";
-
-    // Fetch active student subscriptions to see if user already has 1-on-1 credits
-    let mySubscriptions = [];
     try {
-      mySubscriptions = await apiFetch("/student/subscriptions").catch(() => []);
-    } catch (e) {}
+      document.getElementById("teacher-private-session-modal")?.remove();
 
-    const teacherSub = (mySubscriptions || []).find(s => 
-      s.status === "ACTIVE" && (
-        (s.teacher && String(s.teacher.id) === String(this.teacherId)) ||
-        (!s.teacher)
-      )
-    );
+      const tProfile = this.teacher || {};
+      const name = tProfile.name || "الأستاذ";
+      const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+      const phone = tProfile.phone || "";
 
-    // Tomorrow 6 PM as default
-    const defaultDate = new Date(Date.now() + 24 * 3600 * 1000);
-    defaultDate.setHours(18, 0, 0, 0);
-    const dateStr = defaultDate.toISOString().slice(0, 16);
-
-    const modalBackdrop = document.createElement("div");
-    modalBackdrop.id = "teacher-private-session-modal";
-    modalBackdrop.style.cssText = `
-      position:fixed; top:0; left:0; right:0; bottom:0;
-      background:rgba(15,23,42,0.75); backdrop-filter:blur(10px);
-      z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;
-      animation:fadeIn 0.2s ease;
-    `;
-
-    modalBackdrop.innerHTML = `
-      <div class="glass-card" style="width:100%; max-width:560px; max-height:90vh; overflow-y:auto; border-radius:24px; padding:28px 30px; background:var(--bg-card); border:1px solid var(--border-color); box-shadow:0 20px 60px rgba(0,0,0,0.3); position:relative; box-sizing:border-box;">
-        
-        <!-- Close Button -->
-        <button type="button" id="close-private-modal-btn" 
-          style="position:absolute; top:20px; left:20px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted);">
-          <i data-lucide="x" style="width:18px;height:18px;"></i>
-        </button>
-
-        <!-- Header -->
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
-          <img src="${avatar}" alt="${name}" style="width:54px; height:54px; border-radius:50%; object-fit:cover; border:2px solid #10b981; background:var(--bg-app);">
-          <div>
-            <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.75rem; margin-bottom:4px; display:inline-block;">
-              🎯 طلب حصة خاصة (1-on-1)
-            </span>
-            <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">
-              حصة فردية مباشرة مع ${name}
-            </h3>
-          </div>
-        </div>
-
-        ${teacherSub ? `
-          <div style="padding:10px 14px; border-radius:14px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color:#059669; font-size:0.84rem; font-weight:800; margin-bottom:18px; display:flex; align-items:center; gap:8px;">
-            <i data-lucide="check-circle" style="width:18px; height:18px;"></i>
-            <span>لديك اشتراك نشط (${teacherSub.plan?.name || 'باقة حصص خاصة'}) يمكنك حجز الموعد مباشرة من رصيدك.</span>
-          </div>
-        ` : `
-          <div style="padding:12px 14px; border-radius:14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); color:var(--primary); font-size:0.82rem; margin-bottom:18px; line-height:1.5;">
-            💡 يمكنك حجز وتنسيق موعد الحصة الخاصة، أو اختيار باقة حصص خاصة شهرية للاستفادة من خصم الحصص الفردية.
-          </div>
-        `}
-
-        <form id="private-session-request-form" style="display:flex; flex-direction:column; gap:14px;">
-          
-          <div>
-            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
-              📅 الموعد المقترح للحصة (تاريخ وتوقيت البث):
-            </label>
-            <input type="datetime-local" id="ps-scheduled-at" value="${dateStr}" required
-              style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif;">
-          </div>
-
-          <div>
-            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
-              🎯 موضوع الحصة أو الدرس المطلوب شرحه:
-            </label>
-            <input type="text" id="ps-topic" placeholder="مثال: مراجعة الوحدة الأولى، حل مسائل الفيزياء المعقدة..." required
-              style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif;">
-          </div>
-
-          <div>
-            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
-              ⏱️ مدة الحصة:
-            </label>
-            <select id="ps-duration" style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif; cursor:pointer;">
-              <option value="60">60 دقيقة (ساعة كاملة 🎯)</option>
-              <option value="90">90 دقيقة (ساعة ونصف 🚀)</option>
-              <option value="120">120 دقيقة (ساعتان مكثفة ⭐)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
-              📝 ملاحظات أو أسئلة محددة تود التركيز عليها (اختياري):
-            </label>
-            <textarea id="ps-notes" placeholder="اكتب هنا أي تفاصيل تود إعلام الأستاذ بها مسبقاً للتحضير لها..."
-              style="width:100%; height:75px; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif; resize:vertical;"></textarea>
-          </div>
-
-          <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
-            <button type="submit" id="ps-submit-btn" class="btn-primary"
-              style="padding:12px 20px; border-radius:16px; font-weight:900; font-size:0.92rem; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35); cursor:pointer;">
-              <i data-lucide="send" style="width:16px;height:16px;"></i> ${teacherSub ? 'تأكيد وحجز الحصة مباشرة 🚀' : 'إرسال طلب الحصة الخاصة للأستاذ 🚀'}
-            </button>
-
-            <a href="${state.platformSettings?.whatsappUrl || 'https://wa.me/213555123456'}" target="_blank" class="btn-secondary"
-              style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:#25D366; border-color:rgba(37,211,102,0.4); background:rgba(37,211,102,0.08); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
-              <i data-lucide="message-circle" style="width:16px;height:16px;"></i> التواصل مع إدارة المنصة للاستفسار والمساعدة 💬
-            </a>
-
-            <a href="#subscription-plans?teacherId=${this.teacherId}" class="btn-secondary"
-              style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:var(--primary); border-color:var(--primary); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
-              <i data-lucide="sparkles" style="width:15px;height:15px;"></i> استعراض باقات واشتراكات الحصص الشهرية
-            </a>
-          </div>
-
-        </form>
-
-      </div>
-    `;
-
-    document.body.appendChild(modalBackdrop);
-    if (window.lucide) window.lucide.createIcons();
-
-    // Close logic
-    const closeModal = () => modalBackdrop.remove();
-    modalBackdrop.querySelector("#close-private-modal-btn")?.addEventListener("click", closeModal);
-    modalBackdrop.addEventListener("click", (e) => {
-      if (e.target === modalBackdrop) closeModal();
-    });
-
-    // Form Submit logic
-    modalBackdrop.querySelector("#private-session-request-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const scheduledAt = modalBackdrop.querySelector("#ps-scheduled-at")?.value;
-      const topic = modalBackdrop.querySelector("#ps-topic")?.value;
-      const duration = parseInt(modalBackdrop.querySelector("#ps-duration")?.value || "60", 10);
-      const notes = modalBackdrop.querySelector("#ps-notes")?.value || "";
-      const submitBtn = modalBackdrop.querySelector("#ps-submit-btn");
-
-      if (!scheduledAt || !topic) {
-        showToast("يرجى ملء الموعد والموضوع المطلوب.", "error");
-        return;
+      // Fetch active student subscriptions to see if user already has 1-on-1 credits
+      let mySubscriptions = [];
+      if (state.user && state.user.role === "student") {
+        try {
+          mySubscriptions = await apiFetch("/subscriptions/my", { silentError: true }).catch(() => []);
+        } catch (e) {}
       }
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span>جارٍ إرسال الطلب... ⏳</span>`;
+      const teacherSub = (mySubscriptions || []).find(s => 
+        s.status === "ACTIVE" && (
+          (s.teacher && String(s.teacher.id) === String(this.teacherId)) ||
+          (!s.teacher)
+        )
+      );
 
+      // Tomorrow 6 PM as default
+      const defaultDate = new Date(Date.now() + 24 * 3600 * 1000);
+      defaultDate.setHours(18, 0, 0, 0);
+      const dateStr = defaultDate.toISOString().slice(0, 16);
+
+      const modalBackdrop = document.createElement("div");
+      modalBackdrop.id = "teacher-private-session-modal";
+      modalBackdrop.style.cssText = `
+        position:fixed; top:0; left:0; right:0; bottom:0;
+        background:rgba(15,23,42,0.75); backdrop-filter:blur(10px);
+        z-index:999999; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;
+        animation:fadeIn 0.2s ease;
+      `;
+
+      modalBackdrop.innerHTML = `
+        <div class="glass-card" style="width:100%; max-width:560px; max-height:90vh; overflow-y:auto; border-radius:24px; padding:28px 30px; background:var(--bg-card); border:1px solid var(--border-color); box-shadow:0 20px 60px rgba(0,0,0,0.3); position:relative; box-sizing:border-box;">
+          
+          <!-- Close Button -->
+          <button type="button" id="close-private-modal-btn" 
+            style="position:absolute; top:20px; left:20px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted);">
+            <i data-lucide="x" style="width:18px;height:18px;"></i>
+          </button>
+
+          <!-- Header -->
+          <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
+            <img src="${avatar}" alt="${name}" style="width:54px; height:54px; border-radius:50%; object-fit:cover; border:2px solid #10b981; background:var(--bg-app);">
+            <div>
+              <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:800; font-size:0.75rem; margin-bottom:4px; display:inline-block;">
+                🎯 طلب حصة خاصة (1-on-1)
+              </span>
+              <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">
+                حصة فردية خاصة مع ${name}
+              </h3>
+            </div>
+          </div>
+
+          ${!state.user ? `
+            <div style="padding:12px 14px; border-radius:14px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#d97706; font-size:0.84rem; font-weight:800; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+              <span>⚠️ تنبيه: يرجى تسجيل الدخول بحساب الطالب لتأكيد إرسال الطلب.</span>
+              <a href="#login" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius:12px; text-decoration:none;">
+                تسجيل الدخول الآن 🔑
+              </a>
+            </div>
+          ` : ''}
+
+          ${teacherSub ? `
+            <div style="padding:10px 14px; border-radius:14px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color:#059669; font-size:0.84rem; font-weight:800; margin-bottom:18px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="check-circle" style="width:18px; height:18px;"></i>
+              <span>لديك اشتراك نشط (${teacherSub.plan?.name || 'باقة حصص خاصة'}) يمكنك حجز الموعد مباشرة من رصيدك.</span>
+            </div>
+          ` : `
+            <div style="padding:12px 14px; border-radius:14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); color:var(--primary); font-size:0.82rem; margin-bottom:18px; line-height:1.5;">
+              💡 سيتم إرسال طلب إنشاء مجموعة خاصة (1-on-1) بمقعد واحد فقط لإدارة المنصة لاعتماد الموعد وتنسيق الرابط مع الأستاذ.
+            </div>
+          `}
+
+          <form id="private-session-request-form" style="display:flex; flex-direction:column; gap:14px;">
+            
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                📚 المادة أو الدورة التابعة للحصة:
+              </label>
+              <select id="ps-course-id" style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif; cursor:pointer;">
+                <option value="">دورة تدريبية عامة / مخصصة مع الأستاذ</option>
+                ${(this.courses || []).map(c => `<option value="${c.id}">${c.title} ${c.grade?.name ? `(${c.grade.name})` : ''}</option>`).join('')}
+              </select>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                🎯 موضوع الحصة أو الدرس المطلوب شرحه: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="ps-topic" placeholder="مثال: مراجعة الوحدة الأولى، حل مسائل الفيزياء المعقدة..." required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif;">
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                📅 الموعد المقترح للحصة (تاريخ وتوقيت البث): <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="datetime-local" id="ps-scheduled-at" value="${dateStr}" required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif;">
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                ⏱️ مدة الحصة:
+              </label>
+              <select id="ps-duration" style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif; cursor:pointer;">
+                <option value="60">60 دقيقة (ساعة كاملة 🎯)</option>
+                <option value="90">90 دقيقة (ساعة ونصف 🚀)</option>
+                <option value="120">120 دقيقة (ساعتان مكثفة ⭐)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                📝 ملاحظات أو أسئلة محددة تود التركيز عليها (اختياري):
+              </label>
+              <textarea id="ps-notes" placeholder="اكتب هنا أي تفاصيل تود إعلام الأستاذ بها مسبقاً للتحضير لها..."
+                style="width:100%; height:75px; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; box-sizing:border-box; font-family:'Cairo',sans-serif; resize:vertical;"></textarea>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+              <button type="submit" id="ps-submit-btn" class="btn-primary"
+                style="padding:12px 20px; border-radius:16px; font-weight:900; font-size:0.92rem; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.35); cursor:pointer;">
+                <i data-lucide="send" style="width:16px;height:16px;"></i> ${teacherSub ? 'تأكيد وحجز الحصة مباشرة 🚀' : 'إرسال طلب الحصة الخاصة للإدارة 🚀'}
+              </button>
+
+              <a href="${state.platformSettings?.whatsappUrl || 'https://wa.me/213555123456'}" target="_blank" class="btn-secondary"
+                style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:#25D366; border-color:rgba(37,211,102,0.4); background:rgba(37,211,102,0.08); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <i data-lucide="message-circle" style="width:16px;height:16px;"></i> التواصل مع إدارة المنصة للاستفسار والمساعدة 💬
+              </a>
+
+              <a href="#subscription-plans?teacherId=${this.teacherId}" class="btn-secondary"
+                style="padding:10px 16px; border-radius:14px; font-weight:800; font-size:0.85rem; color:var(--primary); border-color:var(--primary); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <i data-lucide="sparkles" style="width:15px;height:15px;"></i> استعراض باقات واشتراكات الحصص الشهرية
+              </a>
+            </div>
+
+          </form>
+
+        </div>
+      `;
+
+      document.body.appendChild(modalBackdrop);
       try {
-        if (teacherSub) {
-          // Direct booking using active subscription
-          await apiFetch("/sessions/book", {
-            method: "POST",
-            body: JSON.stringify({
-              subscriptionId: teacherSub.id,
-              scheduledAt: new Date(scheduledAt).toISOString(),
-              topic,
-              title: `حصة خاصة: ${topic}`,
-              duration,
-              notes
-            })
-          });
-          showToast("تم حجز الحصة الخاصة بنجاح وجدولتها في حسابك! 🎯", "success");
-        } else {
-          // Send direct request notification to the teacher and admin
-          await apiFetch("/notifications", {
-            method: "POST",
-            body: JSON.stringify({
-              userId: this.teacherId,
-              title: "طلب حصة خاصة جديدة (1-on-1) 🎯",
-              message: `قام الطالب (${state.user?.name || 'طالب'}) بطلب حجز حصة خاصة 1-on-1 في موضوع "${topic}" بموعد مقترح: ${scheduledAt}.`,
-              type: "info",
-              link: "#teacher-private-sessions"
-            })
-          }).catch(() => {});
-          showToast("تم إرسال طلب الحصة الخاصة بنجاح! سيتم مراجعته والتواصل معك من الإدارة 🚀", "success");
+        if (window.lucide) window.lucide.createIcons();
+      } catch (e) {}
+
+      // Close logic
+      const closeModal = () => modalBackdrop.remove();
+      modalBackdrop.querySelector("#close-private-modal-btn")?.addEventListener("click", closeModal);
+      modalBackdrop.addEventListener("click", (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+
+      // Form Submit logic
+      modalBackdrop.querySelector("#private-session-request-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (!state.user) {
+          showToast("يرجى تسجيل الدخول أولاً بحساب الطالب لإرسال الطلب.", "info");
+          closeModal();
+          window.location.hash = "#login";
+          return;
         }
 
-        closeModal();
-      } catch (err) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<i data-lucide="send" style="width:16px;height:16px;"></i> تأكيد الطلب`;
-        showToast(err.message || "فشل إرسال طلب الحصة الخاصة.", "error");
-        if (window.lucide) window.lucide.createIcons();
-      }
-    });
+        const scheduledAt = modalBackdrop.querySelector("#ps-scheduled-at")?.value;
+        const topic = modalBackdrop.querySelector("#ps-topic")?.value;
+        const duration = parseInt(modalBackdrop.querySelector("#ps-duration")?.value || "60", 10);
+        const notes = modalBackdrop.querySelector("#ps-notes")?.value || "";
+        const courseId = modalBackdrop.querySelector("#ps-course-id")?.value || undefined;
+        const submitBtn = modalBackdrop.querySelector("#ps-submit-btn");
+
+        if (!scheduledAt || !topic) {
+          showToast("يرجى ملء الموعد والموضوع المطلوب.", "error");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>جارٍ إرسال الطلب... ⏳</span>`;
+
+        try {
+          if (teacherSub) {
+            // Direct booking using active subscription
+            await apiFetch("/sessions/book", {
+              method: "POST",
+              body: JSON.stringify({
+                subscriptionId: teacherSub.id,
+                scheduledAt: new Date(scheduledAt).toISOString(),
+                topic,
+                title: `حصة خاصة: ${topic}`,
+                duration,
+                notes
+              })
+            });
+            showToast("تم حجز الحصة الخاصة بنجاح وجدولتها في حسابك! 🎯", "success");
+          } else {
+            // Send request to admin to create 1-on-1 private group with 1 seat
+            await apiFetch(`/teachers/${this.teacherId}/request-private-group`, {
+              method: "POST",
+              body: JSON.stringify({
+                topic,
+                scheduledAt,
+                duration,
+                notes,
+                courseId
+              })
+            });
+            showToast("تم إرسال طلب الحصة الخاصة بنجاح! تم إنشاء طلب مجموعة خاصة (1-on-1) بمقعد واحد وإرساله للإدارة للاعتماد 🚀", "success");
+          }
+
+          closeModal();
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="send" style="width:16px;height:16px;"></i> تأكيد الطلب`;
+          showToast(err.message || "فشل إرسال طلب الحصة الخاصة.", "error");
+          try {
+            if (window.lucide) window.lucide.createIcons();
+          } catch (e) {}
+        }
+      });
+    } catch (outerErr) {
+      console.error("Error opening private session modal:", outerErr);
+      showToast("تعذر فتح نافذة الحجز: " + outerErr.message, "error");
+    }
   }
 
   onDestroy() { }
 }
 
+// Global click fallback for private session buttons
+if (typeof window !== "undefined" && !window._teacherPrivateClickRegistered) {
+  window._teacherPrivateClickRegistered = true;
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".teacher-request-private-btn");
+    if (btn && window.currentTeacherDetailsView) {
+      e.preventDefault();
+      window.currentTeacherDetailsView.openRequestPrivateSessionModal();
+    }
+  });
+}
