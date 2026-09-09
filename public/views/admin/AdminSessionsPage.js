@@ -2055,6 +2055,8 @@ export const AdminSessionsPage = {
     let students = [];
     let isDbCourseGroup = false;
     let dbGroupId = groupIdOrSessionId;
+    let groupStatus = "OPEN";
+    let groupPrice = 320;
 
     try {
       // 1. Try to fetch official roster from backend endpoint
@@ -2065,6 +2067,8 @@ export const AdminSessionsPage = {
         targetTitle = rosterRes.group?.name || "المجموعة الدراسية";
         teacherName = rosterRes.group?.teacher?.name || "معلم المنصة";
         maxSeats = rosterRes.group?.maxStudents || 25;
+        groupStatus = rosterRes.group?.status || "OPEN";
+        groupPrice = rosterRes.group?.monthlyPrice || (rosterRes.group?.sessionPrice ? rosterRes.group.sessionPrice * 8 : (rosterRes.group?.studentHourlyRate ? rosterRes.group.studentHourlyRate * 8 : 320));
         students = rosterRes.students || [];
       } else {
         // 2. Fallback: match from local cache
@@ -2074,6 +2078,8 @@ export const AdminSessionsPage = {
           targetTitle = matchedGroup.name || "المجموعة الدراسية";
           teacherName = matchedGroup.teacher?.name || matchedGroup.course?.teacher?.name || "معلم المنصة";
           maxSeats = matchedGroup.maxStudents || 25;
+          groupStatus = matchedGroup.status || "OPEN";
+          groupPrice = matchedGroup.monthlyPrice || (matchedGroup.sessionPrice ? matchedGroup.sessionPrice * 8 : (matchedGroup.studentHourlyRate ? matchedGroup.studentHourlyRate * 8 : 320));
 
           const groupEnrollments = (this.allEnrollments || []).filter(e => 
             e.group && String(e.group.id) === String(groupIdOrSessionId)
@@ -2127,10 +2133,11 @@ export const AdminSessionsPage = {
     const pendingCount = students.filter(s => s.status === 'pending' || s.status === 'PENDING').length;
     const availableSeats = Math.max(0, maxSeats - activeCount);
     const isFull = availableSeats <= 0;
+    const isClosed = groupStatus === "CLOSED" || groupStatus === "IN_PROGRESS";
 
     container.innerHTML = `
       <div class="modal-overlay" id="group-students-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:99999;">
-        <div class="modal-content" style="max-width:840px; width:95%; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; background:var(--bg-card); box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
+        <div class="modal-content" style="max-width:860px; width:95%; border-radius:24px; overflow:hidden; border:1px solid var(--border-color); padding:0; background:var(--bg-card); box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
           
           <!-- Header -->
           <div style="padding:22px 26px; background:linear-gradient(135deg, rgba(139,92,246,0.14), rgba(229,29,116,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
@@ -2150,8 +2157,8 @@ export const AdminSessionsPage = {
                   <span style="color:#10b981; font-weight:800;">✅ مفعّل: ${activeCount}</span>
                   ${pendingCount > 0 ? `<span style="color:#d97706; font-weight:800;">⏳ قيد الاعتماد: ${pendingCount}</span>` : ''}
                   <span>•</span>
-                  <span style="font-weight:800; color:${isFull ? '#ef4444' : '#10b981'};">
-                    ${isFull ? '🔒 السعة مكتملة (0 متبقي)' : `✨ شاغر: ${availableSeats} مقاعد من ${maxSeats}`}
+                  <span style="font-weight:800; color:${isClosed ? '#f59e0b' : isFull ? '#ef4444' : '#10b981'};">
+                    ${isClosed ? '🔒 مغلقة للتسجيل' : isFull ? '🔒 السعة مكتملة (0 متبقي)' : `✨ شاغر: ${availableSeats} مقاعد من ${maxSeats}`}
                   </span>
                 </div>
               </div>
@@ -2161,8 +2168,8 @@ export const AdminSessionsPage = {
 
           <div class="modal-body" style="padding:22px 26px; max-height:72vh; overflow-y:auto; display:flex; flex-direction:column; gap:18px;">
 
-            <!-- Add Student to Group Bar -->
-            ${isFull ? `
+            <!-- Add Student to Group Bar / Closed Group Exception Form -->
+            ${!isClosed && isFull ? `
               <div style="background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.35); padding:14px 18px; border-radius:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                 <div style="display:flex; align-items:center; gap:8px;">
                   <i data-lucide="lock" style="width:18px; height:18px; color:#ef4444;"></i>
@@ -2174,6 +2181,111 @@ export const AdminSessionsPage = {
                 <span style="font-size:0.78rem; font-weight:800; background:rgba(239,68,68,0.15); color:#ef4444; padding:4px 10px; border-radius:10px;">
                   0 مقاعد متاحة
                 </span>
+              </div>
+            ` : isClosed ? `
+              <div style="background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(99,102,241,0.05)); border:1.5px solid rgba(245,158,11,0.35); padding:18px 20px; border-radius:20px; box-shadow:0 4px 20px rgba(245,158,11,0.08);">
+                
+                <!-- Notice Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:32px; height:32px; border-radius:10px; background:rgba(245,158,11,0.18); color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="lock" style="width:16px; height:16px;"></i>
+                    </div>
+                    <div>
+                      <strong style="font-size:0.92rem; color:var(--text-main); display:block;">إضافة طالب لمجموعة مغلقة (إيصال سداد وبيانات مالية إلزامية) 🔒💳</strong>
+                      <span style="font-size:0.77rem; color:#b45309;">هذه المجموعة مغلقة للتسجيل. لإضافة طالب استثنائياً يلزم تسجيل بيانات الدفع ورفع صورة إيصال التحويل المعتمد.</span>
+                    </div>
+                  </div>
+                  <span style="font-size:0.76rem; font-weight:900; color:#d97706; background:rgba(245,158,11,0.15); padding:4px 12px; border-radius:12px; border:1px solid rgba(245,158,11,0.3);">
+                    🔒 مغلقة للتسجيل
+                  </span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  
+                  <!-- Student Selection -->
+                  <div>
+                    <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:5px; color:var(--text-main);">
+                      اختر الطالب المطلوب تسكينه: <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="select-new-group-student" class="form-select" required style="width:100%; border-radius:12px; padding:10px 14px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                      <option value="">-- اختر طالباً من قائمة الطلاب المسجلين بالمنصة --</option>
+                      ${availableStudents.map(st => `<option value="${st.id}">${st.name} (${st.email || st.phone || 'طالب'})</option>`).join('')}
+                    </select>
+                  </div>
+
+                  <!-- Financial Data Fields -->
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                    <div>
+                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                        المبلغ المدفوع (EGP): <span style="color:#ef4444;">*</span>
+                      </label>
+                      <input type="number" id="add-student-amount" value="${groupPrice || 320}" min="1" step="0.5" required class="form-input" 
+                        style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                    </div>
+
+                    <div>
+                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                        طريقة التحويل والدفع: <span style="color:#ef4444;">*</span>
+                      </label>
+                      <select id="add-student-provider" class="form-select" style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                        <option value="vodafone_cash">Vodafone Cash (فودافون كاش)</option>
+                        <option value="instapay">InstaPay (إنستاباي)</option>
+                        <option value="bank_transfer">تحويل بنكي (Bank Transfer)</option>
+                        <option value="orange_cash">أورنج كاش (Orange Cash)</option>
+                        <option value="etisalat_cash">اتصالات كاش (Etisalat Cash)</option>
+                        <option value="cash">نقداً باليد (Cash)</option>
+                        <option value="other">أخرى (Other)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                        رقم هاتف المحول / رقم العملية:
+                      </label>
+                      <input type="text" id="add-student-txid" placeholder="010xxxxxxxx أو رقم الحوالة" class="form-input"
+                        style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                    </div>
+                  </div>
+
+                  <!-- Receipt Upload & Notes Grid -->
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; align-items:start;">
+                    <div>
+                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                        صورة إيصال التحويل / السداد: <span style="color:#ef4444;">*</span>
+                      </label>
+                      <div style="position:relative; border:2px dashed rgba(245,158,11,0.5); border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
+                        <input type="file" id="add-student-receipt-file" accept="image/*" required
+                          style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer;">
+                        <div style="display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:0.82rem;">
+                          <i data-lucide="upload-cloud" style="width:18px; height:18px; color:#f59e0b;"></i>
+                          <span id="add-student-file-label">انقر أو اسحب صورة الإيصال هنا (مطلوبة)</span>
+                        </div>
+                      </div>
+                      
+                      <!-- Live Preview Container -->
+                      <div id="add-student-receipt-preview-container" style="display:none; margin-top:8px; text-align:center;">
+                        <img id="add-student-receipt-preview" src="" style="max-height:110px; max-width:100%; border-radius:10px; border:1.5px solid var(--border-color); object-fit:contain; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                        ملاحظات المشرف / المرجع:
+                      </label>
+                      <input type="text" id="add-student-notes" placeholder="مثال: إضافة استثنائية مع إيصال معتمد" class="form-input"
+                        style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                      
+                      <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                        <button type="button" id="add-student-to-group-btn" class="btn-primary" 
+                          style="padding:11px 24px; border-radius:14px; font-weight:900; font-size:0.88rem; gap:8px; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; color:#fff; box-shadow:0 4px 14px rgba(245,158,11,0.3); cursor:pointer;">
+                          <i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد إضافة الطالب واعتماد الإيصال والمقعد ✅
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             ` : `
               <div style="background:var(--bg-app); border:1px solid var(--border-color); padding:16px 18px; border-radius:18px;">
@@ -2250,6 +2362,16 @@ export const AdminSessionsPage = {
                       <!-- Right: Contact Methods & Actions -->
                       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-inline-start:auto;">
                         
+                        <!-- Receipt Badge if exists -->
+                        ${st.payment?.receiptUrl ? `
+                          <a href="${st.payment.receiptUrl}" target="_blank" rel="noopener" 
+                             class="btn-secondary" 
+                             style="font-size:0.76rem; padding:6px 12px; border-radius:12px; border-color:#8b5cf6; color:#8b5cf6; background:rgba(139,92,246,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:800;"
+                             title="عرض صورة إيصال التحويل المعتمد">
+                            <i data-lucide="receipt" style="width:13px; height:13px;"></i> إيصال (${st.payment.amount || 0} ج.م) 🧾
+                          </a>
+                        ` : ''}
+
                         <!-- WhatsApp Direct Chat Button -->
                         ${rawPhone ? `
                           <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" rel="noopener" 
@@ -2259,9 +2381,9 @@ export const AdminSessionsPage = {
                             💬 واتساب (${rawPhone})
                           </a>
                           <a href="tel:${cleanPhone}" 
-                             class="btn-secondary" 
-                             style="font-size:0.78rem; padding:6px 10px; border-radius:12px; border-color:var(--primary); color:var(--primary); background:rgba(99,102,241,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;"
-                             title="اتصال هاتفي فوري">
+                              class="btn-secondary" 
+                              style="font-size:0.78rem; padding:6px 10px; border-radius:12px; border-color:var(--primary); color:var(--primary); background:rgba(99,102,241,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;"
+                              title="اتصال هاتفي فوري">
                             <i data-lucide="phone-call" style="width:12px; height:12px;"></i> اتصال
                           </a>
                         ` : `
@@ -2310,6 +2432,28 @@ export const AdminSessionsPage = {
     document.getElementById("close-group-students-modal")?.addEventListener("click", closeModal);
     document.getElementById("cancel-group-students-btn")?.addEventListener("click", closeModal);
 
+    // Live preview for receipt file in closed group modal
+    const fileInput = document.getElementById("add-student-receipt-file");
+    const previewContainer = document.getElementById("add-student-receipt-preview-container");
+    const previewImg = document.getElementById("add-student-receipt-preview");
+    const fileLabel = document.getElementById("add-student-file-label");
+
+    fileInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        if (fileLabel) fileLabel.textContent = `تم اختيار: ${file.name}`;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (previewImg) previewImg.src = event.target.result;
+          if (previewContainer) previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        if (fileLabel) fileLabel.textContent = "انقر أو اسحب صورة الإيصال هنا (مطلوبة)";
+        if (previewContainer) previewContainer.style.display = "none";
+      }
+    });
+
     // 1. Add Student to Group
     document.getElementById("add-student-to-group-btn")?.addEventListener("click", async () => {
       const studentId = document.getElementById("select-new-group-student")?.value;
@@ -2318,14 +2462,65 @@ export const AdminSessionsPage = {
         return;
       }
 
+      const amountInput = document.getElementById("add-student-amount");
+      const providerInput = document.getElementById("add-student-provider");
+      const txIdInput = document.getElementById("add-student-txid");
+      const notesInput = document.getElementById("add-student-notes");
+
+      const amountVal = amountInput?.value;
+      const providerVal = providerInput?.value;
+      const txIdVal = txIdInput?.value?.trim();
+      const notesVal = notesInput?.value?.trim();
+
+      if (isClosed) {
+        if (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0) {
+          showToast("هذه المجموعة مغلقة للتسجيل. يجب إدخال المبلغ المالي المدفوع.", "warning");
+          return;
+        }
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          showToast("هذه المجموعة مغلقة للتسجيل. يجب إرفاق صورة إيصال التحويل لإتمام الإضافة!", "warning");
+          return;
+        }
+      }
+
       const addBtn = document.getElementById("add-student-to-group-btn");
-      if (addBtn) addBtn.disabled = true;
+      if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.innerText = "جاري المعالجة... ⏳";
+      }
 
       try {
+        let receiptUrl = null;
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+          if (addBtn) addBtn.innerText = "جاري رفع صورة الإيصال... ⏳";
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (!uploadRes.ok) {
+            throw new Error("فشل رفع صورة إيصال الدفع.");
+          }
+          const uploadData = await uploadRes.json();
+          receiptUrl = uploadData.url;
+        }
+
+        if (addBtn) addBtn.innerText = "جاري تفعيل مقعد الطالب... ⏳";
+
         if (isDbCourseGroup) {
           const res = await apiFetch(`/admin/groups/${dbGroupId}/add-student`, {
             method: "POST",
-            body: JSON.stringify({ studentId })
+            body: JSON.stringify({
+              studentId,
+              amount: amountVal ? parseFloat(amountVal) : undefined,
+              provider: providerVal || undefined,
+              providerTransactionId: txIdVal || undefined,
+              receiptUrl: receiptUrl || undefined,
+              notes: notesVal || undefined
+            })
           });
           showToast(res.message || "تمت إضافة الطالب للمجموعة وتفعيل مقعده بنجاح! 🎉", "success");
         } else {
@@ -2341,7 +2536,13 @@ export const AdminSessionsPage = {
         this.renderTab(this.activeTab);
       } catch (err) {
         showToast(err.message || "فشل إضافة الطالب إلى المجموعة", "error");
-        if (addBtn) addBtn.disabled = false;
+        if (addBtn) {
+          addBtn.disabled = false;
+          addBtn.innerHTML = isClosed 
+            ? `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد إضافة الطالب واعتماد الإيصال والمقعد ✅`
+            : `<i data-lucide="plus" style="width:14px; height:14px;"></i> إضافة وتفعيل المقعد والحصص`;
+          if (window.lucide) window.lucide.createIcons();
+        }
       }
     });
 

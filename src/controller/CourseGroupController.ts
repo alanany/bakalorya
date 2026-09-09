@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { CourseGroup } from "../entity/CourseGroup";
 import { Course } from "../entity/Course";
 import { Enrollment } from "../entity/Enrollment";
+import { Payment } from "../entity/Payment";
 import { User } from "../entity/User";
 import { Session } from "../entity/Session";
 import { Assignment } from "../entity/Assignment";
@@ -445,6 +446,9 @@ export class CourseGroupController {
           maxStudents: group.maxStudents || 25,
           scheduleText: group.scheduleText || `${group.scheduleDays || ''} ${group.scheduleTime || ''}`.trim(),
           status: group.status,
+          monthlyPrice: group.monthlyPrice,
+          sessionPrice: group.sessionPrice,
+          studentHourlyRate: group.studentHourlyRate,
           teacher: group.teacher || group.course?.teacher || null
         },
         totalStudents: enrollments.length,
@@ -459,11 +463,14 @@ export class CourseGroupController {
             status: e.status,
             progress: e.progress || 0,
             payment: isAdmin && e.payment ? {
+              id: e.payment.id,
               amount: e.payment.amount,
+              currency: e.payment.currency || "EGP",
               status: e.payment.status,
               provider: e.payment.provider,
               providerTransactionId: e.payment.providerTransactionId,
-              receiptUrl: e.payment.receiptUrl
+              receiptUrl: e.payment.receiptUrl,
+              notes: e.payment.notes
             } : null,
             enrolledAt: e.createdAt
           };
@@ -578,7 +585,15 @@ export class CourseGroupController {
   static async addStudentToGroup(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const { studentId } = req.body;
+      const { 
+        studentId, 
+        amount, 
+        provider, 
+        providerTransactionId, 
+        receiptUrl, 
+        notes 
+      } = req.body;
+
       if (!studentId) {
         return res.status(400).json({ error: "Missing studentId." });
       }
@@ -587,6 +602,7 @@ export class CourseGroupController {
       const userRepo = AppDataSource.getRepository(User);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
       const sessionRepo = AppDataSource.getRepository(Session);
+      const paymentRepo = AppDataSource.getRepository(Payment);
 
       const group = await groupRepo.findOne({
         where: { id },
@@ -601,6 +617,22 @@ export class CourseGroupController {
         return res.status(404).json({ error: "الطالب غير موجود بالنظام." });
       }
 
+      const isClosed = group.status === "CLOSED" || group.status === "IN_PROGRESS";
+
+      // If group is closed by admin, receipt image and financial data are strictly mandatory
+      if (isClosed) {
+        if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
+          return res.status(400).json({ 
+            error: "هذه المجموعة مغلقة للتسجيل. يلزم إرفاق صورة إيصال التحويل لإتمام إضافة الطالب." 
+          });
+        }
+        if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) <= 0) {
+          return res.status(400).json({ 
+            error: "هذه المجموعة مغلقة للتسجيل. يلزم إدخال المبلغ المالي المدفوع بشكل صحيح." 
+          });
+        }
+      }
+
       // Check current capacity and available seats
       const activeCount = await enrollmentRepo.count({
         where: { group: { id }, status: "active" }
@@ -608,15 +640,22 @@ export class CourseGroupController {
       const maxSeats = group.maxStudents || 25;
 
       let enrollment = await enrollmentRepo.findOne({
-        where: { student: { id: studentId }, group: { id } }
+        where: { student: { id: studentId }, group: { id } },
+        relations: ["student", "payment", "group", "course"]
       });
 
-      // If student is not already active in this group, enforce seat availability
+      // If student is not already active in this group, enforce or adjust capacity
       if (!enrollment || enrollment.status !== "active") {
         if (activeCount >= maxSeats) {
-          return res.status(400).json({
-            error: `عذراً، اكتملت جميع مقاعد هذه المجموعة (${maxSeats} من ${maxSeats} مقعداً). لا توجد مقاعد شاغرة لإضافة طلاب جدد.`
-          });
+          if (isClosed) {
+            // Auto-expand group maxSeats for admin exception with receipt
+            group.maxStudents = activeCount + 1;
+            await groupRepo.save(group);
+          } else {
+            return res.status(400).json({
+              error: `عذراً، اكتملت جميع مقاعد هذه المجموعة (${maxSeats} من ${maxSeats} مقعداً). لا توجد مقاعد شاغرة لإضافة طلاب جدد.`
+            });
+          }
         }
       }
 
@@ -630,14 +669,46 @@ export class CourseGroupController {
       }
 
       enrollment.status = "active";
-      await enrollmentRepo.save(enrollment);
+
+      // Handle Payment Record (Mandatory for closed groups, optional if entered for open groups)
+      const hasPaymentData = isClosed || !!receiptUrl || (amount !== undefined && Number(amount) > 0);
+      if (hasPaymentData) {
+        let payment = enrollment.payment;
+        if (!payment) {
+          payment = new Payment();
+        }
+
+        const calculatedAmount = (amount !== undefined && Number(amount) > 0) 
+          ? Number(amount) 
+          : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : (group.studentHourlyRate ? group.studentHourlyRate * 8 : 320)));
+
+        payment.student = student;
+        payment.amount = calculatedAmount;
+        payment.currency = "EGP";
+        payment.type = "GROUP_ENROLLMENT";
+        payment.provider = provider || "manual";
+        if (providerTransactionId !== undefined) payment.providerTransactionId = providerTransactionId;
+        if (receiptUrl) payment.receiptUrl = receiptUrl;
+        payment.notes = notes || (isClosed ? "إضافة استثنائية لمجموعة مغلقة مع إيصال معتمد بواسطة الإدارة" : "تسجيل بواسطة الإدارة");
+        payment.status = "SUCCESS";
+
+        const savedPayment = await paymentRepo.save(payment);
+        enrollment.payment = savedPayment;
+        await enrollmentRepo.save(enrollment);
+
+        // Avoid in-memory circular reference when serializing
+        delete (savedPayment as any).courseEnrollment;
+      } else {
+        await enrollmentRepo.save(enrollment);
+      }
 
       // Fetch group sessions to confirm auto-scheduled sessions count
-      const courseId = group.course?.id;
-      let groupSessions: Session[] = [];
-      if (courseId) {
+      let groupSessions: Session[] = await sessionRepo.find({
+        where: { group: { id: group.id } }
+      });
+      if (groupSessions.length === 0 && group.course?.id) {
         groupSessions = await sessionRepo.find({
-          where: { course: { id: courseId } }
+          where: { course: { id: group.course.id } }
         });
       }
 
@@ -660,18 +731,41 @@ export class CourseGroupController {
           await NotificationController.createNotification(
             teacher.id,
             "طالب جديد انضم لمجموعتك 👨‍🎓",
-            `قام المشرف بتسكين الطالب "${student.name}" في مجموعة "${group.name}". إجمالي المقاعد المشغولة الآن: (${activeCount + 1} من ${maxSeats}).`,
+            `قام المشرف بتسكين الطالب "${student.name}" في مجموعة "${group.name}". إجمالي المقاعد المشغولة الآن: (${activeCount + 1} من ${group.maxStudents || maxSeats}).`,
             "info",
             "#teacher-dashboard/groups"
           );
         } catch (e) {}
       }
 
-      const remainingSeats = Math.max(0, maxSeats - (activeCount + 1));
+      const currentMax = group.maxStudents || maxSeats;
+      const remainingSeats = Math.max(0, currentMax - (activeCount + 1));
 
       return res.status(200).json({
-        message: `تمت إضافة الطالب للمجموعة وتفعيل مقعده تلقائياً وإدراج جدول الحصص (${groupSessions.length} حصة) بنجاح! 🎉`,
-        enrollment,
+        message: isClosed 
+          ? `تمت إضافة الطالب للمجموعة واعتماد إيصال التحويل والبيانات المالية بنجاح! 🎉💳`
+          : `تمت إضافة الطالب للمجموعة وتفعيل مقعده تلقائياً وإدراج جدول الحصص (${groupSessions.length} حصة) بنجاح! 🎉`,
+        enrollment: {
+          id: enrollment.id,
+          status: enrollment.status,
+          progress: enrollment.progress,
+          student: {
+            id: student.id,
+            name: student.name,
+            email: student.email,
+            phone: student.phone
+          },
+          payment: enrollment.payment ? {
+            id: enrollment.payment.id,
+            amount: enrollment.payment.amount,
+            currency: enrollment.payment.currency,
+            provider: enrollment.payment.provider,
+            providerTransactionId: enrollment.payment.providerTransactionId,
+            receiptUrl: enrollment.payment.receiptUrl,
+            status: enrollment.payment.status,
+            notes: enrollment.payment.notes
+          } : null
+        },
         sessionsCount: groupSessions.length,
         availableSeats: remainingSeats,
         enrolledCount: activeCount + 1
