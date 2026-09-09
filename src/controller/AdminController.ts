@@ -149,7 +149,7 @@ export class AdminController {
         teacherCapabilities: role === "teacher"
           ? (Array.isArray(req.body.teacherCapabilities) ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
           : undefined,
-        avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
+        avatar: req.body.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
       });
 
       await userRepo.save(user);
@@ -186,6 +186,7 @@ export class AdminController {
       if (education !== undefined) user.education = education;
       if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (hourlyRate !== undefined) user.hourlyRate = parseFloat(hourlyRate) || 0;
+      if (req.body.avatar !== undefined) user.avatar = req.body.avatar;
       if (email) {
         const existing = await userRepo.findOneBy({ email });
         if (existing && existing.id !== id) {

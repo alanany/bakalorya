@@ -487,6 +487,9 @@ export const AdminUsersPage = {
 
     const isEdit = !!user;
     const initialRole = isEdit ? user.role : defaultRole;
+    const currentAvatar = (user && user.avatar)
+      ? user.avatar
+      : `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user?.name || (initialRole === "teacher" ? "Teacher" : "Student"))}`;
 
     container.innerHTML = `
       <div class="modal-overlay" id="member-modal" style="display:flex; padding:16px;">
@@ -497,6 +500,33 @@ export const AdminUsersPage = {
           </div>
           <form id="member-form">
             <div class="modal-body" style="padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+
+              <!-- Avatar / Profile Photo Section -->
+              <div style="display:flex; align-items:center; gap:16px; padding:12px 14px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px;">
+                <div style="position:relative; width:64px; height:64px; flex-shrink:0;">
+                  <img id="member-avatar-preview" src="${currentAvatar}" alt="Profile Avatar" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-card); box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                  <div id="member-avatar-loading" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.5); border-radius:50%; align-items:center; justify-content:center; color:#fff; font-size:12px;">⏳</div>
+                </div>
+                <input type="hidden" id="member-avatar-url" value="${currentAvatar}">
+                <input type="file" id="member-avatar-file-input" accept="image/*" style="display:none;">
+                <div style="display:flex; flex-direction:column; gap:6px; flex:1;">
+                  <label style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                    صورة الملف الشخصي (Profile Photo)
+                  </label>
+                  <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <label for="member-avatar-file-input" class="btn-primary" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin:0;">
+                      <i data-lucide="upload" style="width:14px; height:14px;"></i>
+                      <span>رفع صورة</span>
+                    </label>
+                    <button type="button" id="member-random-avatar-btn" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="sparkles" style="width:14px; height:14px;"></i>
+                      <span>شخصية كرتونية</span>
+                    </button>
+                    <span id="member-avatar-status" style="font-size:0.78rem; font-weight:600; color:var(--text-muted);"></span>
+                  </div>
+                </div>
+              </div>
+
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                 <div class="form-group" style="margin:0;">
                   <label for="member-name" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">${t("form.fullName")}</label>
@@ -592,10 +622,83 @@ export const AdminUsersPage = {
       </div>
     `;
 
+    if (window.lucide) window.lucide.createIcons();
+
     const closeModal = () => { container.innerHTML = ""; };
 
     document.getElementById("close-member-modal")?.addEventListener("click", closeModal);
     document.getElementById("cancel-member-modal")?.addEventListener("click", closeModal);
+
+    // Avatar upload handler
+    const avatarFileInput = document.getElementById("member-avatar-file-input");
+    avatarFileInput?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const preview = document.getElementById("member-avatar-preview");
+      const urlInput = document.getElementById("member-avatar-url");
+      const loading = document.getElementById("member-avatar-loading");
+      const status = document.getElementById("member-avatar-status");
+
+      // Show immediate local preview
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        if (preview && re.target?.result) preview.src = re.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      if (loading) loading.style.display = "flex";
+      if (status) {
+        status.style.color = "var(--primary)";
+        status.textContent = "جاري رفع الصورة...";
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          },
+          body: formData
+        });
+        if (!res.ok) throw new Error("فشل رفع الصورة");
+        const json = await res.json();
+        const uploadedUrl = json.url || json.path || json.filename;
+        if (uploadedUrl) {
+          if (urlInput) urlInput.value = uploadedUrl;
+          if (preview) preview.src = uploadedUrl;
+          if (status) {
+            status.style.color = "#10b981";
+            status.textContent = "✅ تم رفع الصورة بنجاح";
+          }
+        }
+      } catch (err) {
+        console.error("Avatar upload failed:", err);
+        if (status) {
+          status.style.color = "#ef4444";
+          status.textContent = "❌ فشل الرفع";
+        }
+      } finally {
+        if (loading) loading.style.display = "none";
+      }
+    });
+
+    // Random cartoon avatar generator button
+    document.getElementById("member-random-avatar-btn")?.addEventListener("click", () => {
+      const preview = document.getElementById("member-avatar-preview");
+      const urlInput = document.getElementById("member-avatar-url");
+      const status = document.getElementById("member-avatar-status");
+      const randomSeed = "User_" + Math.random().toString(36).substring(2, 9);
+      const newAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(randomSeed)}`;
+      if (preview) preview.src = newAvatar;
+      if (urlInput) urlInput.value = newAvatar;
+      if (status) {
+        status.style.color = "#10b981";
+        status.textContent = "✨ تم إنشاء شخصية كرتونية";
+      }
+    });
 
     document.getElementById("member-role")?.addEventListener("change", (e) => {
       const selectedRole = e.target.value;
@@ -628,6 +731,7 @@ export const AdminUsersPage = {
         : (document.getElementById("member-education")?.value || "");
       const hourlyRate = parseFloat(document.getElementById("member-hourly-rate")?.value) || 150;
       const meetingLink = document.getElementById("member-meeting-link")?.value.trim() || "";
+      const avatar = document.getElementById("member-avatar-url")?.value?.trim() || undefined;
 
       const teacherCapabilities = [];
       if (role === "teacher") {
@@ -639,13 +743,13 @@ export const AdminUsersPage = {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar })
           });
           showToast(t("admin.toast.userUpdated") || "تم تحديث بيانات العضو بنجاح! ✅", "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar })
           });
           showToast(t("admin.toast.userCreated") || "تم إنشاء حساب العضو بنجاح! 🎉", "success");
           handleWhatsAppResponse(res);
