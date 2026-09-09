@@ -492,9 +492,16 @@ export const AdminCoursesPage = {
     });
   },
 
-  renderAddCourseModal() {
+  async renderAddCourseModal() {
     const container = document.getElementById("admin-modal-container");
     if (!container) return;
+
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to fetch curriculum grades for admin add course modal:", e);
+    }
 
     const categories = this.categories || [];
     const teachers = (this.allMembers || []).filter(m => m.role === "teacher");
@@ -509,7 +516,7 @@ export const AdminCoursesPage = {
               </div>
               <div>
                 <h3 class="modal-title" style="font-size:1.2rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">إضافة دورة تعليمية جديدة للمنصة ➕</h3>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، القسم، السعر (مجاني أو مدفوع) والمعلم المسؤول</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">أدخل تفاصيل الدورة، المرحلة والصف والمادة، والسعر والمعلم المسؤول</p>
               </div>
             </div>
             <span class="modal-close-btn" id="close-admin-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
@@ -527,81 +534,73 @@ export const AdminCoursesPage = {
                 <input type="text" id="admin-course-title" class="form-input" placeholder="مثال: الدورة الشاملة في الرياضيات - ثانوية عامة" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
               </div>
 
-              <!-- Category & Degree Grid -->
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                <!-- Category Select -->
-                <div class="form-group" style="margin:0;">
-                  <label for="admin-course-category-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="layers" style="width:14px; height:14px; color:#a855f7;"></i>
-                    التخصص / المادة <span style="color:var(--error);">*</span>
+              <!-- 🇪🇬 EGYPTIAN CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT) -->
+              <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <label style="font-weight:900; font-size:0.92rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="graduation-cap" style="width:18px; height:18px; color:#e51d74;"></i>
+                    <span>تحديد المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
                   </label>
-                  <select id="admin-course-category-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
-                    <option value="">-- اختر التخصص / المادة الدراسية --</option>
-                    <optgroup label="📚 المواد والدراسات الأساسية">
-                      <option value="الرياضيات">الرياضيات (Mathematics)</option>
-                      <option value="الفيزياء">الفيزياء (Physics)</option>
-                      <option value="الكيمياء">الكيمياء (Chemistry)</option>
-                      <option value="الأحياء">الأحياء (Biology)</option>
-                      <option value="العلوم العامة">العلوم العامة (Science)</option>
-                      <option value="اللغة العربية">اللغة العربية (Arabic)</option>
-                      <option value="اللغة الإنجليزية">اللغة الإنجليزية (English)</option>
-                      <option value="اللغة الفرنسية">اللغة الفرنسية (French)</option>
-                      <option value="التاريخ">التاريخ (History)</option>
-                      <option value="الجغرافيا">الجغرافيا (Geography)</option>
-                      <option value="الفلسفة والمنطق">الفلسفة والمنطق (Philosophy)</option>
-                      <option value="الحاسب الآلي والبرمجة">الحاسب الآلي وتكنولوجيا المعلومات (IT)</option>
-                      <option value="الاقتصاد والإحصاء">الاقتصاد والإحصاء (Economics)</option>
-                    </optgroup>
-                    ${categories.length > 0 ? `
-                      <optgroup label="🗂️ التصنيفات المعتمدة بالمنصة">
-                        ${categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-                      </optgroup>
-                    ` : ''}
-                    <optgroup label="✏️ إضافة تخصيص">
-                      <option value="__custom__">+ كتابة تخصص / مادة جديدة مخصصة</option>
-                    </optgroup>
-                  </select>
-                  <div id="admin-course-category-custom-wrapper" style="display:none; margin-top:10px;">
-                    <input type="text" id="admin-course-category-custom" class="form-input" placeholder="أدخل اسم التخصص أو المادة الجديدة..." style="border-radius:12px; padding:10px 14px; font-size:0.88rem; width:100%; border:1px solid var(--primary);">
+                  <span style="font-size:0.75rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.1); padding:3px 12px; border-radius:12px; border:1px solid rgba(229,29,116,0.2);">
+                    مناهج جمهورية مصر العربية
+                  </span>
+                </div>
+
+                <!-- 1. Stage Selector Segmented Buttons -->
+                <div>
+                  <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                    1. اختر المرحلة التعليمية:
+                  </label>
+                  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                    <button type="button" class="admin-modal-stage-btn active" data-stage="PRIMARY" style="padding:10px 8px; border-radius:14px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#ffffff; transition:all 0.2s ease; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                      🎒 الابتدائية
+                    </button>
+                    <button type="button" class="admin-modal-stage-btn" data-stage="PREPARATORY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                      📚 الإعدادية
+                    </button>
+                    <button type="button" class="admin-modal-stage-btn" data-stage="SECONDARY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                      🎓 الثانوية العامة
+                    </button>
                   </div>
                 </div>
 
-                <!-- Degree Select -->
-                <div class="form-group" style="margin:0;">
-                  <label for="admin-course-degree" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#10b981;"></i>
-                    السنة الدراسية / المستوى <span style="color:var(--error);">*</span>
-                  </label>
-                  <select id="admin-course-degree" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem;" required>
-                    <option value="">-- اختر المستوى --</option>
-                    <optgroup label="🌱 المرحلة الابتدائية (Primary)">
-                      <option value="الابتدائية - الصف الأول">الصف الأول الابتدائي (Primary 1)</option>
-                      <option value="الابتدائية - الصف الثاني">الصف الثاني الابتدائي (Primary 2)</option>
-                      <option value="الابتدائية - الصف الثالث">الصف الثالث الابتدائي (Primary 3)</option>
-                      <option value="الابتدائية - الصف الرابع">الصف الرابع الابتدائي (Primary 4)</option>
-                      <option value="الابتدائية - الصف الخامس">الصف الخامس الابتدائي (Primary 5)</option>
-                      <option value="الابتدائية - الصف السادس">الصف السادس الابتدائي (Primary 6)</option>
-                    </optgroup>
-                    <optgroup label="📘 المرحلة الإعدادية (Prep)">
-                      <option value="الإعدادية - الصف الأول">الصف الأول الإعدادي (Prep 1)</option>
-                      <option value="الإعدادية - الصف الثاني">الصف الثاني الإعدادي (Prep 2)</option>
-                      <option value="الإعدادية - الصف الثالث">الصف الثالث الإعدادي - الشهادة الإعدادية (Prep 3)</option>
-                    </optgroup>
-                    <optgroup label="🎓 المرحلة الثانوية (Secondary)">
-                      <option value="الثانوية - الصف الأول">الصف الأول الثانوي (1st Secondary)</option>
-                      <option value="الثانوية - الصف الثاني (علمي)">الصف الثاني الثانوي - علمي</option>
-                      <option value="الثانوية - الصف الثاني (أدبي)">الصف الثاني الثانوي - أدبي</option>
-                      <option value="الثانوية - الصف الثالث (علمي علوم)">الصف الثالث الثانوي - علمي علوم</option>
-                      <option value="الثانوية - الصف الثالث (علمي رياضة)">الصف الثالث الثانوي - علمي رياضة</option>
-                      <option value="الثانوية - الصف الثالث (أدبي)">الصف الثالث الثانوي - أدبي</option>
-                      <option value="الثانوية الأزهرية">الثانوية الأزهرية</option>
-                    </optgroup>
-                    <optgroup label="🌟 عام وتأسيس (General)">
-                      <option value="جميع المراحل والصفوف">جميع المراحل والصفوف (All Grades)</option>
-                      <option value="تأسيس ودورات عامة">تأسيس ودورات تدريبية عامة (Foundation)</option>
-                    </optgroup>
-                  </select>
+                <!-- 2. Grade & Subject Dropdowns -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <!-- Grade Select -->
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-modal-curriculum-grade-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                      2. الصف الدراسي <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="admin-modal-curriculum-grade-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                      <option value="">-- جاري التحميل... --</option>
+                    </select>
+                  </div>
+
+                  <!-- Subject Select -->
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-modal-curriculum-subject-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                      3. المادة الدراسية <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="admin-modal-curriculum-subject-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;" required>
+                      <option value="">-- اختر الصف أولاً --</option>
+                    </select>
+                  </div>
                 </div>
+
+                <!-- Custom Subject Wrapper -->
+                <div id="admin-modal-custom-subject-wrapper" style="display:none; margin-top:-4px;">
+                  <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:4px; display:block;">
+                    اسم المادة أو التخصص المخصص:
+                  </label>
+                  <input type="text" id="admin-modal-custom-subject-input" class="form-input" placeholder="اكتب اسم المادة يدوياً..." style="border-radius:12px; padding:9px 14px; font-size:0.88rem; width:100%;">
+                </div>
+
+                <!-- Hidden values for submission -->
+                <input type="hidden" id="admin-course-category" value="">
+                <input type="hidden" id="admin-course-degree" value="">
+                <input type="hidden" id="admin-modal-selected-grade-id" value="">
+                <input type="hidden" id="admin-modal-selected-subject-id" value="">
               </div>
 
               <!-- Teacher Selection -->
@@ -765,11 +764,119 @@ export const AdminCoursesPage = {
       });
     });
 
-    // Custom Category Toggle
-    form.querySelector("#admin-course-category-select")?.addEventListener("change", (e) => {
-      const customWrapper = form.querySelector("#admin-course-category-custom-wrapper");
-      if (customWrapper) customWrapper.style.display = e.target.value === "__custom__" ? "block" : "none";
+    // Curriculum Logic for Admin Modal
+    const stageBtns = form.querySelectorAll(".admin-modal-stage-btn");
+    const gradeSelect = form.querySelector("#admin-modal-curriculum-grade-select");
+    const subjectSelect = form.querySelector("#admin-modal-curriculum-subject-select");
+    const customSubjectWrapper = form.querySelector("#admin-modal-custom-subject-wrapper");
+    const customSubjectInput = form.querySelector("#admin-modal-custom-subject-input");
+    const hiddenCategory = form.querySelector("#admin-course-category");
+    const hiddenDegree = form.querySelector("#admin-course-degree");
+    const hiddenGradeId = form.querySelector("#admin-modal-selected-grade-id");
+    const hiddenSubjectId = form.querySelector("#admin-modal-selected-subject-id");
+
+    const updateStageUI = (stage) => {
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+          btn.style.boxShadow = `0 4px 12px ${color}40`;
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+          btn.style.boxShadow = "none";
+        }
+      });
+
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة لهذه المرحلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => `
+          <option value="${g.id}">
+            ${g.name}
+          </option>
+        `).join('');
+
+        updateSubjectsUI(gradeSelect.value);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId) => {
+      if (hiddenGradeId) hiddenGradeId.value = gradeId;
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      if (selectedGrade && hiddenDegree) {
+        hiddenDegree.value = selectedGrade.name;
+      }
+
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `
+          <option value="">لا توجد مواد مسجلة</option>
+          <option value="__custom__">✏️ إدخال مادة مخصصة يدوياً</option>
+        `;
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        return;
+      }
+
+      subjectSelect.innerHTML = `
+        <option value="">-- اختر المادة الدراسية --</option>
+        ${subjects.map(s => `
+          <option value="${s.id}" data-name="${s.name}">
+            ${s.name} ${s.isLanguageTrack ? '(مسار لغات 🌐)' : '(منهج عام 🇪🇬)'}
+          </option>
+        `).join('')}
+        <option value="__custom__">✏️ مادة أخرى / تخصص مخصص</option>
+      `;
+
+      if (hiddenSubjectId) hiddenSubjectId.value = "";
+      if (hiddenCategory) hiddenCategory.value = "";
+      if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
     });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val === "__custom__") {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+        if (hiddenSubjectId) hiddenSubjectId.value = "";
+        if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value?.trim() || "";
+      } else {
+        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+        if (hiddenSubjectId) hiddenSubjectId.value = val;
+        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+      }
+    });
+
+    customSubjectInput?.addEventListener("input", (e) => {
+      if (subjectSelect?.value === "__custom__" && hiddenCategory) {
+        hiddenCategory.value = e.target.value.trim();
+      }
+    });
+
+    // Initialize with PRIMARY stage
+    updateStageUI("PRIMARY");
 
     // Direct URL Toggle
     form.querySelector("#admin-toggle-url-input-btn")?.addEventListener("click", () => {
@@ -889,16 +996,22 @@ export const AdminCoursesPage = {
       if (submitBtn) submitBtn.disabled = true;
 
       const title = form.querySelector("#admin-course-title").value.trim();
-      const catSelectEl = form.querySelector("#admin-course-category-select");
-      const catCustomEl = form.querySelector("#admin-course-category-custom");
-      const category = catSelectEl.value === "__custom__" ? catCustomEl.value.trim() : catSelectEl.value;
+      const gradeId = form.querySelector("#admin-modal-selected-grade-id")?.value || null;
+      const subjectId = form.querySelector("#admin-modal-selected-subject-id")?.value || null;
+      let category = form.querySelector("#admin-course-category")?.value?.trim() || "";
+      const customInput = form.querySelector("#admin-modal-custom-subject-input");
+      if (!category && customInput && customInput.value) {
+        category = customInput.value.trim();
+      }
+
       if (!category) {
-        showToast("الرجاء اختيار أو إدخال تصنيف الدورة.", "error");
+        showToast("الرجاء اختيار المادة الدراسية أو كتابتها.", "error");
         isSubmitting = false;
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
-      const degree = form.querySelector("#admin-course-degree").value;
+
+      const degree = form.querySelector("#admin-course-degree")?.value?.trim() || "";
       const teacherId = form.querySelector("#admin-course-teacher-id").value;
       const description = form.querySelector("#admin-course-desc").value.trim();
       let image = form.querySelector("#admin-course-image")?.value || form.querySelector("#admin-course-image-url-direct")?.value.trim() || "";
@@ -914,6 +1027,8 @@ export const AdminCoursesPage = {
         title,
         category,
         degree,
+        gradeId,
+        subjectId,
         teacherId,
         image,
         meetingLink,

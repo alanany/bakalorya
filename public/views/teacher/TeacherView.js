@@ -22,6 +22,7 @@ export default class TeacherView {
   }
 
   async render() {
+    this._curriculumEventsBound = false;
     try {
       const [allCourses, sessions, students, requests, allBlogs, privateSessions, todaySessions, availability, earnings, assignedSubscriptions, allAssignments, teacherGroups] = await Promise.all([
         apiFetch("/courses"),
@@ -142,7 +143,7 @@ export default class TeacherView {
       });
 
       const caps = state.user?.teacherCapabilities;
-      const canAddCourse = state.user?.role === 'admin' || (Array.isArray(caps) ? caps.includes('COURSE_INSTRUCTOR') : (typeof caps === 'string' ? caps.includes('COURSE_INSTRUCTOR') : false));
+      const canAddCourse = state.user?.role === 'admin' || state.user?.role === 'teacher' || (!caps || caps.length === 0 || (Array.isArray(caps) ? caps.includes('COURSE_INSTRUCTOR') : (typeof caps === 'string' ? caps.includes('COURSE_INSTRUCTOR') : false)));
 
       const hour = new Date().getHours();
       let timeGreeting = "أهلاً بك يا أستاذ";
@@ -359,6 +360,72 @@ export default class TeacherView {
                 `}
 
               </div>
+            </div>
+
+            <!-- SECTION 2: دوراتي التعليمية والمقررات الدراسية (My Courses) 📚 -->
+            <div id="teacher-courses-section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <h2 style="font-size:1.28rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="book-open" style="width:22px; height:22px; color:var(--primary);"></i>
+                    <span>دوراتي ومقرراتي الدراسية (${this.courses.length})</span>
+                  </h2>
+                  <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">إدارة وتعديل المقررات الدراسية والمناهج المعتمدة والدروس المرتبطة بها</p>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <button type="button" class="btn-primary" id="open-course-modal-btn-2" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
+                  </button>
+                  <a href="#courses" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    مستكشف الكورسات ➔
+                  </a>
+                </div>
+              </div>
+
+              ${this.courses.length === 0 ? `
+                <div class="glass-card" style="padding:32px 24px; text-align:center; border-radius:20px; border:1px dashed var(--border-color);">
+                  <i data-lucide="book-plus" style="width:40px; height:40px; color:var(--primary); opacity:0.4; margin-bottom:12px;"></i>
+                  <h4 style="font-weight:800; font-size:1.05rem; color:var(--text-main); margin:0 0 6px 0;">لم تقم بإنشاء أي دورات تعليمية بعد</h4>
+                  <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px 0;">ابدأ الآن بإضافة أول مقرر دراسي لك وحدد المرحلة والصف والمادة وفق المنهج المصري.</p>
+                  <button type="button" class="btn-primary" id="open-course-modal-btn-empty" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة الآن
+                  </button>
+                </div>
+              ` : `
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:20px;">
+                  ${this.courses.map(c => `
+                    <div class="glass-card" style="border-radius:20px; overflow:hidden; border:1px solid var(--border-color); display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s;">
+                      <div style="position:relative; height:150px; overflow:hidden; background:var(--bg-app);">
+                        <img src="${c.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60'}" alt="${c.title}" style="width:100%; height:100%; object-fit:cover;">
+                        <span style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); color:#fff; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px;">
+                          ${c.category || 'عام'}
+                        </span>
+                        <span style="position:absolute; top:10px; left:10px; background:${c.status === 'PUBLISHED' ? '#10b981' : '#f59e0b'}; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:10px;">
+                          ${c.status === 'PUBLISHED' ? 'منشور 🟢' : 'قيد المراجعة ⏳'}
+                        </span>
+                      </div>
+                      <div style="padding:16px; display:flex; flex-direction:column; flex:1;">
+                        <div style="font-size:0.75rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+                          <i data-lucide="graduation-cap" style="width:14px;height:14px;"></i> ${c.grade?.name || c.degree || 'مستوى عام'}
+                        </div>
+                        <h4 style="font-size:1rem; font-weight:800; margin:0 0 6px 0; color:var(--text-main); line-height:1.4;">${c.title}</h4>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                          ${c.description || 'لا يوجد وصف متاح.'}
+                        </p>
+                        <div style="margin-top:auto; display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--border-color);">
+                          <a href="#manage-course/${c.id}" class="btn-primary" style="flex:1; justify-content:center; padding:8px 12px; font-size:0.82rem; font-weight:800; text-decoration:none; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="settings" style="width:14px;height:14px;"></i> إدارة المحتوى
+                          </a>
+                          <button type="button" class="btn-secondary edit-course-btn" data-id="${c.id}" style="padding:8px 12px; font-size:0.82rem; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; gap:4px;" title="تعديل تفاصيل الدورة">
+                            <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
             </div>
           </div>
         </div>
@@ -2194,35 +2261,41 @@ export default class TeacherView {
       }
     };
 
-    stageBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        updateStageUI(btn.getAttribute("data-stage"));
+    if (!this._curriculumEventsBound) {
+      this._curriculumEventsBound = true;
+      stageBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          this._teacherCurriculumUpdateStageUI?.(btn.getAttribute("data-stage"));
+        });
       });
-    });
 
-    gradeSelect?.addEventListener("change", (e) => {
-      updateSubjectsUI(e.target.value);
-    });
+      gradeSelect?.addEventListener("change", (e) => {
+        this._teacherCurriculumUpdateSubjectsUI?.(e.target.value);
+      });
 
-    subjectSelect?.addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (val === "__custom__") {
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
-        if (hiddenSubjectId) hiddenSubjectId.value = "";
-        if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
-      } else {
-        if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
-        if (hiddenSubjectId) hiddenSubjectId.value = val;
-        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
-        if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
-      }
-    });
+      subjectSelect?.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (val === "__custom__") {
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "block";
+          if (hiddenSubjectId) hiddenSubjectId.value = "";
+          if (hiddenCategory) hiddenCategory.value = customSubjectInput?.value || "";
+        } else {
+          if (customSubjectWrapper) customSubjectWrapper.style.display = "none";
+          if (hiddenSubjectId) hiddenSubjectId.value = val;
+          const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+          if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+        }
+      });
 
-    customSubjectInput?.addEventListener("input", (e) => {
-      if (subjectSelect?.value === "__custom__" && hiddenCategory) {
-        hiddenCategory.value = e.target.value.trim();
-      }
-    });
+      customSubjectInput?.addEventListener("input", (e) => {
+        if (subjectSelect?.value === "__custom__" && hiddenCategory) {
+          hiddenCategory.value = e.target.value.trim();
+        }
+      });
+    }
+
+    this._teacherCurriculumUpdateStageUI = updateStageUI;
+    this._teacherCurriculumUpdateSubjectsUI = updateSubjectsUI;
 
     // Initialize with current stage
     updateStageUI(currentStage);

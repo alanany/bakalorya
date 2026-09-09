@@ -7,6 +7,8 @@ import { Session } from "../entity/Session";
 import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { Lesson } from "../entity/Lesson";
+import { Grade } from "../entity/Grade";
+import { Subject } from "../entity/Subject";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
@@ -417,19 +419,30 @@ export class AdminController {
 
   // POST /admin/courses — Create a new course directly as Admin
   static async createCourse(req: AuthRequest, res: Response) {
-    const { title, description, category, degree, image, meetingLink, teacherId, price, isFree, currency, paymentDetails } = req.body;
+    const { title, description, category, degree, image, meetingLink, teacherId, price, isFree, currency, paymentDetails, gradeId, subjectId } = req.body;
 
-    if (!title || !category || !degree) {
-      return res.status(400).json({ error: "عنوان الدورة، المادة، والصف الدراسي عناصر مطلوبة." });
+    if (!title) {
+      return res.status(400).json({ error: "عنوان الدورة مطلوب." });
     }
 
     try {
       const courseRepo = AppDataSource.getRepository(Course);
       const userRepo = AppDataSource.getRepository(User);
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const subjectRepo = AppDataSource.getRepository(Subject);
 
       let teacher: User | null = null;
       if (teacherId && teacherId.trim().length > 0) {
         teacher = await userRepo.findOneBy({ id: teacherId });
+      }
+
+      let grade: Grade | null = null;
+      if (gradeId) {
+        grade = await gradeRepo.findOneBy({ id: gradeId });
+      }
+      let subject: Subject | null = null;
+      if (subjectId) {
+        subject = await subjectRepo.findOneBy({ id: subjectId });
       }
 
       const numericPrice = parseFloat(price) || 0;
@@ -438,8 +451,10 @@ export class AdminController {
       const course = new Course();
       course.title = title;
       course.description = description || "";
-      course.category = category;
-      course.degree = degree;
+      course.category = category || (subject ? subject.name : "عام");
+      course.degree = degree || (grade ? grade.name : "جميع المراحل");
+      if (grade) course.grade = grade;
+      if (subject) course.subject = subject;
       course.image = image || "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600";
       course.meetingLink = meetingLink || null;
       course.teacher = teacher;
