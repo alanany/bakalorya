@@ -627,7 +627,10 @@ export default class AdminView {
     else if (tab === "students") content.innerHTML = this.renderStudentsTab();
     else if (tab === "teacherApplications") content.innerHTML = this.renderTeacherApplicationsTab();
     else if (tab === "members") content.innerHTML = this.renderMembersTab();
-    else if (tab === "courses") content.innerHTML = this.renderCoursesTab();
+    else if (tab === "courses") {
+      content.innerHTML = this.renderCoursesTab();
+      this.bindCoursesEvents?.();
+    }
     else if (tab === "enrollments") content.innerHTML = this.renderEnrollmentsTab();
     else if (tab === "sessions") content.innerHTML = this.renderSessionsTab(args);
     else if (tab === "groups") content.innerHTML = this.renderGroupsTab(args);

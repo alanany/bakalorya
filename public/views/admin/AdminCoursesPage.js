@@ -5,110 +5,640 @@ import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, ge
 
 export const AdminCoursesPage = {
 
-  renderCoursesTab() {
-    return `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-        <h3 style="font-weight:700;">${t("admin.tab.courses")} (${this.courses.length})</h3>
-        <button class="btn-primary" id="open-admin-add-course-modal-btn" onclick="if(window.adminViewInstance) window.adminViewInstance.renderAddCourseModal();" style="padding:10px 18px; font-weight:800; gap:8px;">
-          <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة تعليمية جديدة ➕
-        </button>
-      </div>
+  getCourseGradeInfo(course) {
+    let gradeName = course.grade?.name;
+    let stage = course.grade?.stage;
 
-      ${this.courses.length === 0
-        ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noCourses")}</div>`
-        : `<div style="display:flex;flex-direction:column;gap:16px;">
-            ${this.courses.map(course => {
+    if (!gradeName && course.degree) {
+      gradeName = course.degree;
+    }
+
+    if (!stage && gradeName) {
+      const gLower = String(gradeName).toLowerCase();
+      if (gLower.includes("ثانو") || gLower.includes("sec")) {
+        stage = "SECONDARY";
+      } else if (gLower.includes("إعداد") || gLower.includes("اعداد") || gLower.includes("prep")) {
+        stage = "PREPARATORY";
+      } else if (gLower.includes("ابتدائ") || gLower.includes("prim")) {
+        stage = "PRIMARY";
+      }
+    }
+
+    if (stage === "SECONDARY") {
+      return {
+        name: gradeName || "المرحلة الثانوية",
+        stage: "SECONDARY",
+        stageLabel: "المرحلة الثانوية",
+        badgeBg: "rgba(139,92,246,0.12)",
+        badgeBorder: "rgba(139,92,246,0.3)",
+        badgeColor: "#7c3aed",
+        icon: "🎓"
+      };
+    } else if (stage === "PREPARATORY") {
+      return {
+        name: gradeName || "المرحلة الإعدادية",
+        stage: "PREPARATORY",
+        stageLabel: "المرحلة الإعدادية",
+        badgeBg: "rgba(2,132,199,0.12)",
+        badgeBorder: "rgba(2,132,199,0.3)",
+        badgeColor: "#0284c7",
+        icon: "📘"
+      };
+    } else if (stage === "PRIMARY") {
+      return {
+        name: gradeName || "المرحلة الابتدائية",
+        stage: "PRIMARY",
+        stageLabel: "المرحلة الابتدائية",
+        badgeBg: "rgba(16,185,129,0.12)",
+        badgeBorder: "rgba(16,185,129,0.3)",
+        badgeColor: "#059669",
+        icon: "🌱"
+      };
+    }
+
+    return {
+      name: gradeName || "عام (جميع المراحل)",
+      stage: "GENERAL",
+      stageLabel: "عام",
+      badgeBg: "rgba(99,102,241,0.12)",
+      badgeBorder: "rgba(99,102,241,0.25)",
+      badgeColor: "var(--primary)",
+      icon: "📚"
+    };
+  },
+
+  getFilteredAdminCourses() {
+    let list = [...(this.courses || [])];
+    const q = (this.adminCoursesSearchQuery || "").trim().toLowerCase();
+    const g = this.adminCoursesGradeFilter || "all";
+    const s = this.adminCoursesStatusFilter || "all";
+    const t = this.adminCoursesTeacherFilter || "all";
+    const sort = this.adminCoursesSort || "newest";
+
+    if (q) {
+      list = list.filter(c => {
+        const title = (c.title || "").toLowerCase();
+        const cat = (c.category || "").toLowerCase();
+        const tName = (c.teacher?.name || "").toLowerCase();
+        const gName = (c.grade?.name || c.degree || "").toLowerCase();
+        return title.includes(q) || cat.includes(q) || tName.includes(q) || gName.includes(q);
+      });
+    }
+
+    if (g !== "all") {
+      list = list.filter(c => {
+        const gradeInfo = this.getCourseGradeInfo(c);
+        return String(c.grade?.id) === String(g) ||
+               String(gradeInfo.name) === String(g) ||
+               String(gradeInfo.stage) === String(g);
+      });
+    }
+
+    if (s !== "all") {
+      if (s === "PUBLISHED") {
+        list = list.filter(c => c.status === "PUBLISHED" || !c.status);
+      } else {
+        list = list.filter(c => c.status === s);
+      }
+    }
+
+    if (t !== "all") {
+      list = list.filter(c => {
+        if (t === "unassigned") return !c.teacher;
+        return String(c.teacher?.id) === String(t) || String(c.teacher?.name) === String(t);
+      });
+    }
+
+    if (sort === "newest") {
+      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else if (sort === "lessons") {
+      list.sort((a, b) => (b.lessonsCount || 0) - (a.lessonsCount || 0));
+    } else if (sort === "enrollments") {
+      list.sort((a, b) => (b.enrollmentsCount || 0) - (a.enrollmentsCount || 0));
+    } else if (sort === "title") {
+      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ar"));
+    }
+
+    return list;
+  },
+
+  renderCoursesCardsList(coursesToRender) {
+    const list = coursesToRender !== undefined ? coursesToRender : this.getFilteredAdminCourses();
+
+    if (list.length === 0) {
+      return `
+        <div class="glass-card" style="text-align:center; padding:50px 20px; border-radius:20px; color:var(--text-muted); border:1px dashed var(--border-color);">
+          <div style="font-size:3rem; margin-bottom:12px;">🔍</div>
+          <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">لا توجد دورات مطابقة لخيارات التصفية</h4>
+          <p style="font-size:0.88rem; margin-bottom:16px;">جرب تغيير كلمة البحث أو إعادة ضبط الفلاتر لعرض جميع المقررات.</p>
+          <button id="admin-courses-empty-reset-btn" class="btn-primary" style="padding:8px 20px; border-radius:20px; font-weight:800; font-size:0.85rem;">
+            إعادة ضبط الفلاتر ↺
+          </button>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        ${list.map(course => {
           const coursePlansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
           const isPending = course.status === "PENDING_REVIEW";
           const isArchived = course.status === "ARCHIVED";
           const isPublished = course.status === "PUBLISHED" || !course.status;
+          const gradeInfo = this.getCourseGradeInfo(course);
+          const teacherName = course.teacher?.name || null;
+          const teacherAvatar = course.teacher?.avatar || (teacherName ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}` : null);
 
           return `
-              <div class="glass-card" style="display:flex;align-items:center;gap:20px;padding:16px 20px; ${isPending ? 'border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.03);' : isArchived ? 'border:1px solid rgba(107,114,128,0.4); opacity:0.85; background:rgba(107,114,128,0.04);' : ''}">
-                <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}"
-                  style="width:72px;height:72px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;">
-                <div style="flex:1;min-width:0;">
-                  <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
-                    <span style="font-size:0.7rem;font-weight:700;color:var(--primary);text-transform:uppercase;">${course.category}</span>
-                    ${course.isFree !== false && (!course.price || Number(course.price) === 0) ? `
-                      <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.72rem; font-weight:800;">🎁 دورة مجانية</span>
-                    ` : `
-                      <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.72rem; font-weight:800;">💳 ${course.price} ${course.currency || 'EGP'}</span>
-                    `}
-                    <span class="badge" style="background:rgba(139,92,246,0.12); color:#8b5cf6; font-size:0.7rem; font-weight:800;">${coursePlansCount} خطط اشتراك مخصصة</span>
-                    ${isPending ? `
-                      <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:0.72rem; font-weight:800;">🟡 قيد المراجعة والاعتماد (PENDING_REVIEW) ⏳</span>
-                    ` : isArchived ? `
-                      <span class="badge" style="background:rgba(107,114,128,0.15); color:#6b7280; font-size:0.72rem; font-weight:800;">📦 مؤرشفة ومخفية عن الجميع (ARCHIVED)</span>
-                    ` : isPublished ? `
-                      <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:0.72rem; font-weight:800;">منشورة ومتاحة ✅</span>
-                    ` : `
-                      <span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; font-size:0.72rem; font-weight:800;">مرفوضة / مسودة ❌</span>
-                    `}
-                  </div>
-                  <h4 style="font-weight:700;font-size:1rem;margin-bottom:6px;">${course.title}</h4>
-                  <div style="display:flex;gap:20px;font-size:0.8rem;color:var(--text-muted);flex-wrap:wrap;">
-                    <span><i data-lucide="user" style="width:12px;height:12px;"></i> ${course.teacher?.name || "منصة انطلق التعليمية 🏛️"}</span>
-                    <span><i data-lucide="book" style="width:12px;height:12px;"></i> ${course.lessonsCount || 0} ${t("admin.lessons")}</span>
-                    <span><i data-lucide="users" style="width:12px;height:12px;"></i> ${course.enrollmentsCount || 0} ${t("admin.enrolled")}</span>
-                  </div>
+            <div class="glass-card admin-course-card-item" style="
+              border-radius: 22px;
+              padding: 22px;
+              border: 1px solid ${isPending ? 'rgba(245,158,11,0.45)' : isArchived ? 'rgba(107,114,128,0.35)' : 'var(--border-color)'};
+              background: ${isPending ? 'rgba(245,158,11,0.02)' : isArchived ? 'rgba(107,114,128,0.03)' : 'var(--bg-card)'};
+              box-shadow: 0 4px 18px rgba(0,0,0,0.03);
+              transition: all 0.2s ease;
+            ">
+              
+              <!-- 1. TOP ROW: GRADE BADGE + SUBJECT + STATUS + PRICING -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  
+                  <!-- Grade Badge (Clear & Prominent) -->
+                  <span style="
+                    background: ${gradeInfo.badgeBg};
+                    color: ${gradeInfo.badgeColor};
+                    border: 1.5px solid ${gradeInfo.badgeBorder};
+                    padding: 5px 14px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    font-weight: 900;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+                  ">
+                    <span>${gradeInfo.icon}</span>
+                    <span>${gradeInfo.name}</span>
+                  </span>
+
+                  <!-- Subject / Category Badge -->
+                  <span style="
+                    background: var(--bg-app);
+                    color: var(--text-color);
+                    border: 1px solid var(--border-color);
+                    padding: 5px 12px;
+                    border-radius: 20px;
+                    font-size: 0.78rem;
+                    font-weight: 800;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                  ">
+                    <span>📖</span>
+                    <span>${course.category || course.subject?.name || 'مقرر دراسي'}</span>
+                  </span>
+
+                  <!-- Status Badge -->
+                  ${isPending ? `
+                    <span style="background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); padding:5px 12px; border-radius:20px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                      <span>⏳</span>
+                      <span>بانتظار الاعتماد والنشر</span>
+                    </span>
+                  ` : isArchived ? `
+                    <span style="background:rgba(107,114,128,0.15); color:#4b5563; border:1px solid rgba(107,114,128,0.3); padding:5px 12px; border-radius:20px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                      <span>📦</span>
+                      <span>مؤرشف ومخفي</span>
+                    </span>
+                  ` : isPublished ? `
+                    <span style="background:rgba(16,185,129,0.15); color:#059669; border:1px solid rgba(16,185,129,0.3); padding:5px 12px; border-radius:20px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                      <span>✅</span>
+                      <span>منشور ومتاح</span>
+                    </span>
+                  ` : `
+                    <span style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:5px 12px; border-radius:20px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                      <span>❌</span>
+                      <span>مسودة / مرفوض</span>
+                    </span>
+                  `}
+
+                  <!-- Subscription Plans Count -->
+                  <span style="background:rgba(139,92,246,0.1); color:#7c3aed; border:1px solid rgba(139,92,246,0.2); padding:5px 12px; border-radius:20px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                    <span>📋</span>
+                    <span>${coursePlansCount} خطط اشتراك</span>
+                  </span>
+
                 </div>
-                <div style="display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap;">
+
+                <!-- Price Badge -->
+                <div>
+                  ${course.isFree !== false && (!course.price || Number(course.price) === 0) ? `
+                    <span style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:5px 14px; border-radius:20px; font-size:0.82rem; font-weight:900;">
+                      🎁 دورة مجانية
+                    </span>
+                  ` : `
+                    <span style="background:rgba(99,102,241,0.12); color:var(--primary); border:1px solid rgba(99,102,241,0.3); padding:5px 14px; border-radius:20px; font-size:0.86rem; font-weight:900;">
+                      💳 ${course.price} ${course.currency || 'EGP'}
+                    </span>
+                  `}
+                </div>
+
+              </div>
+
+              <!-- 2. MIDDLE ROW: THUMBNAIL + TITLE + TEACHER + METRICS -->
+              <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:18px; flex-wrap:wrap;">
+                
+                <!-- Thumbnail Cover -->
+                <div style="position:relative; width:96px; height:96px; border-radius:16px; overflow:hidden; flex-shrink:0; box-shadow:0 6px 16px rgba(0,0,0,0.06); border:1px solid var(--border-color); background:var(--bg-app);">
+                  <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=200&auto=format'}"
+                       alt="${course.title}" 
+                       style="width:100%; height:100%; object-fit:cover;">
+                </div>
+
+                <!-- Main Content -->
+                <div style="flex:1; min-width:260px;">
+                  
+                  <!-- Title -->
+                  <h4 style="font-weight:900; font-size:1.15rem; margin:0 0 8px 0; color:var(--text-main); line-height:1.35;">
+                    <a href="#course-details/${course.id}" style="color:inherit; text-decoration:none; transition:color 0.2s;" onmouseenter="this.style.color='var(--primary)'" onmouseleave="this.style.color='inherit'">
+                      ${course.title}
+                    </a>
+                  </h4>
+
+                  <!-- Teacher Row -->
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:0.86rem;">
+                    <span style="font-weight:800; color:var(--text-muted);">المعلم المسؤول:</span>
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:3px 10px; border-radius:12px; border:1px solid var(--border-color);">
+                      ${teacherName ? `
+                        <img src="${teacherAvatar}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
+                        <span style="font-weight:800; color:var(--text-main);">${teacherName}</span>
+                      ` : `
+                        <span style="color:#d97706; font-weight:800; font-size:0.8rem;">⚠️ منصة انطلق (لم يُعين معلم بعد)</span>
+                      `}
+                    </div>
+                  </div>
+
+                  <!-- Quick Metrics -->
+                  <div style="display:flex; gap:14px; font-size:0.82rem; color:var(--text-muted); font-weight:800; flex-wrap:wrap;">
+                    <span style="display:flex; align-items:center; gap:5px; background:var(--bg-app); padding:4px 10px; border-radius:10px; border:1px solid var(--border-color);">
+                      <i data-lucide="book-open" style="width:14px; height:14px; color:var(--primary);"></i>
+                      <span>${course.lessonsCount || 0} ${t("admin.lessons")}</span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:5px; background:var(--bg-app); padding:4px 10px; border-radius:10px; border:1px solid var(--border-color);">
+                      <i data-lucide="users" style="width:14px; height:14px; color:#10b981;"></i>
+                      <span>${course.enrollmentsCount || 0} ${t("admin.enrolled")}</span>
+                    </span>
+                    ${course.createdAt ? `
+                      <span style="display:flex; align-items:center; gap:5px; background:var(--bg-app); padding:4px 10px; border-radius:10px; border:1px solid var(--border-color);">
+                        <i data-lucide="calendar" style="width:14px; height:14px; color:#6b7280;"></i>
+                        <span>تاريخ الإضافة: ${new Date(course.createdAt).toLocaleDateString('ar-EG')}</span>
+                      </span>
+                    ` : ''}
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- 3. BOTTOM ACTIONS ROW: ORGANIZED & HIGHLY FUNCTIONAL -->
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:10px;">
+                
+                <!-- Left: Core Course & Content Actions -->
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  
+                  <!-- Main CTA: Lessons & Units Manager -->
+                  <a href="#manage-course/${course.id}" class="btn-primary"
+                     style="font-size:0.82rem; padding:8px 16px; gap:6px; background:linear-gradient(135deg, #7c3aed, #6366f1); border:none; text-decoration:none; display:inline-flex; align-items:center; font-weight:900; border-radius:12px; box-shadow:0 4px 12px rgba(124,58,237,0.25);">
+                    <i data-lucide="folder-kanban" style="width:15px;height:15px;"></i>
+                    <span>إدارة المنهج والدروس 📚</span>
+                  </a>
+
+                  <!-- View Course Details & Subscriptions Modal -->
+                  <button class="btn-secondary admin-view-course-details-btn" data-id="${course.id}"
+                          style="font-size:0.82rem; padding:8px 14px; gap:6px; font-weight:800; border-radius:12px; display:inline-flex; align-items:center;">
+                    <i data-lucide="eye" style="width:15px;height:15px; color:var(--primary);"></i>
+                    <span>التفاصيل والاشتراكات 🔍</span>
+                  </button>
+
+                  <!-- Assign / Reassign Teacher -->
+                  <button class="btn-secondary admin-assign-course-teacher-btn" data-id="${course.id}"
+                          style="font-size:0.82rem; padding:8px 14px; gap:6px; color:#2563eb; border-color:rgba(37,99,235,0.3); font-weight:800; background:rgba(37,99,235,0.05); border-radius:12px; display:inline-flex; align-items:center;"
+                          title="تعيين أو تغيير المعلم المسؤول عن الدورة">
+                    <i data-lucide="user-check" style="width:15px;height:15px;"></i>
+                    <span>${course.teacher ? 'تغيير المعلم 👨‍🏫' : 'تعيين معلم 👨‍🏫'}</span>
+                  </button>
+
+                  <!-- Edit Course Metadata -->
+                  <button class="btn-secondary admin-edit-course-btn" data-id="${course.id}"
+                          style="font-size:0.82rem; padding:8px 14px; gap:6px; font-weight:800; border-radius:12px; display:inline-flex; align-items:center;"
+                          title="تعديل بيانات الدورة والمنهج">
+                    <i data-lucide="edit-3" style="width:15px;height:15px;"></i>
+                    <span>تعديل ✏️</span>
+                  </button>
+
+                  <!-- Duplicate Course -->
+                  <button class="btn-secondary admin-duplicate-course-btn" data-id="${course.id}"
+                          style="font-size:0.82rem; padding:8px 14px; gap:6px; color:#8b5cf6; border-color:rgba(139,92,246,0.3); font-weight:800; background:rgba(139,92,246,0.05); border-radius:12px; display:inline-flex; align-items:center;"
+                          title="تكرار ونسخ الدورة ومحتواها">
+                    <i data-lucide="copy" style="width:15px;height:15px;"></i>
+                    <span>تكرار 📑</span>
+                  </button>
+
+                </div>
+
+                <!-- Right: Status Approvals, Archiving, and Delete -->
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  
                   ${isPending ? `
                     <button class="btn-primary admin-approve-course-btn" data-id="${course.id}"
-                      style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800;">
-                      <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد النشر 🎉
+                      style="font-size:0.82rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800; border-radius:12px;">
+                      <i data-lucide="check-circle" style="width:15px;height:15px;"></i> قبول واعتماد 🎉
                     </button>
                     <button class="btn-secondary admin-reject-course-btn" data-id="${course.id}"
-                      style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#ef4444; border-color:#ef4444; font-weight:700;">
-                      <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض ❌
+                      style="font-size:0.82rem; padding:8px 14px; gap:6px; color:#ef4444; border-color:rgba(239,68,68,0.3); font-weight:800; border-radius:12px;">
+                      <i data-lucide="x-circle" style="width:15px;height:15px;"></i> رفض ❌
                     </button>
                   ` : ''}
+
                   ${isArchived ? `
                     <button class="btn-primary admin-unarchive-course-btn" data-id="${course.id}"
-                      style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800;">
-                      <i data-lucide="archive-restore" style="width:14px;height:14px;"></i> إلغاء الأرشفة وإعادة النشر 🚀
+                      style="font-size:0.82rem; padding:8px 14px; gap:6px; background:#10b981; border-color:#10b981; font-weight:800; border-radius:12px;">
+                      <i data-lucide="archive-restore" style="width:15px;height:15px;"></i> إلغاء الأرشفة 🚀
                     </button>
                   ` : isPublished ? `
                     <button class="btn-secondary admin-archive-course-btn" data-id="${course.id}" data-title="${course.title}"
-                      style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#f59e0b; border-color:#f59e0b; font-weight:700;">
-                      <i data-lucide="archive" style="width:14px;height:14px;"></i> أرشفة وإخفاء 📦
+                      style="font-size:0.82rem; padding:8px 14px; gap:6px; color:#d97706; border-color:rgba(217,119,6,0.3); font-weight:800; background:rgba(245,158,11,0.05); border-radius:12px;"
+                      title="أرشفة الدورة وإخفاؤها من الفهارس والصفحات">
+                      <i data-lucide="archive" style="width:15px;height:15px;"></i> أرشفة 📦
                     </button>
                   ` : ''}
-                  <a href="#manage-course/${course.id}" class="btn-primary"
-                    style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; font-weight:800;">
-                    <i data-lucide="book-open" style="width:14px;height:14px;"></i> إضافة وإدارة الدروس والوحدات 📚
-                  </a>
-                  <button class="btn-secondary admin-assign-course-teacher-btn" data-id="${course.id}"
-                    style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#2563eb; border-color:#2563eb; font-weight:800; background:rgba(37,99,235,0.06);"
-                    title="تعيين أو تغيير المعلم المسؤول عن الدورة">
-                    <i data-lucide="user-check" style="width:14px;height:14px;"></i> ${course.teacher ? 'تغيير المعلم 👨‍🏫' : 'تعيين معلم 👨‍🏫'}
-                  </button>
-                  <button class="btn-secondary admin-duplicate-course-btn" data-id="${course.id}"
-                    style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#8b5cf6; border-color:#8b5cf6; font-weight:800; background:rgba(139,92,246,0.06);"
-                    title="تكرار ونسخ الدورة ومحتواها">
-                    <i data-lucide="copy" style="width:14px;height:14px;"></i> تكرار الكورس 📑
-                  </button>
-                  <button class="btn-secondary admin-edit-course-btn" data-id="${course.id}"
-                    style="font-size:0.8rem; padding:8px 14px; gap:6px; font-weight:700;"
-                    title="تعديل بيانات الدورة والمنهج">
-                    <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل ✏️
-                  </button>
-                  <button class="btn-primary admin-view-course-details-btn" data-id="${course.id}"
-                    style="font-size:0.8rem; padding:8px 14px; gap:6px;">
-                    <i data-lucide="eye" style="width:14px;height:14px;"></i> تفاصيل الكورس والاشتراكات 🔍
-                  </button>
+
+                  <!-- Delete Button -->
                   <button class="btn-secondary delete-course-btn" data-id="${course.id}" data-title="${course.title}"
-                    style="font-size:0.8rem; padding:8px 14px; border-color:var(--error, #ef4444); color:var(--error, #ef4444);">
-                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i> ${t("common.delete")}
+                    style="font-size:0.82rem; padding:8px 14px; gap:6px; border-color:rgba(239,68,68,0.35); color:#ef4444; background:rgba(239,68,68,0.04); font-weight:800; border-radius:12px;"
+                    title="حذف المقرر نهائياً">
+                    <i data-lucide="trash-2" style="width:15px;height:15px;"></i> ${t("common.delete")} 🗑️
                   </button>
+
                 </div>
+
               </div>
-            `;
+
+            </div>
+          `;
         }).join("")}
-          </div>`
-      }
+      </div>
     `;
+  },
+
+  renderCoursesTab() {
+    const totalCourses = this.courses.length;
+    const publishedCount = this.courses.filter(c => c.status === "PUBLISHED" || !c.status).length;
+    const pendingCount = this.courses.filter(c => c.status === "PENDING_REVIEW").length;
+    const archivedCount = this.courses.filter(c => c.status === "ARCHIVED").length;
+    const totalLessons = this.courses.reduce((sum, c) => sum + (c.lessonsCount || 0), 0);
+
+    // Extract unique grades
+    const gradeMap = new Map();
+    this.courses.forEach(c => {
+      const gInfo = this.getCourseGradeInfo(c);
+      if (gInfo && gInfo.name) {
+        gradeMap.set(gInfo.name, gInfo);
+      }
+    });
+    const uniqueGrades = Array.from(gradeMap.values());
+
+    // Extract unique teachers
+    const teacherMap = new Map();
+    this.courses.forEach(c => {
+      if (c.teacher && c.teacher.name) {
+        teacherMap.set(c.teacher.id || c.teacher.name, c.teacher.name);
+      }
+    });
+    const uniqueTeachers = Array.from(teacherMap.entries()).map(([id, name]) => ({ id, name }));
+
+    const filtered = this.getFilteredAdminCourses();
+
+    return `
+      <!-- TOP HEADER & TITLE -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:14px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <h3 style="font-weight:900; font-size:1.45rem; color:var(--text-main); margin:0;">
+              ${t("admin.tab.courses")}
+            </h3>
+            <span style="background:var(--primary); color:#ffffff; padding:3px 12px; border-radius:20px; font-weight:800; font-size:0.84rem;">
+              ${totalCourses} مقرر
+            </span>
+          </div>
+          <p style="color:var(--text-muted); font-size:0.86rem; margin:4px 0 0 0; font-weight:700;">
+            إدارة المناهج الدراسية الرسمية، تعيين المعلمين، ضبط الصفوف الدراسية، وإدارة الدروس والوحدات.
+          </p>
+        </div>
+
+        <button class="btn-primary" id="open-admin-add-course-modal-btn" onclick="if(window.adminViewInstance) window.adminViewInstance.renderAddCourseModal();" 
+                style="padding:11px 22px; font-weight:900; gap:8px; border-radius:14px; font-size:0.92rem; background:linear-gradient(135deg, #7c3aed, #6366f1); border:none; box-shadow:0 6px 20px rgba(124,58,237,0.3);">
+          <i data-lucide="plus-circle" style="width:18px;height:18px;"></i>
+          <span>إضافة دورة تعليمية جديدة ➕</span>
+        </button>
+      </div>
+
+      <!-- KPI METRICS SUMMARY RIBBON -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px;">
+        
+        <div class="glass-card" style="padding:14px 18px; border-radius:16px; display:flex; align-items:center; gap:12px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="width:44px; height:44px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0;">
+            📚
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">إجمالي المقررات</div>
+            <div style="font-size:1.35rem; font-weight:900; color:var(--text-main); line-height:1.2;">${totalCourses}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:14px 18px; border-radius:16px; display:flex; align-items:center; gap:12px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="width:44px; height:44px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0;">
+            🟢
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">منشورة ومتاحة</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#10b981; line-height:1.2;">${publishedCount}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:14px 18px; border-radius:16px; display:flex; align-items:center; gap:12px; border:1px solid ${pendingCount > 0 ? 'rgba(245,158,11,0.45)' : 'var(--border-color)'}; background:${pendingCount > 0 ? 'rgba(245,158,11,0.05)' : 'var(--bg-card)'};">
+          <div style="width:44px; height:44px; border-radius:12px; background:rgba(245,158,11,0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0;">
+            ⏳
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">بانتظار المراجعة</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#f59e0b; line-height:1.2;">${pendingCount}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:14px 18px; border-radius:16px; display:flex; align-items:center; gap:12px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="width:44px; height:44px; border-radius:12px; background:rgba(107,114,128,0.12); color:#6b7280; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0;">
+            📦
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">مؤرشفة ومخفية</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#6b7280; line-height:1.2;">${archivedCount}</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding:14px 18px; border-radius:16px; display:flex; align-items:center; gap:12px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="width:44px; height:44px; border-radius:12px; background:rgba(139,92,246,0.12); color:#8b5cf6; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0;">
+            📑
+          </div>
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">إجمالي الدروس</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#8b5cf6; line-height:1.2;">${totalLessons}</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FILTER & SEARCH TOOLBAR -->
+      <div class="glass-card" style="padding:16px 20px; border-radius:20px; margin-bottom:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:flex-end;">
+          
+          <!-- Search Input -->
+          <div style="grid-column: span 2; min-width:240px;">
+            <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:5px;">
+              🔍 بحث في المقررات:
+            </label>
+            <input type="text" id="admin-courses-search" placeholder="ابحث بعنوان المقرر، المادة، أو اسم المعلم..." 
+                   value="${this.adminCoursesSearchQuery || ''}"
+                   style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+          </div>
+
+          <!-- Grade Filter -->
+          <div>
+            <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:5px;">
+              🎓 الصف الدراسي:
+            </label>
+            <select id="admin-courses-grade-filter" style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="all" ${(!this.adminCoursesGradeFilter || this.adminCoursesGradeFilter === 'all') ? 'selected' : ''}>🎓 جميع الصفوف الدراسية</option>
+              <option value="SECONDARY" ${this.adminCoursesGradeFilter === 'SECONDARY' ? 'selected' : ''}>المرحلة الثانوية (عام)</option>
+              <option value="PREPARATORY" ${this.adminCoursesGradeFilter === 'PREPARATORY' ? 'selected' : ''}>المرحلة الإعدادية (عام)</option>
+              <option value="PRIMARY" ${this.adminCoursesGradeFilter === 'PRIMARY' ? 'selected' : ''}>المرحلة الابتدائية (عام)</option>
+              ${uniqueGrades.map(g => `
+                <option value="${g.name}" ${this.adminCoursesGradeFilter === g.name ? 'selected' : ''}>
+                  ${g.icon} ${g.name}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:5px;">
+              ⚡ الحالة:
+            </label>
+            <select id="admin-courses-status-filter" style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="all" ${(!this.adminCoursesStatusFilter || this.adminCoursesStatusFilter === 'all') ? 'selected' : ''}>جميع الحالات</option>
+              <option value="PUBLISHED" ${this.adminCoursesStatusFilter === 'PUBLISHED' ? 'selected' : ''}>منشورة ومتاحة ✅</option>
+              <option value="PENDING_REVIEW" ${this.adminCoursesStatusFilter === 'PENDING_REVIEW' ? 'selected' : ''}>بانتظار الاعتماد ⏳</option>
+              <option value="ARCHIVED" ${this.adminCoursesStatusFilter === 'ARCHIVED' ? 'selected' : ''}>مؤرشفة 📦</option>
+            </select>
+          </div>
+
+          <!-- Teacher Filter -->
+          <div>
+            <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:5px;">
+              👨‍🏫 المعلم:
+            </label>
+            <select id="admin-courses-teacher-filter" style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="all" ${(!this.adminCoursesTeacherFilter || this.adminCoursesTeacherFilter === 'all') ? 'selected' : ''}>جميع المعلمين</option>
+              <option value="unassigned" ${this.adminCoursesTeacherFilter === 'unassigned' ? 'selected' : ''}>⚠️ بدون معلم معين</option>
+              ${uniqueTeachers.map(t => `
+                <option value="${t.id}" ${this.adminCoursesTeacherFilter === t.id ? 'selected' : ''}>${t.name}</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <!-- Sort Select -->
+          <div>
+            <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:5px;">
+              الترتيب:
+            </label>
+            <select id="admin-courses-sort" style="width:100%; padding:9px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="newest" ${(!this.adminCoursesSort || this.adminCoursesSort === 'newest') ? 'selected' : ''}>الأحدث إضافةً</option>
+              <option value="lessons" ${this.adminCoursesSort === 'lessons' ? 'selected' : ''}>الأكثر دروساً</option>
+              <option value="enrollments" ${this.adminCoursesSort === 'enrollments' ? 'selected' : ''}>الأكثر طلاباً</option>
+              <option value="title" ${this.adminCoursesSort === 'title' ? 'selected' : ''}>أبجدياً (العنوان)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Filter meta row -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-color); font-size:0.82rem; font-weight:800; color:var(--text-muted);">
+          <span id="admin-courses-filtered-count">
+            يتم عرض <strong>${filtered.length}</strong> من أصل ${totalCourses} مقرر دراسي
+          </span>
+          <button id="admin-courses-reset-filters-btn" style="background:none; border:none; color:var(--primary); font-weight:800; font-size:0.82rem; cursor:pointer; text-decoration:underline;">
+            إعادة ضبط جميع الفلاتر ↺
+          </button>
+        </div>
+
+      </div>
+
+      <!-- COURSES LIST CONTAINER -->
+      <div id="admin-courses-cards-container">
+        ${this.renderCoursesCardsList(filtered)}
+      </div>
+    `;
+  },
+
+  bindCoursesEvents() {
+    const searchInput = this.container.querySelector("#admin-courses-search");
+    const gradeFilter = this.container.querySelector("#admin-courses-grade-filter");
+    const statusFilter = this.container.querySelector("#admin-courses-status-filter");
+    const teacherFilter = this.container.querySelector("#admin-courses-teacher-filter");
+    const sortSelect = this.container.querySelector("#admin-courses-sort");
+    const resetBtn = this.container.querySelector("#admin-courses-reset-filters-btn");
+    const emptyResetBtn = this.container.querySelector("#admin-courses-empty-reset-btn");
+
+    const applyFilters = () => {
+      this.adminCoursesSearchQuery = searchInput?.value || "";
+      this.adminCoursesGradeFilter = gradeFilter?.value || "all";
+      this.adminCoursesStatusFilter = statusFilter?.value || "all";
+      this.adminCoursesTeacherFilter = teacherFilter?.value || "all";
+      this.adminCoursesSort = sortSelect?.value || "newest";
+
+      const filtered = this.getFilteredAdminCourses();
+      const container = this.container.querySelector("#admin-courses-cards-container");
+      if (container) {
+        container.innerHTML = this.renderCoursesCardsList(filtered);
+        if (window.lucide) window.lucide.createIcons();
+        this.bindActionEvents();
+      }
+
+      const countEl = this.container.querySelector("#admin-courses-filtered-count");
+      if (countEl) {
+        countEl.innerHTML = `يتم عرض <strong>${filtered.length}</strong> من أصل ${this.courses.length} مقرر دراسي`;
+      }
+    };
+
+    searchInput?.addEventListener("input", applyFilters);
+    gradeFilter?.addEventListener("change", applyFilters);
+    statusFilter?.addEventListener("change", applyFilters);
+    teacherFilter?.addEventListener("change", applyFilters);
+    sortSelect?.addEventListener("change", applyFilters);
+
+    const doReset = () => {
+      if (searchInput) searchInput.value = "";
+      if (gradeFilter) gradeFilter.value = "all";
+      if (statusFilter) statusFilter.value = "all";
+      if (teacherFilter) teacherFilter.value = "all";
+      if (sortSelect) sortSelect.value = "newest";
+      applyFilters();
+    };
+
+    resetBtn?.addEventListener("click", doReset);
+    emptyResetBtn?.addEventListener("click", doReset);
   },
 
   renderEnrollmentsTab() {
