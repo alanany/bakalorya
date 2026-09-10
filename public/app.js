@@ -1972,7 +1972,8 @@ export async function router() {
     case "#admin-dashboard": ViewClass = AdminView; break;
     case "#courses": ViewClass = CoursesView; break;
     case "#manage-course": ViewClass = CourseManageView; break;
-    case "#course-preview": ViewClass = CourseLandingView; break;
+    case "#course-preview":
+    case "#course-details": ViewClass = CourseLandingView; break;
     case "#schedule": ViewClass = ScheduleView; break;
     case "#assignments": ViewClass = (state.user?.role === 'teacher' ? TeacherAssignmentsReviewView : AssignmentsView); break;
     case "#resources": ViewClass = ResourcesView; break;
@@ -1986,6 +1987,7 @@ export async function router() {
     case "#faq": ViewClass = FAQView; break;
     case "#subscription-plans": ViewClass = SubscriptionPlansView; break;
     case "#subject-groups":
+    case "#course-groups":
     case "#subject": ViewClass = SubjectGroupsView; break;
     default:
       ViewClass = LandingView;

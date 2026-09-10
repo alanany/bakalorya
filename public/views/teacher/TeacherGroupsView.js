@@ -23,6 +23,7 @@ export default class TeacherGroupsView {
       ]);
 
       const myTeacherId = state.user?.id;
+      this.allCourses = allCourses || [];
       this.teacherCourses = (allCourses || []).filter(c => c.teacher?.id === myTeacherId || c.teacherId === myTeacherId);
 
       const rawSessions = sessions || [];
@@ -590,77 +591,161 @@ export default class TeacherGroupsView {
     `;
   }
 
-  // ── Open Create Group Modal (Teacher View) ──────────────────────────────────
-  openCreateGroupModal() {
+  // ── Open Create Group Modal (Teacher View: Select Stage -> Grade -> Subject -> Course) ──
+  async openCreateGroupModal() {
     const container = document.getElementById("create-group-modal-container");
     if (!container) return;
 
-    const courseOptions = this.teacherCourses.map(c => `
-      <option value="${c.id}">
-        ${c.title} ${c.grade ? `(${c.grade.name})` : ''} ${c.subject ? `• ${c.subject.name}` : ''}
-      </option>
-    `).join('');
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to load curriculum grades:", e);
+    }
+
+    if (!this.allCourses || this.allCourses.length === 0) {
+      try {
+        this.allCourses = await apiFetch("/courses");
+      } catch (e) {
+        this.allCourses = [];
+      }
+    }
+
+    const allPublishedCourses = (this.allCourses || []).filter(c => c.status === "PUBLISHED" || !c.status);
 
     container.innerHTML = `
       <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
-        <div class="glass-card" style="width:100%; max-width:560px; border-radius:28px; padding:26px; max-height:90vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card" style="width:100%; max-width:620px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
           
           <!-- Modal Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
-            <div>
-              <h3 style="font-size:1.2rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                <i data-lucide="plus-circle" style="width:20px; height:20px; color:#e51d74;"></i>
-                إنشاء وإضافة مجموعة دراسية جديدة 👥
-              </h3>
-              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                حدد المادة وأيام ومواعيد الحصص لإرسالها لمراجعة واعتماد الإدارة وتحديد المقاعد.
-              </p>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:42px; height:42px; border-radius:12px; background:rgba(229,29,116,0.12); color:#e51d74; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="plus-circle" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.2rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">
+                  إنشاء وإضافة مجموعة دراسية جديدة 👥
+                </h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                  اختر المرحلة والصف والمادة ثم حدد الكورس وأيام ومواعيد الحصص
+                </p>
+              </div>
             </div>
             <button id="close-create-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
               &times;
             </button>
           </div>
 
-          <form id="create-group-form" style="display:flex; flex-direction:column; gap:18px; overflow-y:auto; padding-inline-end:4px;">
+          <form id="create-group-form" style="display:flex; flex-direction:column; gap:16px; overflow-y:auto; padding-inline-end:4px;">
             
-            <!-- Course Select -->
-            <div>
-              <label style="display:block; font-size:0.88rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">
-                الكورس / المادة الدراسية: <span style="color:#ef4444;">*</span>
-              </label>
-              ${this.teacherCourses.length === 0 ? `
-                <div style="padding:10px; border-radius:12px; background:rgba(239,68,68,0.1); color:#ef4444; font-size:0.82rem; font-weight:700;">
-                  ⚠️ ليس لديك أي كورسات منشورة حالياً لإنشاء مجموعات لها. يرجى إنشاء كورس أولاً.
+            <!-- 1. CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT -> COURSE) -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:18px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-weight:900; font-size:0.9rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="graduation-cap" style="width:16px; height:16px; color:#e51d74;"></i>
+                  <span>المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
+                </label>
+                <span style="font-size:0.72rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.1); padding:2px 10px; border-radius:10px;">
+                  مناهج معتمدة
+                </span>
+              </div>
+
+              <!-- Stage Buttons -->
+              <div>
+                <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                  1. اختر المرحلة التعليمية:
+                </label>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                  <button type="button" class="teacher-stage-btn active" data-stage="PRIMARY" style="padding:9px 6px; border-radius:12px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#fff; transition:all 0.2s ease;">
+                    🎒 الابتدائية
+                  </button>
+                  <button type="button" class="teacher-stage-btn" data-stage="PREPARATORY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                    📚 الإعدادية
+                  </button>
+                  <button type="button" class="teacher-stage-btn" data-stage="SECONDARY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                    🎓 الثانوية العامة
+                  </button>
                 </div>
-              ` : `
-                <select id="modal-group-course-id" required style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.92rem; font-family:'Cairo',sans-serif;">
-                  ${courseOptions}
+              </div>
+
+              <!-- Grade and Subject Dropdowns -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label for="teacher-group-grade-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
+                    2. الصف الدراسي <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="teacher-group-grade-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
+                    <option value="">-- جاري التحميل... --</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label for="teacher-group-subject-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
+                    3. المادة الدراسية <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="teacher-group-subject-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
+                    <option value="">-- اختر الصف أولاً --</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 4. Selected Course Box -->
+              <div>
+                <label for="modal-group-course-id" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; color:var(--text-main);">
+                  <span>4. المقرر / الكورس المعتمد المرتبط: <span style="color:#ef4444;">*</span></span>
+                  <span id="teacher-course-status-badge" style="font-size:0.72rem; color:var(--primary); font-weight:700;"></span>
+                </label>
+                <select id="modal-group-course-id" class="form-select" required style="width:100%; padding:11px 14px; border-radius:12px; font-size:0.88rem; font-weight:700;">
+                  <option value="">-- يرجى اختيار الصف والمادة أولاً --</option>
                 </select>
-              `}
+
+                <!-- Course Preview Card -->
+                <div id="teacher-course-preview-card" style="display:none; margin-top:8px; padding:10px 12px; background:var(--bg-card); border-radius:12px; border:1px solid var(--border-color); align-items:center; gap:12px;">
+                  <img id="teacher-course-preview-img" src="" style="width:48px; height:48px; border-radius:10px; object-fit:cover;">
+                  <div style="flex:1; min-width:0;">
+                    <div id="teacher-course-preview-title" style="font-weight:800; font-size:0.88rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                    <div style="display:flex; gap:8px; font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                      <span id="teacher-course-preview-lessons"></span>
+                      <span id="teacher-course-preview-type"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <!-- Days Checkboxes -->
+            <!-- 2. GROUP NAME -->
             <div>
-              <label style="display:block; font-size:0.88rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">
+              <label for="modal-group-name" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                اسم المجموعة الدراسية: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="modal-group-name" placeholder="مثال: مجموعة المتفوقين في الرياضيات" required
+                style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- 3. DAYS SELECTION -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                 أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
               </label>
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(95px, 1fr)); gap:8px;">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
                 ${["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"].map((day, idx) => `
-                  <label style="display:flex; align-items:center; gap:6px; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.85rem; font-weight:700; cursor:pointer;">
-                    <input type="checkbox" name="modal-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#e51d74; width:16px; height:16px;">
+                  <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.82rem; font-weight:700; cursor:pointer;">
+                    <input type="checkbox" name="modal-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#e51d74; width:15px; height:15px;">
                     <span>${day}</span>
                   </label>
                 `).join('')}
               </div>
             </div>
 
-            <!-- Schedule Time (Select Dropdown) -->
+            <!-- 4. SCHEDULE TIME -->
             <div>
-              <label style="display:block; font-size:0.88rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                 توقيت الحصة: <span style="color:#ef4444;">*</span>
               </label>
               <select id="modal-group-time" required
-                style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.92rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
                 <option value="09:00 ص">09:00 ص (9:00 صباحاً)</option>
                 <option value="10:00 ص">10:00 ص (10:00 صباحاً)</option>
                 <option value="11:00 ص">11:00 ص (11:00 صباحاً)</option>
@@ -685,21 +770,21 @@ export default class TeacherGroupsView {
               </select>
             </div>
 
-            <!-- Meeting Link -->
+            <!-- 5. MEETING LINK -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                 رابط البث المباشر المخصص (Zoom / Meet) - اختياري:
               </label>
               <input type="url" id="modal-group-meeting-link" placeholder="https://zoom.us/j/... أو https://meet.google.com/..."
-                style="width:100%; padding:11px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
             </div>
 
             <!-- Submit Buttons -->
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px;">
-              <button type="button" id="cancel-create-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:20px;">
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px; padding-top:12px; border-top:1px solid var(--border-color);">
+              <button type="button" id="cancel-create-group-btn" class="btn-secondary" style="padding:9px 18px; border-radius:18px; font-size:0.85rem;">
                 إلغاء
               </button>
-              <button type="submit" id="submit-create-group-btn" class="btn-primary" style="padding:10px 28px; border-radius:20px; font-weight:900; background:#e51d74; border-color:#e51d74;" ${this.teacherCourses.length === 0 ? 'disabled' : ''}>
+              <button type="submit" id="submit-create-group-btn" class="btn-primary" style="padding:9px 24px; border-radius:18px; font-weight:900; background:#e51d74; border-color:#e51d74; font-size:0.88rem;">
                 إرسال المجموعة للمراجعة والاعتماد 🚀
               </button>
             </div>
@@ -716,19 +801,193 @@ export default class TeacherGroupsView {
     document.getElementById("close-create-group-modal")?.addEventListener("click", closeModal);
     document.getElementById("cancel-create-group-btn")?.addEventListener("click", closeModal);
 
+    // Curriculum Logic for Teacher Group Modal
+    const stageBtns = container.querySelectorAll(".teacher-stage-btn");
+    const gradeSelect = container.querySelector("#teacher-group-grade-select");
+    const subjectSelect = container.querySelector("#teacher-group-subject-select");
+    const courseSelect = container.querySelector("#modal-group-course-id");
+    const courseBadge = container.querySelector("#teacher-course-status-badge");
+    const previewCard = container.querySelector("#teacher-course-preview-card");
+    const previewImg = container.querySelector("#teacher-course-preview-img");
+    const previewTitle = container.querySelector("#teacher-course-preview-title");
+    const previewLessons = container.querySelector("#teacher-course-preview-lessons");
+    const previewType = container.querySelector("#teacher-course-preview-type");
+    const groupNameInput = container.querySelector("#modal-group-name");
+
+    let isManualName = false;
+    groupNameInput?.addEventListener("input", () => {
+      isManualName = true;
+    });
+
+    const updateSuggestedGroupName = () => {
+      if (isManualName) return;
+      const selectedSubjectOpt = subjectSelect?.options[subjectSelect.selectedIndex];
+      const selectedGradeOpt = gradeSelect?.options[gradeSelect.selectedIndex];
+      const subjectName = selectedSubjectOpt && selectedSubjectOpt.value ? selectedSubjectOpt.getAttribute("data-name") || selectedSubjectOpt.text : "";
+      const gradeName = selectedGradeOpt && selectedGradeOpt.value ? selectedGradeOpt.text : "";
+      const checkedDays = Array.from(container.querySelectorAll("input[name='modal-group-days']:checked")).map(cb => cb.value);
+      const daysText = checkedDays.join(" و ");
+
+      if (subjectName) {
+        groupNameInput.value = `مجموعة ${subjectName} - ${gradeName || ''} (${daysText || 'أسبوعي'})`.trim();
+      }
+    };
+
+    container.querySelectorAll("input[name='modal-group-days']").forEach(cb => {
+      cb.addEventListener("change", updateSuggestedGroupName);
+    });
+
+    const updateStageUI = (stage) => {
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+        }
+      });
+
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        updateCoursesUI(null, null);
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        updateSubjectsUI(gradeSelect.value);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId) => {
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `<option value="">لا توجد مواد مسجلة</option>`;
+        updateCoursesUI(gradeId, null);
+        return;
+      }
+
+      subjectSelect.innerHTML = subjects.map(s => `
+        <option value="${s.id}" data-name="${s.name}">
+          ${s.name} ${s.isLanguageTrack ? '(لغات 🌐)' : '(عام 🇪🇬)'}
+        </option>
+      `).join('');
+
+      const firstSubjectId = subjectSelect.value;
+      const firstSubjectName = subjects[0]?.name;
+      updateCoursesUI(gradeId, firstSubjectId, firstSubjectName);
+      updateSuggestedGroupName();
+    };
+
+    const updateCoursesUI = (gradeId, subjectId, subjectName) => {
+      if (!courseSelect) return;
+
+      // Find matching courses for this Grade and Subject
+      let matchedCourses = allPublishedCourses.filter(c => {
+        const matchesGrade = c.grade?.id === gradeId || c.gradeId === gradeId;
+        const matchesSubject = (subjectId && (c.subject?.id === subjectId || c.subjectId === subjectId)) ||
+                               (subjectName && c.category && c.category.toLowerCase().includes(subjectName.toLowerCase()));
+        return matchesGrade && matchesSubject;
+      });
+
+      // If no exact match, try matching by grade only
+      if (matchedCourses.length === 0 && gradeId) {
+        matchedCourses = allPublishedCourses.filter(c => c.grade?.id === gradeId || c.gradeId === gradeId);
+      }
+
+      // If still none, fall back to all published courses
+      const hasDirectMatches = matchedCourses.length > 0;
+      const coursesToDisplay = hasDirectMatches ? matchedCourses : allPublishedCourses;
+
+      if (coursesToDisplay.length === 0) {
+        courseSelect.innerHTML = `<option value="">⚠️ لا توجد مقررات دراسية معتمدة من الإدارة حالياً</option>`;
+        if (courseBadge) courseBadge.innerHTML = `<span style="color:#ef4444;">غير متاح</span>`;
+        if (previewCard) previewCard.style.display = "none";
+        return;
+      }
+
+      courseSelect.innerHTML = coursesToDisplay.map(c => `
+        <option value="${c.id}" ${matchedCourses.some(mc => mc.id === c.id) ? 'selected' : ''}>
+          ${c.title} ${c.grade ? `(${c.grade.name})` : ''} • ${c.category || 'عام'}
+        </option>
+      `).join('');
+
+      if (hasDirectMatches) {
+        if (courseBadge) courseBadge.innerHTML = `<span style="color:#10b981; font-weight:800;">✓ مقرر معتمد لهذا الصف</span>`;
+      } else {
+        if (courseBadge) courseBadge.innerHTML = `<span style="color:#f59e0b;">اختر من المقررات العامة المتاحة</span>`;
+      }
+
+      updateCoursePreview(courseSelect.value);
+    };
+
+    const updateCoursePreview = (courseId) => {
+      const selectedCourse = allPublishedCourses.find(c => c.id === courseId);
+      if (!selectedCourse || !previewCard) {
+        if (previewCard) previewCard.style.display = "none";
+        return;
+      }
+
+      previewCard.style.display = "flex";
+      if (previewImg) previewImg.src = selectedCourse.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format';
+      if (previewTitle) previewTitle.textContent = selectedCourse.title;
+      if (previewLessons) previewLessons.textContent = `📚 ${selectedCourse.lessonsCount || (selectedCourse.lessons || []).length || 0} درس في المنهج`;
+      if (previewType) {
+        previewType.textContent = selectedCourse.isFree ? '🎁 مقرر عام مجاني' : `💳 ${selectedCourse.price} ${selectedCourse.currency || 'EGP'}`;
+      }
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", () => {
+      const selectedGradeId = gradeSelect?.value;
+      const selectedSubjectId = subjectSelect?.value;
+      const selectedOpt = subjectSelect?.options[subjectSelect.selectedIndex];
+      const subjectName = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+      updateCoursesUI(selectedGradeId, selectedSubjectId, subjectName);
+      updateSuggestedGroupName();
+    });
+
+    courseSelect?.addEventListener("change", (e) => {
+      updateCoursePreview(e.target.value);
+    });
+
+    // Initialize with PRIMARY stage
+    updateStageUI("PRIMARY");
+
+    // Form Submission
     document.getElementById("create-group-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const courseId = document.getElementById("modal-group-course-id")?.value;
       const scheduleTime = document.getElementById("modal-group-time")?.value.trim() || "6:00م";
       const meetingLink = document.getElementById("modal-group-meeting-link")?.value.trim() || null;
 
-      const checkedDays = Array.from(document.querySelectorAll("input[name='modal-group-days']:checked")).map(cb => cb.value);
+      const checkedDays = Array.from(container.querySelectorAll("input[name='modal-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
-      const name = `مجموعة ${scheduleDays} (${scheduleTime})`;
+      const name = document.getElementById("modal-group-name")?.value.trim() || `مجموعة ${scheduleDays} (${scheduleTime})`;
 
       if (!courseId) {
-        showToast("يرجى اختيار الكورس.", "error");
+        showToast("يرجى اختيار الكورس / المقرر الدراسي.", "error");
         return;
       }
 

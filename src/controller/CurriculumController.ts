@@ -436,27 +436,183 @@ export class CurriculumController {
       const subjectRepo = AppDataSource.getRepository(Subject);
       const courseRepo = AppDataSource.getRepository(Course);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const gradeRepo = AppDataSource.getRepository(Grade);
 
-      const subject = await subjectRepo.findOne({
-        where: { id: subjectId },
-        relations: ["grade"]
-      });
+      let subject: any = null;
+      let requestedCourse: Course | null = null;
 
-      if (!subject) {
-        return res.status(404).json({ error: "المادة الدراسية غير موجودة." });
+      // 1. Try finding Subject by ID if provided and not literal "undefined"/"null"
+      if (subjectId && subjectId !== "undefined" && subjectId !== "null") {
+        subject = await subjectRepo.findOne({
+          where: { id: subjectId },
+          relations: ["grade"]
+        });
+
+        // 2. If subject not found, try finding Course by that ID
+        if (!subject) {
+          requestedCourse = await courseRepo.findOne({
+            where: { id: subjectId },
+            relations: ["subject", "grade", "teacher", "lessons"]
+          });
+
+          if (requestedCourse) {
+            if (requestedCourse.subject) {
+              subject = await subjectRepo.findOne({
+                where: { id: requestedCourse.subject.id },
+                relations: ["grade"]
+              });
+            }
+            if (!subject) {
+              subject = {
+                id: requestedCourse.id,
+                name: requestedCourse.category || requestedCourse.title || "المقرر الدراسي",
+                nameEn: requestedCourse.title || "Course",
+                icon: "📚",
+                stage: requestedCourse.grade?.stage || "PRIMARY",
+                grade: requestedCourse.grade || null
+              };
+            }
+          }
+        }
       }
 
-      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      // 3. Fallback: If still no subject, pick the first available subject or course
+      if (!subject) {
+        subject = await subjectRepo.findOne({
+          where: {},
+          relations: ["grade"]
+        });
 
-      // Fetch all real groups belonging to courses under this subject
-      const groups = await groupRepo.find({
-        where: {
-          course: {
-            subject: { id: subjectId }
+        if (!subject) {
+          requestedCourse = await courseRepo.findOne({
+            where: { status: "PUBLISHED" },
+            relations: ["subject", "grade", "teacher", "lessons"]
+          });
+          if (requestedCourse) {
+            subject = {
+              id: requestedCourse.id,
+              name: requestedCourse.category || requestedCourse.title || "المقرر الدراسي",
+              nameEn: requestedCourse.title || "Course",
+              icon: "📚",
+              stage: requestedCourse.grade?.stage || "PRIMARY",
+              grade: requestedCourse.grade || null
+            };
           }
-        },
-        relations: ["course", "course.subject", "course.teacher", "course.grade", "teacher"]
+        }
+      }
+
+      // 4. Absolute fallback if database has no subjects or courses yet
+      if (!subject) {
+        subject = {
+          id: "default",
+          name: "المقرر الدراسي",
+          nameEn: "Course",
+          icon: "📚",
+          stage: "PRIMARY",
+          grade: null
+        };
+      }
+
+      const safeStr = (s: any) => String(s || "").trim().toLowerCase();
+      const subName = safeStr(subject.name);
+      const subNameEn = safeStr(subject.nameEn);
+      const subCat = safeStr(subject.category);
+      const subGradeId = subject.grade?.id;
+      const subStage = subject.stage || subject.grade?.stage || "PRIMARY";
+
+      // 5. Fetch published courses matching this subject and grade
+      let allCourses: Course[] = [];
+      try {
+        allCourses = await courseRepo.find({
+          where: { status: "PUBLISHED" },
+          relations: ["teacher", "grade", "subject", "lessons"]
+        });
+      } catch (e) {
+        allCourses = [];
+      }
+
+      let matchingCourses = allCourses.filter(c => {
+        const cId = c.id;
+        const cSubId = c.subject?.id;
+        const cGradeId = c.grade?.id;
+        const cCat = safeStr(c.category);
+        const cTitle = safeStr(c.title);
+        const cSubName = safeStr(c.subject?.name);
+
+        const matchesCourseId = requestedCourse && cId === requestedCourse.id;
+        const matchesSubId = (subject.id && cSubId === subject.id) || (subjectId && cSubId === subjectId);
+        const matchesGrade = subGradeId && cGradeId ? cGradeId === subGradeId : false;
+        const matchesCat = (subName && (cCat.includes(subName) || subName.includes(cCat))) ||
+                           (subNameEn && (cCat.includes(subNameEn) || subNameEn.includes(cCat))) ||
+                           (subCat && (cCat.includes(subCat) || subCat.includes(cCat))) ||
+                           (cTitle && subName && (cTitle.includes(subName) || subName.includes(cTitle)));
+        const matchesStage = (c.grade?.stage === subStage || !c.grade?.stage) && (
+          (cSubName && subName && cSubName === subName) || matchesCat
+        );
+
+        return matchesCourseId || matchesSubId || (matchesGrade && matchesCat) || matchesStage;
       });
+
+      // If no matching courses found, include requestedCourse or all published courses
+      if (matchingCourses.length === 0) {
+        if (requestedCourse) {
+          matchingCourses = [requestedCourse];
+        } else if (allCourses.length > 0) {
+          matchingCourses = allCourses.slice(0, 4);
+        }
+      }
+
+      // Ensure requested course is first in the array
+      if (requestedCourse) {
+        const idx = matchingCourses.findIndex(c => c.id === requestedCourse!.id);
+        if (idx > -1) {
+          const [c] = matchingCourses.splice(idx, 1);
+          matchingCourses.unshift(c);
+        } else {
+          matchingCourses.unshift(requestedCourse);
+        }
+      }
+
+      const matchingCourseIds = matchingCourses.map(c => c.id).filter(Boolean);
+
+      // 6. Fetch groups for matching courses
+      let groups: CourseGroup[] = [];
+      try {
+        if (matchingCourseIds.length > 0) {
+          groups = await groupRepo.find({
+            where: matchingCourseIds.map(cid => ({ course: { id: cid } })),
+            relations: ["course", "course.grade", "course.teacher", "teacher"]
+          });
+        } else {
+          groups = await groupRepo.find({
+            relations: ["course", "course.grade", "course.teacher", "teacher"]
+          });
+        }
+      } catch (e) {
+        console.warn("Could not query groups by course ids:", e);
+        try {
+          groups = await groupRepo.find({ relations: ["course", "course.grade", "course.teacher", "teacher"] });
+        } catch (e2) {
+          groups = [];
+        }
+      }
+
+      // 7. Fetch available grades in this stage for filtering
+      let stageGrades: Grade[] = [];
+      try {
+        if (subStage) {
+          stageGrades = await gradeRepo.find({
+            where: { stage: subStage as any },
+            order: { order: "ASC" }
+          });
+        }
+      } catch (e) {
+        stageGrades = [];
+      }
+      if (stageGrades.length === 0 && subject.grade) {
+        stageGrades = [subject.grade];
+      }
 
       const selectedDays = days
         ? String(days).split(",").map(d => d.trim().toLowerCase()).filter(Boolean)
@@ -467,7 +623,7 @@ export class CurriculumController {
       for (const group of groups) {
         if (!group.course) continue;
         // Only published courses are visible publicly
-        if (group.course.status !== "PUBLISHED") {
+        if (group.course.status && group.course.status !== "PUBLISHED") {
           continue;
         }
 
@@ -489,19 +645,26 @@ export class CurriculumController {
           if (!matchesDay) continue;
         }
 
-        const enrolledCount = await enrollmentRepo.count({
-          where: {
-            group: { id: group.id },
-            status: "active"
-          }
-        });
+        let enrolledCount = 0;
+        let pendingCount = 0;
+        try {
+          enrolledCount = await enrollmentRepo.count({
+            where: {
+              group: { id: group.id },
+              status: "active"
+            }
+          });
 
-        const pendingCount = await enrollmentRepo.count({
-          where: {
-            group: { id: group.id },
-            status: "pending"
-          }
-        });
+          pendingCount = await enrollmentRepo.count({
+            where: {
+              group: { id: group.id },
+              status: "pending"
+            }
+          });
+        } catch (e) {
+          enrolledCount = 0;
+          pendingCount = 0;
+        }
 
         const totalOccupied = enrolledCount + pendingCount;
         const maxSeats = group.maxStudents || 25;
@@ -518,6 +681,8 @@ export class CurriculumController {
           groupName: group.name,
           courseId: group.course.id,
           courseTitle: group.course.title,
+          gradeId: group.course.grade?.id || subject.grade?.id || "",
+          gradeName: group.course.grade?.name || subject.grade?.name || "الصف الدراسي",
           price: groupPrice,
           isFree: group.course.isFree,
           currency: group.course.currency || "ج.م.",
@@ -550,19 +715,43 @@ export class CurriculumController {
       return res.status(200).json({
         subject: {
           id: subject.id,
-          name: subject.name,
-          nameEn: subject.nameEn,
+          name: subject.name || "المقرر الدراسي",
+          nameEn: subject.nameEn || "Course",
           icon: subject.icon || "📖",
-          stage: subject.stage,
+          stage: subStage,
+          gradeId: subject.grade?.id || "",
           gradeName: subject.grade?.name || "المرحلة الدراسية",
           subtitle: `${subject.grade?.name || ""} • الفصل الدراسي الأول • المنهج الدراسي`
         },
+        courses: matchingCourses.map(c => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          image: c.image,
+          price: c.price,
+          isFree: c.isFree,
+          currency: c.currency || "EGP",
+          category: c.category,
+          gradeId: c.grade?.id,
+          gradeName: c.grade?.name,
+          lessonsCount: (c.lessons || []).length,
+          teacher: c.teacher ? {
+            id: c.teacher.id,
+            name: c.teacher.name,
+            avatar: c.teacher.avatar
+          } : null
+        })),
+        availableGrades: stageGrades.filter(Boolean).map(g => ({
+          id: g.id,
+          name: g.name,
+          stage: g.stage
+        })),
         totalGroups: groupCards.length,
         groups: groupCards
       });
     } catch (err: any) {
       console.error("Error in getSubjectGroups:", err);
-      return res.status(500).json({ error: "Failed to fetch subject groups." });
+      return res.status(500).json({ error: "Failed to fetch subject groups: " + (err?.message || "") });
     }
   }
 }

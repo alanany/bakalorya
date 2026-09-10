@@ -111,12 +111,14 @@ export class CourseGroupController {
         return res.status(404).json({ error: "Course not found." });
       }
 
-      // Check authorization (must be course teacher or admin)
-      if (req.user!.role !== "admin" && course.teacher?.id !== req.user!.id) {
-        return res.status(403).json({ error: "Not authorized to add groups to this course." });
+      // Check authorization (allow admin or any teacher to open groups under published courses)
+      if (req.user!.role !== "admin" && req.user!.role !== "teacher") {
+        return res.status(403).json({ error: "Only teachers or admins can create course groups." });
       }
 
-      const teacher = course.teacher || (await userRepo.findOneBy({ id: req.user!.id }));
+      const teacher = req.user!.role === "teacher"
+        ? (await userRepo.findOneBy({ id: req.user!.id }))
+        : (course.teacher || (await userRepo.findOneBy({ id: req.user!.id })));
       const isAdmin = req.user!.role === "admin";
 
       // If non-admin (Teacher), enforce platform defaults and PENDING_APPROVAL status

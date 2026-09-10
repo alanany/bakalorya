@@ -6,10 +6,84 @@ export default class SubjectGroupsView {
     this.container = container;
     this.subjectId = subjectId;
     this.subjectData = null;
+    this.courses = [];
     this.allGroups = [];
     this.selectedDays = []; // e.g. ["الأحد", "الثلاثاء"]
+    this.searchQuery = "";
+    this.selectedTeacher = "all";
+    this.selectedGrade = "all"; // for any grades filter
+    this.availableGrades = [];
+    this.onlyAvailable = false;
+    this.sortBy = "default"; // 'default', 'price_asc', 'price_desc', 'seats'
     this.daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
     this.loading = true;
+  }
+
+  getCoverPhoto(subjectName, primaryCourse) {
+    if (primaryCourse && primaryCourse.image && String(primaryCourse.image).startsWith("http")) {
+      return primaryCourse.image;
+    }
+    const n = String(subjectName || "").toLowerCase();
+    if (n.includes("connect") || n.includes("engl") || n.includes("إنجل") || n.includes("لغة")) {
+      return "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("عرب") || n.includes("arabic")) {
+      return "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("رياض") || n.includes("math")) {
+      return "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("فيزي") || n.includes("physic")) {
+      return "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("كيمي") || n.includes("chem")) {
+      return "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("أحيا") || n.includes("bio")) {
+      return "https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("علوم") || n.includes("scien")) {
+      return "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("فرنس") || n.includes("french") || n.includes("ألمان") || n.includes("german")) {
+      return "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("تاريخ") || n.includes("جغراف") || n.includes("دراسات") || n.includes("history")) {
+      return "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=1600&auto=format&fit=crop&q=80";
+    }
+    if (n.includes("ict") || n.includes("حاسب") || n.includes("تكنولوج")) {
+      return "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1600&auto=format&fit=crop&q=80";
+    }
+    return "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1600&auto=format&fit=crop&q=80";
+  }
+
+  getSubjectTheme(name) {
+    const n = String(name || "").toLowerCase();
+    if (n.includes("عرب") || n.includes("arabic")) {
+      return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+    }
+    if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
+      return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
+    }
+    if (n.includes("رياض") || n.includes("math")) {
+      return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
+    }
+    if (n.includes("فيزي") || n.includes("physic")) {
+      return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
+    }
+    if (n.includes("كيمي") || n.includes("chem")) {
+      return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧪" };
+    }
+    if (n.includes("أحيا") || n.includes("bio")) {
+      return { gradient: "linear-gradient(135deg, #10b981 0%, #065f46 100%)", color: "#10b981", icon: "🧬" };
+    }
+    if (n.includes("فرنس") || n.includes("french") || n.includes("ألمان") || n.includes("german")) {
+      return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🌍" };
+    }
+    if (n.includes("تاريخ") || n.includes("history") || n.includes("جغراف") || n.includes("دراسات")) {
+      return { gradient: "linear-gradient(135deg, #b45309 0%, #78350f 100%)", color: "#b45309", icon: "🏛️" };
+    }
+    return { gradient: "linear-gradient(135deg, #e51d74 0%, #9f1239 100%)", color: "#e51d74", icon: "📚" };
   }
 
   async render() {
@@ -21,43 +95,43 @@ export default class SubjectGroupsView {
           padding-bottom: 80px;
         }
         .subject-groups-container {
-          max-width: 1100px;
+          max-width: 1180px;
           margin: 0 auto;
-          padding: clamp(16px, 3.5vw, 32px) clamp(12px, 3vw, 24px);
+          padding: clamp(16px, 3.5vw, 32px) clamp(14px, 3vw, 24px);
         }
         .subject-header-icon {
-          width: clamp(56px, 12vw, 72px);
-          height: clamp(56px, 12vw, 72px);
-          font-size: clamp(1.6rem, 4vw, 2.2rem);
+          width: clamp(60px, 12vw, 76px);
+          height: clamp(60px, 12vw, 76px);
+          font-size: clamp(1.8rem, 4vw, 2.3rem);
           border-radius: 50%;
-          background: #008080;
           color: #ffffff;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-weight: 900;
           margin-bottom: 12px;
-          box-shadow: 0 8px 24px rgba(0,128,128,0.25);
-          border: 3px solid #ffffff;
+          box-shadow: 0 10px 28px rgba(0,0,0,0.15);
+          border: 3.5px solid #ffffff;
         }
         .subject-header-title {
-          font-size: clamp(1.4rem, 4vw, 2.2rem);
+          font-size: clamp(1.5rem, 4vw, 2.3rem);
           font-weight: 900;
           color: var(--text-color);
-          margin-bottom: 6px;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
         }
         .subject-header-sub {
-          font-size: clamp(0.82rem, 2.5vw, 0.95rem);
+          font-size: clamp(0.88rem, 2.5vw, 1.05rem);
           color: var(--text-muted);
-          font-weight: 700;
+          font-weight: 800;
         }
         .nagwa-days-filter-card {
           background: var(--bg-card);
           border: 1px solid var(--border-color);
-          border-radius: 20px;
-          padding: clamp(14px, 3vw, 20px) clamp(14px, 3vw, 24px);
-          margin-bottom: clamp(20px, 4vw, 36px);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+          border-radius: 22px;
+          padding: clamp(16px, 3vw, 22px);
+          margin-bottom: clamp(20px, 4vw, 32px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.03);
         }
         .days-filter-list {
           display: flex;
@@ -67,24 +141,23 @@ export default class SubjectGroupsView {
           direction: rtl;
         }
         .day-filter-pill {
-          flex: 1 1 calc(14.28% - 8px);
-          min-width: 80px;
-          padding: 10px 14px;
+          flex: 1 1 calc(12.5% - 8px);
+          min-width: 76px;
+          padding: 9px 12px;
           border-radius: 12px;
           font-weight: 800;
-          font-size: clamp(0.82rem, 2vw, 0.95rem);
+          font-size: clamp(0.82rem, 2vw, 0.92rem);
           cursor: pointer;
           transition: all 0.2s ease;
           text-align: center;
         }
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           .day-filter-pill {
             flex: 1 1 calc(25% - 8px);
-            min-width: 65px;
-            padding: 8px 8px;
+            min-width: 68px;
           }
         }
-        @media (max-width: 380px) {
+        @media (max-width: 420px) {
           .day-filter-pill {
             flex: 1 1 calc(33.33% - 6px);
             min-width: 58px;
@@ -95,7 +168,7 @@ export default class SubjectGroupsView {
         #groups-cards-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
-          gap: clamp(16px, 2.5vw, 24px);
+          gap: clamp(16px, 2.5vw, 22px);
           direction: rtl;
         }
         @media (max-width: 640px) {
@@ -116,8 +189,8 @@ export default class SubjectGroupsView {
           transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .card-header-container {
-          background: rgba(0,0,0,0.03);
-          padding: clamp(14px, 3vw, 20px) clamp(14px, 3vw, 24px);
+          background: rgba(0,0,0,0.02);
+          padding: clamp(14px, 3vw, 18px) clamp(14px, 3vw, 20px);
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -125,30 +198,20 @@ export default class SubjectGroupsView {
           flex-wrap: wrap;
           gap: 12px;
         }
-        @media (max-width: 440px) {
-          .card-header-container {
-            flex-direction: column;
-            align-items: flex-start !important;
-          }
-          .card-price-container {
-            align-self: flex-end;
-            text-align: left;
-          }
-        }
         .card-body-container {
-          padding: clamp(16px, 3vw, 22px) clamp(14px, 3vw, 24px);
+          padding: clamp(16px, 3vw, 20px);
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
         .card-dates-box {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
           gap: 8px;
           background: var(--bg-app);
           border: 1px solid var(--border-color);
           border-radius: 14px;
-          padding: 10px 14px;
+          padding: 10px 12px;
         }
         .card-specs-box {
           display: grid;
@@ -166,7 +229,7 @@ export default class SubjectGroupsView {
           display: flex;
           gap: 10px;
           align-items: center;
-          margin-top: 6px;
+          margin-top: 4px;
           flex-wrap: wrap;
         }
         .card-action-btn-main {
@@ -179,32 +242,32 @@ export default class SubjectGroupsView {
           min-width: 90px;
           text-align: center;
         }
-        @media (max-width: 420px) {
-          .card-actions-row {
-            flex-direction: column;
-            gap: 8px;
-          }
-          .card-action-btn-main, .card-action-btn-details {
-            width: 100% !important;
-            flex: none !important;
-          }
-        }
       </style>
 
       <div class="subject-groups-wrapper">
         <div class="subject-groups-container">
           
-          <!-- TOP BACK BUTTON & BREADCRUMB -->
-          <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <a href="#landing" style="display:inline-flex; align-items:center; gap:8px; color:var(--text-muted); font-weight:700; text-decoration:none; font-size:clamp(0.88rem, 2vw, 0.95rem);">
-              <i data-lucide="arrow-right" style="width:18px;height:18px;"></i> العودة للمستكشف الرئيسي
+          <!-- TOP BREADCRUMB & BACK BUTTON -->
+          <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <a href="#landing" style="display:inline-flex; align-items:center; gap:8px; color:var(--text-muted); font-weight:800; text-decoration:none; font-size:clamp(0.85rem, 2vw, 0.92rem); background:var(--bg-card); padding:8px 16px; border-radius:18px; border:1px solid var(--border-color);">
+              <i data-lucide="arrow-right" style="width:16px;height:16px;"></i>
+              <span>العودة للمستكشف الرئيسي</span>
             </a>
+
+            <div id="subject-breadcrumb" style="font-size:0.82rem; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <span>المنهج الدراسي</span>
+              <span>/</span>
+              <span id="breadcrumb-grade">المرحلة</span>
+              <span>/</span>
+              <span id="breadcrumb-subject" style="color:var(--primary);">المادة</span>
+            </div>
           </div>
 
+          <!-- MAIN CONTENT CONTAINER -->
           <div id="subject-groups-content">
-            <div style="text-align:center; padding:60px 20px;">
-              <div class="spinner" style="width:40px; height:40px; margin:0 auto 16px;"></div>
-              <p style="color:var(--text-muted); font-weight:700;">جاري تحميل المجموعات والمعلمين...</p>
+            <div style="text-align:center; padding:70px 20px;">
+              <div class="spinner" style="width:44px; height:44px; margin:0 auto 16px; border-width:3px;"></div>
+              <p style="color:var(--text-muted); font-weight:800; font-size:1rem;">جاري تحميل المقرر والمجموعات الدراسية المعتمدة...</p>
             </div>
           </div>
 
@@ -217,50 +280,235 @@ export default class SubjectGroupsView {
   }
 
   async loadData() {
-    try {
-      this.loading = true;
+    this.loading = true;
+    let myEnrollments = [];
+    if (state.user && state.user.role === "student") {
+      try {
+        myEnrollments = await apiFetch("/student/enrollments");
+      } catch (_) {
+        myEnrollments = [];
+      }
+    }
+    this.myEnrollments = myEnrollments || [];
 
-      // Fallback: If no subjectId provided in URL, load first subject
-      if (!this.subjectId) {
+    // Fallback: If no subjectId provided in URL or literal "undefined"/"null"
+    if (!this.subjectId || this.subjectId === "undefined" || this.subjectId === "null") {
+      try {
         const subs = await apiFetch("/curriculum/subjects");
         if (Array.isArray(subs) && subs.length > 0) {
           this.subjectId = subs[0].id;
+        } else {
+          const courses = await apiFetch("/courses");
+          if (Array.isArray(courses) && courses.length > 0) {
+            this.subjectId = courses[0].id;
+          }
         }
-      }
-
-      let url = `/curriculum/subjects/${this.subjectId}/groups`;
-      if (this.selectedDays.length > 0) {
-        url += `?days=${encodeURIComponent(this.selectedDays.join(","))}`;
-      }
-
-      let enrollmentsPromise = Promise.resolve([]);
-      if (state.user && state.user.role === "student") {
-        enrollmentsPromise = apiFetch("/student/enrollments").catch(() => []);
-      }
-
-      const [res, myEnrollments] = await Promise.all([
-        apiFetch(url),
-        enrollmentsPromise
-      ]);
-
-      this.subjectData = res.subject;
-      this.allGroups = res.groups || [];
-      this.myEnrollments = myEnrollments || [];
-      this.loading = false;
-      this.renderContent();
-    } catch (err) {
-      console.error(err);
-      this.loading = false;
-      const contentEl = document.getElementById("subject-groups-content");
-      if (contentEl) {
-        contentEl.innerHTML = `
-          <div class="glass-card" style="text-align:center; padding:50px 20px; border-radius:20px;">
-            <p style="color:#ef4444; font-weight:800; font-size:1.1rem; margin-bottom:12px;">فشل في تحميل المجموعات</p>
-            <button class="btn-primary" onclick="window.location.hash='#landing'" style="padding:10px 24px; border-radius:20px;">العودة للرئيسية</button>
-          </div>
-        `;
+      } catch (e) {
+        console.warn("Could not fetch fallback subjects:", e);
       }
     }
+
+    let loadedRes = null;
+
+    // Attempt 1: GET /curriculum/subjects/:subjectId/groups
+    try {
+      const url = `/curriculum/subjects/${this.subjectId || 'default'}/groups`;
+      loadedRes = await apiFetch(url);
+    } catch (err1) {
+      console.warn("Fetch by curriculum subject failed:", err1);
+    }
+
+    // Attempt 2: GET /curriculum/courses/:subjectId/groups
+    if (!loadedRes || !loadedRes.subject) {
+      try {
+        loadedRes = await apiFetch(`/curriculum/courses/${this.subjectId}/groups`);
+      } catch (err2) {
+        console.warn("Fetch by curriculum course failed:", err2);
+      }
+    }
+
+    // Attempt 3: Direct Course Fetch /courses/:id and /courses/:id/groups
+    if (!loadedRes || !loadedRes.subject) {
+      try {
+        const course = await apiFetch(`/courses/${this.subjectId}`);
+        if (course && course.id) {
+          let cGroups = [];
+          try {
+            cGroups = await apiFetch(`/courses/${course.id}/groups`);
+          } catch (_) {}
+
+          loadedRes = {
+            subject: {
+              id: course.id,
+              name: course.category || course.title || "المقرر الدراسي",
+              nameEn: course.title || "Course",
+              gradeId: course.grade?.id || "",
+              gradeName: course.grade?.name || "المرحلة الدراسية",
+              subtitle: `${course.grade?.name || ""} • الفصل الدراسي الأول • المنهج الدراسي`
+            },
+            courses: [course],
+            groups: (Array.isArray(cGroups) ? cGroups : []).map(g => ({
+              groupId: g.id,
+              groupName: g.name,
+              courseId: course.id,
+              courseTitle: course.title,
+              gradeId: course.grade?.id || "",
+              gradeName: course.grade?.name || "الصف الدراسي",
+              price: g.monthlyPrice || course.price || 320,
+              monthlyPrice: g.monthlyPrice || course.price || 320,
+              sessionPrice: g.sessionPrice || 40,
+              teacher: g.teacher || course.teacher,
+              scheduleDays: g.scheduleDays || "",
+              scheduleText: g.scheduleText || "",
+              availableSeats: g.availableSeats !== undefined ? g.availableSeats : (g.maxStudents || 25),
+              maxStudents: g.maxStudents || 25,
+              isFull: !!g.isFull,
+              status: g.status || "OPEN"
+            })),
+            availableGrades: course.grade ? [{ id: course.grade.id, name: course.grade.name }] : []
+          };
+        }
+      } catch (err3) {
+        console.warn("Fetch by direct course failed:", err3);
+      }
+    }
+
+    // Attempt 4: General default fallback
+    if (!loadedRes || !loadedRes.subject) {
+      try {
+        loadedRes = await apiFetch("/curriculum/subjects/default/groups");
+      } catch (err4) {
+        console.warn("Default curriculum groups fallback failed:", err4);
+      }
+    }
+
+    // Attempt 5: Any available course from /courses
+    if (!loadedRes || !loadedRes.subject) {
+      try {
+        const allCourses = await apiFetch("/courses");
+        if (Array.isArray(allCourses) && allCourses.length > 0) {
+          const firstCourse = allCourses[0];
+          let cGroups = [];
+          try {
+            cGroups = await apiFetch(`/courses/${firstCourse.id}/groups`);
+          } catch (_) {}
+
+          loadedRes = {
+            subject: {
+              id: firstCourse.id,
+              name: firstCourse.category || firstCourse.title || "المقرر الدراسي",
+              nameEn: firstCourse.title || "Course",
+              gradeId: firstCourse.grade?.id || "",
+              gradeName: firstCourse.grade?.name || "المرحلة الدراسية"
+            },
+            courses: allCourses.slice(0, 4),
+            groups: (Array.isArray(cGroups) ? cGroups : []).map(g => ({
+              groupId: g.id,
+              groupName: g.name,
+              courseId: firstCourse.id,
+              courseTitle: firstCourse.title,
+              gradeName: firstCourse.grade?.name || "الصف الدراسي",
+              price: g.monthlyPrice || firstCourse.price || 320,
+              monthlyPrice: g.monthlyPrice || firstCourse.price || 320,
+              sessionPrice: g.sessionPrice || 40,
+              teacher: g.teacher || firstCourse.teacher,
+              scheduleDays: g.scheduleDays || "",
+              scheduleText: g.scheduleText || "",
+              availableSeats: g.availableSeats !== undefined ? g.availableSeats : 20,
+              maxStudents: g.maxStudents || 25,
+              isFull: !!g.isFull,
+              status: g.status || "OPEN"
+            })),
+            availableGrades: []
+          };
+        }
+      } catch (err5) {
+        console.warn("All courses fallback failed:", err5);
+      }
+    }
+
+    if (loadedRes && loadedRes.subject) {
+      this.subjectData = loadedRes.subject;
+      this.courses = loadedRes.courses || [];
+      this.allGroups = loadedRes.groups || [];
+      this.availableGrades = loadedRes.availableGrades || [];
+      this.loading = false;
+      try {
+        this.renderContent();
+      } catch (renderErr) {
+        console.error("Error executing renderContent:", renderErr);
+      }
+      return;
+    }
+
+    this.loading = false;
+    const contentEl = document.getElementById("subject-groups-content");
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div class="glass-card" style="text-align:center; padding:50px 20px; border-radius:20px; max-width:550px; margin:0 auto;">
+          <div style="font-size:3rem; margin-bottom:12px;">📚</div>
+          <p style="color:#ef4444; font-weight:800; font-size:1.1rem; margin-bottom:8px;">عذراً، لم نتمكن من العثور على مجموعات لهذا الرابط</p>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:20px;">يمكنك استكشاف المقررات والمجموعات الدراسية المتاحة عبر المستكشف الرئيسي.</p>
+          <button class="btn-primary" onclick="window.location.hash='#landing'" style="padding:10px 24px; border-radius:20px;">العودة للمستكشف الرئيسي</button>
+        </div>
+      `;
+    }
+  }
+
+  getFilteredGroups() {
+    let list = [...(this.allGroups || [])];
+
+    // 0. Grade filter ("for any grades")
+    if (this.selectedGrade && this.selectedGrade !== "all") {
+      list = list.filter(g => {
+        return String(g.gradeId) === String(this.selectedGrade) ||
+               (g.gradeName && g.gradeName.toLowerCase().includes(this.selectedGrade.toLowerCase()));
+      });
+    }
+
+    // 1. Days filter
+    if (this.selectedDays && this.selectedDays.length > 0) {
+      list = list.filter(g => {
+        const str = `${g.scheduleDays || ''} ${g.scheduleText || ''} ${g.groupName || ''}`.toLowerCase();
+        return this.selectedDays.some(d => str.includes(d.toLowerCase()));
+      });
+    }
+
+    // 2. Search query
+    if (this.searchQuery) {
+      const q = this.searchQuery.trim().toLowerCase();
+      list = list.filter(g => {
+        const name = (g.groupName || '').toLowerCase();
+        const teacher = (g.teacher?.name || g.teacherName || '').toLowerCase();
+        const course = (g.courseTitle || '').toLowerCase();
+        return name.includes(q) || teacher.includes(q) || course.includes(q);
+      });
+    }
+
+    // 3. Teacher filter
+    if (this.selectedTeacher && this.selectedTeacher !== "all") {
+      list = list.filter(g => {
+        const tName = g.teacher?.name || g.teacherName || '';
+        const tId = g.teacher?.id;
+        return tName === this.selectedTeacher || String(tId) === String(this.selectedTeacher);
+      });
+    }
+
+    // 4. Available seats only
+    if (this.onlyAvailable) {
+      list = list.filter(g => !g.isFull && (g.availableSeats === undefined || g.availableSeats > 0));
+    }
+
+    // 5. Sort
+    if (this.sortBy === "price_asc") {
+      list.sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (this.sortBy === "price_desc") {
+      list.sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (this.sortBy === "seats") {
+      list.sort((a, b) => (b.availableSeats || 0) - (a.availableSeats || 0));
+    }
+
+    return list;
   }
 
   renderContent() {
@@ -268,53 +516,201 @@ export default class SubjectGroupsView {
     if (!contentEl || !this.subjectData) return;
 
     const sub = this.subjectData;
-    const initialLetter = (sub.name || "م").trim().charAt(0);
+    const matchedCourse = (this.courses || []).find(c => String(c.id) === String(this.subjectId));
+    const primaryCourse = matchedCourse || ((this.courses && this.courses.length > 0) ? this.courses[0] : null);
+    const coverImage = this.getCoverPhoto(sub.name, primaryCourse);
+
+    // Update breadcrumb
+    const bcGrade = document.getElementById("breadcrumb-grade");
+    const bcSubject = document.getElementById("breadcrumb-subject");
+    if (bcGrade) bcGrade.innerText = sub.gradeName || "المرحلة الدراسية";
+    if (bcSubject) bcSubject.innerText = sub.name;
+
+    const filteredGroups = this.getFilteredGroups();
+
+    // Extract unique teachers for filter dropdown
+    const teacherMap = new Map();
+    (this.allGroups || []).forEach(g => {
+      const name = g.teacher?.name || g.teacherName;
+      if (name) teacherMap.set(name, name);
+    });
+    const uniqueTeachers = Array.from(teacherMap.keys());
+
+    // Extract available grades for filter ("for any grades")
+    const gradeMap = new Map();
+    (this.availableGrades || []).forEach(g => {
+      if (g && g.id && g.name) gradeMap.set(g.id, g.name);
+    });
+    (this.allGroups || []).forEach(g => {
+      if (g.gradeId && g.gradeName) gradeMap.set(g.gradeId, g.gradeName);
+    });
+    if (sub.gradeName) {
+      gradeMap.set(sub.gradeId || "current", sub.gradeName);
+    }
+    const availableGradesList = Array.from(gradeMap.entries()).map(([id, name]) => ({ id, name }));
 
     contentEl.innerHTML = `
-      <!-- 1. SUBJECT HEADER WITH CIRCULAR BADGE -->
-      <div style="text-align:center; margin-bottom:clamp(24px, 4vw, 36px); position:relative;">
-        <div class="subject-header-icon">
-          ${sub.icon && sub.icon.length <= 2 ? sub.icon : initialLetter}
-        </div>
-        <h1 class="subject-header-title">
-          ${sub.name}
-        </h1>
-        <p class="subject-header-sub">
-          ${sub.subtitle || `${sub.gradeName || ""} • الفصل الدراسي الأول • المنهج الدراسي`}
-        </p>
-      </div>
-
-      <!-- 2. DAYS OF WEEK FILTER BAR -->
-      <div class="nagwa-days-filter-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <button id="clear-all-days-btn" style="background:none; border:none; color:#e51d74; font-weight:800; font-size:0.92rem; cursor:pointer; text-decoration:none; padding:4px 8px; display:${this.selectedDays.length > 0 ? "inline-block" : "none"};">
-            إلغاء الكل
-          </button>
-          <span style="font-weight:900; font-size:clamp(0.95rem, 2vw, 1.05rem); color:var(--text-color); margin-inline-start:auto;">
-            أيام الأسبوع
+      <!-- 1. HERO COVER PHOTO & COURSE TITLE ONLY -->
+      <div class="course-cover-hero-banner" style="
+        position: relative;
+        width: 100%;
+        min-height: 250px;
+        border-radius: 26px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        background-image: linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(15,23,42,0.85) 90%), url('${coverImage}');
+        background-size: cover;
+        background-position: center;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: clamp(20px, 4vw, 36px);
+        color: #ffffff;
+      ">
+        <!-- Top Badges inside Cover -->
+        <div style="position: absolute; top: 18px; right: 20px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <span style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem; border: 1px solid rgba(255,255,255,0.2);">
+            ${sub.gradeName || 'المرحلة التعليمية'}
+          </span>
+          <span style="background: rgba(16,185,129,0.9); backdrop-filter: blur(8px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
+            منهج رسمي معتمد 🇪🇬
           </span>
         </div>
 
-        <div class="days-filter-list">
-          ${this.daysList.map(day => {
-            const isSelected = this.selectedDays.includes(day);
-            return `
-              <button class="day-filter-pill ${isSelected ? "active" : ""}" data-day="${day}" style="
-                border:1px solid ${isSelected ? "#e51d74" : "var(--border-color)"};
-                background:${isSelected ? "#e51d74" : "var(--bg-app)"};
-                color:${isSelected ? "#ffffff" : "var(--text-color)"};
-                box-shadow:${isSelected ? "0 4px 12px rgba(229,29,116,0.3)" : "none"};
-              ">
-                ${day}
-              </button>
-            `;
-          }).join("")}
+        <!-- Title & Subtitle inside Cover -->
+        <div style="position: relative; z-index: 2; max-width: 850px;">
+          <h1 style="
+            font-size: clamp(1.7rem, 4.5vw, 2.7rem);
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+            text-shadow: 0 3px 12px rgba(0,0,0,0.7);
+            line-height: 1.25;
+            letter-spacing: -0.5px;
+          ">
+            ${primaryCourse?.title || sub.name}
+          </h1>
+          <p style="
+            font-size: clamp(0.88rem, 2vw, 1.05rem);
+            color: rgba(255,255,255,0.92);
+            margin: 0;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+          ">
+            مجموعات المتابعة والتدريس المباشر لمقرر ${sub.name} • ${sub.gradeName || ''}
+          </p>
         </div>
+      </div>
+
+      <!-- 2. GROUPS FILTER TOOLBAR (FOR ANY GRADES & SESSIONS) -->
+      <div class="nagwa-days-filter-card">
+        
+        <!-- Filter Controls Row -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:18px;">
+          
+          <!-- Grade Selector Filter (for any grades) -->
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">الصف الدراسي:</label>
+            <select id="filter-grade-select" style="width:100%; padding:10px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="all" ${this.selectedGrade === 'all' ? 'selected' : ''}>🎓 جميع الصفوف الدراسية</option>
+              ${availableGradesList.map(g => `
+                <option value="${g.id}" ${this.selectedGrade === g.id ? 'selected' : ''}>
+                  ${g.name}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+
+          <!-- Search Input -->
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">بحث في المجموعات:</label>
+            <input type="text" id="filter-search-input" placeholder="🔍 ابحث بالمجموعة أو المعلم..." value="${this.searchQuery || ''}"
+              style="width:100%; padding:10px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+          </div>
+
+          <!-- Teacher Select -->
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">المعلم:</label>
+            <select id="filter-teacher-select" style="width:100%; padding:10px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="all">👨‍🏫 جميع المعلمين (${uniqueTeachers.length})</option>
+              ${uniqueTeachers.map(t => `<option value="${t}" ${this.selectedTeacher === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">الترتيب حسب:</label>
+            <select id="filter-sort-select" style="width:100%; padding:10px 14px; border-radius:14px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-color); font-size:0.86rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              <option value="default" ${this.sortBy === 'default' ? 'selected' : ''}>الافتراضي</option>
+              <option value="price_asc" ${this.sortBy === 'price_asc' ? 'selected' : ''}>السعر: من الأقل للأعلى</option>
+              <option value="price_desc" ${this.sortBy === 'price_desc' ? 'selected' : ''}>السعر: من الأعلى للأقل</option>
+              <option value="seats" ${this.sortBy === 'seats' ? 'selected' : ''}>الأكثر مقاعد متاحة</option>
+            </select>
+          </div>
+
+          <!-- Only Available Checkbox -->
+          <div style="display:flex; align-items:flex-end; padding-bottom:4px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--text-color); background:var(--bg-app); padding:9px 14px; border-radius:14px; border:1px solid var(--border-color); width:100%; box-sizing:border-box;">
+              <input type="checkbox" id="filter-only-open" ${this.onlyAvailable ? 'checked' : ''} style="accent-color:#e51d74; width:17px; height:17px;">
+              <span>المتاح للحجز فقط 🟢</span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- Days Filter Row -->
+        <div style="border-top:1px solid var(--border-color); padding-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <span style="font-weight:900; font-size:0.92rem; color:var(--text-color); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="calendar" style="width:16px; height:16px; color:#e51d74;"></i>
+              <span>أيام الأسبوع للحصص:</span>
+            </span>
+            <button id="clear-all-days-btn" style="background:none; border:none; color:#e51d74; font-weight:800; font-size:0.84rem; cursor:pointer; display:${this.selectedDays.length > 0 ? "inline-block" : "none"};">
+              إلغاء تصفية الأيام
+            </button>
+          </div>
+
+          <div class="days-filter-list">
+            <button type="button" class="day-filter-pill ${this.selectedDays.length === 0 ? 'active' : ''}" data-day="all" style="
+              border:1px solid ${this.selectedDays.length === 0 ? '#e51d74' : 'var(--border-color)'};
+              background:${this.selectedDays.length === 0 ? '#e51d74' : 'var(--bg-app)'};
+              color:${this.selectedDays.length === 0 ? '#ffffff' : 'var(--text-color)'};
+              font-weight:900;
+            ">
+              جميع الأيام
+            </button>
+            ${this.daysList.map(day => {
+              const isSelected = this.selectedDays.includes(day);
+              return `
+                <button type="button" class="day-filter-pill ${isSelected ? "active" : ""}" data-day="${day}" style="
+                  border:1px solid ${isSelected ? "#e51d74" : "var(--border-color)"};
+                  background:${isSelected ? "#e51d74" : "var(--bg-app)"};
+                  color:${isSelected ? "#ffffff" : "var(--text-color)"};
+                  box-shadow:${isSelected ? "0 4px 12px rgba(229,29,116,0.3)" : "none"};
+                ">
+                  ${day}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Meta count bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-color); font-size:0.84rem; font-weight:800; color:var(--text-muted); flex-wrap:wrap; gap:8px;">
+          <span id="groups-count-badge">يتم عرض <strong style="color:var(--text-color); font-size:0.95rem;">${filteredGroups.length}</strong> من أصل ${this.allGroups.length} مجموعة دراسية</span>
+          ${(this.selectedGrade !== 'all' || this.selectedDays.length > 0 || this.searchQuery || this.selectedTeacher !== 'all' || this.onlyAvailable) ? `
+            <button id="reset-all-filters-btn" style="background:none; border:none; color:var(--primary); font-weight:800; font-size:0.82rem; cursor:pointer; text-decoration:underline;">
+              إعادة ضبط جميع الفلاتر ↺
+            </button>
+          ` : ''}
+        </div>
+
       </div>
 
       <!-- 3. GROUPS & TEACHERS CARDS GRID -->
       <div id="groups-cards-grid">
-        ${this.renderGroupsList()}
+        ${this.renderGroupsList(filteredGroups)}
       </div>
     `;
 
@@ -322,16 +718,18 @@ export default class SubjectGroupsView {
     this.attachEvents();
   }
 
-  renderGroupsList() {
-    if (this.allGroups.length === 0) {
+  renderGroupsList(groupsToRender) {
+    const list = groupsToRender !== undefined ? groupsToRender : this.getFilteredGroups();
+
+    if (list.length === 0) {
       return `
-        <div style="grid-column:1/-1; text-align:center; padding:60px 20px; background:var(--bg-card); border-radius:20px; border:1px solid var(--border-color);">
+        <div style="grid-column:1/-1; text-align:center; padding:60px 20px; background:var(--bg-card); border-radius:24px; border:1px solid var(--border-color);">
           <div style="font-size:3rem; margin-bottom:12px;">📅</div>
-          <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-color); margin-bottom:8px;">لا توجد مجموعات متاحة حالياً</h3>
-          <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">لم يتم إضافة مجموعات دراسية لهذه المادة حتى الآن أو لا توجد مجموعات في الأيام المحددة.</p>
-          ${this.selectedDays.length > 0 ? `
-            <button id="reset-filter-empty-btn" class="btn-primary" style="padding:10px 24px; border-radius:20px; background:#e51d74; border-color:#e51d74;">عرض جميع الأيام</button>
-          ` : ''}
+          <h3 style="font-size:1.2rem; font-weight:900; color:var(--text-color); margin-bottom:8px;">لا توجد مجموعات تطابق خيارات التصفية</h3>
+          <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">جرب تغيير الأيام أو إزالة البحث لعرض المجموعات المتاحة.</p>
+          <button id="reset-filter-empty-btn" class="btn-primary" style="padding:10px 24px; border-radius:20px; background:#e51d74; border-color:#e51d74;">
+            عرض جميع المجموعات الدراسية
+          </button>
         </div>
       `;
     }
@@ -345,7 +743,7 @@ export default class SubjectGroupsView {
       return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    return this.allGroups.map(group => {
+    return list.map(group => {
       const isFull = group.isFull || group.availableSeats <= 0;
       const monthlyPrice = group.monthlyPrice || group.price || 0;
       const sessionPrice = group.sessionPrice || (monthlyPrice > 0 ? Math.round(monthlyPrice / 8) : 0);
@@ -353,7 +751,9 @@ export default class SubjectGroupsView {
       const duration = group.sessionDuration || 60;
       const startDateText = group.startDate ? formatArabicDate(group.startDate) : "حسب جدول الحصص";
       const endDateText = group.endDate ? formatArabicDate(group.endDate) : "حسب جدول الحصص";
-      const teacherInitial = (group.teacher?.name || "م").trim().charAt(0);
+      const teacherName = group.teacher?.name || group.teacherName || "معلم معتمد";
+      const teacherInitial = teacherName.trim().charAt(0);
+      const teacherAvatar = group.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
       
       return `
         <div class="nagwa-teacher-group-card">
@@ -363,27 +763,14 @@ export default class SubjectGroupsView {
             
             <!-- TEACHER INFO -->
             <div style="display:flex; align-items:center; gap:12px;">
-              ${group.teacher?.avatar ? `
-                <img src="${group.teacher.avatar}" 
-                     alt="${group.teacher.name || ""}" 
-                     style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
-              ` : `
-                <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #008080, #004d4d); color:#ffffff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.1rem; flex-shrink:0; border:2px solid #ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-                  ${teacherInitial}
-                </div>
-              `}
+              <img src="${teacherAvatar}" 
+                   alt="${teacherName}" 
+                   style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0; background:var(--bg-app);">
               <div>
                 <h3 style="font-size:clamp(1rem, 2.5vw, 1.15rem); font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
-                  ${group.teacher?.name || "معلم معتمد"}
+                  ${teacherName}
                 </h3>
-                ${group.teacher?.rating ? `
-                  <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-card); border:1px solid var(--border-color); padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:800; color:var(--text-muted);">
-                    ${group.teacher.ratingCount ? `<span>👍 ${group.teacher.ratingCount}</span><span style="opacity:0.4;">|</span>` : ''}
-                    <span style="color:#10b981;">${group.teacher.rating}%</span>
-                  </div>
-                ` : `
-                  <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">معلم المادة</span>
-                `}
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">معلم المادة المعتمد</span>
               </div>
             </div>
 
@@ -403,6 +790,19 @@ export default class SubjectGroupsView {
           <!-- CARD BODY -->
           <div class="card-body-container">
             
+            <!-- GROUP NAME & GRADE ROW -->
+            <div style="font-weight:900; font-size:0.95rem; color:var(--text-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="color:#e51d74;">👥</span>
+                <span>${group.groupName || 'مجموعة دراسية'}</span>
+              </div>
+              ${group.gradeName ? `
+                <span style="font-size:0.72rem; font-weight:800; background:rgba(0,86,210,0.08); color:var(--primary); padding:3px 9px; border-radius:10px;">
+                  ${group.gradeName}
+                </span>
+              ` : ''}
+            </div>
+
             <!-- SCHEDULE ROW -->
             <div style="display:flex; align-items:center; gap:8px; font-size:clamp(0.82rem, 2vw, 0.92rem); background:rgba(229,29,116,0.06); padding:8px 12px; border-radius:12px; color:#e51d74; font-weight:800; line-height:1.4;">
               <i data-lucide="calendar" style="width:16px; height:16px; flex-shrink:0;"></i>
@@ -412,11 +812,11 @@ export default class SubjectGroupsView {
             <!-- DATES GRID (START & END) -->
             <div class="card-dates-box">
               <div>
-                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ البدء</div>
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ البدء</div>
                 <div style="font-size:clamp(0.78rem, 2vw, 0.85rem); font-weight:900; color:var(--text-color); line-height:1.3;">${startDateText}</div>
               </div>
               <div>
-                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ الانتهاء</div>
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ الانتهاء</div>
                 <div style="font-size:clamp(0.78rem, 2vw, 0.85rem); font-weight:900; color:var(--text-color); line-height:1.3;">${endDateText}</div>
               </div>
             </div>
@@ -441,7 +841,7 @@ export default class SubjectGroupsView {
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:clamp(0.82rem, 2vw, 0.88rem); flex-wrap:wrap; gap:4px;">
               <span style="font-weight:800; color:var(--text-color);">المقاعد المتبقية:</span>
               <span style="font-weight:900; color:${isFull ? "#ef4444" : "#10b981"};">
-                ${isFull ? "مكتملة بالكامل (0 متبقي)" : `${group.availableSeats} من إجمالي ${group.maxStudents || 25}`}
+                ${isFull ? "مكتملة بالكامل (0 متبقي) 🔴" : `${group.availableSeats} من إجمالي ${group.maxStudents || 25} 🟢`}
               </span>
             </div>
 
@@ -534,6 +934,7 @@ export default class SubjectGroupsView {
                           data-course-id="${group.courseId}" 
                           data-group-id="${group.groupId}" 
                           data-group-name="${group.groupName}"
+                          data-teacher-name="${teacherName}"
                           data-is-full="${isFull}"
                           style="
                             background:#e51d74;
@@ -547,12 +948,12 @@ export default class SubjectGroupsView {
                             transition:all 0.2s ease;
                             box-shadow:0 4px 14px rgba(229,29,116,0.35);
                           ">
-                    سجل الآن 🚀
+                    حجز مقعد الآن 🚀
                   </button>
                 `;
               })()}
 
-              <a href="#course-preview/${group.courseId}/${group.groupId}" class="card-action-btn-details" style="
+              <a href="#course-details/${group.courseId}/${group.groupId}" class="card-action-btn-details" style="
                 background:transparent;
                 color:var(--text-color);
                 border:1px solid var(--border-color);
@@ -564,7 +965,7 @@ export default class SubjectGroupsView {
                 transition:all 0.2s ease;
                 display:inline-block;
               " onmouseenter="this.style.background='var(--bg-app)'" onmouseleave="this.style.background='transparent'">
-                التفاصيل
+                تفاصيل المقرر
               </a>
             </div>
 
@@ -576,32 +977,77 @@ export default class SubjectGroupsView {
   }
 
   attachEvents() {
-    // Day filter pills click
+    // 0. Grade Select ("for any grades")
+    const gradeSelect = document.getElementById("filter-grade-select");
+    gradeSelect?.addEventListener("change", (e) => {
+      this.selectedGrade = e.target.value;
+      this.refreshGroupsGrid();
+    });
+
+    // 1. Search Input
+    const searchInput = document.getElementById("filter-search-input");
+    searchInput?.addEventListener("input", (e) => {
+      this.searchQuery = e.target.value;
+      this.refreshGroupsGrid();
+    });
+
+    // 2. Teacher Select
+    const teacherSelect = document.getElementById("filter-teacher-select");
+    teacherSelect?.addEventListener("change", (e) => {
+      this.selectedTeacher = e.target.value;
+      this.refreshGroupsGrid();
+    });
+
+    // 3. Sort Select
+    const sortSelect = document.getElementById("filter-sort-select");
+    sortSelect?.addEventListener("change", (e) => {
+      this.sortBy = e.target.value;
+      this.refreshGroupsGrid();
+    });
+
+    // 4. Only Open Checkbox
+    const onlyOpenCheck = document.getElementById("filter-only-open");
+    onlyOpenCheck?.addEventListener("change", (e) => {
+      this.onlyAvailable = e.target.checked;
+      this.refreshGroupsGrid();
+    });
+
+    // 5. Day filter pills click
     document.querySelectorAll(".day-filter-pill").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const day = btn.getAttribute("data-day");
-        if (this.selectedDays.includes(day)) {
-          this.selectedDays = this.selectedDays.filter(d => d !== day);
+        if (day === "all") {
+          this.selectedDays = [];
         } else {
-          this.selectedDays.push(day);
+          if (this.selectedDays.includes(day)) {
+            this.selectedDays = this.selectedDays.filter(d => d !== day);
+          } else {
+            this.selectedDays.push(day);
+          }
         }
-        await this.loadData();
+        this.renderContent();
       });
     });
 
-    // Clear all days
-    document.getElementById("clear-all-days-btn")?.addEventListener("click", async () => {
+    // 6. Clear all days
+    document.getElementById("clear-all-days-btn")?.addEventListener("click", () => {
       this.selectedDays = [];
-      await this.loadData();
+      this.renderContent();
     });
 
-    // Reset when empty
-    document.getElementById("reset-filter-empty-btn")?.addEventListener("click", async () => {
+    // 7. Reset all filters
+    const resetAllBtn = document.getElementById("reset-all-filters-btn") || document.getElementById("reset-filter-empty-btn");
+    resetAllBtn?.addEventListener("click", () => {
+      this.selectedGrade = "all";
       this.selectedDays = [];
-      await this.loadData();
+      this.searchQuery = "";
+      this.selectedTeacher = "all";
+      this.onlyAvailable = false;
+      this.sortBy = "default";
+      this.renderContent();
     });
 
-    // Enroll in group button
+    // 8. Enroll in group button
     document.querySelectorAll(".enroll-group-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const isFull = btn.getAttribute("data-is-full") === "true";
@@ -621,7 +1067,7 @@ export default class SubjectGroupsView {
           courseTitle: groupObj.courseTitle || this.subjectData?.name || "المقرر الدراسي",
           groupId,
           groupName: groupName || groupObj.groupName || "المجموعة الدراسية",
-          teacherName: groupObj.teacherName || "الأستاذ",
+          teacherName: groupObj.teacher?.name || groupObj.teacherName || "الأستاذ",
           subjectName: this.subjectData?.name || "",
           scheduleDays: groupObj.scheduleDays || "الأحد والأربعاء",
           scheduleTime: groupObj.scheduleTime || "06:00 م",
@@ -634,5 +1080,53 @@ export default class SubjectGroupsView {
         });
       });
     });
+  }
+
+  refreshGroupsGrid() {
+    const grid = document.getElementById("groups-cards-grid");
+    if (grid) {
+      const filtered = this.getFilteredGroups();
+      grid.innerHTML = this.renderGroupsList(filtered);
+      if (window.lucide) window.lucide.createIcons();
+
+      const countBadge = document.getElementById("groups-count-badge");
+      if (countBadge) {
+        countBadge.innerHTML = `يتم عرض <strong style="color:var(--text-color); font-size:0.95rem;">${filtered.length}</strong> من أصل ${this.allGroups.length} مجموعة دراسية`;
+      }
+
+      // Re-bind enroll buttons in grid
+      grid.querySelectorAll(".enroll-group-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const isFull = btn.getAttribute("data-is-full") === "true";
+          if (isFull) {
+            showToast("عذراً، هذه المجموعة مكتملة العدد. يرجى اختيار مجموعة أخرى.", "warning");
+            return;
+          }
+
+          const courseId = btn.getAttribute("data-course-id");
+          const groupId = btn.getAttribute("data-group-id");
+          const groupName = btn.getAttribute("data-group-name");
+
+          const groupObj = this.allGroups.find(g => g.groupId === groupId) || {};
+
+          openGroupPaymentModal({
+            courseId,
+            courseTitle: groupObj.courseTitle || this.subjectData?.name || "المقرر الدراسي",
+            groupId,
+            groupName: groupName || groupObj.groupName || "المجموعة الدراسية",
+            teacherName: groupObj.teacher?.name || groupObj.teacherName || "الأستاذ",
+            subjectName: this.subjectData?.name || "",
+            scheduleDays: groupObj.scheduleDays || "الأحد والأربعاء",
+            scheduleTime: groupObj.scheduleTime || "06:00 م",
+            sessionPrice: groupObj.sessionPrice || 40,
+            monthlyPrice: groupObj.monthlyPrice || 320,
+            totalSessions: groupObj.totalSessions || 24,
+            onSuccess: async () => {
+              await this.loadData();
+            }
+          });
+        });
+      });
+    }
   }
 }

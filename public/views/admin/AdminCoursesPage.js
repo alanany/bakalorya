@@ -79,6 +79,21 @@ export const AdminCoursesPage = {
                     style="font-size:0.8rem; padding:8px 14px; gap:6px; background:#8b5cf6; border-color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; font-weight:800;">
                     <i data-lucide="book-open" style="width:14px;height:14px;"></i> إضافة وإدارة الدروس والوحدات 📚
                   </a>
+                  <button class="btn-secondary admin-assign-course-teacher-btn" data-id="${course.id}"
+                    style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#2563eb; border-color:#2563eb; font-weight:800; background:rgba(37,99,235,0.06);"
+                    title="تعيين أو تغيير المعلم المسؤول عن الدورة">
+                    <i data-lucide="user-check" style="width:14px;height:14px;"></i> ${course.teacher ? 'تغيير المعلم 👨‍🏫' : 'تعيين معلم 👨‍🏫'}
+                  </button>
+                  <button class="btn-secondary admin-duplicate-course-btn" data-id="${course.id}"
+                    style="font-size:0.8rem; padding:8px 14px; gap:6px; color:#8b5cf6; border-color:#8b5cf6; font-weight:800; background:rgba(139,92,246,0.06);"
+                    title="تكرار ونسخ الدورة ومحتواها">
+                    <i data-lucide="copy" style="width:14px;height:14px;"></i> تكرار الكورس 📑
+                  </button>
+                  <button class="btn-secondary admin-edit-course-btn" data-id="${course.id}"
+                    style="font-size:0.8rem; padding:8px 14px; gap:6px; font-weight:700;"
+                    title="تعديل بيانات الدورة والمنهج">
+                    <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل ✏️
+                  </button>
                   <button class="btn-primary admin-view-course-details-btn" data-id="${course.id}"
                     style="font-size:0.8rem; padding:8px 14px; gap:6px;">
                     <i data-lucide="eye" style="width:14px;height:14px;"></i> تفاصيل الكورس والاشتراكات 🔍
@@ -1114,7 +1129,16 @@ export const AdminCoursesPage = {
               <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">${course.title}</h3>
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:12px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button id="modal-assign-teacher-btn" class="btn-secondary" style="font-size:0.8rem; padding:7px 12px; gap:5px; font-weight:800; border-radius:10px; color:#2563eb; border-color:#2563eb; background:rgba(37,99,235,0.06);" title="تعيين أو تغيير المعلم المسؤول">
+              <i data-lucide="user-check" style="width:14px;height:14px;"></i> تعيين/تغيير المعلم 👨‍🏫
+            </button>
+            <button id="modal-duplicate-course-btn" class="btn-secondary" style="font-size:0.8rem; padding:7px 12px; gap:5px; font-weight:800; border-radius:10px; color:#8b5cf6; border-color:#8b5cf6; background:rgba(139,92,246,0.06);" title="تكرار ونسخ الدورة">
+              <i data-lucide="copy" style="width:14px;height:14px;"></i> تكرار الكورس 📑
+            </button>
+            <button id="modal-edit-course-btn" class="btn-secondary" style="font-size:0.8rem; padding:7px 12px; gap:5px; font-weight:800; border-radius:10px;" title="تعديل بيانات الكورس">
+              <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل ✏️
+            </button>
             <a href="#manage-course/${course.id}" class="btn-primary" style="font-size:0.82rem; padding:8px 16px; background:#8b5cf6; border-color:#8b5cf6; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:800; border-radius:12px;">
               <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة وإدارة دروس المنهج 📚
             </a>
@@ -1129,7 +1153,10 @@ export const AdminCoursesPage = {
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:24px;">
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">👨‍🏫 المعلم المسؤول</div>
-              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:2px;">${course.teacher?.name || 'غير محدد'}</div>
+              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:2px;">${course.teacher?.name || 'دورة عامة (بدون معلم)'}</div>
+              <button id="modal-quick-reassign-btn" style="background:none; border:none; color:var(--primary); font-size:0.75rem; font-weight:800; cursor:pointer; padding:0; margin-top:4px; display:inline-flex; align-items:center; gap:3px;">
+                <i data-lucide="refresh-cw" style="width:11px;height:11px;"></i> تغيير المعلم
+              </button>
             </div>
             <div style="background:var(--bg-card); padding:12px 16px; border-radius:14px; border:1px solid var(--border-color);">
               <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">🏷️ نوع التسعير</div>
@@ -1285,6 +1312,26 @@ export const AdminCoursesPage = {
     if (window.lucide) window.lucide.createIcons();
 
     document.getElementById('close-course-modal')?.addEventListener('click', () => overlay.remove());
+
+    document.getElementById('modal-assign-teacher-btn')?.addEventListener('click', () => {
+      overlay.remove();
+      this.renderAssignTeacherToCourseModal(course.id);
+    });
+
+    document.getElementById('modal-quick-reassign-btn')?.addEventListener('click', () => {
+      overlay.remove();
+      this.renderAssignTeacherToCourseModal(course.id);
+    });
+
+    document.getElementById('modal-duplicate-course-btn')?.addEventListener('click', () => {
+      overlay.remove();
+      this.renderDuplicateCourseModal(course.id);
+    });
+
+    document.getElementById('modal-edit-course-btn')?.addEventListener('click', () => {
+      overlay.remove();
+      this.renderEditCourseModal(course);
+    });
 
     document.getElementById('modal-admin-add-lesson-btn')?.addEventListener('click', () => {
       this.renderAdminAddLessonModal(course);
@@ -1476,6 +1523,647 @@ export const AdminCoursesPage = {
       } catch (err) {
         console.error("Admin add lesson error:", err);
         showToast(err.message || "فشل إضافة الدرس.", "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  },
+
+  async renderAssignTeacherToCourseModal(courseId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const course = (this.courses || []).find(c => String(c.id) === String(courseId));
+    if (!course) {
+      showToast("لم يتم العثور على الدورة", "error");
+      return;
+    }
+
+    let teachers = (this.allMembers || []).filter(m => m.role === "teacher");
+    if (teachers.length === 0) {
+      try {
+        const users = await apiFetch("/admin/users");
+        if (Array.isArray(users)) {
+          this.allMembers = users;
+          teachers = users.filter(m => m.role === "teacher");
+        }
+      } catch (e) {
+        console.error("Failed to load teachers:", e);
+      }
+    }
+
+    const currentTeacherName = course.teacher?.name ? `${course.teacher.name} (${course.teacher.email || ''})` : "دورة عامة على المنصة (بدون معلم خاص)";
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="admin-assign-teacher-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:9999;">
+        <div class="modal-content" style="max-width:520px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(37,99,235,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:42px; height:42px; border-radius:12px; background:rgba(37,99,235,0.15); color:#2563eb; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="user-check" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">تعيين / تغيير المعلم المسؤول 👨‍🏫</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:2px 0 0 0;">${course.title}</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-assign-teacher-modal" style="font-size:1.4rem; cursor:pointer; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="admin-assign-teacher-form" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:14px;">
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">المعلم الحالي:</div>
+              <div style="font-size:0.92rem; font-weight:800; color:var(--primary); margin-top:3px;">
+                ${course.teacher ? `👨‍🏫 ${currentTeacherName}` : `🏛️ دورة عامة على المنصة (بدون معلم خاص)`}
+              </div>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+              <label for="admin-assign-course-teacher-select" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                اختر المعلم المسؤول الجديد:
+              </label>
+              <select id="admin-assign-course-teacher-select" class="form-select" style="border-radius:12px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                <option value="" ${!course.teacher ? 'selected' : ''}>🏛️ دورة عامة على المنصة (بدون معلم)</option>
+                ${teachers.map(t => `<option value="${t.id}" ${course.teacher?.id === t.id ? 'selected' : ''}>👨‍🏫 ${t.name} (${t.email})</option>`).join('')}
+              </select>
+            </div>
+
+            <div style="font-size:0.78rem; color:var(--text-muted); background:rgba(99,102,241,0.05); padding:10px 14px; border-radius:12px; border:1px dashed var(--border-color); line-height:1.5;">
+              💡 عند تعيين معلم للدورة، ستظهر في لوحة تحكم المعلم فوراً وسيتلقى إشعاراً بالأمر، ويتمكن من إدارة دروسها والتواصل مع طلابها.
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; padding-top:14px; border-top:1px solid var(--border-color);">
+              <button type="button" class="btn-secondary" id="cancel-assign-teacher-modal" style="padding:9px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" class="btn-primary" style="padding:9px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#2563eb; border-color:#2563eb;">
+                <i data-lucide="check" style="width:14px; height:14px;"></i> حفظ وتعيين المعلم ✅
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-assign-teacher-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-assign-teacher-modal")?.addEventListener("click", closeModal);
+
+    const form = document.getElementById("admin-assign-teacher-form");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
+      const teacherId = document.getElementById("admin-assign-course-teacher-select")?.value || "";
+
+      try {
+        const res = await apiFetch(`/admin/courses/${course.id}/assign-teacher`, {
+          method: "POST",
+          body: JSON.stringify({ teacherId })
+        });
+        showToast(res.message || "تم تعيين المعلم بنجاح! 👨‍🏫", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("courses");
+      } catch (err) {
+        showToast(err.message || "فشل تعيين المعلم للدورة", "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  },
+
+  async renderDuplicateCourseModal(courseId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const course = (this.courses || []).find(c => String(c.id) === String(courseId));
+    if (!course) {
+      showToast("لم يتم العثور على الدورة", "error");
+      return;
+    }
+
+    let teachers = (this.allMembers || []).filter(m => m.role === "teacher");
+    if (teachers.length === 0) {
+      try {
+        const users = await apiFetch("/admin/users");
+        if (Array.isArray(users)) {
+          this.allMembers = users;
+          teachers = users.filter(m => m.role === "teacher");
+        }
+      } catch (e) {
+        console.error("Failed to load teachers:", e);
+      }
+    }
+
+    const lessonsCount = course.lessonsCount || (course.lessons || []).length || 0;
+    const plansCount = (this.allPlans || []).filter(p => p.courseId === course.id || p.course?.id === course.id).length;
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="admin-duplicate-course-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:9999;">
+        <div class="modal-content" style="max-width:580px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(139,92,246,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:42px; height:42px; border-radius:12px; background:rgba(139,92,246,0.15); color:#8b5cf6; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="copy" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">تكرار ونسخ الدورة التعليمية 📑</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:2px 0 0 0;">إنشاء نسخة طبق الأصل مع إمكانية تعيين معلم جديد</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-duplicate-modal" style="font-size:1.4rem; cursor:pointer; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="admin-duplicate-course-form" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px; max-height:75vh; overflow-y:auto;">
+            <!-- Source Course Info Card -->
+            <div style="display:flex; align-items:center; gap:14px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:12px 14px;">
+              <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format'}" style="width:50px; height:50px; border-radius:10px; object-fit:cover;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:800;">الدورة الأصلية:</div>
+                <div style="font-weight:800; font-size:0.92rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${course.title}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${course.teacher ? `المعلم الحالي: ${course.teacher.name}` : 'دورة عامة بدون معلم'}</div>
+              </div>
+            </div>
+
+            <!-- New Course Title -->
+            <div class="form-group" style="margin:0;">
+              <label for="admin-duplicate-title" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:block;">
+                عنوان الدورة الجديدة المنسوخة <span style="color:var(--error);">*</span>
+              </label>
+              <input type="text" id="admin-duplicate-title" class="form-input" value="${course.title} (نسخة)" style="border-radius:12px; padding:11px 14px; font-size:0.9rem;" required>
+            </div>
+
+            <!-- Target Teacher Selection -->
+            <div class="form-group" style="margin:0;">
+              <label for="admin-duplicate-teacher-id" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                <span>المعلم المسؤول عن الدورة الجديدة</span>
+                <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">يمكنك تعيين معلم آخر أو تركه</span>
+              </label>
+              <select id="admin-duplicate-teacher-id" class="form-select" style="border-radius:12px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                <option value="" ${!course.teacher ? 'selected' : ''}>🏛️ دورة عامة على المنصة (بدون معلم)</option>
+                ${teachers.map(t => `
+                  <option value="${t.id}" ${course.teacher?.id === t.id ? 'selected' : ''}>
+                    👨‍🏫 ${t.name} (${t.email}) ${course.teacher?.id === t.id ? '— المعلم الأصلي' : ''}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Copy Options (Checkboxes) -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+              <div style="font-weight:800; font-size:0.85rem; color:var(--text-main); margin-bottom:2px;">خيارات النسخ المتقدمة:</div>
+              
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-main);">
+                <input type="checkbox" id="admin-duplicate-copy-lessons" checked style="width:16px; height:16px; accent-color:var(--primary);">
+                <span>نسخ جميع الوحدات الدراسية والدروس المرتبطة (${lessonsCount} درس) 📚</span>
+              </label>
+
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.85rem; font-weight:700; color:var(--text-main);">
+                <input type="checkbox" id="admin-duplicate-copy-plans" checked style="width:16px; height:16px; accent-color:var(--primary);">
+                <span>نسخ خطط الاشتراكات الشهرية المخصصة (${plansCount} خطة) 💎</span>
+              </label>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px; padding-top:14px; border-top:1px solid var(--border-color);">
+              <button type="button" class="btn-secondary" id="cancel-duplicate-modal" style="padding:9px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" class="btn-primary" style="padding:9px 24px; border-radius:24px; font-size:0.85rem; font-weight:800; background:linear-gradient(135deg,#8b5cf6,#0056D2); border:none;">
+                <i data-lucide="copy" style="width:14px; height:14px;"></i> تكرار وإنشاء الدورة الآن 🚀
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-duplicate-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-duplicate-modal")?.addEventListener("click", closeModal);
+
+    const form = document.getElementById("admin-duplicate-course-form");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
+      const title = document.getElementById("admin-duplicate-title")?.value?.trim();
+      const teacherId = document.getElementById("admin-duplicate-teacher-id")?.value || "";
+      const copyLessons = document.getElementById("admin-duplicate-copy-lessons")?.checked ?? true;
+      const copyPlans = document.getElementById("admin-duplicate-copy-plans")?.checked ?? true;
+
+      if (!title) {
+        showToast("يرجى إدخال عنوان الدورة الجديدة", "error");
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const res = await apiFetch(`/admin/courses/${course.id}/duplicate`, {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            teacherId,
+            copyLessons,
+            copyPlans
+          })
+        });
+        showToast(res.message || "تم تكرار ونسخ الدورة بنجاح! 🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("courses");
+      } catch (err) {
+        showToast(err.message || "فشل تكرار الدورة", "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  },
+
+  async renderEditCourseModal(course) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to fetch curriculum grades for edit course modal:", e);
+    }
+
+    let teachers = (this.allMembers || []).filter(m => m.role === "teacher");
+    if (teachers.length === 0) {
+      try {
+        const users = await apiFetch("/admin/users");
+        if (Array.isArray(users)) {
+          this.allMembers = users;
+          teachers = users.filter(m => m.role === "teacher");
+        }
+      } catch (e) {
+        console.error("Failed to load teachers:", e);
+      }
+    }
+
+    const currentStage = course.grade?.stage || "PRIMARY";
+    const isFreeCourse = course.isFree !== false && (!course.price || Number(course.price) === 0);
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="admin-edit-course-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6); z-index:9999;">
+        <div class="modal-content" style="max-width:680px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden;">
+          <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:46px; height:46px; border-radius:14px; background:var(--primary-glow); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="edit-3" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <h3 class="modal-title" style="font-size:1.2rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">تعديل الدورة التعليمية والمعلم المسؤول ✏️</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">تحديث عنوان الدورة، المرحلة والمنهج، المعلم المسؤول والسعر</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-admin-edit-course-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="admin-edit-course-form">
+            <div class="modal-body" style="padding:24px 28px; display:flex; flex-direction:column; gap:18px; max-height:75vh; overflow-y:auto;">
+              
+              <!-- Course Title -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-edit-course-title" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="heading" style="width:14px; height:14px; color:var(--primary);"></i>
+                  عنوان الدورة التعليمية <span style="color:var(--error);">*</span>
+                </label>
+                <input type="text" id="admin-edit-course-title" class="form-input" value="${course.title || ''}" style="border-radius:14px; padding:12px 16px; font-size:0.9rem;" required>
+              </div>
+
+              <!-- Curriculum Selector -->
+              <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <label style="font-weight:900; font-size:0.92rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="graduation-cap" style="width:18px; height:18px; color:#e51d74;"></i>
+                    <span>المرحلة والصف والمادة الدراسية 🇪🇬</span>
+                  </label>
+                  <span style="font-size:0.75rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.1); padding:3px 12px; border-radius:12px;">
+                    مناهج مصر
+                  </span>
+                </div>
+
+                <!-- Stage Buttons -->
+                <div>
+                  <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                    المرحلة التعليمية:
+                  </label>
+                  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                    <button type="button" class="admin-edit-stage-btn ${currentStage === 'PRIMARY' ? 'active' : ''}" data-stage="PRIMARY" style="padding:10px 8px; border-radius:14px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                      🎒 الابتدائية
+                    </button>
+                    <button type="button" class="admin-edit-stage-btn ${currentStage === 'PREPARATORY' ? 'active' : ''}" data-stage="PREPARATORY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                      📚 الإعدادية
+                    </button>
+                    <button type="button" class="admin-edit-stage-btn ${currentStage === 'SECONDARY' ? 'active' : ''}" data-stage="SECONDARY" style="padding:10px 8px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                      🎓 الثانوية العامة
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Grade & Subject -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-edit-grade-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                      الصف الدراسي
+                    </label>
+                    <select id="admin-edit-grade-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                      <option value="">-- اختياري / اختر الصف --</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-edit-subject-select" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:block; color:var(--text-main);">
+                      المادة الدراسية
+                    </label>
+                    <select id="admin-edit-subject-select" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                      <option value="">-- اختر الصف أولاً --</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Hidden values -->
+                <input type="hidden" id="admin-edit-category" value="${course.category || ''}">
+                <input type="hidden" id="admin-edit-degree" value="${course.degree || ''}">
+                <input type="hidden" id="admin-edit-grade-id" value="${course.grade?.id || ''}">
+                <input type="hidden" id="admin-edit-subject-id" value="${course.subject?.id || ''}">
+              </div>
+
+              <!-- Teacher Selection -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-edit-teacher-id" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="user-check" style="width:14px; height:14px; color:var(--primary);"></i>
+                  المعلم المسؤول عن الدورة (أو تحويلها لدورة عامة)
+                </label>
+                <select id="admin-edit-teacher-id" class="form-select" style="border-radius:14px; padding:11px 14px; font-size:0.88rem; width:100%;">
+                  <option value="" ${!course.teacher ? 'selected' : ''}>🏛️ دورة عامة على المنصة (بدون معلم خاص)</option>
+                  ${teachers.map(t => `<option value="${t.id}" ${course.teacher?.id === t.id ? 'selected' : ''}>👨‍🏫 ${t.name} (${t.email})</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Course Pricing Type -->
+              <div class="form-group" style="margin:0; background:rgba(99,102,241,0.04); border:1px solid var(--border-color); border-radius:16px; padding:16px;">
+                <label style="font-weight:800; font-size:0.9rem; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="tag" style="width:16px; height:16px; color:var(--primary);"></i>
+                  تسعير الدورة التعليمية
+                </label>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                  <label id="admin-edit-pricing-free-label" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; border:2px solid ${isFreeCourse ? 'var(--primary)' : 'var(--border-color)'}; cursor:pointer; transition:all 0.2s ease; background:var(--bg-card);">
+                    <input type="radio" name="admin-edit-course-pricing-type" value="free" ${isFreeCourse ? 'checked' : ''} style="accent-color:var(--primary); width:16px; height:16px;">
+                    <div>
+                      <div style="font-weight:800; font-size:0.88rem; color:var(--text-main);">🎁 دورة مجانية</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">متاحة لجميع الطلاب مجاناً</div>
+                    </div>
+                  </label>
+
+                  <label id="admin-edit-pricing-paid-label" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; border:2px solid ${!isFreeCourse ? 'var(--primary)' : 'var(--border-color)'}; cursor:pointer; transition:all 0.2s ease; background:var(--bg-card);">
+                    <input type="radio" name="admin-edit-course-pricing-type" value="paid" ${!isFreeCourse ? 'checked' : ''} style="accent-color:var(--primary); width:16px; height:16px;">
+                    <div>
+                      <div style="font-weight:800; font-size:0.88rem; color:var(--text-main);">💳 دورة مدفوعة</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">تتطلب دفع مبلغ مالي للانضمام</div>
+                    </div>
+                  </label>
+                </div>
+
+                <div id="admin-edit-paid-fields" style="display:${!isFreeCourse ? 'flex' : 'none'}; flex-direction:column; gap:12px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
+                  <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+                    <div class="form-group" style="margin:0;">
+                      <label for="admin-edit-price" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">سعر الدورة</label>
+                      <input type="number" id="admin-edit-price" class="form-input" value="${course.price || 0}" min="0" step="0.5" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                      <label for="admin-edit-currency" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">العملة</label>
+                      <select id="admin-edit-currency" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.88rem;">
+                        <option value="EGP" ${course.currency === 'EGP' ? 'selected' : ''}>EGP (جنيه)</option>
+                        <option value="SAR" ${course.currency === 'SAR' ? 'selected' : ''}>SAR (ريال)</option>
+                        <option value="USD" ${course.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                        <option value="AED" ${course.currency === 'AED' ? 'selected' : ''}>AED (درهم)</option>
+                        <option value="KWD" ${course.currency === 'KWD' ? 'selected' : ''}>KWD (دينار)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin:0;">
+                    <label for="admin-edit-payment-details" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">بيانات وطريقة التحويل</label>
+                    <input type="text" id="admin-edit-payment-details" class="form-input" value="${course.paymentDetails || ''}" placeholder="مثال: تحويل فودافون كاش / انستاباي..." style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Course Description -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-edit-desc" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="file-text" style="width:14px; height:14px; color:var(--text-muted);"></i>
+                  وصف ومحتويات الدورة
+                </label>
+                <textarea id="admin-edit-desc" class="form-input" style="height:90px; resize:none; border-radius:14px; padding:12px 16px; font-size:0.88rem; line-height:1.5;" required>${course.description || ''}</textarea>
+              </div>
+
+              <!-- Course Image -->
+              <div class="form-group" style="margin:0;">
+                <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                  <span style="display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="image" style="width:14px; height:14px; color:#f59e0b;"></i>
+                    غلاف / صورة الدورة
+                  </span>
+                </label>
+                <input type="url" id="admin-edit-image" class="form-input" value="${course.image || ''}" placeholder="https://..." style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+              </div>
+
+              <!-- Static Meeting Link -->
+              <div class="form-group" style="margin:0;">
+                <label for="admin-edit-meeting-link" style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="video" style="width:14px; height:14px; color:#06b6d4;"></i>
+                  رابط البث المباشر الثابت (Zoom / Meet / Webex)
+                </label>
+                <input type="url" id="admin-edit-meeting-link" class="form-input" value="${course.meetingLink || ''}" placeholder="https://meet.google.com/..." style="border-radius:14px; padding:11px 16px; font-size:0.88rem;">
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 28px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px;">
+              <button type="button" class="btn-secondary" id="cancel-admin-edit-course-modal" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
+              <button type="submit" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg,#0056D2,#a855f7); border:none;">
+                <i data-lucide="check-circle-2" style="width:16px; height:16px; vertical-align:middle;"></i> حفظ التعديلات 💾
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-admin-edit-course-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-admin-edit-course-modal")?.addEventListener("click", closeModal);
+
+    const form = document.getElementById("admin-edit-course-form");
+    if (!form) return;
+
+    // Pricing radios
+    const pricingRadios = form.querySelectorAll("input[name='admin-edit-course-pricing-type']");
+    const paidFields = form.querySelector("#admin-edit-paid-fields");
+    const freeLabel = form.querySelector("#admin-edit-pricing-free-label");
+    const paidLabel = form.querySelector("#admin-edit-pricing-paid-label");
+
+    pricingRadios.forEach(radio => {
+      radio.addEventListener("change", (e) => {
+        const isPaid = e.target.value === "paid";
+        if (paidFields) paidFields.style.display = isPaid ? "flex" : "none";
+        if (freeLabel) freeLabel.style.borderColor = isPaid ? "var(--border-color)" : "var(--primary)";
+        if (paidLabel) paidLabel.style.borderColor = isPaid ? "var(--primary)" : "var(--border-color)";
+      });
+    });
+
+    // Curriculum Logic for Edit Modal
+    const stageBtns = form.querySelectorAll(".admin-edit-stage-btn");
+    const gradeSelect = form.querySelector("#admin-edit-grade-select");
+    const subjectSelect = form.querySelector("#admin-edit-subject-select");
+    const hiddenCategory = form.querySelector("#admin-edit-category");
+    const hiddenDegree = form.querySelector("#admin-edit-degree");
+    const hiddenGradeId = form.querySelector("#admin-edit-grade-id");
+    const hiddenSubjectId = form.querySelector("#admin-edit-subject-id");
+
+    const updateStageUI = (stage, selectInitialGradeId = null, selectInitialSubjectId = null) => {
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+        }
+      });
+
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = `
+          <option value="">-- اختر الصف الدراسي --</option>
+          ${stageGrades.map(g => `<option value="${g.id}" ${(selectInitialGradeId === g.id || course.grade?.id === g.id) ? 'selected' : ''}>${g.name}</option>`).join('')}
+        `;
+
+        const targetGradeId = selectInitialGradeId || (stageGrades.some(g => g.id === course.grade?.id) ? course.grade?.id : stageGrades[0]?.id);
+        if (targetGradeId) {
+          gradeSelect.value = targetGradeId;
+          updateSubjectsUI(targetGradeId, selectInitialSubjectId);
+        }
+      }
+    };
+
+    const updateSubjectsUI = (gradeId, selectInitialSubjectId = null) => {
+      if (hiddenGradeId) hiddenGradeId.value = gradeId || "";
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      if (selectedGrade && hiddenDegree) {
+        hiddenDegree.value = selectedGrade.name;
+      }
+
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `<option value="">لا توجد مواد مسجلة</option>`;
+        return;
+      }
+
+      subjectSelect.innerHTML = `
+        <option value="">-- اختر المادة الدراسية --</option>
+        ${subjects.map(s => `<option value="${s.id}" data-name="${s.name}" ${(selectInitialSubjectId === s.id || course.subject?.id === s.id) ? 'selected' : ''}>${s.name} ${s.isLanguageTrack ? '(لغات 🌐)' : '(عام 🇪🇬)'}</option>`).join('')}
+      `;
+
+      if (selectInitialSubjectId) {
+        subjectSelect.value = selectInitialSubjectId;
+      } else if (course.subject?.id && subjects.some(s => s.id === course.subject?.id)) {
+        subjectSelect.value = course.subject.id;
+      }
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (hiddenSubjectId) hiddenSubjectId.value = val;
+      const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+      if (hiddenCategory) hiddenCategory.value = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
+    });
+
+    // Initialize with current stage and course curriculum values
+    updateStageUI(currentStage, course.grade?.id, course.subject?.id);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+
+      const title = form.querySelector("#admin-edit-course-title")?.value?.trim();
+      const gradeId = form.querySelector("#admin-edit-grade-id")?.value || null;
+      const subjectId = form.querySelector("#admin-edit-subject-id")?.value || null;
+      let category = form.querySelector("#admin-edit-category")?.value?.trim() || course.category || "عام";
+      const degree = form.querySelector("#admin-edit-degree")?.value?.trim() || course.degree || "";
+      const teacherId = form.querySelector("#admin-edit-teacher-id")?.value || "";
+      const description = form.querySelector("#admin-edit-desc")?.value?.trim() || "";
+      const image = form.querySelector("#admin-edit-image")?.value?.trim() || "";
+      const meetingLink = form.querySelector("#admin-edit-meeting-link")?.value?.trim() || "";
+
+      const pricingType = form.querySelector("input[name='admin-edit-course-pricing-type']:checked")?.value || "free";
+      const isFree = pricingType === "free";
+      const price = isFree ? 0 : parseFloat(form.querySelector("#admin-edit-price")?.value || "0");
+      const currency = form.querySelector("#admin-edit-currency")?.value || "EGP";
+      const paymentDetails = form.querySelector("#admin-edit-payment-details")?.value?.trim() || "";
+
+      const payload = {
+        title,
+        category,
+        degree,
+        gradeId,
+        subjectId,
+        teacherId,
+        image,
+        meetingLink,
+        description,
+        isFree,
+        price,
+        currency,
+        paymentDetails
+      };
+
+      try {
+        await apiFetch(`/admin/courses/${course.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        showToast("تم تحديث بيانات الدورة بنجاح! ✅", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("courses");
+      } catch (err) {
+        showToast(err.message || "فشل تحديث الدورة", "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }

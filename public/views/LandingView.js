@@ -1,4 +1,5 @@
 import { apiFetch, state, t, renderCourseCard, showToast } from "../app.js";
+import { openGroupPaymentModal } from "./shared/GroupPaymentModal.js";
 
 export default class LandingView {
   constructor(container) {
@@ -869,6 +870,32 @@ export default class LandingView {
           }
 
           const currentGrade = stageGrades.find(g => g.id === this.explorerGradeId) || stageGrades[0];
+          const subjects = currentGrade?.subjects || [];
+
+          if (isOpen && (!this.explorerSubjectId || !subjects.some(s => s.id === this.explorerSubjectId))) {
+            this.explorerSubjectId = subjects[0]?.id || null;
+          }
+
+          const currentSubject = subjects.find(s => s.id === this.explorerSubjectId) || subjects[0] || null;
+
+          // Find matching courses for this Grade and Subject
+          const matchingCourses = (this.courses || []).filter(c => {
+            const matchesGrade = c.grade?.id === currentGrade?.id || c.gradeId === currentGrade?.id;
+            if (!matchesGrade) return false;
+            if (!currentSubject) return true;
+            const matchesSubjectId = c.subject?.id === currentSubject.id || c.subjectId === currentSubject.id;
+            const matchesSubjectName = currentSubject.name && c.category && (
+              c.category.toLowerCase().includes(currentSubject.name.toLowerCase()) ||
+              currentSubject.name.toLowerCase().includes(c.category.toLowerCase())
+            );
+            return matchesSubjectId || matchesSubjectName;
+          });
+
+          // Calculate total groups count across matching courses
+          let totalGroupsCount = 0;
+          matchingCourses.forEach(c => {
+            totalGroupsCount += (c.groups || []).length;
+          });
 
           return `
             <div class="curriculum-accordion-item ${isOpen ? 'open' : ''}" style="
@@ -1111,17 +1138,17 @@ export default class LandingView {
                           <div style="
                             display: inline-flex;
                             align-items: center;
-                            gap: 3px;
-                            font-size: 0.7rem;
+                            gap: 4px;
+                            font-size: 0.72rem;
                             font-weight: 800;
                             color: ${theme.color};
                             background: var(--bg-app);
-                            padding: 3px 9px;
+                            padding: 4px 10px;
                             border-radius: 20px;
                             border: 1px solid var(--border-color);
                           ">
                             <span>المجموعات</span>
-                            <i data-lucide="arrow-left" style="width:10px; height:10px;"></i>
+                            <i data-lucide="arrow-left" style="width:11px; height:11px;"></i>
                           </div>
 
                         </a>
@@ -1232,22 +1259,34 @@ export default class LandingView {
     const mostPopularContainer = this.container.querySelector("#most-popular-container");
     if (mostPopularContainer) {
       const items = this.courses.slice(0, 3);
+      if (items.length > 0) {
+        const topCourse = items[0];
+        const topTarget = topCourse.subject?.id ? `#subject-groups/${topCourse.subject.id}` : `#subject-groups/${topCourse.id}`;
+        const headerEl = mostPopularContainer.parentElement?.querySelector("h3");
+        if (headerEl) {
+          headerEl.style.cursor = "pointer";
+          headerEl.onclick = () => { window.location.hash = topTarget; };
+        }
+      }
       if (items.length === 0) {
         mostPopularContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات متاحة حالياً.</div>`;
       } else {
-        mostPopularContainer.innerHTML = items.map(course => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='#course-preview/${course.id}'">
-            <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
-            <div style="flex:1;">
-              <div style="font-size:0.75rem; color:var(--primary); font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-                <span>${course.category || 'عام'} • ${course.teacher?.name || 'الأستاذ'}</span>
-                <span style="background:rgba(0,86,210,0.1); color:var(--primary); font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+        mostPopularContainer.innerHTML = items.map(course => {
+          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          return `
+            <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='${targetHash}'">
+              <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
+              <div style="flex:1;">
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                  <span>${course.category || 'عام'} • ${course.teacher?.name || 'الأستاذ'}</span>
+                  <span style="background:rgba(0,86,210,0.1); color:var(--primary); font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+                </div>
+                <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.9</div>
               </div>
-              <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.9</div>
             </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
       }
     }
 
@@ -1255,22 +1294,34 @@ export default class LandingView {
     const newReleasesContainer = this.container.querySelector("#new-releases-container");
     if (newReleasesContainer) {
       const items = [...this.courses].reverse().slice(0, 3);
+      if (items.length > 0) {
+        const topCourse = items[0];
+        const topTarget = topCourse.subject?.id ? `#subject-groups/${topCourse.subject.id}` : `#subject-groups/${topCourse.id}`;
+        const headerEl = newReleasesContainer.parentElement?.querySelector("h3");
+        if (headerEl) {
+          headerEl.style.cursor = "pointer";
+          headerEl.onclick = () => { window.location.hash = topTarget; };
+        }
+      }
       if (items.length === 0) {
         newReleasesContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات حديثة.</div>`;
       } else {
-        newReleasesContainer.innerHTML = items.map(course => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='#course-preview/${course.id}'">
-            <img src="${course.image || 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
-            <div style="flex:1;">
-              <div style="font-size:0.75rem; color:#f59e0b; font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-                <span>${course.category || 'جديد'} • ${course.teacher?.name || 'الأستاذ'}</span>
-                <span style="background:rgba(245,158,11,0.12); color:#f59e0b; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+        newReleasesContainer.innerHTML = items.map(course => {
+          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          return `
+            <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='${targetHash}'">
+              <img src="${course.image || 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
+              <div style="flex:1;">
+                <div style="font-size:0.75rem; color:#f59e0b; font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                  <span>${course.category || 'جديد'} • ${course.teacher?.name || 'الأستاذ'}</span>
+                  <span style="background:rgba(245,158,11,0.12); color:#f59e0b; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${course.degree || 'عام'}</span>
+                </div>
+                <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.95</div>
               </div>
-              <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${course.title}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">🎓 ${course.degree || 'جميع المراحل'} • ⭐ 4.95</div>
             </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
       }
     }
 
@@ -1301,24 +1352,27 @@ export default class LandingView {
       if (items.length === 0) {
         gradientFeaturedContainer.innerHTML = `<div style="font-size:0.85rem; color:#ffffff; grid-column:1/-1;">لا توجد دورات مضافة حالياً.</div>`;
       } else {
-        gradientFeaturedContainer.innerHTML = items.map(course => `
-          <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 24px rgba(0,0,0,0.15); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#course-preview/${course.id}'">
-            <div>
-              <div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; height:120px;">
-                <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400'}" style="width:100%; height:100%; object-fit:cover;">
-                <span style="position:absolute; top:8px; right:8px; background:rgba(0,86,210,0.85); color:#fff; font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; backdrop-filter:blur(4px);">
-                  ${course.degree || 'عام'}
-                </span>
+        gradientFeaturedContainer.innerHTML = items.map(course => {
+          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          return `
+            <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 24px rgba(0,0,0,0.15); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='${targetHash}'">
+              <div>
+                <div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; height:120px;">
+                  <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400'}" style="width:100%; height:100%; object-fit:cover;">
+                  <span style="position:absolute; top:8px; right:8px; background:rgba(0,86,210,0.85); color:#fff; font-size:0.7rem; font-weight:800; padding:3px 10px; border-radius:12px; backdrop-filter:blur(4px);">
+                    ${course.degree || 'عام'}
+                  </span>
+                </div>
+                <div style="font-size:0.75rem; color:#0056D2; font-weight:800; margin-bottom:4px;">${course.category || 'دورة تعليمية'} • ${course.teacher?.name || 'الأستاذ'}</div>
+                <h4 style="font-size:1rem; font-weight:800; margin:0 0 8px 0; color:#0f172a; line-height:1.35;">${course.title}</h4>
               </div>
-              <div style="font-size:0.75rem; color:#0056D2; font-weight:800; margin-bottom:4px;">${course.category || 'دورة تعليمية'} • ${course.teacher?.name || 'الأستاذ'}</div>
-              <h4 style="font-size:1rem; font-weight:800; margin:0 0 8px 0; color:#0f172a; line-height:1.35;">${course.title}</h4>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #e2e8f0; font-size:0.78rem; color:#64748b; font-weight:700;">
+                <span>🎓 ${course.degree || 'عام / لجميع المراحل'}</span>
+                <span style="color:#f59e0b; font-weight:800;">⭐ 4.9</span>
+              </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #e2e8f0; font-size:0.78rem; color:#64748b; font-weight:700;">
-              <span>🎓 ${course.degree || 'عام / لجميع المراحل'}</span>
-              <span style="color:#f59e0b; font-weight:800;">⭐ 4.9</span>
-            </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
       }
     }
 

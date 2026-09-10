@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { IsNull } from "typeorm";
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
@@ -9,6 +10,7 @@ import { Payment } from "../entity/Payment";
 import { Lesson } from "../entity/Lesson";
 import { Grade } from "../entity/Grade";
 import { Subject } from "../entity/Subject";
+import { SubscriptionPlan } from "../entity/SubscriptionPlan";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
@@ -469,6 +471,281 @@ export class AdminController {
     } catch (err) {
       console.error("Admin createCourse error:", err);
       return res.status(500).json({ error: "فشل إنشاء الدورة." });
+    }
+  }
+
+  // PUT /admin/courses/:id — Update course metadata and/or assigned teacher
+  static async updateCourse(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { title, description, category, degree, image, meetingLink, teacherId, price, isFree, currency, paymentDetails, gradeId, subjectId, status } = req.body;
+
+    try {
+      const courseRepo = AppDataSource.getRepository(Course);
+      const userRepo = AppDataSource.getRepository(User);
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const subjectRepo = AppDataSource.getRepository(Subject);
+
+      const course = await courseRepo.findOne({
+        where: { id },
+        relations: ["teacher", "grade", "subject"]
+      });
+      if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
+
+      if (title) course.title = title;
+      if (description !== undefined) course.description = description;
+      if (category !== undefined) course.category = category;
+      if (degree !== undefined) course.degree = degree;
+      if (image !== undefined) course.image = image;
+      if (meetingLink !== undefined) course.meetingLink = meetingLink;
+      if (status !== undefined) course.status = status;
+
+      if (gradeId !== undefined) {
+        course.grade = gradeId ? (await gradeRepo.findOneBy({ id: gradeId })) : null;
+      }
+      if (subjectId !== undefined) {
+        course.subject = subjectId ? (await subjectRepo.findOneBy({ id: subjectId })) : null;
+      }
+
+      if (price !== undefined) {
+        const numericPrice = parseFloat(price) || 0;
+        course.price = numericPrice;
+        course.isFree = numericPrice === 0 || isFree === true || isFree === "true";
+      } else if (isFree !== undefined) {
+        course.isFree = isFree === true || isFree === "true";
+        if (course.isFree) course.price = 0;
+      }
+      if (currency !== undefined) course.currency = currency;
+      if (paymentDetails !== undefined) course.paymentDetails = paymentDetails;
+
+      // Handle teacher assignment / reassignment
+      if (teacherId !== undefined) {
+        const previousTeacherId = course.teacher?.id;
+        if (teacherId && typeof teacherId === "string" && teacherId.trim().length > 0) {
+          const newTeacher = await userRepo.findOneBy({ id: teacherId.trim() });
+          course.teacher = newTeacher;
+          if (newTeacher && newTeacher.id !== previousTeacherId) {
+            try {
+              await NotificationController.createNotification(
+                newTeacher.id,
+                "تم تعيينك معلماً لدورة تعليمية! 👨‍🏫",
+                `قام مشرف المنصة بتعيينك معلماً مسؤولاً عن دورة "${course.title}". يمكنك الآن إدارة محتواها والتواصل مع طلابها.`,
+                "success",
+                `#manage-course?id=${course.id}`
+              );
+            } catch (notifErr) {
+              console.error("Notification error:", notifErr);
+            }
+          }
+        } else {
+          course.teacher = null;
+        }
+      }
+
+      await courseRepo.save(course);
+      return res.json({ message: "تم تحديث بيانات الدورة بنجاح! ✅", course });
+    } catch (err) {
+      console.error("Admin updateCourse error:", err);
+      return res.status(500).json({ error: "فشل تحديث بيانات الدورة." });
+    }
+  }
+
+  // POST /admin/courses/:id/assign-teacher — Quick teacher assignment/reassignment
+  static async assignTeacher(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { teacherId } = req.body;
+
+    try {
+      const courseRepo = AppDataSource.getRepository(Course);
+      const userRepo = AppDataSource.getRepository(User);
+
+      const course = await courseRepo.findOne({
+        where: { id },
+        relations: ["teacher"]
+      });
+      if (!course) return res.status(404).json({ error: "الدورة غير موجودة." });
+
+      const previousTeacherId = course.teacher?.id;
+      let newTeacher: User | null = null;
+
+      if (teacherId && typeof teacherId === "string" && teacherId.trim().length > 0) {
+        newTeacher = await userRepo.findOneBy({ id: teacherId.trim() });
+        if (!newTeacher) {
+          return res.status(404).json({ error: "المعلم المحدد غير موجود." });
+        }
+        course.teacher = newTeacher;
+
+        if (newTeacher.id !== previousTeacherId) {
+          try {
+            await NotificationController.createNotification(
+              newTeacher.id,
+              "تم تعيينك معلماً لدورة تعليمية! 👨‍🏫",
+              `قام مشرف المنصة بتعيينك معلماً مسؤولاً عن دورة "${course.title}".`,
+              "success",
+              `#manage-course?id=${course.id}`
+            );
+          } catch (notifErr) {
+            console.error("Notification error on assignTeacher:", notifErr);
+          }
+        }
+      } else {
+        course.teacher = null;
+      }
+
+      await courseRepo.save(course);
+      return res.json({
+        message: newTeacher
+          ? `تم تعيين المعلم "${newTeacher.name}" مسؤولاً عن الدورة بنجاح! 👨‍🏫`
+          : "تم إلغاء تعيين المعلم وتحويل الدورة لدورة عامة على المنصة. 🏛️",
+        course
+      });
+    } catch (err) {
+      console.error("Admin assignTeacher error:", err);
+      return res.status(500).json({ error: "فشل تعيين المعلم للدورة." });
+    }
+  }
+
+  // POST /admin/courses/:id/duplicate — Duplicate an existing course (with lessons and plans)
+  static async duplicateCourse(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { title, teacherId, copyLessons = true, copyPlans = true, price, isFree, currency } = req.body;
+
+    try {
+      const courseRepo = AppDataSource.getRepository(Course);
+      const userRepo = AppDataSource.getRepository(User);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+      const planRepo = AppDataSource.getRepository(SubscriptionPlan);
+
+      const originalCourse = await courseRepo.findOne({
+        where: { id },
+        relations: ["teacher", "grade", "subject"]
+      });
+
+      if (!originalCourse) {
+        return res.status(404).json({ error: "الدورة الأصلية غير موجودة." });
+      }
+
+      // Determine target teacher
+      let targetTeacher: User | null = null;
+      if (teacherId !== undefined) {
+        if (teacherId && typeof teacherId === "string" && teacherId.trim().length > 0) {
+          targetTeacher = await userRepo.findOneBy({ id: teacherId.trim() });
+        } else {
+          targetTeacher = null;
+        }
+      } else {
+        targetTeacher = originalCourse.teacher;
+      }
+
+      const newCourse = new Course();
+      newCourse.title = title && title.trim().length > 0 ? title.trim() : `${originalCourse.title} (نسخة)`;
+      newCourse.description = originalCourse.description;
+      newCourse.category = originalCourse.category;
+      newCourse.degree = originalCourse.degree;
+      newCourse.image = originalCourse.image;
+      newCourse.meetingLink = originalCourse.meetingLink;
+      newCourse.grade = originalCourse.grade;
+      newCourse.subject = originalCourse.subject;
+      newCourse.unitsOrder = originalCourse.unitsOrder ? [...originalCourse.unitsOrder] : [];
+      newCourse.paymentDetails = originalCourse.paymentDetails;
+      newCourse.status = "PUBLISHED";
+      newCourse.teacher = targetTeacher;
+
+      if (price !== undefined) {
+        const numericPrice = parseFloat(price) || 0;
+        newCourse.price = numericPrice;
+        newCourse.isFree = numericPrice === 0 || isFree === true || isFree === "true";
+      } else {
+        newCourse.price = originalCourse.price;
+        newCourse.isFree = originalCourse.isFree;
+      }
+      newCourse.currency = currency || originalCourse.currency || "EGP";
+
+      const savedCourse = await courseRepo.save(newCourse);
+
+      // Duplicate Lessons if requested
+      if (copyLessons !== false && copyLessons !== "false") {
+        const originalLessons = await lessonRepo.find({
+          where: { course: { id: originalCourse.id }, group: IsNull() },
+          order: { order: "ASC" }
+        });
+
+        if (originalLessons.length > 0) {
+          const newLessons = originalLessons.map(l => {
+            const nl = new Lesson();
+            nl.title = l.title;
+            nl.description = l.description;
+            nl.videoUrl = l.videoUrl;
+            nl.duration = l.duration;
+            nl.chapter = l.chapter;
+            nl.order = l.order;
+            nl.photo = l.photo;
+            nl.notes = l.notes;
+            nl.resourceUrl = l.resourceUrl;
+            nl.resourceTitle = l.resourceTitle;
+            nl.questions = l.questions ? JSON.parse(JSON.stringify(l.questions)) : [];
+            nl.objectives = l.objectives ? [...l.objectives] : [];
+            nl.course = savedCourse;
+            return nl;
+          });
+
+          await lessonRepo.save(newLessons);
+        }
+      }
+
+      // Duplicate Subscription Plans if requested
+      if (copyPlans !== false && copyPlans !== "false") {
+        const originalPlans = await planRepo.find({
+          where: { courseId: originalCourse.id }
+        });
+
+        if (originalPlans.length > 0) {
+          const newPlans = originalPlans.map(p => {
+            const np = new SubscriptionPlan();
+            np.name = p.name;
+            np.description = p.description;
+            np.course = savedCourse;
+            np.courseId = savedCourse.id;
+            np.sessionsCount = p.sessionsCount;
+            np.price = p.price;
+            np.currency = p.currency;
+            np.durationDays = p.durationDays;
+            np.sessionDurationMins = p.sessionDurationMins;
+            np.isActive = p.isActive;
+            return np;
+          });
+
+          await planRepo.save(newPlans);
+        }
+      }
+
+      // Notify target teacher if assigned
+      if (targetTeacher) {
+        try {
+          await NotificationController.createNotification(
+            targetTeacher.id,
+            "تم تعيينك معلماً لدورة جديدة! 📑",
+            `قام المشرف بإنشاء نسخة من دورة "${originalCourse.title}" وتعيينك معلماً مسؤولاً عنها باسم "${savedCourse.title}".`,
+            "success",
+            `#manage-course?id=${savedCourse.id}`
+          );
+        } catch (notifErr) {
+          console.error("Notification error on duplicateCourse:", notifErr);
+        }
+      }
+
+      // Fetch the full newly cloned course with relationships
+      const fullNewCourse = await courseRepo.findOne({
+        where: { id: savedCourse.id },
+        relations: ["teacher", "grade", "subject", "lessons"]
+      });
+
+      return res.status(201).json({
+        message: "تم تكرار ونسخ الدورة بنجاح! 🎉",
+        course: fullNewCourse
+      });
+    } catch (err) {
+      console.error("Admin duplicateCourse error:", err);
+      return res.status(500).json({ error: "فشل تكرار الدورة." });
     }
   }
 

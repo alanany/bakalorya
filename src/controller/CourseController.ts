@@ -35,31 +35,64 @@ export class CourseController {
         }
       }
 
-      // If admin, return all courses
+      let courses: Course[];
       if (currentUserRole === "admin") {
-        const courses = await courseRepository.find({ relations: ["teacher", "grade", "subject"] });
-        return res.status(200).json(courses);
-      }
-
-      const qb = courseRepository.createQueryBuilder("course")
-        .leftJoinAndSelect("course.teacher", "teacher")
-        .leftJoinAndSelect("course.grade", "grade")
-        .leftJoinAndSelect("course.subject", "subject");
-
-      if (currentUserRole === "teacher" && currentUserId) {
-        // Teachers see their own courses (any status) PLUS published courses from active teachers
-        qb.where(
-          "(teacher.id = :teacherId) OR (course.status = 'PUBLISHED' AND (teacher.id IS NULL OR teacher.status = 'ACTIVE'))",
-          { teacherId: currentUserId }
-        );
+        courses = await courseRepository.find({
+          relations: ["teacher", "grade", "subject", "groups", "groups.teacher", "groups.enrollments"]
+        });
       } else {
-        // Public / Students: ONLY PUBLISHED courses, NEVER pending, draft, or archived.
-        // Also ensure the teacher is ACTIVE (approved).
-        qb.where("course.status = 'PUBLISHED'")
-          .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')");
+        const qb = courseRepository.createQueryBuilder("course")
+          .leftJoinAndSelect("course.teacher", "teacher")
+          .leftJoinAndSelect("course.grade", "grade")
+          .leftJoinAndSelect("course.subject", "subject")
+          .leftJoinAndSelect("course.groups", "groups")
+          .leftJoinAndSelect("groups.teacher", "groupTeacher")
+          .leftJoinAndSelect("groups.enrollments", "enrollments");
+
+        if (currentUserRole === "teacher" && currentUserId) {
+          // Teachers see their own courses (any status) PLUS published courses from active teachers
+          qb.where(
+            "(teacher.id = :teacherId) OR (course.status = 'PUBLISHED' AND (teacher.id IS NULL OR teacher.status = 'ACTIVE'))",
+            { teacherId: currentUserId }
+          );
+        } else {
+          // Public / Students: ONLY PUBLISHED courses, NEVER pending, draft, or archived.
+          // Also ensure the teacher is ACTIVE (approved).
+          qb.where("course.status = 'PUBLISHED'")
+            .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')");
+        }
+
+        courses = await qb.getMany();
       }
 
-      const courses = await qb.getMany();
+      courses.forEach(course => {
+        if (Array.isArray(course.groups)) {
+          // Filter out non-open/pending/rejected groups for regular users
+          if (currentUserRole !== "admin") {
+            course.groups = course.groups.filter(g => g.status !== "PENDING_APPROVAL" && g.status !== "REJECTED");
+          }
+          course.groups = course.groups.map(g => {
+            const enrolledCount = (g.enrollments || []).length;
+            const maxStudents = g.maxStudents || 25;
+            const availableSeats = Math.max(0, maxStudents - enrolledCount);
+            const isFull = enrolledCount >= maxStudents;
+            const isMyGroup = currentUserId && (g.teacher?.id === currentUserId);
+
+            delete (g as any).enrollments;
+
+            return {
+              ...g,
+              enrolledCount,
+              availableSeats,
+              isFull,
+              status: isFull ? "FULL" : g.status,
+              // Meeting link only for teacher or admin
+              meetingLink: (currentUserRole === "admin" || isMyGroup) ? (g.meetingLink || "") : ""
+            };
+          }) as any;
+        }
+      });
+
       return res.status(200).json(courses);
     } catch (err) {
       console.error("CourseController.getAll error:", err);
@@ -119,6 +152,10 @@ export class CourseController {
   }
 
   static async create(req: AuthRequest, res: Response) {
+    if (req.user!.role !== "admin") {
+      return res.status(403).json({ error: "إنشاء المقررات والكورسات محصور على إدارة المنصة فقط. يمكنك إنشاء وإضافة مجموعاتك الدراسية من خلال صفحة المجموعات." });
+    }
+
     const { title, description, category, degree, image, meetingLink, price, isFree, currency, paymentDetails, gradeId, subjectId } = req.body;
 
     if (!title || !description || !category) {
@@ -466,6 +503,15 @@ export class CourseController {
       }
       if (currency !== undefined) course.currency = currency;
       if (paymentDetails !== undefined) course.paymentDetails = paymentDetails;
+
+      if (req.user!.role === "admin" && req.body.teacherId !== undefined) {
+        if (req.body.teacherId && typeof req.body.teacherId === "string" && req.body.teacherId.trim().length > 0) {
+          const userRepo = AppDataSource.getRepository(User);
+          course.teacher = await userRepo.findOneBy({ id: req.body.teacherId.trim() });
+        } else {
+          course.teacher = null;
+        }
+      }
 
       await courseRepository.save(course);
       return res.status(200).json(course);

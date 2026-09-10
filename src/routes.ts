@@ -101,6 +101,7 @@ router.get("/public/settings", PlatformSettingController.getPublicSettings);
 router.get("/curriculum/grades", CurriculumController.getGrades);
 router.get("/curriculum/subjects", CurriculumController.getSubjects);
 router.get("/curriculum/subjects/:subjectId/groups", CurriculumController.getSubjectGroups);
+router.get("/curriculum/courses/:subjectId/groups", CurriculumController.getSubjectGroups);
 router.get("/landing/explore", CurriculumController.getLandingExplore);
 
 // Course Group Batches & Cohorts
@@ -131,7 +132,7 @@ router.put("/admin/settings", authMiddleware, requireRole(["admin"]), PlatformSe
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController.getAll);
 router.get("/courses/:id", CourseController.getOne);
-router.post("/courses", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.create);
+router.post("/courses", authMiddleware, requireRole(["admin"]), CourseController.create);
 router.put("/courses/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.update);
 router.delete("/courses/:id", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.deleteCourse);
 router.post("/courses/:id/submit-for-review", authMiddleware, requireCapability("COURSE_INSTRUCTOR"), CourseController.submitForReview);
@@ -311,6 +312,9 @@ router.patch("/admin/users/:id/role", authMiddleware, requireRole(["admin"]), Ad
 router.delete("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteUser);
 router.get("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.getCourses);
 router.post("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.createCourse);
+router.put("/admin/courses/:id", authMiddleware, requireRole(["admin"]), AdminController.updateCourse);
+router.post("/admin/courses/:id/assign-teacher", authMiddleware, requireRole(["admin"]), AdminController.assignTeacher);
+router.post("/admin/courses/:id/duplicate", authMiddleware, requireRole(["admin"]), AdminController.duplicateCourse);
 router.delete("/admin/courses/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteCourse);
 router.get("/admin/enrollments", authMiddleware, requireRole(["admin"]), AdminController.getEnrollments);
 router.post("/admin/enrollments/:id/approve", authMiddleware, requireRole(["admin"]), AdminController.approveEnrollment);

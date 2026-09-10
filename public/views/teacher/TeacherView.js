@@ -205,11 +205,15 @@ export default class TeacherView {
                 ${getTimezoneBadgeHTML()}
                 
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${canAddCourse ? `
+                  ${state.user?.role === 'admin' ? `
                     <button class="btn-primary" id="open-course-modal-btn" style="padding:10px 20px; font-weight:800; font-size:0.88rem; border-radius:30px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 16px rgba(79,70,229,0.3);">
                       <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
                     </button>
-                  ` : ''}
+                  ` : `
+                    <a href="#teacher-groups" class="btn-primary" style="padding:10px 20px; font-weight:800; font-size:0.88rem; border-radius:30px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 16px rgba(79,70,229,0.3); text-decoration:none; color:#fff;">
+                      <i data-lucide="users" style="width:16px;height:16px;"></i> فتح مجموعة دراسية 👥
+                    </a>
+                  `}
 
                   <button class="btn-secondary" id="open-financial-hub-btn" style="padding:10px 18px; font-weight:700; font-size:0.85rem; border-radius:30px; border-color:#f59e0b; color:#d97706; background:rgba(245,158,11,0.06); display:inline-flex; align-items:center; gap:6px;">
                     <i data-lucide="wallet" style="width:15px;height:15px;"></i> 💰 السجل المالي
@@ -374,9 +378,15 @@ export default class TeacherView {
                 </div>
 
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <button type="button" class="btn-primary" id="open-course-modal-btn-2" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
-                    <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
-                  </button>
+                  ${state.user?.role === 'admin' ? `
+                    <button type="button" class="btn-primary" id="open-course-modal-btn-2" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
+                    </button>
+                  ` : `
+                    <a href="#teacher-groups" class="btn-primary" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:#fff;">
+                      <i data-lucide="users" style="width:16px;height:16px;"></i> المجموعات الدراسية 👥
+                    </a>
+                  `}
                   <a href="#courses" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     مستكشف الكورسات ➔
                   </a>
@@ -385,12 +395,24 @@ export default class TeacherView {
 
               ${this.courses.length === 0 ? `
                 <div class="glass-card" style="padding:32px 24px; text-align:center; border-radius:20px; border:1px dashed var(--border-color);">
-                  <i data-lucide="book-plus" style="width:40px; height:40px; color:var(--primary); opacity:0.4; margin-bottom:12px;"></i>
-                  <h4 style="font-weight:800; font-size:1.05rem; color:var(--text-main); margin:0 0 6px 0;">لم تقم بإنشاء أي دورات تعليمية بعد</h4>
-                  <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px 0;">ابدأ الآن بإضافة أول مقرر دراسي لك وحدد المرحلة والصف والمادة وفق المنهج المصري.</p>
-                  <button type="button" class="btn-primary" id="open-course-modal-btn-empty" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
-                    <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة الآن
-                  </button>
+                  <i data-lucide="book-open" style="width:40px; height:40px; color:var(--primary); opacity:0.4; margin-bottom:12px;"></i>
+                  <h4 style="font-weight:800; font-size:1.05rem; color:var(--text-main); margin:0 0 6px 0;">
+                    ${state.user?.role === 'admin' ? 'لم تقم بإنشاء أي دورات تعليمية بعد' : 'الدورات والمناهج التعليمية تدار مركزياً بواسطة إدارة المنصة'}
+                  </h4>
+                  <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px 0;">
+                    ${state.user?.role === 'admin'
+                      ? 'ابدأ الآن بإضافة أول مقرر دراسي وحدد المرحلة والصف والمادة وفق المنهج المصري.'
+                      : 'يمكنك البدء فوراً بفتح مجموعات دراسية للطلاب لأي مقرر دراسي معتمد واختيار الصف والمادة والجدول المناسب لك!'}
+                  </p>
+                  ${state.user?.role === 'admin' ? `
+                    <button type="button" class="btn-primary" id="open-course-modal-btn-empty" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة الآن
+                    </button>
+                  ` : `
+                    <a href="#teacher-groups" class="btn-primary" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; text-decoration:none; color:#fff; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="users" style="width:16px;height:16px;"></i> فتح مجموعة دراسية جديدة الآن 👥
+                    </a>
+                  `}
                 </div>
               ` : `
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:20px;">

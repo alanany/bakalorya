@@ -1530,6 +1530,31 @@ export default class AdminView {
       });
     });
 
+    // Assign / Reassign Teacher to Course
+    this.container.querySelectorAll(".admin-assign-course-teacher-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        this.renderAssignTeacherToCourseModal(id);
+      });
+    });
+
+    // Duplicate Course
+    this.container.querySelectorAll(".admin-duplicate-course-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        this.renderDuplicateCourseModal(id);
+      });
+    });
+
+    // Edit Course
+    this.container.querySelectorAll(".admin-edit-course-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const course = (this.courses || []).find(c => String(c.id) === String(id));
+        if (course) this.renderEditCourseModal(course);
+      });
+    });
+
     // Plans Tab Handlers
     document.getElementById("add-plan-btn")?.addEventListener("click", () => {
       this.renderPlanModal(null);
