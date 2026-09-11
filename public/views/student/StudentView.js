@@ -4,100 +4,202 @@ import { StudentFeedbackModal } from "../shared/StudentFeedbackModal.js";
 // Helper: Normalize Grade Key across curricula and Arabic/English strings
 export function normalizeGradeKey(raw) {
   if (!raw) return "";
-  const s = String(raw).toLowerCase().trim();
+  let s = String(raw).toLowerCase().trim();
+  s = s
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[\u064B-\u065F]/g, "");
 
-  // Secondary 3 / Entlq 3 / BAC
-  if (s.includes("entlq 3") || s.includes("bac") || s.includes("ثالثة ثانوي") || s.includes("3ث") || s.includes("ثالث ثانوي") || s.includes("sec_3") || s.includes("grade 12")) {
+  // Secondary 3 / Entlq 3 / Thanawya Amma / BAC / Grade 12
+  if (
+    s.includes("sec_3") || s.includes("sec 3") || s.includes("grade 12") ||
+    s.includes("entlq 3") || s.includes("bac") || s.includes("3ث") ||
+    s.includes("ثانويه عامه") || s.includes("ثانويه العامه") ||
+    (s.includes("ثانوي") && (s.includes("ثالث") || s.includes("3")))
+  ) {
     return "sec_3";
   }
-  // Secondary 2 / Entlq 2
-  if (s.includes("entlq 2") || s.includes("ثانية ثانوي") || s.includes("2ث") || s.includes("ثاني ثانوي") || s.includes("sec_2") || s.includes("grade 11")) {
+
+  // Secondary 2 / Entlq 2 / Grade 11
+  if (
+    s.includes("sec_2") || s.includes("sec 2") || s.includes("grade 11") ||
+    s.includes("entlq 2") || s.includes("2ث") ||
+    (s.includes("ثانوي") && (s.includes("ثاني") || s.includes("2")))
+  ) {
     return "sec_2";
   }
-  // Secondary 1 / Entlq 1
-  if (s.includes("entlq 1") || s.includes("أولى ثانوي") || s.includes("اولى ثانوي") || s.includes("1ث") || s.includes("أول ثانوي") || s.includes("اول ثانوي") || s.includes("sec_1") || s.includes("grade 10")) {
+
+  // Secondary 1 / Entlq 1 / Grade 10
+  if (
+    s.includes("sec_1") || s.includes("sec 1") || s.includes("grade 10") ||
+    s.includes("entlq 1") || s.includes("1ث") ||
+    (s.includes("ثانوي") && (s.includes("اول") || s.includes("1")))
+  ) {
     return "sec_1";
   }
 
-  // Preparatory / Intermediate
-  if (s.includes("grade 9") || s.includes("bem") || s.includes("تاسع") || s.includes("الصف 9") || s.includes("prep_3") || s.includes("3 إعدادي") || s.includes("ثالث إعدادي")) {
+  // Preparatory 3 / Grade 9 / BEM
+  if (
+    s.includes("prep_3") || s.includes("prep 3") || s.includes("grade 9") ||
+    s.includes("bem") || s.includes("3 اعدادي") || s.includes("3ع") ||
+    ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("ثالث") || s.includes("تاسع") || s.includes("3") || s.includes("9")))
+  ) {
     return "grade_9";
   }
-  if (s.includes("grade 8") || s.includes("ثامن") || s.includes("الصف 8") || s.includes("prep_2") || s.includes("2 إعدادي") || s.includes("ثاني إعدادي")) {
+
+  // Preparatory 2 / Grade 8
+  if (
+    s.includes("prep_2") || s.includes("prep 2") || s.includes("grade 8") ||
+    s.includes("2 اعدادي") || s.includes("2ع") ||
+    ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("ثاني") || s.includes("ثامن") || s.includes("2") || s.includes("8")))
+  ) {
     return "grade_8";
   }
-  if (s.includes("grade 7") || s.includes("سابع") || s.includes("الصف 7") || s.includes("prep_1") || s.includes("1 إعدادي") || s.includes("أول إعدادي") || s.includes("اول إعدادي")) {
+
+  // Preparatory 1 / Grade 7
+  if (
+    s.includes("prep_1") || s.includes("prep 1") || s.includes("grade 7") ||
+    s.includes("1 اعدادي") || s.includes("1ع") ||
+    ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("اول") || s.includes("سابع") || s.includes("1") || s.includes("7")))
+  ) {
     return "grade_7";
   }
 
-  // Primary / Prep 6-1
-  if (s.includes("grade 6") || s.includes("سادس") || s.includes("الصف 6") || s.includes("pri_6") || s.includes("prep 6") || s.includes("سادسة") || s.includes("6 إعدادي") || s.includes("6 ابتدائي")) {
+  // Primary 6 / Grade 6
+  if (
+    s.includes("pri_6") || s.includes("pri 6") || s.includes("grade 6") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("سادس") || s.includes("6"))) ||
+    s.includes("6 ابتدائي") || s.includes("سادس ابتدائي")
+  ) {
     return "grade_6";
   }
-  if (s.includes("grade 5") || s.includes("خامس") || s.includes("الصف 5") || s.includes("pri_5") || s.includes("خامسة") || s.includes("5 ابتدائي")) {
+
+  // Primary 5 / Grade 5
+  if (
+    s.includes("pri_5") || s.includes("pri 5") || s.includes("grade 5") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("خامس") || s.includes("5"))) ||
+    s.includes("5 ابتدائي") || s.includes("خامس ابتدائي")
+  ) {
     return "grade_5";
   }
-  if (s.includes("grade 4") || s.includes("رابع") || s.includes("الصف 4") || s.includes("pri_4") || s.includes("رابعة") || s.includes("4 ابتدائي")) {
+
+  // Primary 4 / Grade 4
+  if (
+    s.includes("pri_4") || s.includes("pri 4") || s.includes("grade 4") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("رابع") || s.includes("4"))) ||
+    s.includes("4 ابتدائي") || s.includes("رابع ابتدائي")
+  ) {
     return "grade_4";
   }
-  if (s.includes("grade 3") || s.includes("الصف 3 ابتدائي") || s.includes("pri_3") || s.includes("3 ابتدائي")) {
+
+  // Primary 3 / Grade 3
+  if (
+    s.includes("pri_3") || s.includes("pri 3") || s.includes("grade 3") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("ثالث") || s.includes("3"))) ||
+    s.includes("3 ابتدائي") || s.includes("ثالث ابتدائي")
+  ) {
     return "grade_3";
   }
-  if (s.includes("grade 2") || s.includes("الصف 2 ابتدائي") || s.includes("pri_2") || s.includes("2 ابتدائي")) {
+
+  // Primary 2 / Grade 2
+  if (
+    s.includes("pri_2") || s.includes("pri 2") || s.includes("grade 2") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("ثاني") || s.includes("2"))) ||
+    s.includes("2 ابتدائي") || s.includes("ثاني ابتدائي")
+  ) {
     return "grade_2";
   }
-  if (s.includes("grade 1") || s.includes("الصف 1 ابتدائي") || s.includes("pri_1") || s.includes("1 ابتدائي")) {
+
+  // Primary 1 / Grade 1
+  if (
+    s.includes("pri_1") || s.includes("pri 1") || s.includes("grade 1") ||
+    ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("اول") || s.includes("1"))) ||
+    s.includes("1 ابتدائي") || s.includes("اول ابتدائي")
+  ) {
     return "grade_1";
   }
 
   return s;
 }
 
+export const KNOWN_GRADE_KEYS = new Set([
+  "sec_3", "sec_2", "sec_1",
+  "grade_9", "grade_8", "grade_7",
+  "grade_6", "grade_5", "grade_4", "grade_3", "grade_2", "grade_1"
+]);
+
 // Helper: Check if course matches student's educational stage/degree
 export function isCourseMatchingStudentGrade(course, studentEdu) {
-  if (!studentEdu) return true;
+  if (!studentEdu || !course) return false;
   const sKey = normalizeGradeKey(studentEdu);
-  if (!sKey) return true;
+  if (!sKey || !KNOWN_GRADE_KEYS.has(sKey)) return false;
 
-  const courseGradeRaw = course.grade?.name || course.grade?.code || course.degree || '';
-  if (!courseGradeRaw) return true;
+  // 1. Check direct course.grade object (most accurate)
+  if (course.grade) {
+    const gCode = normalizeGradeKey(course.grade.code);
+    if (gCode && KNOWN_GRADE_KEYS.has(gCode)) return gCode === sKey;
+    const gName = normalizeGradeKey(course.grade.name);
+    if (gName && KNOWN_GRADE_KEYS.has(gName)) return gName === sKey;
+    const gNameEn = normalizeGradeKey(course.grade.nameEn);
+    if (gNameEn && KNOWN_GRADE_KEYS.has(gNameEn)) return gNameEn === sKey;
+  }
 
-  const cKey = normalizeGradeKey(courseGradeRaw);
-  return cKey === sKey;
+  // 2. Check degree string on course
+  if (course.degree) {
+    const degKey = normalizeGradeKey(course.degree);
+    if (degKey && KNOWN_GRADE_KEYS.has(degKey)) return degKey === sKey;
+  }
+
+  // 3. Check subject grade if available
+  if (course.subject?.grade) {
+    const sgCode = normalizeGradeKey(course.subject.grade.code);
+    if (sgCode && KNOWN_GRADE_KEYS.has(sgCode)) return sgCode === sKey;
+    const sgName = normalizeGradeKey(course.subject.grade.name);
+    if (sgName && KNOWN_GRADE_KEYS.has(sgName)) return sgName === sKey;
+  }
+
+  // 4. Check course title if it mentions a specific grade
+  if (course.title) {
+    const titleKey = normalizeGradeKey(course.title);
+    if (titleKey && KNOWN_GRADE_KEYS.has(titleKey)) return titleKey === sKey;
+  }
+
+  // 5. Check category if it mentions a specific grade
+  if (course.category) {
+    const catKey = normalizeGradeKey(course.category);
+    if (catKey && KNOWN_GRADE_KEYS.has(catKey)) return catKey === sKey;
+  }
+
+  return false;
 }
 
 // Helper: Format Student Grade Title for human display
 export function getStudentGradeDisplay(eduStr) {
   if (!eduStr) return "لم يتم تحديد المرحلة بعد ⚠️";
+  const key = normalizeGradeKey(eduStr);
+  const gradeNames = {
+    "sec_3": "الصف الثالث الثانوي (انطلق 3 - BAC)",
+    "sec_2": "الصف الثاني الثانوي (انطلق 2)",
+    "sec_1": "الصف الأول الثانوي (انطلق 1)",
+    "grade_9": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
+    "grade_8": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
+    "grade_7": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
+    "grade_6": "الصف السادس الابتدائي (Grade 6)",
+    "grade_5": "الصف الخامس الابتدائي (Grade 5)",
+    "grade_4": "الصف الرابع الابتدائي (Grade 4)",
+    "grade_3": "الصف الثالث الابتدائي (Grade 3)",
+    "grade_2": "الصف الثاني الابتدائي (Grade 2)",
+    "grade_1": "الصف الأول الابتدائي (Grade 1)",
+    "other": "مستوى تعليمي آخر"
+  };
+
+  if (gradeNames[key]) {
+    return gradeNames[key];
+  }
+
   const s = String(eduStr).toLowerCase().trim();
   const map = {
-    "grade 1 (primary)": "الصف الأول الابتدائي (Grade 1)",
-    "grade 1 (prep)": "الصف الأول الابتدائي (Grade 1)",
-    "grade 1": "الصف الأول الابتدائي (Grade 1)",
-    "grade 2 (primary)": "الصف الثاني الابتدائي (Grade 2)",
-    "grade 2 (prep)": "الصف الثاني الابتدائي (Grade 2)",
-    "grade 2": "الصف الثاني الابتدائي (Grade 2)",
-    "grade 3 (primary)": "الصف الثالث الابتدائي (Grade 3)",
-    "grade 3 (prep)": "الصف الثالث الابتدائي (Grade 3)",
-    "grade 3": "الصف الثالث الابتدائي (Grade 3)",
-    "grade 4 (primary)": "الصف الرابع الابتدائي (Grade 4)",
-    "grade 4 (prep)": "الصف الرابع الابتدائي (Grade 4)",
-    "grade 4": "الصف الرابع الابتدائي (Grade 4)",
-    "grade 5 (primary)": "الصف الخامس الابتدائي (Grade 5)",
-    "grade 5 (prep)": "الصف الخامس الابتدائي (Grade 5)",
-    "grade 5": "الصف الخامس الابتدائي (Grade 5)",
-    "grade 6 (primary)": "الصف السادس الابتدائي (Grade 6)",
-    "grade 6 (prep)": "الصف السادس الابتدائي (Grade 6)",
-    "grade 6": "الصف السادس الابتدائي (Grade 6)",
-    "grade 7 (prep 1)": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
-    "grade 7 (intermediate)": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
-    "grade 7": "الصف الأول الإعدادي / 7 متوسط (Grade 7)",
-    "grade 8 (prep 2)": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
-    "grade 8 (intermediate)": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
-    "grade 8": "الصف الثاني الإعدادي / 8 متوسط (Grade 8)",
-    "grade 9 (prep 3 / bem)": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
-    "grade 9 (intermediate)": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
-    "grade 9": "الصف الثالث الإعدادي / 9 متوسط (Grade 9 BEM)",
     "entlq 1": "الصف الأول الثانوي (انطلق 1)",
     "entlq 2": "الصف الثاني الثانوي (انطلق 2)",
     "entlq 3": "الصف الثالث الثانوي (انطلق 3 - BAC)",
@@ -280,13 +382,8 @@ export default class StudentView {
     const candidateCourses = this.allCourses.filter(c => !enrolledIds.has(c.id) && (c.status === "PUBLISHED" || !c.status));
     
     // Match courses specifically for student's grade/degree
-    let recommendedCourses = studentEdu ? candidateCourses.filter(c => isCourseMatchingStudentGrade(c, studentEdu)) : candidateCourses;
-    
-    // Fallback if no specific grade matches found: show candidate courses
-    if (recommendedCourses.length === 0) {
-      recommendedCourses = candidateCourses;
-    }
-    recommendedCourses = recommendedCourses.slice(0, 4);
+    let recommendedCourses = studentEdu ? candidateCourses.filter(c => isCourseMatchingStudentGrade(c, studentEdu)) : [];
+    recommendedCourses = recommendedCourses.slice(0, 6);
 
     // Private sessions summary
     const totalRemainingCredits = this.subscriptions.reduce((sum, s) => sum + (s.remainingCredits || 0), 0);
@@ -475,12 +572,12 @@ export default class StudentView {
               </div>
               <div>
                 <strong style="font-size:0.98rem; color:var(--text-main); display:block; margin-bottom:2px;">تنبيه: لم تقم بتحديد مرحلتك الدراسية بعد! ⚠️</strong>
-                <span style="font-size:0.82rem; color:var(--text-muted);">يرجى تحديد صفك ومستواك الأكاديمي من صفحة الإعدادات لتخصيص الكورسات والمجموعات الدراسية وحصص البث الملائمة لك.</span>
+                <span style="font-size:0.82rem; color:var(--text-muted);">يرجى تحديد صفك ومستواك الأكاديمي لتخصيص الكورسات والمناهج المقترحة وحصص البث الملائمة لك تلقائياً.</span>
               </div>
             </div>
-            <a href="#settings" class="btn-primary" style="padding:10px 20px; border-radius:20px; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; display:flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(245,158,11,0.35); text-decoration:none; color:#fff;">
-              <i data-lucide="settings" style="width:16px;height:16px;"></i> تحديد المرحلة من الإعدادات ⚙️
-            </a>
+            <button type="button" class="btn-primary btn-change-student-grade" style="padding:10px 20px; border-radius:20px; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; display:flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(245,158,11,0.35); color:#fff; cursor:pointer;">
+              <i data-lucide="graduation-cap" style="width:16px;height:16px;"></i> تحديد المرحلة والصف الآن 🎓
+            </button>
           </div>
         ` : ''}
 
@@ -519,13 +616,16 @@ export default class StudentView {
                   <span class="badge" style="font-size:0.82rem; font-weight:800; color:var(--primary); background:rgba(99,102,241,0.12); padding:4px 12px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); display:inline-flex; align-items:center; gap:5px;">
                     🎓 المرحلة: <strong>${getStudentGradeDisplay(state.user?.education)}</strong>
                   </span>
+                  <button type="button" class="btn-change-student-grade" style="background:rgba(99,102,241,0.15); border:1px solid var(--primary); color:var(--primary); border-radius:20px; padding:3px 12px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s ease;">
+                    <i data-lucide="refresh-cw" style="width:12px; height:12px;"></i> تغيير الصف 🔄
+                  </button>
                   ${state.user?.parentPhone ? `
                     <span class="badge" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); background:rgba(0,0,0,0.04); padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
                       <i data-lucide="phone-call" style="width:12px; height:12px;"></i> ولي الأمر: ${state.user.parentPhone}
                     </span>
                   ` : ''}
                   <a href="#settings" style="color:var(--primary); font-size:0.76rem; font-weight:800; text-decoration:underline; padding:0 4px; display:inline-flex; align-items:center; gap:3px;">
-                    <i data-lucide="settings" style="width:12px; height:12px;"></i> تعديل من الإعدادات ⚙️
+                    <i data-lucide="settings" style="width:12px; height:12px;"></i> الإعدادات ⚙️
                   </a>
                 </div>
 
@@ -727,27 +827,54 @@ export default class StudentView {
           <div style="display:flex; flex-direction:column; gap:32px;">
             
             <!-- Section: Recommended Courses for You -->
-            ${recommendedCourses.length > 0 ? `
-              <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-                  <div>
-                    <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                      <i data-lucide="sparkles" style="width:20px; height:20px; color:#a855f7;"></i>
-                      دورات مقترحة لتعزيز مهاراتك
-                      ${state.user?.education ? `<span class="badge" style="font-size:0.75rem; background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">🎯 لصف: ${getStudentGradeDisplay(state.user.education)}</span>` : ''}
-                    </h3>
-                    <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">اخترنا لك هذه المناهج والدورات المتوافقة مع مرحلتك الدراسية</p>
-                  </div>
-                  <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none;">
-                    تصفح الكل (${this.allCourses.length}) ↗
-                  </a>
+            <div id="student-recommended-courses-section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <i data-lucide="sparkles" style="width:20px; height:20px; color:#a855f7;"></i>
+                    <span>دورات مقترحة لتعزيز مهاراتك</span>
+                    <span class="badge" style="font-size:0.75rem; background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">
+                      🎯 لصف: ${getStudentGradeDisplay(state.user?.education)}
+                    </span>
+                    <button type="button" class="btn-change-student-grade" style="background:rgba(99,102,241,0.08); border:1px dashed var(--primary); color:var(--primary); border-radius:12px; padding:2px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s ease;">
+                      <i data-lucide="refresh-cw" style="width:11px; height:11px;"></i> تغيير الصف 🔄
+                    </button>
+                  </h3>
+                  <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">اخترنا لك هذه المناهج والدورات المتوافقة مع مرحلتك الدراسية</p>
                 </div>
+                <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none;">
+                  تصفح كافة المقررات (${this.allCourses.length}) ↗
+                </a>
+              </div>
 
+              ${recommendedCourses.length > 0 ? `
                 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px;">
                   ${recommendedCourses.map(c => this.renderCourseCard(c, 0, false, null)).join('')}
                 </div>
-              </div>
-            ` : ''}
+              ` : `
+                <div class="glass-card" style="padding:28px 20px; text-align:center; border-radius:18px; border:1px dashed rgba(99,102,241,0.3); background:rgba(99,102,241,0.02); display:flex; flex-direction:column; align-items:center; gap:10px;">
+                  <div style="width:46px; height:46px; border-radius:50%; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
+                    🎯
+                  </div>
+                  <div>
+                    <h4 style="font-size:0.98rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">
+                      لا توجد دورات إضافية متاحة حالياً لصف: ${getStudentGradeDisplay(state.user?.education)}
+                    </h4>
+                    <p style="font-size:0.82rem; color:var(--text-muted); margin:0; max-width:460px; line-height:1.5;">
+                      المناهج المقترحة هنا ترتبط تلقائياً بصفك الدراسي. يمكنك تغيير صفك لعرض المناهج المقترحة للمراحل الأخرى أو استعراض جميع المقررات العامة.
+                    </p>
+                  </div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px;">
+                    <button type="button" class="btn-primary btn-change-student-grade" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
+                      <i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> تغيير الصف الدراسي 🔄
+                    </button>
+                    <a href="#courses" class="btn-secondary" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                      <i data-lucide="book-open" style="width:13px; height:13px;"></i> استعراض كافة المقررات ↗
+                    </a>
+                  </div>
+                </div>
+              `}
+            </div>
 
           </div>
 
@@ -1092,6 +1219,13 @@ export default class StudentView {
     this.container.querySelector("#student-open-prayer-btn")?.addEventListener("click", () => {
       this.renderPrayerTimesModal();
     });
+
+    // Quick Change Student Grade Modal
+    this.container.querySelectorAll(".btn-change-student-grade").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.openChangeGradeModal();
+      });
+    });
   }
 
   async renderPrayerTimesModal() {
@@ -1320,6 +1454,107 @@ export default class StudentView {
       container.innerHTML = "";
       showToast("تعذر جلب مواقيت الصلاة، يرجى التحقق من اتصال الإنترنت.", "error");
     }
+  }
+
+  openChangeGradeModal() {
+    const existingModal = document.getElementById("change-student-grade-modal");
+    if (existingModal) existingModal.remove();
+
+    const currentEdu = state.user?.education || "";
+    const modal = document.createElement("div");
+    modal.id = "change-student-grade-modal";
+    modal.className = "modal-backdrop active";
+    modal.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px; animation:fadeIn 0.2s ease;";
+
+    modal.innerHTML = `
+      <div class="modal-card" style="background:var(--bg-card, #1e1e2d); border:1.5px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:28px; width:100%; max-width:480px; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:44px; height:44px; border-radius:14px; background:rgba(99,102,241,0.15); color:var(--primary, #6366f1); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
+              🎓
+            </div>
+            <div>
+              <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:var(--text-main);">تحديد المرحلة والصف الدراسي</h3>
+              <p style="margin:3px 0 0 0; font-size:0.8rem; color:var(--text-muted);">اختر صفك الدراسي لعرض المناهج والدورات المتوافقة معك تلقائياً</p>
+            </div>
+          </div>
+          <button type="button" id="close-grade-modal-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px; font-size:1.2rem; line-height:1;">✕</button>
+        </div>
+
+        <form id="change-student-grade-form" style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:8px; color:var(--text-main);">المرحلة والصف الدراسي:</label>
+            ${renderEducationSelectHTML({
+              id: "quick-education-select",
+              selectedValue: currentEdu,
+              required: true,
+              style: "width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--border-color); background:var(--bg-input, rgba(255,255,255,0.05)); color:var(--text-main); font-size:0.92rem;"
+            })}
+          </div>
+
+          <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:12px; font-size:0.8rem; color:var(--text-muted); display:flex; gap:8px; align-items:flex-start;">
+            <i data-lucide="info" style="width:16px; height:16px; color:var(--primary); flex-shrink:0; margin-top:2px;"></i>
+            <span>عند تغيير صفك الدراسي، سيتم تخصيص الدورات المقترحة في صفحتك الرئيسية فوراً لتطابق مرحلتك الجديدة.</span>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+            <button type="button" id="cancel-grade-modal-btn" class="btn-secondary" style="padding:10px 18px; border-radius:12px; font-weight:700;">إلغاء</button>
+            <button type="submit" id="submit-grade-modal-btn" class="btn-primary" style="padding:10px 22px; border-radius:12px; font-weight:800; display:flex; align-items:center; gap:6px;">
+              <span>حفظ وتحديث المقترحات</span>
+              <i data-lucide="check" style="width:16px; height:16px;"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-grade-modal-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-grade-modal-btn")?.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    const form = modal.querySelector("#change-student-grade-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newGrade = modal.querySelector("#quick-education-select")?.value;
+      if (!newGrade) return;
+
+      const submitBtn = modal.querySelector("#submit-grade-modal-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:15px; height:15px;"></i> جاري الحفظ...`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        await apiFetch("/users/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ education: newGrade })
+        });
+
+        // Update active state and local storage
+        if (!state.user) state.user = {};
+        state.user.education = newGrade;
+        try {
+          const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+          storedUser.education = newGrade;
+          localStorage.setItem("user", JSON.stringify(storedUser));
+        } catch (_) {}
+
+        showToast(`تم تحديث المرحلة بنجاح إلى: ${getStudentGradeDisplay(newGrade)} 🎉`, "success");
+        closeModal();
+        this.renderDashboard();
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>حفظ وتحديث المقترحات</span><i data-lucide="check" style="width:16px; height:16px;"></i>`;
+        if (window.lucide) window.lucide.createIcons();
+        showToast(err.message || "تعذر تحديث المرحلة الدراسية", "error");
+      }
+    });
   }
 
   onDestroy() {

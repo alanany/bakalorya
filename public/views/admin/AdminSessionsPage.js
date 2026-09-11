@@ -3133,49 +3133,119 @@ export const AdminSessionsPage = {
     // Comprehensive Grade Key Normalization Helper
     const normalizeGradeKey = (raw) => {
       if (!raw) return "";
-      const s = String(raw).toLowerCase().trim();
+      let s = String(raw).toLowerCase().trim();
+      s = s
+        .replace(/[أإآ]/g, "ا")
+        .replace(/ة/g, "ه")
+        .replace(/ى/g, "ي")
+        .replace(/[\u064B-\u065F]/g, "");
 
-      // Secondary 3 / Entlq 3 / BAC
-      if (s.includes("entlq 3") || s.includes("bac") || s.includes("ثالثة ثانوي") || s.includes("3ث") || s.includes("ثالث ثانوي") || s.includes("sec_3") || s.includes("grade 12")) {
+      // Secondary 3 / Entlq 3 / Thanawya Amma / BAC / Grade 12
+      if (
+        s.includes("sec_3") || s.includes("sec 3") || s.includes("grade 12") ||
+        s.includes("entlq 3") || s.includes("bac") || s.includes("3ث") ||
+        s.includes("ثانويه عامه") || s.includes("ثانويه العامه") ||
+        (s.includes("ثانوي") && (s.includes("ثالث") || s.includes("3")))
+      ) {
         return "sec_3";
       }
-      // Secondary 2 / Entlq 2
-      if (s.includes("entlq 2") || s.includes("ثانية ثانوي") || s.includes("2ث") || s.includes("ثاني ثانوي") || s.includes("sec_2") || s.includes("grade 11")) {
+
+      // Secondary 2 / Entlq 2 / Grade 11
+      if (
+        s.includes("sec_2") || s.includes("sec 2") || s.includes("grade 11") ||
+        s.includes("entlq 2") || s.includes("2ث") ||
+        (s.includes("ثانوي") && (s.includes("ثاني") || s.includes("2")))
+      ) {
         return "sec_2";
       }
-      // Secondary 1 / Entlq 1
-      if (s.includes("entlq 1") || s.includes("أولى ثانوي") || s.includes("اولى ثانوي") || s.includes("1ث") || s.includes("أول ثانوي") || s.includes("اول ثانوي") || s.includes("sec_1") || s.includes("grade 10")) {
+
+      // Secondary 1 / Entlq 1 / Grade 10
+      if (
+        s.includes("sec_1") || s.includes("sec 1") || s.includes("grade 10") ||
+        s.includes("entlq 1") || s.includes("1ث") ||
+        (s.includes("ثانوي") && (s.includes("اول") || s.includes("1")))
+      ) {
         return "sec_1";
       }
 
-      // Preparatory / Intermediate
-      if (s.includes("grade 9") || s.includes("bem") || s.includes("تاسع") || s.includes("الصف 9") || s.includes("prep_3") || s.includes("3 إعدادي") || s.includes("ثالث إعدادي")) {
+      // Preparatory 3 / Grade 9 / BEM
+      if (
+        s.includes("prep_3") || s.includes("prep 3") || s.includes("grade 9") ||
+        s.includes("bem") || s.includes("3 اعدادي") || s.includes("3ع") ||
+        ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("ثالث") || s.includes("تاسع") || s.includes("3") || s.includes("9")))
+      ) {
         return "grade_9";
       }
-      if (s.includes("grade 8") || s.includes("ثامن") || s.includes("الصف 8") || s.includes("prep_2") || s.includes("2 إعدادي") || s.includes("ثاني إعدادي")) {
+
+      // Preparatory 2 / Grade 8
+      if (
+        s.includes("prep_2") || s.includes("prep 2") || s.includes("grade 8") ||
+        s.includes("2 اعدادي") || s.includes("2ع") ||
+        ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("ثاني") || s.includes("ثامن") || s.includes("2") || s.includes("8")))
+      ) {
         return "grade_8";
       }
-      if (s.includes("grade 7") || s.includes("سابع") || s.includes("الصف 7") || s.includes("prep_1") || s.includes("1 إعدادي") || s.includes("أول إعدادي") || s.includes("اول إعدادي")) {
+
+      // Preparatory 1 / Grade 7
+      if (
+        s.includes("prep_1") || s.includes("prep 1") || s.includes("grade 7") ||
+        s.includes("1 اعدادي") || s.includes("1ع") ||
+        ((s.includes("اعدادي") || s.includes("متوسط")) && (s.includes("اول") || s.includes("سابع") || s.includes("1") || s.includes("7")))
+      ) {
         return "grade_7";
       }
 
-      // Primary / Prep 6-1
-      if (s.includes("grade 6") || s.includes("سادس") || s.includes("الصف 6") || s.includes("pri_6") || s.includes("prep 6") || s.includes("سادسة") || s.includes("6 إعدادي") || s.includes("6 ابتدائي")) {
+      // Primary 6 / Grade 6
+      if (
+        s.includes("pri_6") || s.includes("pri 6") || s.includes("grade 6") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("سادس") || s.includes("6"))) ||
+        s.includes("6 ابتدائي") || s.includes("سادس ابتدائي")
+      ) {
         return "grade_6";
       }
-      if (s.includes("grade 5") || s.includes("خامس") || s.includes("الصف 5") || s.includes("pri_5") || s.includes("خامسة") || s.includes("5 ابتدائي")) {
+
+      // Primary 5 / Grade 5
+      if (
+        s.includes("pri_5") || s.includes("pri 5") || s.includes("grade 5") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("خامس") || s.includes("5"))) ||
+        s.includes("5 ابتدائي") || s.includes("خامس ابتدائي")
+      ) {
         return "grade_5";
       }
-      if (s.includes("grade 4") || s.includes("رابع") || s.includes("الصف 4") || s.includes("pri_4") || s.includes("رابعة") || s.includes("4 ابتدائي")) {
+
+      // Primary 4 / Grade 4
+      if (
+        s.includes("pri_4") || s.includes("pri 4") || s.includes("grade 4") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("رابع") || s.includes("4"))) ||
+        s.includes("4 ابتدائي") || s.includes("رابع ابتدائي")
+      ) {
         return "grade_4";
       }
-      if (s.includes("grade 3") || s.includes("الصف 3 ابتدائي") || s.includes("pri_3") || s.includes("3 ابتدائي")) {
+
+      // Primary 3 / Grade 3
+      if (
+        s.includes("pri_3") || s.includes("pri 3") || s.includes("grade 3") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("ثالث") || s.includes("3"))) ||
+        s.includes("3 ابتدائي") || s.includes("ثالث ابتدائي")
+      ) {
         return "grade_3";
       }
-      if (s.includes("grade 2") || s.includes("الصف 2 ابتدائي") || s.includes("pri_2") || s.includes("2 ابتدائي")) {
+
+      // Primary 2 / Grade 2
+      if (
+        s.includes("pri_2") || s.includes("pri 2") || s.includes("grade 2") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("ثاني") || s.includes("2"))) ||
+        s.includes("2 ابتدائي") || s.includes("ثاني ابتدائي")
+      ) {
         return "grade_2";
       }
-      if (s.includes("grade 1") || s.includes("الصف 1 ابتدائي") || s.includes("pri_1") || s.includes("1 ابتدائي")) {
+
+      // Primary 1 / Grade 1
+      if (
+        s.includes("pri_1") || s.includes("pri 1") || s.includes("grade 1") ||
+        ((s.includes("ابتدائي") || s.includes("primary")) && (s.includes("اول") || s.includes("1"))) ||
+        s.includes("1 ابتدائي") || s.includes("اول ابتدائي")
+      ) {
         return "grade_1";
       }
 

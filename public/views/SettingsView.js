@@ -329,6 +329,9 @@ export default class SettingsView {
 
           if (updatedUser && updatedUser.id) {
             state.user = { ...state.user, ...updatedUser };
+            try {
+              localStorage.setItem("user", JSON.stringify(state.user));
+            } catch (_) {}
             showToast("تم حفظ المرحلة الدراسية بنجاح! 🎓", "success");
             this.render();
           }

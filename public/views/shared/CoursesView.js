@@ -18,18 +18,18 @@ export default class CoursesView {
   _mapEducationToStage(education) {
     if (!education) return null;
     const e = education.trim().toLowerCase();
-    if (e.includes("entlq 1") || e.includes("1ث") || e.includes("grade 10")) return { stage: "SECONDARY", keyword: "1" };
-    if (e.includes("entlq 2") || e.includes("2ث") || e.includes("grade 11")) return { stage: "SECONDARY", keyword: "2" };
-    if (e.includes("entlq 3") || e.includes("3ث") || e.includes("grade 12") || e.includes("bac")) return { stage: "SECONDARY", keyword: "3" };
-    if (e.includes("grade 7") || e.includes("1ع") || e.includes("prep 1")) return { stage: "PREPARATORY", keyword: "1" };
-    if (e.includes("grade 8") || e.includes("2ع") || e.includes("prep 2")) return { stage: "PREPARATORY", keyword: "2" };
-    if (e.includes("grade 9") || e.includes("3ع") || e.includes("prep 3") || e.includes("bem")) return { stage: "PREPARATORY", keyword: "3" };
-    if (e.includes("grade 1")) return { stage: "PRIMARY", keyword: "1" };
-    if (e.includes("grade 2")) return { stage: "PRIMARY", keyword: "2" };
-    if (e.includes("grade 3")) return { stage: "PRIMARY", keyword: "3" };
-    if (e.includes("grade 4")) return { stage: "PRIMARY", keyword: "4" };
-    if (e.includes("grade 5")) return { stage: "PRIMARY", keyword: "5" };
-    if (e.includes("grade 6")) return { stage: "PRIMARY", keyword: "6" };
+    if (e.includes("entlq 1") || e.includes("1ث") || e.includes("grade 10") || e.includes("sec_1") || (e.includes("ثانوي") && (e.includes("اول") || e.includes("1")))) return { stage: "SECONDARY", keyword: "1" };
+    if (e.includes("entlq 2") || e.includes("2ث") || e.includes("grade 11") || e.includes("sec_2") || (e.includes("ثانوي") && (e.includes("ثاني") || e.includes("2")))) return { stage: "SECONDARY", keyword: "2" };
+    if (e.includes("entlq 3") || e.includes("3ث") || e.includes("grade 12") || e.includes("sec_3") || e.includes("bac") || (e.includes("ثانوي") && (e.includes("ثالث") || e.includes("3")))) return { stage: "SECONDARY", keyword: "3" };
+    if (e.includes("grade 7") || e.includes("1ع") || e.includes("prep 1") || e.includes("prep_1") || (e.includes("اعدادي") && (e.includes("اول") || e.includes("1")))) return { stage: "PREPARATORY", keyword: "1" };
+    if (e.includes("grade 8") || e.includes("2ع") || e.includes("prep 2") || e.includes("prep_2") || (e.includes("اعدادي") && (e.includes("ثاني") || e.includes("2")))) return { stage: "PREPARATORY", keyword: "2" };
+    if (e.includes("grade 9") || e.includes("3ع") || e.includes("prep 3") || e.includes("prep_3") || e.includes("bem") || (e.includes("اعدادي") && (e.includes("ثالث") || e.includes("3")))) return { stage: "PREPARATORY", keyword: "3" };
+    if (e.includes("grade 1") || (e.includes("ابتدائي") && (e.includes("اول") || e.includes("1")))) return { stage: "PRIMARY", keyword: "1" };
+    if (e.includes("grade 2") || (e.includes("ابتدائي") && (e.includes("ثاني") || e.includes("2")))) return { stage: "PRIMARY", keyword: "2" };
+    if (e.includes("grade 3") || (e.includes("ابتدائي") && (e.includes("ثالث") || e.includes("3")))) return { stage: "PRIMARY", keyword: "3" };
+    if (e.includes("grade 4") || (e.includes("ابتدائي") && (e.includes("رابع") || e.includes("4")))) return { stage: "PRIMARY", keyword: "4" };
+    if (e.includes("grade 5") || (e.includes("ابتدائي") && (e.includes("خامس") || e.includes("5")))) return { stage: "PRIMARY", keyword: "5" };
+    if (e.includes("grade 6") || (e.includes("ابتدائي") && (e.includes("سادس") || e.includes("6")))) return { stage: "PRIMARY", keyword: "6" };
     return null;
   }
 
