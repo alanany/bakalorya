@@ -1,0 +1,31 @@
+# robots.txt for Entlq / Bakalorya Educational Platform
+User-agent: *
+Allow: /
+Allow: /#landing
+Allow: /#courses
+Allow: /#teachers
+Allow: /#subject-groups
+Allow: /#subscription-plans
+Allow: /#about
+Allow: /#contact
+Allow: /#faq
+Allow: /#login
+Allow: /#signup
+Allow: /#teacher-apply
+Allow: /uploads/
+Allow: /assets/
+
+# Disallow private user dashboards and backend API routes
+Disallow: /api/
+Disallow: /#student-dashboard
+Disallow: /#teacher-portal
+Disallow: /#admin-dashboard
+Disallow: /#settings
+Disallow: /#student-subscriptions
+Disallow: /#student-groups
+Disallow: /#teacher-groups
+Disallow: /#teacher-private-sessions
+
+# Host & Sitemap
+Host: https://www.entlqedu.com
+Sitemap: https://www.entlqedu.com/sitemap.xml

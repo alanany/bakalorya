@@ -64,6 +64,13 @@ async function startServer() {
         app.use("/uploads", express_1.default.static(uploadsDir));
         app.use("/public/uploads", express_1.default.static(uploadsDir));
         app.use(express_1.default.static(path_1.default.resolve(process.cwd(), "public")));
+        // Dedicated SEO Crawlers Endpoints
+        app.get("/robots.txt", (req, res) => {
+            res.type("text/plain").sendFile(path_1.default.resolve(process.cwd(), "public/robots.txt"));
+        });
+        app.get("/sitemap.xml", (req, res) => {
+            res.type("application/xml").sendFile(path_1.default.resolve(process.cwd(), "public/sitemap.xml"));
+        });
         // Fallback route to serve index.html for SPA router support
         app.get("*", (req, res) => {
             res.sendFile(path_1.default.resolve(process.cwd(), "public/index.html"));

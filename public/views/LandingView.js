@@ -99,7 +99,7 @@ export default class LandingView {
               <span style="font-size:0.85rem; font-weight:900; background:rgba(0,86,210,0.08); color:var(--primary); padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;">
                 <i data-lucide="compass" style="width:15px;height:15px;"></i> استكشف المناهج والمجموعات الدراسية
               </span>
-              <h2 style="font-size:clamp(1.5rem, 3.5vw, 2.4rem); font-weight:700; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
+              <h2 style="font-size:clamp(1.0rem, 3.0vw, 2.0rem); font-weight:500; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
                 اختر مرحلتك وصفك الدراسي 🎯
               </h2>
               <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0 auto; max-width:680px;">
@@ -151,13 +151,13 @@ export default class LandingView {
               </div>
             </div>
 
-            <!-- Column 3: Trending AI/Live courses -->
+            <!-- Column 3: Open Interactive Groups -->
             <div class="glass-card" style="background:rgba(16,185,129,0.04); border:1px solid var(--border-color); border-radius:20px; padding:24px 20px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0;">
-                  جلسات البث والمراجعات <i data-lucide="arrow-left" style="width:16px;height:16px; color:#10b981;"></i>
+                <h3 style="font-size:1.1rem; font-weight:900; color:var(--text-color); margin:0; display:flex; align-items:center; gap:6px;">
+                  المجموعات المفتوحة للتسجيل 🚀 <i data-lucide="arrow-left" style="width:16px;height:16px; color:#10b981;"></i>
                 </h3>
-                <span style="font-size:0.75rem; color:#10b981; font-weight:700;"></span>
+                <span style="font-size:0.75rem; color:#10b981; font-weight:700;">مباشر وتفاعلي</span>
               </div>
               <div id="trending-sessions-container" style="display:flex; flex-direction:column; gap:14px;">
                 <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
@@ -231,37 +231,7 @@ export default class LandingView {
         </section>
 
 
-        <!-- SCREENSHOT 3: SECTION 1 (MAIN UX PATHS) -->
-        <section style="width:100%; margin:0 auto; padding:16px 20px 28px 20px;">
-          <h2 style="font-size:1.8rem; font-weight:900; color:var(--text-color); margin-bottom:24px; text-align:center;">
-            ماذا تريد أن تتعلم؟
-          </h2>
-          <div class="learn-paths-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
-            <!-- Courses Path -->
-            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%); border:1px solid rgba(37,99,235,0.2); border-radius:24px; padding:36px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#courses'">
-              <div style="width:80px; height:80px; background:rgba(37,99,235,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#2563eb;">
-                <i data-lucide="book-open" style="width:40px; height:40px;"></i>
-              </div>
-              <h3 style="font-size:1.6rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">📚 الكورسات</h3>
-              <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
-                تعلم من خلال كورسات منظمة خطوة بخطوة مع نخبة من الأساتذة.
-              </p>
-              <a href="#courses" class="btn-primary" style="padding:14px 32px; font-size:1.05rem; border-radius:30px; width:100%; text-decoration:none; justify-content:center;">استكشف الكورسات</a>
-            </div>
-
-            <!-- Private Lessons Path -->
-            <div class="glass-card learn-path-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.01) 100%); border:1px solid rgba(16,185,129,0.2); border-radius:24px; padding:36px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform 0.2s; cursor:pointer;" onmouseenter="this.style.transform='translateY(-6px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='#subscription-plans'">
-              <div style="width:80px; height:80px; background:rgba(16,185,129,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; color:#10b981;">
-                <i data-lucide="users" style="width:40px; height:40px;"></i>
-              </div>
-              <h3 style="font-size:1.6rem; font-weight:900; color:var(--text-color); margin-bottom:12px;">👨‍🏫 حصص فردية</h3>
-              <p style="font-size:1.05rem; color:var(--text-muted); line-height:1.6; margin-bottom:32px; max-width:280px;">
-                اختر مدرسًا واحجز حصصًا خاصة (1 على 1) تناسب جدولك ومستواك الدراسي.
-              </p>
-              <a href="#subscription-plans" class="btn-primary" style="background:#10b981; border-color:#10b981; padding:14px 32px; font-size:1.05rem; border-radius:30px; width:100%; text-decoration:none; justify-content:center;">احجز حصتك الخاصة</a>
-            </div>
-          </div>
-        </section>
+    
 
 
         <!-- SECTION 2: EXPLORE SPECIALIZATIONS & DEGREES -->
@@ -1325,23 +1295,80 @@ export default class LandingView {
       }
     }
 
-    // 3. Render Trending Sessions (Live Sessions from DB)
-    const trendingSessionsContainer = this.container.querySelector("#trending-sessions-container");
-    if (trendingSessionsContainer) {
-      const items = this.sessions.slice(0, 3);
-      if (items.length === 0) {
-        trendingSessionsContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد جلسات مبرمجة حالياً.</div>`;
-      } else {
-        trendingSessionsContainer.innerHTML = items.map(session => `
-          <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color);">
-            <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
-            <div style="flex:1;">
-              <div style="font-size:0.75rem; color:var(--error); font-weight:800;">🔴 بث مباشر • ${session.teacher?.name || 'الأستاذ'}</div>
-              <div style="font-size:0.9rem; font-weight:800; color:var(--text-color); margin:2px 0;">${session.title}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">بث تفاعلي حقيقي</div>
-            </div>
+    // 3. Render Open Interactive Groups (Random Open Groups from Courses)
+    const openGroupsContainer = this.container.querySelector("#trending-sessions-container");
+    if (openGroupsContainer) {
+      const openGroups = [];
+      (this.courses || []).forEach(course => {
+        (course.groups || []).forEach(group => {
+          const isExcluded = ["FULL", "CLOSED", "PENDING_APPROVAL", "REJECTED"].includes(group.status);
+          if (!isExcluded) {
+            const enrolledCount = (group.enrollments || []).filter(e => !e.status || e.status === "active" || e.status === "confirmed").length;
+            const maxStudents = group.maxStudents || 25;
+            const availableSeats = Math.max(0, maxStudents - enrolledCount);
+            if (availableSeats > 0) {
+              openGroups.push({
+                ...group,
+                courseId: course.id,
+                courseTitle: course.title,
+                courseImage: course.image,
+                courseDegree: course.grade?.name || course.degree || 'عام',
+                teacherName: group.teacher?.name || course.teacher?.name || 'الأستاذ',
+                enrolledCount,
+                availableSeats,
+                maxStudents
+              });
+            }
+          }
+        });
+      });
+
+      // Randomly shuffle open groups and pick 3
+      const randomOpenGroups = [...openGroups].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+      if (randomOpenGroups.length > 0) {
+        const headerEl = openGroupsContainer.parentElement?.querySelector("h3");
+        if (headerEl) {
+          headerEl.style.cursor = "pointer";
+          headerEl.onclick = () => { window.location.hash = `#subject-groups/${randomOpenGroups[0].courseId}`; };
+        }
+      }
+
+      if (randomOpenGroups.length === 0) {
+        openGroupsContainer.innerHTML = `
+          <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:18px 10px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--border-color);">
+            <div style="font-weight:700; color:var(--text-color); margin-bottom:4px;">لا توجد مجموعات مفتوحة حالياً</div>
+            <div style="font-size:0.75rem; margin-bottom:10px;">يمكنك استكشاف المقررات والمناهج والانضمام فور فتح المجموعات الجديدة.</div>
+            <a href="#curriculum-courses" style="display:inline-block; font-size:0.75rem; font-weight:800; color:#10b981; text-decoration:none; background:rgba(16,185,129,0.1); padding:4px 12px; border-radius:8px;">استعراض المناهج ↗</a>
           </div>
-        `).join("");
+        `;
+      } else {
+        openGroupsContainer.innerHTML = randomOpenGroups.map(group => {
+          const targetHash = `#subject-groups/${group.courseId}`;
+          const fallbackImg = group.courseImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200';
+          const scheduleDisplay = group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime || ''}` : 'مواعيد منتظمة');
+          return `
+            <div style="display:flex; gap:12px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='${targetHash}'">
+              <div style="position:relative; width:54px; height:54px; flex-shrink:0;">
+                <img src="${fallbackImg}" style="width:54px; height:54px; object-fit:cover; border-radius:10px;">
+                <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg-card); display:block;" title="مفتوح للتسجيل"></span>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:0.75rem; color:#10b981; font-weight:800; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                  <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">🟢 مفتوحة • ${group.teacherName}</span>
+                  <span style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.68rem; font-weight:800; padding:1px 7px; border-radius:10px;">${group.courseDegree}</span>
+                </div>
+                <div style="font-size:0.88rem; font-weight:800; color:var(--text-color); margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${group.courseTitle} - ${group.name}">
+                  ${group.name || group.courseTitle}
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                  <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:125px;">🕒 ${scheduleDisplay}</span>
+                  <span style="color:#10b981; font-weight:700; flex-shrink:0;">متبقي ${group.availableSeats} مقاعد</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
       }
     }
 

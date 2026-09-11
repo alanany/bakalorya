@@ -44,6 +44,7 @@ import AssignmentsView from "./views/shared/AssignmentsView.js";
 import ScheduleView from "./views/shared/ScheduleView.js";
 import ClassroomView from "./views/shared/ClassroomView.js";
 import GroupHubView from "./views/shared/GroupHubView.js";
+import { applyPageSEO } from "./seo.js";
 
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
@@ -1909,6 +1910,7 @@ export async function router() {
   }
 
   updateHeader();
+  applyPageSEO(routeBase, routeParam);
 
   // Security
   if ((routeBase === "#student-dashboard" || routeBase === "#group" || routeBase === "#group-hub") && !state.user) {

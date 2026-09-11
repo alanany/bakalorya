@@ -28,7 +28,7 @@ export default class AboutView {
             <div style="width:52px; height:52px; border-radius:14px; background:rgba(0,86,210,0.1); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto;">
               <i data-lucide="users" style="width:26px; height:26px;"></i>
             </div>
-            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+50,000</div>
+            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+200</div>
             <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">طالب وطالبة مسجلون بالمنصة</div>
           </div>
 
@@ -36,7 +36,7 @@ export default class AboutView {
             <div style="width:52px; height:52px; border-radius:14px; background:rgba(16,185,129,0.1); color:#10b981; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto;">
               <i data-lucide="graduation-cap" style="width:26px; height:26px;"></i>
             </div>
-            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+250</div>
+            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+20</div>
             <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">معلم وأستاذ معتمد</div>
           </div>
 
@@ -44,7 +44,7 @@ export default class AboutView {
             <div style="width:52px; height:52px; border-radius:14px; background:rgba(245,158,11,0.1); color:#f59e0b; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto;">
               <i data-lucide="book-open" style="width:26px; height:26px;"></i>
             </div>
-            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+1,200</div>
+            <div style="font-size:2rem; font-weight:900; color:var(--text-color); margin-bottom:4px;">+120</div>
             <div style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">دورة تعليمية وملخص مجاني</div>
           </div>
 
@@ -112,5 +112,5 @@ export default class AboutView {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }
