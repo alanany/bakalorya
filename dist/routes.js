@@ -97,8 +97,10 @@ router.get("/public/settings", PlatformSettingController_1.PlatformSettingContro
 router.get("/curriculum/grades", CurriculumController_1.CurriculumController.getGrades);
 router.get("/curriculum/subjects", CurriculumController_1.CurriculumController.getSubjects);
 router.get("/curriculum/subjects/:subjectId/groups", CurriculumController_1.CurriculumController.getSubjectGroups);
+router.get("/curriculum/courses/:subjectId/groups", CurriculumController_1.CurriculumController.getSubjectGroups);
 router.get("/landing/explore", CurriculumController_1.CurriculumController.getLandingExplore);
 // Course Group Batches & Cohorts
+router.post("/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController_1.CourseGroupController.getCourseGroups);
 router.post("/courses/:courseId/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.put("/groups/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.updateGroup);
@@ -112,6 +114,10 @@ router.post("/groups/:id/announcements", auth_1.authMiddleware, (0, auth_1.requi
 router.delete("/groups/:id/announcements/:announcementId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.deleteGroupAnnouncement);
 router.post("/groups/:id/videos", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.uploadGroupVideo);
 router.delete("/groups/:id/videos/:videoId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.deleteGroupVideo);
+router.post("/groups/:id/lessons", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.addGroupLesson);
+router.post("/groups/:id/lessons/import-from-course", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.importCourseLessons);
+router.put("/groups/:id/lessons/:lessonId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.updateGroupLesson);
+router.delete("/groups/:id/lessons/:lessonId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.deleteGroupLesson);
 router.post("/groups/:id/assignments", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroupAssignment);
 router.post("/groups/:id/resources", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.uploadGroupResource);
 router.delete("/groups/:id/resources/:resourceId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.deleteGroupResource);
@@ -124,7 +130,7 @@ router.put("/admin/settings", auth_1.authMiddleware, (0, auth_1.requireRole)(["a
 // Courses & Lessons (Course Instructor capability enforced)
 router.get("/courses", CourseController_1.CourseController.getAll);
 router.get("/courses/:id", CourseController_1.CourseController.getOne);
-router.post("/courses", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.create);
+router.post("/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CourseController_1.CourseController.create);
 router.put("/courses/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.update);
 router.delete("/courses/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.deleteCourse);
 router.post("/courses/:id/submit-for-review", auth_1.authMiddleware, (0, auth_1.requireCapability)("COURSE_INSTRUCTOR"), CourseController_1.CourseController.submitForReview);
@@ -284,6 +290,9 @@ router.patch("/admin/users/:id/role", auth_1.authMiddleware, (0, auth_1.requireR
 router.delete("/admin/users/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.deleteUser);
 router.get("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getCourses);
 router.post("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.createCourse);
+router.put("/admin/courses/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.updateCourse);
+router.post("/admin/courses/:id/assign-teacher", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.assignTeacher);
+router.post("/admin/courses/:id/duplicate", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.duplicateCourse);
 router.delete("/admin/courses/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.deleteCourse);
 router.get("/admin/enrollments", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getEnrollments);
 router.post("/admin/enrollments/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.approveEnrollment);

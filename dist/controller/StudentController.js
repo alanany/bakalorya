@@ -171,9 +171,17 @@ class StudentController {
             if (!enrollment) {
                 return res.status(404).json({ error: "Student is not enrolled in this course." });
             }
-            const lessonCount = await lessonRepository.count({
-                where: { course: { id: courseId } }
-            });
+            let lessonCount = 0;
+            if (enrollment.group?.id) {
+                lessonCount = await lessonRepository.count({
+                    where: { group: { id: enrollment.group.id } }
+                });
+            }
+            if (lessonCount === 0) {
+                lessonCount = await lessonRepository.count({
+                    where: { course: { id: courseId } }
+                });
+            }
             if (lessonCount === 0) {
                 return res.status(400).json({ error: "Course has no lessons." });
             }

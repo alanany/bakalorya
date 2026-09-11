@@ -2,6 +2,8 @@ import { Response } from "express";
 import { AppDataSource } from "../data-source";
 import { CourseGroup } from "../entity/CourseGroup";
 import { Course } from "../entity/Course";
+import { Subject } from "../entity/Subject";
+import { Grade } from "../entity/Grade";
 import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { User } from "../entity/User";
@@ -25,56 +27,54 @@ export class CourseGroupController {
 
       const groups = await groupRepo.find({
         where: { course: { id: courseId } },
-        relations: ["teacher", "course"],
-        order: { createdAt: "ASC" }
+        relations: ["course", "teacher", "enrollments"],
       });
 
-      const groupsWithStats = await Promise.all(
-        groups.map(async (group) => {
-          const enrolledCount = await enrollmentRepo.count({
-            where: {
-              group: { id: group.id },
-              status: "active"
-            }
-          });
+      const result = groups.map(g => {
+        const enrolledCount = (g.enrollments || []).filter(e => !e.status || e.status === "active").length;
+        const availableSeats = Math.max(0, g.maxStudents - enrolledCount);
+        const isFull = enrolledCount >= g.maxStudents;
+        return {
+          id: g.id,
+          name: g.name,
+          description: g.description,
+          scheduleDays: g.scheduleDays,
+          scheduleTime: g.scheduleTime,
+          scheduleText: g.scheduleText,
+          maxStudents: g.maxStudents,
+          enrolledCount,
+          availableSeats,
+          isFull,
+          meetingLink: g.meetingLink,
+          status: isFull ? "FULL" : g.status,
+          startDate: g.startDate,
+          endDate: g.endDate,
+          totalSessions: g.totalSessions,
+          sessionDuration: g.sessionDuration,
+          sessionPrice: g.sessionPrice,
+          monthlyPrice: g.monthlyPrice,
+          billingCycle: g.billingCycle,
+          teacher: g.teacher ? { id: g.teacher.id, name: g.teacher.name, avatar: g.teacher.avatar } : null
+        };
+      });
 
-          const pendingCount = await enrollmentRepo.count({
-            where: {
-              group: { id: group.id },
-              status: "pending"
-            }
-          });
-
-          const totalOccupied = enrolledCount + pendingCount;
-          const maxSeats = group.maxStudents || 20;
-          const availableSeats = Math.max(0, maxSeats - totalOccupied);
-          const isFull = totalOccupied >= maxSeats;
-
-          return {
-            ...group,
-            enrolledCount: totalOccupied,
-            activeCount: enrolledCount,
-            pendingCount: pendingCount,
-            availableSeats,
-            isFull,
-            status: isFull ? "FULL" : group.status
-          };
-        })
-      );
-
-      return res.status(200).json(groupsWithStats);
+      return res.status(200).json(result);
     } catch (err: any) {
       console.error("Error fetching course groups:", err);
       return res.status(500).json({ error: "Failed to fetch course groups." });
     }
   }
 
-  // POST /courses/:courseId/groups
+  // POST /courses/:courseId/groups or POST /groups
   static async createGroup(req: AuthRequest, res: Response) {
     try {
-      const { courseId } = req.params;
-      let { 
-        name, 
+      let { courseId } = req.params;
+      if (!courseId) courseId = req.body.courseId;
+      const { 
+        subjectId,
+        gradeId,
+        name: rawName, 
+        description,
         scheduleDays, 
         scheduleTime, 
         scheduleText, 
@@ -94,6 +94,7 @@ export class CourseGroupController {
       const scheduleTimeStr = scheduleTime || "";
       const scheduleTextStr = scheduleText || `${scheduleDaysStr} ${scheduleTimeStr}`.trim() || "يحدد لاحقاً";
 
+      let name = rawName;
       if (!name || !name.trim()) {
         name = `مجموعة ${scheduleDaysStr || 'الأسبوعية'} (${scheduleTimeStr || 'مسائي'})`.trim();
       }
@@ -101,17 +102,52 @@ export class CourseGroupController {
       const courseRepo = AppDataSource.getRepository(Course);
       const groupRepo = AppDataSource.getRepository(CourseGroup);
       const userRepo = AppDataSource.getRepository(User);
+      const subjectRepo = AppDataSource.getRepository(Subject);
+      const gradeRepo = AppDataSource.getRepository(Grade);
 
-      const course = await courseRepo.findOne({
-        where: { id: courseId },
-        relations: ["teacher"]
-      });
-
-      if (!course) {
-        return res.status(404).json({ error: "Course not found." });
+      let course: Course | null = null;
+      if (courseId && courseId !== "auto" && courseId !== "undefined") {
+        course = await courseRepo.findOne({
+          where: { id: courseId },
+          relations: ["teacher", "subject", "grade"]
+        });
       }
 
-      // Check authorization (allow admin or any teacher to open groups under published courses)
+      if (!course && subjectId) {
+        const subject = await subjectRepo.findOne({
+          where: { id: subjectId },
+          relations: ["grade"]
+        });
+
+        if (subject) {
+          const grade = gradeId ? await gradeRepo.findOneBy({ id: gradeId }) : subject.grade;
+          
+          course = await courseRepo.findOne({
+            where: grade ? { subject: { id: subject.id }, grade: { id: grade.id } } : { subject: { id: subject.id } },
+            relations: ["teacher", "subject", "grade"]
+          });
+
+          if (!course) {
+            course = new Course();
+            course.title = `${subject.name} - ${grade?.name || ''}`.trim();
+            course.description = `مقرر ومجموعات ${subject.name} لطلاب ${grade?.name || 'المرحلة'}`;
+            course.category = subject.name;
+            course.degree = grade?.stage || "PRIMARY";
+            course.grade = grade || null;
+            course.subject = subject;
+            course.status = "PUBLISHED";
+            course.price = 320;
+            course.isFree = false;
+            course = await courseRepo.save(course);
+          }
+        }
+      }
+
+      if (!course) {
+        return res.status(404).json({ error: "تعذر تحديد المادة الدراسية أو المقرر للمجموعة." });
+      }
+
+      // Check authorization (allow admin or any teacher to open groups)
       if (req.user!.role !== "admin" && req.user!.role !== "teacher") {
         return res.status(403).json({ error: "Only teachers or admins can create course groups." });
       }
@@ -121,18 +157,17 @@ export class CourseGroupController {
         : (course.teacher || (await userRepo.findOneBy({ id: req.user!.id })));
       const isAdmin = req.user!.role === "admin";
 
-      // If non-admin (Teacher), enforce platform defaults and PENDING_APPROVAL status
-      // Teacher gets paid BY HOUR (not multiplied by students count)
       const defaultTeacherHourly = teacher?.hourlyRate || 100;
       const parsedTeacherHourlyRate = isAdmin && req.body.teacherHourlyRate !== undefined ? parseFloat(req.body.teacherHourlyRate) : defaultTeacherHourly;
       const parsedStudentHourlyRate = isAdmin && req.body.studentHourlyRate !== undefined ? parseFloat(req.body.studentHourlyRate) : 40;
-      const parsedSessionPrice = isAdmin && sessionPrice !== undefined ? parseFloat(sessionPrice) : parsedStudentHourlyRate;
-      const parsedMonthlyPrice = isAdmin && monthlyPrice !== undefined ? parseFloat(monthlyPrice) : (parsedSessionPrice * 8);
-      const parsedMaxStudents = isAdmin && maxStudents !== undefined ? parseInt(maxStudents, 10) : 25;
+      const parsedSessionPrice = sessionPrice !== undefined ? parseFloat(sessionPrice) : parsedStudentHourlyRate;
+      const parsedMonthlyPrice = monthlyPrice !== undefined ? parseFloat(monthlyPrice) : (parsedSessionPrice * 8);
+      const parsedMaxStudents = maxStudents !== undefined ? parseInt(maxStudents, 10) : 25;
       const parsedCommission = isAdmin && platformCommissionPercent !== undefined ? parseFloat(platformCommissionPercent) : 50;
 
       const group = new CourseGroup();
       group.name = name;
+      group.description = description || course.description || "";
       group.course = course;
       group.teacher = teacher;
       group.scheduleDays = scheduleDaysStr;
@@ -150,6 +185,7 @@ export class CourseGroupController {
       group.startDate = startDate ? new Date(startDate) : null;
       group.endDate = endDate ? new Date(endDate) : null;
       group.meetingLink = meetingLink || course.meetingLink || "";
+      // Groups created by teachers are submitted for admin review and approval
       group.status = isAdmin ? "OPEN" : "PENDING_APPROVAL";
 
       const saved = await groupRepo.save(group);
@@ -302,6 +338,7 @@ export class CourseGroupController {
       const { id } = req.params;
       const { 
         name,
+        description,
         teacherId,
         scheduleDays,
         scheduleTime,
@@ -330,6 +367,10 @@ export class CourseGroupController {
 
       if (name && typeof name === "string" && name.trim()) {
         group.name = name.trim();
+      }
+
+      if (description !== undefined) {
+        group.description = description;
       }
 
       if (teacherId) {
@@ -401,6 +442,7 @@ export class CourseGroupController {
       const { id } = req.params;
       const { 
         name, 
+        description,
         scheduleDays, 
         scheduleTime, 
         scheduleText, 
@@ -437,6 +479,7 @@ export class CourseGroupController {
       }
 
       if (name !== undefined) group.name = name;
+      if (description !== undefined) group.description = description;
       if (scheduleDays !== undefined) group.scheduleDays = scheduleDays;
       if (scheduleTime !== undefined) group.scheduleTime = scheduleTime;
       if (scheduleText !== undefined) group.scheduleText = scheduleText;
@@ -1312,14 +1355,31 @@ export class CourseGroupController {
         order: { dueDate: "DESC", createdAt: "DESC" }
       });
 
-      // Fetch lessons / videos strictly for this group (sorted newer first)
+      // Fetch lessons / curriculum units strictly for this specific group (each group has its own isolated curriculum)
       const lessonRepo = AppDataSource.getRepository(Lesson);
-      const groupLessons = await lessonRepo.find({
+      const allLessons = await lessonRepo.find({
         where: { group: { id: group.id } },
-        order: { createdAt: "DESC" }
+        order: { order: "ASC", createdAt: "ASC" }
       });
 
-      const videos = (groupLessons || [])
+      const lessons = allLessons.map((l: any) => ({
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        videoUrl: l.videoUrl,
+        duration: l.duration || "15",
+        chapter: l.chapter || "الوحدة الأولى",
+        photo: l.photo,
+        notes: l.notes,
+        resourceUrl: l.resourceUrl,
+        resourceTitle: l.resourceTitle,
+        order: l.order || 0,
+        isGroupSpecific: !!(l.group && l.group.id === group.id),
+        createdAt: l.createdAt,
+        updatedAt: l.updatedAt
+      }));
+
+      const videos = allLessons
         .filter((l: any) => l.videoUrl && l.videoUrl.trim().length > 0)
         .map((l: any) => ({
           id: l.id,
@@ -1416,6 +1476,7 @@ export class CourseGroupController {
         group: {
           id: group.id,
           name: group.name,
+          description: group.description || group.course?.description || "",
           scheduleDays: group.scheduleDays,
           scheduleTime: group.scheduleTime,
           scheduleText: group.scheduleText,
@@ -1445,6 +1506,7 @@ export class CourseGroupController {
           avatar: teacherData.avatar,
           phone: (isAdmin || isTeacher) ? teacherData.phone : undefined
         } : null,
+        lessons, // All curriculum lessons and units
         videos, // Videos uploaded by teacher sorted newer first
         sessions: sessionsWithAttendance,
         assignments: assignmentsWithSubmissions,
@@ -1559,6 +1621,207 @@ export class CourseGroupController {
       return res.status(200).json({ message: "تم حذف الفيديو بنجاح." });
     } catch (err: any) {
       return res.status(500).json({ error: "فشل حذف الفيديو." });
+    }
+  }
+
+  // POST /groups/:id/lessons - Add a unit / lesson to the group curriculum
+  static async addGroupLesson(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, description, chapter, duration, videoUrl, photo, notes, resourceUrl, resourceTitle, order } = req.body;
+
+      if (!title || !title.trim()) {
+        return res.status(400).json({ error: "عنوان الدرس مطلوب." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group || !group.course) {
+        return res.status(404).json({ error: "المجموعة أو الدورة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بإضافة دروس لهذه المجموعة." });
+      }
+
+      const lesson = new Lesson();
+      lesson.title = title.trim();
+      lesson.description = description || null;
+      lesson.videoUrl = videoUrl ? videoUrl.trim() : "";
+      lesson.duration = duration || "15";
+      lesson.chapter = (chapter && chapter.trim()) ? chapter.trim() : "الوحدة الأولى";
+      lesson.order = typeof order === "number" ? order : 0;
+      lesson.photo = photo || null;
+      lesson.notes = notes || null;
+      lesson.resourceUrl = resourceUrl || null;
+      lesson.resourceTitle = resourceTitle || null;
+      lesson.course = group.course;
+      lesson.group = group;
+
+      const saved = await lessonRepo.save(lesson);
+      return res.status(201).json({ message: "تم إضافة الدرس إلى الخطة الدراسية بنجاح! 📚✅", lesson: saved });
+    } catch (err: any) {
+      console.error("Error adding group lesson:", err);
+      return res.status(500).json({ error: "فشل إضافة الدرس." });
+    }
+  }
+
+  // PUT /groups/:id/lessons/:lessonId - Update group lesson
+  static async updateGroupLesson(req: AuthRequest, res: Response) {
+    try {
+      const { id, lessonId } = req.params;
+      const { title, description, chapter, duration, videoUrl, resourceUrl, resourceTitle, notes, order } = req.body;
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group) return res.status(404).json({ error: "المجموعة غير موجودة." });
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بتعديل الدروس." });
+      }
+
+      const lesson = await lessonRepo.findOne({
+        where: { id: lessonId },
+        relations: ["group"]
+      });
+
+      if (!lesson || (lesson.group && lesson.group.id !== group.id)) {
+        return res.status(404).json({ error: "الدرس غير موجود في هذه المجموعة." });
+      }
+
+      if (title !== undefined) lesson.title = title.trim();
+      if (description !== undefined) lesson.description = description;
+      if (chapter !== undefined) lesson.chapter = chapter.trim() || "الوحدة الأولى";
+      if (duration !== undefined) lesson.duration = duration;
+      if (videoUrl !== undefined) lesson.videoUrl = videoUrl ? videoUrl.trim() : "";
+      if (resourceUrl !== undefined) lesson.resourceUrl = resourceUrl;
+      if (resourceTitle !== undefined) lesson.resourceTitle = resourceTitle;
+      if (notes !== undefined) lesson.notes = notes;
+      if (order !== undefined) lesson.order = order;
+
+      const saved = await lessonRepo.save(lesson);
+      return res.status(200).json({ message: "تم تحديث بيانات الدرس بنجاح! 💾", lesson: saved });
+    } catch (err: any) {
+      console.error("Error updating group lesson:", err);
+      return res.status(500).json({ error: "فشل تحديث الدرس." });
+    }
+  }
+
+  // DELETE /groups/:id/lessons/:lessonId - Delete group lesson
+  static async deleteGroupLesson(req: AuthRequest, res: Response) {
+    try {
+      const { id, lessonId } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group) return res.status(404).json({ error: "المجموعة غير موجودة." });
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بحذف الدروس." });
+      }
+
+      const lesson = await lessonRepo.findOne({
+        where: { id: lessonId },
+        relations: ["group"]
+      });
+
+      if (!lesson || (lesson.group && lesson.group.id !== group.id)) {
+        return res.status(404).json({ error: "الدرس غير موجود في هذه المجموعة." });
+      }
+
+      await lessonRepo.remove(lesson);
+      return res.status(200).json({ message: "تم حذف الدرس من خطة المجموعة بنجاح. 🗑️" });
+    } catch (err: any) {
+      console.error("Error deleting group lesson:", err);
+      return res.status(500).json({ error: "فشل حذف الدرس." });
+    }
+  }
+
+  // POST /groups/:id/lessons/import-from-course - Copy base course lessons to this group as independent lessons
+  static async importCourseLessons(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const lessonRepo = AppDataSource.getRepository(Lesson);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group || !group.course) {
+        return res.status(404).json({ error: "المجموعة أو الدورة غير موجودة." });
+      }
+
+      const isTeacher = group.teacher?.id === req.user?.id || group.course?.teacher?.id === req.user?.id;
+      const isAdmin = req.user?.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بنسخ المنهج لهذه المجموعة." });
+      }
+
+      // Fetch base course lessons where group IS NULL
+      const baseLessons = await lessonRepo.find({
+        where: { course: { id: group.course.id }, group: IsNull() },
+        order: { order: "ASC" }
+      });
+
+      if (baseLessons.length === 0) {
+        return res.status(400).json({ error: "لا توجد وحدات أو دروس أساسية في الكورس لنسخها." });
+      }
+
+      const newLessons: Lesson[] = [];
+      for (const base of baseLessons) {
+        const copy = new Lesson();
+        copy.title = base.title;
+        copy.description = base.description;
+        copy.videoUrl = base.videoUrl;
+        copy.duration = base.duration;
+        copy.chapter = base.chapter;
+        copy.order = base.order;
+        copy.photo = base.photo;
+        copy.notes = base.notes;
+        copy.resourceUrl = base.resourceUrl;
+        copy.resourceTitle = base.resourceTitle;
+        copy.course = group.course;
+        copy.group = group;
+        newLessons.push(copy);
+      }
+
+      await lessonRepo.save(newLessons);
+      return res.status(200).json({
+        message: `تم نسخ واستيراد ${newLessons.length} درس بنجاح إلى خطة هذه المجموعة! 📚✅`,
+        importedCount: newLessons.length
+      });
+    } catch (err: any) {
+      console.error("Error importing course lessons:", err);
+      return res.status(500).json({ error: "فشل استيراد دروس الكورس." });
     }
   }
 

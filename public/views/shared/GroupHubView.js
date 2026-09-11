@@ -8,7 +8,10 @@ export default class GroupHubView {
     this.container = container;
     this.groupId = groupId;
     this.hubData = null;
-    this.activeTab = "videos"; // 'videos', 'sessions', 'assignments', 'announcements', 'attendance', 'roster'
+    this.activeTab = "curriculum"; // 'curriculum', 'videos', 'sessions', 'assignments', 'announcements', 'attendance', 'roster'
+    this.curriculumSearchQuery = "";
+    this.curriculumChapterFilter = "all";
+    this.collapsedUnits = new Set();
     this.sessionFilter = "all"; // 'all', 'upcoming', 'completed'
     this.videoSearchQuery = "";
     this.videoChapterFilter = "all";
@@ -63,7 +66,7 @@ export default class GroupHubView {
   renderUI() {
     if (!this.hubData) return;
 
-    const { group, course, teacher, videos = [], sessions = [], assignments = [], resources = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
+    const { group, course, teacher, lessons = [], videos = [], sessions = [], assignments = [], resources = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
     const now = new Date();
 
     // Find Live Session or Next Upcoming Session
@@ -87,6 +90,15 @@ export default class GroupHubView {
     const backTitle = isTeacher ? 'لوحة مجموعات المعلم' : 'مجموعاتي الدراسية';
     const courseCoverImg = course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200';
 
+    const maxSeats = group.maxStudents || 25;
+    const enrolledCount = students.length || 0;
+    const availableSeats = Math.max(0, maxSeats - enrolledCount);
+    const sessionDuration = group.sessionDuration || 60;
+    const totalSessions = group.totalSessions || 24;
+    const sessionPrice = group.sessionPrice || group.studentHourlyRate || 40;
+    const monthlyPrice = group.monthlyPrice || (sessionPrice * 8);
+    const groupDescription = group.description || course?.description || 'مجموعة دراسية تفاعلية لمتابعة وشرح المنهج وحل التدريبات والواجبات الدورية مع الأستاذ.';
+
     this.container.innerHTML = `
       <div class="group-hub-wrapper" style="min-height:100vh; background:var(--bg-app); padding:20px 8px 80px; font-family:'Cairo', sans-serif; box-sizing:border-box;">
         <div style="max-width:1380px; width:100%; margin:0 auto; padding:0 8px; display:flex; flex-direction:column; gap:20px; box-sizing:border-box;">
@@ -103,67 +115,95 @@ export default class GroupHubView {
             </div>
           </div>
 
-          <!-- Hero Classroom Card with Course Header Photo -->
+          <!-- Hero Classroom Card: Course Details & Group Summary Header -->
           <div class="glass-card" style="border-radius:24px; border:1px solid var(--border-color); background:var(--bg-card); overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
             
-            <!-- Banner Top with Course Photo Cover -->
-            <div style="position:relative; width:100%; min-height:230px; background-image:url('${courseCoverImg}'); background-size:cover; background-position:center; overflow:hidden;">
-              <!-- Dark Blur Gradient Overlay for Readability -->
-              <div style="position:absolute; inset:0; background:linear-gradient(135deg, rgba(15,23,42,0.88) 0%, rgba(30,27,75,0.82) 50%, rgba(15,23,42,0.92) 100%); backdrop-filter:blur(3px);"></div>
+            <!-- Top Identity Banner / Course Header -->
+            <div style="padding:24px 28px 20px; background:linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(229,29,116,0.04) 50%, rgba(16,185,129,0.04) 100%); border-bottom:1px solid var(--border-color);">
               
-              <div style="position:relative; z-index:2; padding:30px 28px 24px; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+              <!-- Top Badges & Actions Row -->
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                  ${course?.subject ? `
+                    <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(229,29,116,0.12); color:#e51d74; border:1px solid rgba(229,29,116,0.25);">
+                      ${course.subject.name}
+                    </span>
+                  ` : ''}
+                  ${course?.grade ? `
+                    <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.25);">
+                      ${course.grade.name}
+                    </span>
+                  ` : ''}
+                  <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(99,102,241,0.12); color:var(--primary); border:1px solid rgba(99,102,241,0.25);">
+                    📚 ${course?.title || 'المقرر التعليمي'}
+                  </span>
+                  <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(16,185,129,0.12); color:#10b981;">
+                    🟢 مجموعة نشطة
+                  </span>
+                </div>
+
+                ${(isTeacher || isAdmin) ? `
+                  <button id="open-edit-group-summary-btn" class="btn-secondary"
+                    style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:14px; font-weight:800; font-size:0.82rem; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); color:var(--primary); cursor:pointer; transition:all 0.2s;"
+                    onmouseover="this.style.background='var(--primary)'; this.style.color='#fff';"
+                    onmouseout="this.style.background='rgba(99,102,241,0.08)'; this.style.color='var(--primary)';">
+                    <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
+                    <span>تعديل ملخص وبيانات المجموعة ✏️</span>
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- Main Info Flex (Left: Title + Teacher + Course Thumbnail; Right: Quick Specs) -->
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
                 
-                <div style="display:flex; align-items:center; gap:20px; flex:1; min-width:300px;">
-                  <!-- Course Thumbnail Photo -->
-                  <div style="width:86px; height:86px; min-width:86px; border-radius:20px; overflow:hidden; border:2px solid rgba(255,255,255,0.3); box-shadow:0 8px 24px rgba(0,0,0,0.35); background:#0f172a;">
+                <div style="display:flex; align-items:center; gap:18px; flex:1; min-width:300px;">
+                  <!-- Course Photo Thumbnail -->
+                  <div style="width:76px; height:76px; min-width:76px; border-radius:18px; overflow:hidden; border:2px solid var(--border-color); box-shadow:0 6px 18px rgba(0,0,0,0.08); background:var(--bg-app); flex-shrink:0;">
                     <img src="${courseCoverImg}" alt="${course?.title || 'صورة الكورس'}" style="width:100%; height:100%; object-fit:cover;">
                   </div>
 
-                  <div>
-                    <!-- Subject & Grade & Course Badges -->
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                      ${course?.subject ? `
-                        <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(229,29,116,0.3); color:#fbcfe8; border:1px solid rgba(229,29,116,0.4); backdrop-filter:blur(8px);">
-                          ${course.subject.name}
-                        </span>
-                      ` : ''}
-                      ${course?.grade ? `
-                        <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(16,185,129,0.3); color:#a7f3d0; border:1px solid rgba(16,185,129,0.4); backdrop-filter:blur(8px);">
-                          ${course.grade.name}
-                        </span>
-                      ` : ''}
-                      <span style="font-size:0.75rem; font-weight:800; padding:4px 12px; border-radius:14px; background:rgba(99,102,241,0.3); color:#e0e7ff; border:1px solid rgba(99,102,241,0.4); backdrop-filter:blur(8px);">
-                        📚 ${course?.title || 'المقرر التعليمي'}
-                      </span>
-                    </div>
-
-                    <!-- Group Title -->
-                    <h1 style="font-size:clamp(1.4rem, 3.5vw, 2rem); font-weight:900; color:#ffffff; margin:0 0 10px; line-height:1.25; text-shadow:0 2px 10px rgba(0,0,0,0.6);">
+                  <div style="flex:1;">
+                    <h1 style="font-size:clamp(1.35rem, 3.2vw, 1.85rem); font-weight:900; color:var(--text-main); margin:0 0 8px 0; line-height:1.25;">
                       👥 ${group.name}
                     </h1>
 
-                    <!-- Schedule Text -->
-                    <div style="display:inline-flex; align-items:center; gap:8px; color:#e2e8f0; font-size:0.88rem; font-weight:700; background:rgba(0,0,0,0.35); padding:6px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(8px);">
-                      <i data-lucide="calendar" style="width:16px; height:16px; color:#a5b4fc;"></i>
-                      <span style="color:#cbd5e1;">مواعيد الحصص:</span>
-                      <span style="color:#ffffff; font-weight:800;">${group.scheduleText || `${group.scheduleDays || ''} ${group.scheduleTime || ''}`.trim() || 'مواعيد منتظمة'}</span>
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                      <!-- Teacher Pill -->
+                      <div style="display:inline-flex; align-items:center; gap:8px; background:var(--bg-app); padding:4px 12px 4px 6px; border-radius:20px; border:1px solid var(--border-color);">
+                        <img src="${teacher?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'}"
+                             alt="${teacher?.name || 'المعلم'}"
+                             style="width:26px; height:26px; border-radius:50%; object-fit:cover;">
+                        <span style="font-size:0.82rem; font-weight:800; color:var(--text-main);">أ/ ${teacher?.name || 'الأستاذ'}</span>
+                        <span style="font-size:0.72rem; color:var(--primary); font-weight:800;">(المعلم المشرف ⭐)</span>
+                      </div>
+
+                      <!-- Schedule Pill -->
+                      <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); color:var(--primary); padding:5px 12px; border-radius:12px; font-size:0.82rem; font-weight:800;">
+                        <i data-lucide="calendar" style="width:14px; height:14px;"></i>
+                        <span>${group.scheduleText || `${group.scheduleDays || ''} ${group.scheduleTime || ''}`.trim() || 'مواعيد منتظمة'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Teacher Glass Card -->
-                <div style="display:flex; align-items:center; gap:14px; background:rgba(255,255,255,0.12); backdrop-filter:blur(14px); padding:12px 18px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); box-shadow:0 8px 24px rgba(0,0,0,0.25);">
-                  <img src="${teacher?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'}"
-                    alt="${teacher?.name || 'المعلم'}"
-                    style="width:48px; height:48px; border-radius:14px; object-fit:cover; border:2px solid rgba(255,255,255,0.4); box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-                  <div>
-                    <div style="font-size:0.75rem; font-weight:700; color:#cbd5e1;">المعلم المشرف:</div>
-                    <div style="font-size:0.95rem; font-weight:900; color:#ffffff;">${teacher?.name || 'الأستاذ'}</div>
-                    <div style="font-size:0.75rem; color:#a5b4fc; font-weight:800;">محاضر المادة الرسمي ⭐</div>
+                <!-- Quick Stats Pills -->
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                  <div style="background:var(--bg-app); padding:8px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:800; color:var(--text-main);">
+                    <i data-lucide="users" style="width:15px; height:15px; color:#e51d74;"></i>
+                    <span>${enrolledCount} / ${maxSeats} طالب</span>
+                  </div>
+                  <div style="background:var(--bg-app); padding:8px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:800; color:var(--text-main);">
+                    <i data-lucide="clock" style="width:15px; height:15px; color:var(--primary);"></i>
+                    <span>${sessionDuration} دقيقة / حصة</span>
+                  </div>
+                  <div style="background:var(--bg-app); padding:8px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:800; color:#d97706;">
+                    <i data-lucide="credit-card" style="width:15px; height:15px;"></i>
+                    <span>${monthlyPrice} ج.م. شهرياً</span>
                   </div>
                 </div>
 
               </div>
+
             </div>
 
             <!-- Live Session Alert Bar (If Live or Soon) -->
@@ -204,13 +244,14 @@ export default class GroupHubView {
 
             <!-- Sub-Navigation Tabs Bar -->
             <div style="display:flex; gap:6px; padding:8px 16px; background:var(--bg-app); border-bottom:1px solid var(--border-color); overflow-x:auto;">
-              ${this.renderTabButton("videos", "🎥 فيديوهات وشروحات المعلم", videos.length)}
-              ${this.renderTabButton("sessions", "📅 جدول وحصص المجموعة", sessions.length)}
-              ${this.renderTabButton("assignments", "📝 الواجبات والمهام", assignments.length)}
-              ${this.renderTabButton("resources", "📁 ملفات ومذكرات المجموعة", resources.length)}
-              ${this.renderTabButton("announcements", "📢 حائط الإعلانات", announcements.length)}
-              ${this.renderTabButton("attendance", "📊 سجل الحضور والتقييم")}
-              ${this.renderTabButton("roster", "👥 أعضاء المجموعة", students.length)}
+${this.renderTabButton("curriculum", "📖 المنهج", (this.hubData.lessons || []).length)}
+${this.renderTabButton("videos", "🎥 الفيديوهات", videos.length)}
+${this.renderTabButton("sessions", "📅 الحصص", sessions.length)}
+${this.renderTabButton("assignments", "📝 الواجبات", assignments.length)}
+${this.renderTabButton("resources", "📁 الملفات", resources.length)}
+${this.renderTabButton("announcements", "📢 الإعلانات", announcements.length)}
+${this.renderTabButton("attendance", "📊 الحضور")}
+${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
             </div>
 
           </div>
@@ -246,6 +287,8 @@ export default class GroupHubView {
 
   renderActiveTabContent() {
     switch (this.activeTab) {
+      case "curriculum":
+        return this.renderCurriculumTab();
       case "videos":
         return this.renderVideosTab();
       case "assignments":
@@ -262,6 +305,300 @@ export default class GroupHubView {
       default:
         return this.renderSessionsTab();
     }
+  }
+
+  // ── Tab: Curriculum (الوحدات والدروس والخطة التدريسية) ──
+  renderCurriculumTab() {
+    const { lessons = [], isTeacher, isAdmin } = this.hubData;
+    const canManage = isTeacher || isAdmin;
+
+    // Extract all unique units / chapters
+    const chaptersSet = new Set();
+    lessons.forEach(l => {
+      const ch = (l.chapter && l.chapter.trim()) || "الوحدة الأولى";
+      chaptersSet.add(ch);
+    });
+    if (chaptersSet.size === 0) {
+      chaptersSet.add("الوحدة الأولى");
+    }
+    const chapters = Array.from(chaptersSet);
+
+    // Filter lessons by query and chapter
+    const q = (this.curriculumSearchQuery || '').toLowerCase().trim();
+    const filteredLessons = lessons.filter(l => {
+      const title = (l.title || '').toLowerCase();
+      const desc = (l.description || '').toLowerCase();
+      const ch = (l.chapter || 'الوحدة الأولى');
+      const matchesQ = !q || title.includes(q) || desc.includes(q);
+      const matchesCh = !this.curriculumChapterFilter || this.curriculumChapterFilter === 'all' || ch === this.curriculumChapterFilter;
+      return matchesQ && matchesCh;
+    });
+
+    // Group filtered lessons by chapter
+    const grouped = {};
+    chapters.forEach(ch => { grouped[ch] = []; });
+    filteredLessons.forEach(l => {
+      const ch = (l.chapter && l.chapter.trim()) || "الوحدة الأولى";
+      if (!grouped[ch]) grouped[ch] = [];
+      grouped[ch].push(l);
+    });
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:20px;">
+
+        <!-- UNITS & LESSONS CURRICULUM SECTION -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          
+          <!-- Section Header & Actions Toolbar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div>
+              <h3 style="font-size:1.25rem; font-weight:900; color:var(--text-main); margin:0 0 4px 0; display:flex; align-items:center; gap:8px;">
+                <span>📚 خطة المنهج والدروس الخاصة بالمجموعة</span>
+                <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary);">
+                  ${lessons.length} درس
+                </span>
+              </h3>
+              <p style="font-size:0.84rem; color:var(--text-muted); margin:0;">
+                خطة تدريسية ووحدات دراسية مستقلة خاصة بطلاب هذه المجموعة فقط
+              </p>
+            </div>
+
+            <!-- Actions Bar for Teachers / Admins -->
+            ${canManage ? `
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button id="btn-open-add-unit" class="btn-secondary"
+                  style="display:inline-flex; align-items:center; gap:8px; padding:9px 18px; border-radius:14px; font-weight:800; font-size:0.85rem; cursor:pointer; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); color:var(--primary);">
+                  <i data-lucide="folder-plus" style="width:16px; height:16px;"></i>
+                  <span>+ إضافة وحدة دراسية 📖</span>
+                </button>
+                <button id="btn-open-add-lesson" class="btn-primary"
+                  style="display:inline-flex; align-items:center; gap:8px; padding:9px 20px; border-radius:14px; font-weight:900; font-size:0.85rem; cursor:pointer; box-shadow:0 4px 14px rgba(99,102,241,0.35);">
+                  <i data-lucide="plus-circle" style="width:16px; height:16px;"></i>
+                  <span>+ إضافة درس جديد للمنهج 📚</span>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Filters Bar -->
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <!-- Search -->
+            <div style="flex:1; min-width:240px; position:relative;">
+              <i data-lucide="search" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+              <input type="text" id="curriculum-search-input" value="${this.curriculumSearchQuery || ''}" placeholder="بحث في عناوين وتفاصيل الدروس..."
+                style="width:100%; padding:10px 38px 10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Chapter / Unit Filter -->
+            <div style="min-width:180px;">
+              <select id="curriculum-chapter-filter"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; cursor:pointer; box-sizing:border-box;">
+                <option value="all" ${this.curriculumChapterFilter === 'all' ? 'selected' : ''}>كل الوحدات الدراسية (${chapters.length})</option>
+                ${chapters.map(ch => `<option value="${ch}" ${this.curriculumChapterFilter === ch ? 'selected' : ''}>${ch}</option>`).join('')}
+              </select>
+            </div>
+
+            ${chapters.length > 0 ? `
+              <!-- Accordion Bulk Controls -->
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button id="btn-expand-all-units" class="btn-secondary" style="padding:9px 13px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="فتح كل الوحدات">
+                  <i data-lucide="chevrons-down" style="width:14px; height:14px;"></i>
+                  <span>توسيع الكل</span>
+                </button>
+                <button id="btn-collapse-all-units" class="btn-secondary" style="padding:9px 13px; border-radius:12px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="طي كل الوحدات">
+                  <i data-lucide="chevrons-up" style="width:14px; height:14px;"></i>
+                  <span>طي الكل</span>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Units & Lessons Container -->
+          ${lessons.length === 0 ? `
+            <div class="glass-card" style="text-align:center; padding:60px 24px; background:var(--bg-card); border-radius:20px; border:1px solid var(--border-color);">
+              <div style="width:68px; height:68px; border-radius:20px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <i data-lucide="book-open" style="width:34px; height:34px;"></i>
+              </div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-bottom:8px;">لا توجد وحدات أو دروس مضافة لهذه المجموعة بعد</h3>
+              <p style="color:var(--text-muted); font-size:0.88rem; max-width:520px; margin:0 auto 20px; line-height:1.6;">
+                لكل مجموعة خطتها التدريسية المستقلة. ابدأ بإضافة الوحدات والدروس الخاصة بطلاب هذه المجموعة أو استيراد منهج الكورس الأساسي.
+              </p>
+              ${canManage ? `
+                <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+                  <button id="btn-open-add-unit-empty" class="btn-secondary" style="padding:9px 20px; border-radius:12px; font-weight:800; font-size:0.85rem;">
+                    + إضافة أول وحدة 📖
+                  </button>
+                  <button id="btn-open-add-lesson-empty" class="btn-primary" style="padding:9px 22px; border-radius:12px; font-weight:900; font-size:0.85rem;">
+                    + إضافة أول درس 📚
+                  </button>
+                  <button id="btn-import-course-curriculum" class="btn-secondary" style="padding:9px 20px; border-radius:12px; font-weight:800; font-size:0.85rem; border-color:rgba(99,102,241,0.3); color:var(--primary);" title="نسخ المنهج من الكورس الأساسي لهذه المجموعة">
+                    📋 استيراد منهج الكورس الأساسي
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          ` : (
+        chapters.map((ch, chIdx) => {
+          const chLessons = grouped[ch] || [];
+          if (this.curriculumChapterFilter !== 'all' && this.curriculumChapterFilter !== ch) return '';
+          if (this.curriculumSearchQuery && chLessons.length === 0) return '';
+
+          const totalUnitMinutes = chLessons.reduce((sum, l) => sum + (parseInt(l.duration, 10) || 15), 0);
+          const isCollapsed = this.collapsedUnits.has(ch);
+
+          return `
+                <div class="glass-card unit-accordion-item" data-chapter="${ch}" style="background:var(--bg-card); border-radius:20px; border:1px solid var(--border-color); overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.02); margin-bottom:16px; transition:border-color 0.2s, box-shadow 0.2s;">
+                  
+                  <!-- Unit Header Bar (Accordion Trigger) -->
+                  <div class="unit-accordion-header" data-chapter="${ch}"
+                    style="padding:16px 22px; background:linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(229,29,116,0.02) 100%); ${isCollapsed ? '' : 'border-bottom:1px solid var(--border-color);'} display:flex; justify-content:space-between; align-items:center; gap:14px; cursor:pointer; user-select:none; transition:background 0.2s;">
+                    
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <div class="unit-folder-icon" style="width:38px; height:38px; border-radius:10px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900; flex-shrink:0;">
+                        <i data-lucide="${isCollapsed ? 'folder' : 'folder-open'}" style="width:19px; height:19px;"></i>
+                      </div>
+                      <div>
+                        <h4 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0;">${ch}</h4>
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; margin-top:2px;">
+                          <span>${chLessons.length} دروس</span>
+                          ${totalUnitMinutes > 0 ? `<span> • إجمالي ${totalUnitMinutes} دقيقة</span>` : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      ${canManage ? `
+                        <button class="btn-add-lesson-to-unit btn-secondary" data-chapter="${ch}"
+                          style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.78rem; cursor:pointer;">
+                          <i data-lucide="plus" style="width:13px; height:13px;"></i>
+                          <span>إضافة درس</span>
+                        </button>
+                      ` : ''}
+
+                      <!-- Accordion Indicator Button -->
+                      <div class="unit-accordion-toggle-btn"
+                        style="width:34px; height:34px; border-radius:10px; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted); display:flex; align-items:center; justify-content:center; transition:all 0.2s;"
+                        title="${isCollapsed ? 'توسيع الوحدة' : 'طي الوحدة'}">
+                        <i class="unit-toggle-icon" data-lucide="${isCollapsed ? 'chevron-down' : 'chevron-up'}" style="width:18px; height:18px;"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Unit Lessons List (Accordion Body) -->
+                  <div class="unit-accordion-body" style="padding:14px 18px; display:${isCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:10px; background:var(--bg-card);">
+                    ${chLessons.length === 0 ? `
+                      <div style="text-align:center; padding:24px 16px; color:var(--text-muted); font-size:0.85rem; font-weight:700;">
+                        لا توجد دروس مطابقة في هذه الوحدة.
+                      </div>
+                    ` : (
+              chLessons.map((l, lIdx) => {
+                const hasVideo = !!(l.videoUrl && l.videoUrl.trim());
+                const hasResource = !!(l.resourceUrl && l.resourceUrl.trim());
+                const hasNotes = !!(l.notes && l.notes.trim());
+
+                return `
+                          <div class="lesson-row-card"
+                            style="padding:14px 18px; border-radius:14px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; transition:all 0.2s;"
+                            onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                            
+                            <!-- Left: Order & Title & Tags -->
+                            <div style="display:flex; align-items:flex-start; gap:14px; flex:1; min-width:280px;">
+                              <div style="width:32px; height:32px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.85rem; flex-shrink:0;">
+                                ${l.order || (lIdx + 1)}
+                              </div>
+
+                              <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                                  <h5 class="btn-view-lesson-details" data-id="${l.id}" style="font-size:0.96rem; font-weight:900; color:var(--text-main); margin:0; cursor:pointer;" title="عرض تفاصيل الدرس">
+                                    ${l.title}
+                                  </h5>
+                                  <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(16,185,129,0.1); color:#10b981;">
+                                    ⏱️ ${l.duration || '20'} دقيقة
+                                  </span>
+                                </div>
+
+                                ${l.description ? `
+                                  <p style="font-size:0.82rem; color:var(--text-muted); margin:0 0 6px 0; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                                    ${l.description}
+                                  </p>
+                                ` : ''}
+
+                                <!-- Tags row -->
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                  ${hasVideo ? `
+                                    <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(239,68,68,0.1); color:#ef4444; display:inline-flex; align-items:center; gap:3px;">
+                                      <i data-lucide="play-circle" style="width:11px; height:11px;"></i>
+                                      <span>فيديو شرح</span>
+                                    </span>
+                                  ` : ''}
+                                  ${hasResource ? `
+                                    <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-flex; align-items:center; gap:3px;">
+                                      <i data-lucide="paperclip" style="width:11px; height:11px;"></i>
+                                      <span>${l.resourceTitle || 'مذكرة مرفقة'}</span>
+                                    </span>
+                                  ` : ''}
+                                  ${hasNotes ? `
+                                    <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(245,158,11,0.1); color:#d97706; display:inline-flex; align-items:center; gap:3px;">
+                                      <i data-lucide="lightbulb" style="width:11px; height:11px;"></i>
+                                      <span>إرشادات الأستاذ</span>
+                                    </span>
+                                  ` : ''}
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Right: Action Buttons -->
+                            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                              <button class="btn-view-lesson-details btn-secondary" data-id="${l.id}"
+                                style="padding:7px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                                <i data-lucide="info" style="width:14px; height:14px;"></i>
+                                <span>التفاصيل 🔍</span>
+                              </button>
+
+                              ${hasVideo ? `
+                                <button class="btn-watch-lesson-video btn-primary" data-id="${l.id}"
+                                  style="padding:7px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, #ef4444, #dc2626); border:none; color:#fff;">
+                                  <i data-lucide="play" style="width:13px; height:13px;"></i>
+                                  <span>الشرح 🎬</span>
+                                </button>
+                              ` : ''}
+
+                              ${hasResource ? `
+                                <a href="${l.resourceUrl}" target="_blank" rel="noopener" class="btn-secondary"
+                                  style="padding:7px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="${l.resourceTitle || 'المذكرة'}">
+                                  <i data-lucide="download" style="width:13px; height:13px;"></i>
+                                  <span>الملف 📎</span>
+                                </a>
+                              ` : ''}
+
+                              ${canManage ? `
+                                <button class="btn-edit-lesson btn-secondary" data-id="${l.id}"
+                                  style="padding:7px 10px; border-radius:10px; cursor:pointer;" title="تعديل الدرس">
+                                  <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
+                                </button>
+
+                                <button class="btn-delete-lesson btn-secondary" data-id="${l.id}" data-title="${l.title}"
+                                  style="padding:7px 10px; border-radius:10px; color:var(--error); border-color:rgba(239,68,68,0.25); background:rgba(239,68,68,0.06); cursor:pointer;" title="حذف الدرس من المنهج">
+                                  <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                                </button>
+                              ` : ''}
+                            </div>
+
+                          </div>
+                        `;
+              }).join('')
+            )}
+                  </div>
+
+                </div>
+              `;
+        }).join('')
+      )}
+
+        </div>
+
+      </div>
+    `;
   }
 
   // ── Tab 0: Videos (Sorted Newer First) ─────────────────────────────────
@@ -376,13 +713,13 @@ export default class GroupHubView {
         ` : `
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
             ${filteredVideos.map((v, idx) => {
-              const ytId = getYouTubeId(v.videoUrl);
-              const thumbUrl = ytId
-                ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
-                : (v.photo || this.hubData.course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600');
-              const relDate = formatRelativeDate(v.createdAt);
+      const ytId = getYouTubeId(v.videoUrl);
+      const thumbUrl = ytId
+        ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+        : (v.photo || this.hubData.course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600');
+      const relDate = formatRelativeDate(v.createdAt);
 
-              return `
+      return `
                 <div class="glass-card video-card-item" style="border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s; box-shadow:0 4px 16px rgba(0,0,0,0.04);"
                   onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'"
                   onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.04)'">
@@ -473,7 +810,7 @@ export default class GroupHubView {
 
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
 
@@ -719,7 +1056,7 @@ export default class GroupHubView {
                                 تم التصحيح والاعتماد 🏆
                               </span>
                               <span style="font-size:0.88rem; font-weight:900; color:var(--text-main);">
-                                <strong style="color:#10b981;">${sub.grade !== null ? sub.grade : 0}</strong> / ${asgn.totalPoints || 100} (${sub.percentage !== null && sub.percentage !== undefined ? sub.percentage : (asgn.totalPoints ? Math.round(((sub.grade || 0)/asgn.totalPoints)*100) : 0)}%)
+                                <strong style="color:#10b981;">${sub.grade !== null ? sub.grade : 0}</strong> / ${asgn.totalPoints || 100} (${sub.percentage !== null && sub.percentage !== undefined ? sub.percentage : (asgn.totalPoints ? Math.round(((sub.grade || 0) / asgn.totalPoints) * 100) : 0)}%)
                               </span>
                             </div>
                             ${sub.overallFeedback ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">💬 ${sub.overallFeedback}</div>` : ''}
@@ -808,7 +1145,7 @@ export default class GroupHubView {
     const filteredResources = resources.filter(res => {
       const q = (this.resourceSearchQuery || "").toLowerCase().trim();
       const matchesQuery = !q || (res.title || "").toLowerCase().includes(q) || (res.description || "").toLowerCase().includes(q) || (res.fileName || "").toLowerCase().includes(q);
-      
+
       let matchesType = true;
       if (this.resourceTypeFilter && this.resourceTypeFilter !== "all") {
         if (this.resourceTypeFilter === "image") {
@@ -922,11 +1259,11 @@ export default class GroupHubView {
         ` : `
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:18px;">
             ${filteredResources.map(res => {
-              const isImage = res.fileType === 'image';
-              const isPdf = res.fileType === 'pdf';
-              const cleanFileName = res.fileName || (res.fileUrl ? res.fileUrl.split('/').pop() : 'ملف_مرفق');
+      const isImage = res.fileType === 'image';
+      const isPdf = res.fileType === 'pdf';
+      const cleanFileName = res.fileName || (res.fileUrl ? res.fileUrl.split('/').pop() : 'ملف_مرفق');
 
-              return `
+      return `
                 <div class="glass-card" style="border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s;"
                   onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 30px rgba(0,0,0,0.08)'"
                   onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
@@ -1044,7 +1381,7 @@ export default class GroupHubView {
 
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
 
@@ -1318,6 +1655,9 @@ export default class GroupHubView {
       });
     });
 
+    // Curriculum events binding
+    this.bindCurriculumEvents();
+
     // Videos Search & Chapter Filter
     const videoSearchInput = this.container.querySelector("#video-search-input");
     if (videoSearchInput) {
@@ -1435,6 +1775,12 @@ export default class GroupHubView {
       addFirstSessionBtn.addEventListener("click", () => this.openAddSessionModal());
     }
 
+    // Edit Group Summary / Details Button (for Teacher / Admin)
+    const editGroupBtn = this.container.querySelector("#open-edit-group-summary-btn");
+    if (editGroupBtn) {
+      editGroupBtn.addEventListener("click", () => this.openEditGroupModal());
+    }
+
     // Delete Session Button (for Teacher / Admin)
     this.container.querySelectorAll(".delete-group-session-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -1547,6 +1893,869 @@ export default class GroupHubView {
           const modal = new StudentFeedbackModal(asgn, asgn.mySubmission);
           modal.open();
         }
+      });
+    });
+  }
+
+  // ── Curriculum Events & Modals ────────────────────────────────────────
+  bindCurriculumEvents() {
+    // Search input
+    const currSearch = this.container.querySelector("#curriculum-search-input");
+    if (currSearch) {
+      currSearch.addEventListener("input", (e) => {
+        this.curriculumSearchQuery = e.target.value;
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "curriculum") {
+          container.innerHTML = this.renderCurriculumTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindCurriculumEvents();
+        }
+      });
+    }
+
+    // Chapter filter
+    const currChapterFilter = this.container.querySelector("#curriculum-chapter-filter");
+    if (currChapterFilter) {
+      currChapterFilter.addEventListener("change", (e) => {
+        this.curriculumChapterFilter = e.target.value;
+        const container = this.container.querySelector("#group-tab-container");
+        if (container && this.activeTab === "curriculum") {
+          container.innerHTML = this.renderCurriculumTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindCurriculumEvents();
+        }
+      });
+    }
+
+    // Expand All / Collapse All buttons
+    const expandAllBtn = this.container.querySelector("#btn-expand-all-units");
+    if (expandAllBtn) {
+      expandAllBtn.addEventListener("click", () => {
+        this.collapsedUnits.clear();
+        const tabContainer = this.container.querySelector("#group-tab-container");
+        if (tabContainer && this.activeTab === "curriculum") {
+          tabContainer.innerHTML = this.renderCurriculumTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindCurriculumEvents();
+        }
+      });
+    }
+
+    const collapseAllBtn = this.container.querySelector("#btn-collapse-all-units");
+    if (collapseAllBtn) {
+      collapseAllBtn.addEventListener("click", () => {
+        const chapters = [...new Set((this.hubData.lessons || []).map(l => l.chapter || "الوحدة الأولى: أساسيات ومفاهيم عامة"))];
+        chapters.forEach(ch => this.collapsedUnits.add(ch));
+        const tabContainer = this.container.querySelector("#group-tab-container");
+        if (tabContainer && this.activeTab === "curriculum") {
+          tabContainer.innerHTML = this.renderCurriculumTab();
+          if (window.lucide) window.lucide.createIcons();
+          this.bindCurriculumEvents();
+        }
+      });
+    }
+
+    // Unit Accordion Header click toggle
+    this.container.querySelectorAll(".unit-accordion-header").forEach(header => {
+      header.addEventListener("click", (e) => {
+        if (e.target.closest(".btn-add-lesson-to-unit")) return;
+
+        const ch = header.getAttribute("data-chapter");
+        if (!ch) return;
+
+        const card = header.closest(".unit-accordion-item");
+        if (!card) return;
+
+        const body = card.querySelector(".unit-accordion-body");
+        const toggleBtn = header.querySelector(".unit-accordion-toggle-btn");
+        const folderIcon = header.querySelector(".unit-folder-icon");
+
+        const isCurrentlyCollapsed = this.collapsedUnits.has(ch);
+
+        if (isCurrentlyCollapsed) {
+          this.collapsedUnits.delete(ch);
+          if (body) body.style.display = "flex";
+          header.style.borderBottom = "1px solid var(--border-color)";
+          if (toggleBtn) toggleBtn.setAttribute("title", "طي الوحدة");
+        } else {
+          this.collapsedUnits.add(ch);
+          if (body) body.style.display = "none";
+          header.style.borderBottom = "none";
+          if (toggleBtn) toggleBtn.setAttribute("title", "توسيع الوحدة");
+        }
+
+        // Update Icons
+        if (folderIcon) {
+          folderIcon.innerHTML = `<i data-lucide="${this.collapsedUnits.has(ch) ? 'folder' : 'folder-open'}" style="width:19px; height:19px;"></i>`;
+        }
+        if (toggleBtn) {
+          const newIconName = this.collapsedUnits.has(ch) ? 'chevron-down' : 'chevron-up';
+          toggleBtn.innerHTML = `<i class="unit-toggle-icon" data-lucide="${newIconName}" style="width:18px; height:18px;"></i>`;
+        }
+        if (window.lucide) window.lucide.createIcons();
+      });
+    });
+
+    // Add Unit buttons
+    const addUnitBtn = this.container.querySelector("#btn-open-add-unit");
+    if (addUnitBtn) {
+      addUnitBtn.addEventListener("click", () => this.openAddUnitModal());
+    }
+    const addUnitEmptyBtn = this.container.querySelector("#btn-open-add-unit-empty");
+    if (addUnitEmptyBtn) {
+      addUnitEmptyBtn.addEventListener("click", () => this.openAddUnitModal());
+    }
+
+    // Add Lesson buttons
+    const addLessonBtn = this.container.querySelector("#btn-open-add-lesson");
+    if (addLessonBtn) {
+      addLessonBtn.addEventListener("click", () => this.openAddLessonModal());
+    }
+    const addLessonEmptyBtn = this.container.querySelector("#btn-open-add-lesson-empty");
+    if (addLessonEmptyBtn) {
+      addLessonEmptyBtn.addEventListener("click", () => this.openAddLessonModal());
+    }
+
+    // Import base course curriculum button
+    const importCurriculumBtn = this.container.querySelector("#btn-import-course-curriculum");
+    if (importCurriculumBtn) {
+      importCurriculumBtn.addEventListener("click", async () => {
+        const ok = await confirmDialog({
+          title: "استيراد منهج الكورس الأساسي",
+          message: "هل تريد نسخ خطة ووحدات ودروس الكورس الأساسي إلى هذه المجموعة؟ ستصبح نسخة مستقلة تماماً خاصة بهذه المجموعة ويمكنك تعديلها بحرية دون التأثير على باقي المجموعات.",
+          confirmText: "نعم، استيراد المنهج",
+          isDestructive: false
+        });
+        if (!ok) return;
+
+        try {
+          const res = await apiFetch(`/groups/${this.groupId}/lessons/import-from-course`, {
+            method: "POST"
+          });
+          showToast(res.message || "تم استيراد المنهج بنجاح! 📚", "success");
+          this.activeTab = "curriculum";
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "لا يتوفر منهج أساسي للكورس أو حدث خطأ أثناء الاستيراد.", "info");
+        }
+      });
+    }
+
+    // Add Lesson to specific Unit button
+    this.container.querySelectorAll(".btn-add-lesson-to-unit").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ch = btn.getAttribute("data-chapter") || "";
+        this.openAddLessonModal(ch);
+      });
+    });
+
+    // View Lesson Details
+    this.container.querySelectorAll(".btn-view-lesson-details").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const lesson = (this.hubData.lessons || []).find(l => String(l.id) === String(id));
+        if (lesson) this.openLessonDetailsModal(lesson);
+      });
+    });
+
+    // Watch Lesson Video
+    this.container.querySelectorAll(".btn-watch-lesson-video").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const lesson = (this.hubData.lessons || []).find(l => String(l.id) === String(id));
+        if (lesson && lesson.videoUrl) this.openWatchVideoModal(lesson);
+      });
+    });
+
+    // Edit Lesson
+    this.container.querySelectorAll(".btn-edit-lesson").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const lesson = (this.hubData.lessons || []).find(l => String(l.id) === String(id));
+        if (lesson) this.openEditLessonModal(lesson);
+      });
+    });
+
+    // Delete Lesson
+    this.container.querySelectorAll(".btn-delete-lesson").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title") || "هذا الدرس";
+        const ok = await confirmDialog({
+          title: "حذف درس من المنهج",
+          message: `هل أنت متأكد من حذف الدرس "${title}" نهائياً من خطة المنهج؟`,
+          confirmText: "نعم، حذف",
+          isDestructive: true
+        });
+        if (!ok) return;
+
+        try {
+          await apiFetch(`/groups/${this.groupId}/lessons/${id}`, { method: "DELETE" });
+          showToast("تم حذف الدرس من المنهج بنجاح. 🗑️", "success");
+          this.activeTab = "curriculum";
+          await this.render();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الدرس.", "error");
+        }
+      });
+    });
+
+    // Edit Group Summary Button inside curriculum tab
+    const editSummaryBtn = this.container.querySelector("#curriculum-edit-group-summary-btn");
+    if (editSummaryBtn) {
+      editSummaryBtn.addEventListener("click", () => this.openEditGroupModal());
+    }
+  }
+
+  // Add Unit Modal
+  openAddUnitModal() {
+    let modal = document.getElementById("add-unit-modal");
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.id = "add-unit-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:540px; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="book-open" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">إضافة وحدة دراسية جديدة للمنهج 📖</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">أدخل اسم الوحدة لتنظيم الدروس والمحاضرات تحتها</div>
+            </div>
+          </div>
+          <button id="close-add-unit-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="add-unit-form" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+              اسم الوحدة أو الفصل الدراسي: <span style="color:#ef4444;">*</span>
+            </label>
+            <input type="text" id="unit-name-input" placeholder="مثال: الوحدة الأولى: التفاضل والتكامل، أو الباب الثاني: النحو والصرف" required
+              style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+          </div>
+
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+              عنوان أول درس في هذه الوحدة: <span style="color:#ef4444;">*</span>
+            </label>
+            <input type="text" id="unit-first-lesson-input" placeholder="مثال: مدخل وتمهيد إلى الوحدة" required
+              style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                مدة الدرس (بالدقائق):
+              </label>
+              <input type="number" id="unit-lesson-duration-input" value="25" min="5" max="180"
+                style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط فيديو الشرح (اختياري):
+              </label>
+              <input type="url" id="unit-lesson-video-input" placeholder="https://..."
+                style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; box-sizing:border-box;">
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+              وصف مختصر للوحدة أو الدرس:
+            </label>
+            <textarea id="unit-desc-input" rows="2" placeholder="أهداف ومخرجات الوحدة..."
+              style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; resize:vertical; box-sizing:border-box;"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px; padding-top:14px; border-top:1px solid var(--border-color);">
+            <button type="button" id="cancel-add-unit-modal-btn" class="btn-secondary" style="padding:9px 20px; border-radius:12px; font-size:0.85rem; font-weight:700;">
+              إلغاء
+            </button>
+            <button type="submit" class="btn-primary" style="padding:9px 22px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+              حفظ الوحدة والدرس 💾
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-add-unit-modal-btn").addEventListener("click", closeModal);
+    modal.querySelector("#cancel-add-unit-modal-btn").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    modal.querySelector("#add-unit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const chapter = modal.querySelector("#unit-name-input").value.trim();
+      const title = modal.querySelector("#unit-first-lesson-input").value.trim();
+      const duration = modal.querySelector("#unit-lesson-duration-input").value.trim() || "25";
+      const videoUrl = modal.querySelector("#unit-lesson-video-input").value.trim() || "";
+      const description = modal.querySelector("#unit-desc-input").value.trim() || "";
+
+      try {
+        await apiFetch(`/groups/${this.groupId}/lessons`, {
+          method: "POST",
+          body: JSON.stringify({
+            chapter,
+            title,
+            duration,
+            videoUrl,
+            description
+          })
+        });
+
+        showToast("تمت إضافة الوحدة والدرس الأول بنجاح! 📖✅", "success");
+        closeModal();
+        this.activeTab = "curriculum";
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إضافة الوحدة.", "error");
+      }
+    });
+  }
+
+  // Add Lesson Modal
+  openAddLessonModal(defaultChapter = "") {
+    let modal = document.getElementById("add-lesson-modal");
+    if (modal) modal.remove();
+
+    const { lessons = [] } = this.hubData;
+    const existingChapters = Array.from(new Set(lessons.map(l => (l.chapter && l.chapter.trim()) || "الوحدة الأولى").filter(Boolean)));
+    if (existingChapters.length === 0) existingChapters.push("الوحدة الأولى");
+
+    modal = document.createElement("div");
+    modal.id = "add-lesson-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:640px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="plus-circle" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">إضافة درس جديد للمنهج 📚</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">أضف درساً مع التفاصيل والشروحات والملفات المرفقة للطلاب</div>
+            </div>
+          </div>
+          <button id="close-add-lesson-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="add-lesson-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Unit / Chapter Selection -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                الوحدة / الفصل الدراسي التابع له: <span style="color:#ef4444;">*</span>
+              </label>
+              <select id="lesson-chapter-select" style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                ${existingChapters.map(ch => `<option value="${ch}" ${ch === defaultChapter ? 'selected' : ''}>${ch}</option>`).join('')}
+                <option value="__new__">+ إضافة وحدة دراسية جديدة...</option>
+              </select>
+              <input type="text" id="lesson-new-chapter-input" placeholder="اكتب اسم الوحدة الجديدة..."
+                style="display:none; width:100%; margin-top:8px; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Lesson Title -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                عنوان الدرس: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="lesson-title-input" placeholder="مثال: الدرس الثالث: حل المعادلات التفاضلية" required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                تفاصيل وملخص محتوى الدرس:
+              </label>
+              <textarea id="lesson-desc-input" rows="3" placeholder="اكتب شرحاً لما سيتعلمه الطالب وأهم المفاهيم في هذا الدرس..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- Duration & Order -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  مدة الدرس (بالدقائق):
+                </label>
+                <input type="number" id="lesson-duration-input" value="25" min="5" max="240"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  ترتيب الدرس في الوحدة:
+                </label>
+                <input type="number" id="lesson-order-input" value="${lessons.length + 1}" min="1" max="100"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Video URL -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط فيديو الشرح (YouTube / Vimeo / Google Drive):
+              </label>
+              <input type="url" id="lesson-video-input" placeholder="https://www.youtube.com/watch?v=..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Attached Resource / Sheet -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  عنوان المذكرة / المرفق:
+                </label>
+                <input type="text" id="lesson-resource-title-input" placeholder="مثال: مذكرة تدريبات الدرس PDF"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  رابط المذكرة / الملف:
+                </label>
+                <input type="url" id="lesson-resource-url-input" placeholder="https://drive.google.com/..."
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Teacher Notes / Tips -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                إرشادات وملاحظات الأستاذ للطلاب:
+              </label>
+              <textarea id="lesson-notes-input" rows="2" placeholder="نصائح هامة، نقاط يجب التركيز عليها أثناء المذاكرة..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+          </div>
+
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-add-lesson-modal-btn" class="btn-secondary" style="padding:9px 20px; border-radius:12px; font-size:0.85rem; font-weight:700;">
+              إلغاء
+            </button>
+            <button type="submit" class="btn-primary" style="padding:9px 24px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+              إضافة الدرس للمنهج 📚✅
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-add-lesson-modal-btn").addEventListener("click", closeModal);
+    modal.querySelector("#cancel-add-lesson-modal-btn").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    const chapterSelect = modal.querySelector("#lesson-chapter-select");
+    const newChapterInput = modal.querySelector("#lesson-new-chapter-input");
+    chapterSelect.addEventListener("change", () => {
+      if (chapterSelect.value === "__new__") {
+        newChapterInput.style.display = "block";
+        newChapterInput.focus();
+      } else {
+        newChapterInput.style.display = "none";
+      }
+    });
+
+    modal.querySelector("#add-lesson-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      let chapter = chapterSelect.value;
+      if (chapter === "__new__") {
+        chapter = newChapterInput.value.trim() || "الوحدة الجديدة";
+      }
+      const title = modal.querySelector("#lesson-title-input").value.trim();
+      const description = modal.querySelector("#lesson-desc-input").value.trim();
+      const duration = modal.querySelector("#lesson-duration-input").value.trim() || "25";
+      const order = parseInt(modal.querySelector("#lesson-order-input").value, 10) || 0;
+      const videoUrl = modal.querySelector("#lesson-video-input").value.trim() || "";
+      const resourceTitle = modal.querySelector("#lesson-resource-title-input").value.trim() || "";
+      const resourceUrl = modal.querySelector("#lesson-resource-url-input").value.trim() || "";
+      const notes = modal.querySelector("#lesson-notes-input").value.trim() || "";
+
+      try {
+        await apiFetch(`/groups/${this.groupId}/lessons`, {
+          method: "POST",
+          body: JSON.stringify({
+            chapter,
+            title,
+            description,
+            duration,
+            order,
+            videoUrl,
+            resourceTitle,
+            resourceUrl,
+            notes
+          })
+        });
+
+        showToast("تمت إضافة الدرس إلى الخطة التدريسية بنجاح! 📚✅", "success");
+        closeModal();
+        this.activeTab = "curriculum";
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل إضافة الدرس.", "error");
+      }
+    });
+  }
+
+  // Edit Lesson Modal
+  openEditLessonModal(lesson) {
+    let modal = document.getElementById("edit-lesson-modal");
+    if (modal) modal.remove();
+
+    const { lessons = [] } = this.hubData;
+    const existingChapters = Array.from(new Set(lessons.map(l => (l.chapter && l.chapter.trim()) || "الوحدة الأولى").filter(Boolean)));
+    if (!existingChapters.includes(lesson.chapter)) {
+      existingChapters.push(lesson.chapter || "الوحدة الأولى");
+    }
+
+    modal = document.createElement("div");
+    modal.id = "edit-lesson-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:640px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="edit-3" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">تعديل بيانات الدرس ✏️</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">تحديث العنوان والوصف والروابط والمذكرات المرفقة</div>
+            </div>
+          </div>
+          <button id="close-edit-lesson-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="edit-lesson-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Unit / Chapter -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                الوحدة / الفصل الدراسي:
+              </label>
+              <input type="text" id="edit-lesson-chapter-input" value="${lesson.chapter || 'الوحدة الأولى'}" required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Title -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                عنوان الدرس: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="edit-lesson-title-input" value="${lesson.title || ''}" required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                تفاصيل ومحتوى الدرس:
+              </label>
+              <textarea id="edit-lesson-desc-input" rows="3"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;">${lesson.description || ''}</textarea>
+            </div>
+
+            <!-- Duration & Order -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  مدة الدرس (بالدقائق):
+                </label>
+                <input type="text" id="edit-lesson-duration-input" value="${lesson.duration || '25'}"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  ترتيب الدرس:
+                </label>
+                <input type="number" id="edit-lesson-order-input" value="${lesson.order || 0}"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Video URL -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط فيديو الشرح:
+              </label>
+              <input type="url" id="edit-lesson-video-input" value="${lesson.videoUrl || ''}" placeholder="https://..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Resource -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  عنوان المذكرة / المرفق:
+                </label>
+                <input type="text" id="edit-lesson-resource-title-input" value="${lesson.resourceTitle || ''}" placeholder="عنوان الملف"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  رابط المذكرة / الملف:
+                </label>
+                <input type="url" id="edit-lesson-resource-url-input" value="${lesson.resourceUrl || ''}" placeholder="https://..."
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                إرشادات وملاحظات الأستاذ:
+              </label>
+              <textarea id="edit-lesson-notes-input" rows="2"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;">${lesson.notes || ''}</textarea>
+            </div>
+
+          </div>
+
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-edit-lesson-modal-btn" class="btn-secondary" style="padding:9px 20px; border-radius:12px; font-size:0.85rem; font-weight:700;">
+              إلغاء
+            </button>
+            <button type="submit" class="btn-primary" style="padding:9px 24px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+              حفظ التعديلات 💾
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-edit-lesson-modal-btn").addEventListener("click", closeModal);
+    modal.querySelector("#cancel-edit-lesson-modal-btn").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    modal.querySelector("#edit-lesson-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const chapter = modal.querySelector("#edit-lesson-chapter-input").value.trim() || "الوحدة الأولى";
+      const title = modal.querySelector("#edit-lesson-title-input").value.trim();
+      const description = modal.querySelector("#edit-lesson-desc-input").value.trim();
+      const duration = modal.querySelector("#edit-lesson-duration-input").value.trim() || "25";
+      const order = parseInt(modal.querySelector("#edit-lesson-order-input").value, 10) || 0;
+      const videoUrl = modal.querySelector("#edit-lesson-video-input").value.trim() || "";
+      const resourceTitle = modal.querySelector("#edit-lesson-resource-title-input").value.trim() || "";
+      const resourceUrl = modal.querySelector("#edit-lesson-resource-url-input").value.trim() || "";
+      const notes = modal.querySelector("#edit-lesson-notes-input").value.trim() || "";
+
+      try {
+        await apiFetch(`/groups/${this.groupId}/lessons/${lesson.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            chapter,
+            title,
+            description,
+            duration,
+            order,
+            videoUrl,
+            resourceTitle,
+            resourceUrl,
+            notes
+          })
+        });
+
+        showToast("تم تحديث بيانات الدرس بنجاح! 💾", "success");
+        closeModal();
+        this.activeTab = "curriculum";
+        await this.render();
+      } catch (err) {
+        showToast(err.message || "فشل تحديث الدرس.", "error");
+      }
+    });
+  }
+
+  // View Lesson Details Modal
+  openLessonDetailsModal(lesson) {
+    let modal = document.getElementById("lesson-details-modal");
+    if (modal) modal.remove();
+
+    const { assignments = [], isTeacher, isAdmin } = this.hubData;
+    const relatedAssignments = assignments.filter(a => (a.lesson && a.lesson.id === lesson.id) || (a.title && a.title.includes(lesson.title)));
+
+    modal = document.createElement("div");
+    modal.id = "lesson-details-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:700px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 25px 60px rgba(0,0,0,0.45); overflow:hidden;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; background:var(--bg-app); flex-shrink:0;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
+                ${lesson.chapter || 'الوحدة الأولى'}
+              </span>
+              ${lesson.duration ? `
+                <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:10px; background:rgba(16,185,129,0.1); color:#10b981;">
+                  ⏱️ ${lesson.duration} دقيقة
+                </span>
+              ` : ''}
+            </div>
+            <h3 style="font-size:1.25rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.3;">${lesson.title}</h3>
+          </div>
+          <button id="close-lesson-details-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="flex:1; overflow-y:auto; padding:22px 24px; display:flex; flex-direction:column; gap:18px;">
+          
+          <!-- Description -->
+          <div>
+            <h4 style="font-size:0.9rem; font-weight:800; color:var(--text-muted); margin:0 0 8px 0;">وصف وتفاصيل الدرس:</h4>
+            <div style="font-size:0.92rem; line-height:1.75; color:var(--text-main); white-space:pre-wrap; background:var(--bg-app); padding:14px 18px; border-radius:14px; border:1px solid var(--border-color);">
+              ${lesson.description || 'لا يوجد وصف مفصل لهذا الدرس حتى الآن.'}
+            </div>
+          </div>
+
+          <!-- Video Section if available -->
+          ${lesson.videoUrl ? `
+            <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.2); border-radius:16px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="play" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <div style="font-size:0.92rem; font-weight:900; color:var(--text-main);">شرح الدرس بالفيديو 🎥</div>
+                  <div style="font-size:0.78rem; color:var(--text-muted);">فيديو تدريسي مسجل متاح للمشاهدة الفورية</div>
+                </div>
+              </div>
+              <button id="details-play-video-btn" class="btn-primary"
+                style="padding:8px 18px; border-radius:12px; font-size:0.85rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, #ef4444, #dc2626); border:none; color:#fff; cursor:pointer;">
+                <i data-lucide="play-circle" style="width:16px; height:16px;"></i>
+                <span>تشغيل الفيديو 🎬</span>
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- Resource / Attachment if available -->
+          ${lesson.resourceUrl ? `
+            <div style="background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.2); border-radius:16px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="file-text" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <div style="font-size:0.92rem; font-weight:900; color:var(--text-main);">${lesson.resourceTitle || 'المذكرة وملف التدريبات المرفق'} 📎</div>
+                  <div style="font-size:0.78rem; color:var(--text-muted);">ملخص وتدريبات مساعدة لدراسة هذا الدرس</div>
+                </div>
+              </div>
+              <a href="${lesson.resourceUrl}" target="_blank" rel="noopener" class="btn-secondary"
+                style="padding:8px 18px; border-radius:12px; font-size:0.85rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="download" style="width:15px; height:15px;"></i>
+                <span>تحميل / فتح الملف 📥</span>
+              </a>
+            </div>
+          ` : ''}
+
+          <!-- Teacher Notes if available -->
+          ${lesson.notes ? `
+            <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.25); border-radius:16px; padding:16px 20px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#d97706; font-size:0.88rem; font-weight:900;">
+                <i data-lucide="lightbulb" style="width:18px; height:18px;"></i>
+                <span>إرشادات ونصائح الأستاذ للدرس 💡</span>
+              </div>
+              <div style="font-size:0.88rem; line-height:1.7; color:var(--text-main); white-space:pre-wrap;">
+                ${lesson.notes}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Related Assignments -->
+          ${relatedAssignments.length > 0 ? `
+            <div>
+              <h4 style="font-size:0.9rem; font-weight:800; color:var(--text-muted); margin:0 0 10px 0;">الواجبات المرتبطة بهذا الدرس:</h4>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${relatedAssignments.map(a => `
+                  <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <div style="font-size:0.88rem; font-weight:900; color:var(--text-main);">📝 ${a.title}</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">الدرجة الكلية: ${a.totalPoints || 100} نقطة</div>
+                    </div>
+                    <button class="open-assignment-from-lesson-btn btn-secondary" data-id="${a.id}"
+                      style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; cursor:pointer;">
+                      عرض الواجب ↗
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div>
+            ${(isTeacher || isAdmin) ? `
+              <button id="edit-lesson-from-details-btn" class="btn-secondary"
+                style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+                <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
+                <span>تعديل الدرس ✏️</span>
+              </button>
+            ` : ''}
+          </div>
+          <button id="dismiss-lesson-details-btn" class="btn-primary" style="padding:8px 24px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+            إغلاق
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-lesson-details-modal-btn").addEventListener("click", closeModal);
+    modal.querySelector("#dismiss-lesson-details-btn").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    const playBtn = modal.querySelector("#details-play-video-btn");
+    if (playBtn) {
+      playBtn.addEventListener("click", () => {
+        closeModal();
+        this.openWatchVideoModal(lesson);
+      });
+    }
+
+    const editBtn = modal.querySelector("#edit-lesson-from-details-btn");
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        closeModal();
+        this.openEditLessonModal(lesson);
+      });
+    }
+
+    modal.querySelectorAll(".open-assignment-from-lesson-btn").forEach(b => {
+      b.addEventListener("click", () => {
+        closeModal();
+        this.activeTab = "assignments";
+        this.renderUI();
       });
     });
   }
@@ -1712,6 +2921,163 @@ export default class GroupHubView {
     modal.querySelector("#close-watch-video-modal-btn")?.addEventListener("click", closeModal);
     modal.querySelector("#close-watch-video-modal-bottom-btn")?.addEventListener("click", closeModal);
     modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  }
+
+  // ── Open Edit Group Summary & Details Modal ─────────────────────────
+  openEditGroupModal() {
+    let modal = document.getElementById("edit-group-details-modal");
+    if (modal) modal.remove();
+
+    const { group, course } = this.hubData;
+
+    modal = document.createElement("div");
+    modal.id = "edit-group-details-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:640px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.4); overflow:hidden;">
+        
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900;">
+              <i data-lucide="edit-3" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">تعديل محتوى وملخص المجموعة الدراسية ✏️</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">يظهر هذا الملخص للطلاب في أعلى قاعة المجموعة كفهرس ومخطط تدريسي</div>
+            </div>
+          </div>
+          <button id="close-edit-group-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="edit-group-details-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Group Name -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                اسم المجموعة الدراسية: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="edit-modal-group-name" value="${group.name || ''}" required
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Group Description / Summary -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="edit-modal-group-desc" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  محتوى أو ملخص المجموعة والخطة التدريسية (Course Details & Summary):
+                </label>
+                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر بدلاً من الغلاف 📖</span>
+              </div>
+              <textarea id="edit-modal-group-desc" rows="4" placeholder="اكتب وصفاً وملخصاً لما سيتم التركيز عليه وشرحه في هذه المجموعة والمخرجات التعليمية..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;">${group.description || course?.description || ''}</textarea>
+            </div>
+
+            <!-- Schedule Text -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                نص مواعيد الحصص (Schedule):
+              </label>
+              <input type="text" id="edit-modal-group-schedule" value="${group.scheduleText || ''}" placeholder="مثال: كل سبت وثلاثاء الساعة 6:00 مساءً"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Meeting Link -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رابط البث المباشر المخصص (Zoom / Google Meet):
+              </label>
+              <input type="url" id="edit-modal-group-meeting-link" value="${group.meetingLink || ''}" placeholder="https://meet.google.com/... أو https://zoom.us/..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Session Duration & Total Sessions -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  مدة الحصة (بالدقائق):
+                </label>
+                <input type="number" id="edit-modal-group-duration" value="${group.sessionDuration || 60}" min="15" max="240"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  عدد الحصص الإجمالي:
+                </label>
+                <input type="number" id="edit-modal-group-total-sessions" value="${group.totalSessions || 24}" min="1" max="100"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+          </div>
+
+          <div style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:12px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-edit-group-modal-btn" class="btn-secondary" style="padding:9px 20px; border-radius:14px; font-size:0.85rem; font-weight:700;">
+              إلغاء
+            </button>
+            <button type="submit" id="save-edit-group-modal-btn" class="btn-primary" style="padding:9px 26px; border-radius:14px; font-weight:900; font-size:0.88rem; background:linear-gradient(135deg, #6366f1, #4f46e5); color:#fff; border:none; cursor:pointer; box-shadow:0 4px 14px rgba(99,102,241,0.3);">
+              حفظ التعديلات 💾
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => modal.remove();
+    modal.querySelector("#close-edit-group-modal-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-edit-group-modal-btn")?.addEventListener("click", closeModal);
+
+    modal.querySelector("#edit-group-details-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = modal.querySelector("#edit-modal-group-name")?.value.trim();
+      const description = modal.querySelector("#edit-modal-group-desc")?.value.trim();
+      const scheduleText = modal.querySelector("#edit-modal-group-schedule")?.value.trim();
+      const meetingLink = modal.querySelector("#edit-modal-group-meeting-link")?.value.trim();
+      const sessionDuration = parseInt(modal.querySelector("#edit-modal-group-duration")?.value, 10) || 60;
+      const totalSessions = parseInt(modal.querySelector("#edit-modal-group-total-sessions")?.value, 10) || 24;
+
+      const saveBtn = modal.querySelector("#save-edit-group-modal-btn");
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = "جاري الحفظ...";
+      }
+
+      try {
+        await apiFetch(`/groups/${this.groupId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name,
+            description,
+            scheduleText,
+            meetingLink,
+            sessionDuration,
+            totalSessions
+          })
+        });
+
+        this.hubData.group.name = name;
+        this.hubData.group.description = description;
+        if (scheduleText) this.hubData.group.scheduleText = scheduleText;
+        if (meetingLink !== undefined) this.hubData.group.meetingLink = meetingLink;
+        this.hubData.group.sessionDuration = sessionDuration;
+        this.hubData.group.totalSessions = totalSessions;
+
+        showToast("تم تحديث ملخص ومحتوى وبيانات المجموعة بنجاح! 🎉💾", "success");
+        closeModal();
+        this.renderUI();
+      } catch (err) {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "حفظ التعديلات 💾";
+        }
+        showToast(err.message || "فشل تحديث بيانات المجموعة.", "error");
+      }
+    });
   }
 
   // Upload Group Video Modal (Teacher/Admin)

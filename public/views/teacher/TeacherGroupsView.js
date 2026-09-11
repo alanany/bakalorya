@@ -625,10 +625,10 @@ export default class TeacherGroupsView {
               </div>
               <div>
                 <h3 style="font-size:1.2rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">
-                  إنشاء وإضافة مجموعة دراسية جديدة 👥
+                  إنشاء وإرسال مجموعة دراسية جديدة 👥
                 </h3>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                  اختر المرحلة والصف والمادة ثم حدد الكورس وأيام ومواعيد الحصص
+                  اختر المرحلة والصف والمادة وأيام الحصص — ستُرسل المجموعة للإدارة لاعتمادها وتحديد الأسعار والمقاعد وتفعيلها للطلاب ⏳
                 </p>
               </div>
             </div>
@@ -690,29 +690,6 @@ export default class TeacherGroupsView {
                 </div>
               </div>
 
-              <!-- 4. Selected Course Box -->
-              <div>
-                <label for="modal-group-course-id" style="font-weight:800; font-size:0.82rem; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; color:var(--text-main);">
-                  <span>4. المقرر / الكورس المعتمد المرتبط: <span style="color:#ef4444;">*</span></span>
-                  <span id="teacher-course-status-badge" style="font-size:0.72rem; color:var(--primary); font-weight:700;"></span>
-                </label>
-                <select id="modal-group-course-id" class="form-select" required style="width:100%; padding:11px 14px; border-radius:12px; font-size:0.88rem; font-weight:700;">
-                  <option value="">-- يرجى اختيار الصف والمادة أولاً --</option>
-                </select>
-
-                <!-- Course Preview Card -->
-                <div id="teacher-course-preview-card" style="display:none; margin-top:8px; padding:10px 12px; background:var(--bg-card); border-radius:12px; border:1px solid var(--border-color); align-items:center; gap:12px;">
-                  <img id="teacher-course-preview-img" src="" style="width:48px; height:48px; border-radius:10px; object-fit:cover;">
-                  <div style="flex:1; min-width:0;">
-                    <div id="teacher-course-preview-title" style="font-weight:800; font-size:0.88rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-                    <div style="display:flex; gap:8px; font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
-                      <span id="teacher-course-preview-lessons"></span>
-                      <span id="teacher-course-preview-type"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
             </div>
 
             <!-- 2. GROUP NAME -->
@@ -722,6 +699,18 @@ export default class TeacherGroupsView {
               </label>
               <input type="text" id="modal-group-name" placeholder="مثال: مجموعة المتفوقين في الرياضيات" required
                 style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- 2.5 GROUP SUMMARY / CONTENT -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="modal-group-desc" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  محتوى أو ملخص المجموعة الدراسية (Course Details & Summary):
+                </label>
+                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر للطلاب كملخص تفصيلي للدورة 📖</span>
+              </div>
+              <textarea id="modal-group-desc" rows="3" placeholder="اكتب وصفاً أو ملخصاً شاملاً لما سيتم التركيز عليه وتدريسه في هذه المجموعة والمخرجات التعليمية..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
 
             <!-- 3. DAYS SELECTION -->
@@ -805,13 +794,6 @@ export default class TeacherGroupsView {
     const stageBtns = container.querySelectorAll(".teacher-stage-btn");
     const gradeSelect = container.querySelector("#teacher-group-grade-select");
     const subjectSelect = container.querySelector("#teacher-group-subject-select");
-    const courseSelect = container.querySelector("#modal-group-course-id");
-    const courseBadge = container.querySelector("#teacher-course-status-badge");
-    const previewCard = container.querySelector("#teacher-course-preview-card");
-    const previewImg = container.querySelector("#teacher-course-preview-img");
-    const previewTitle = container.querySelector("#teacher-course-preview-title");
-    const previewLessons = container.querySelector("#teacher-course-preview-lessons");
-    const previewType = container.querySelector("#teacher-course-preview-type");
     const groupNameInput = container.querySelector("#modal-group-name");
 
     let isManualName = false;
@@ -857,7 +839,6 @@ export default class TeacherGroupsView {
       if (stageGrades.length === 0) {
         if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
         if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
-        updateCoursesUI(null, null);
         return;
       }
 
@@ -874,7 +855,6 @@ export default class TeacherGroupsView {
 
       if (subjects.length === 0) {
         subjectSelect.innerHTML = `<option value="">لا توجد مواد مسجلة</option>`;
-        updateCoursesUI(gradeId, null);
         return;
       }
 
@@ -884,68 +864,7 @@ export default class TeacherGroupsView {
         </option>
       `).join('');
 
-      const firstSubjectId = subjectSelect.value;
-      const firstSubjectName = subjects[0]?.name;
-      updateCoursesUI(gradeId, firstSubjectId, firstSubjectName);
       updateSuggestedGroupName();
-    };
-
-    const updateCoursesUI = (gradeId, subjectId, subjectName) => {
-      if (!courseSelect) return;
-
-      // Find matching courses for this Grade and Subject
-      let matchedCourses = allPublishedCourses.filter(c => {
-        const matchesGrade = c.grade?.id === gradeId || c.gradeId === gradeId;
-        const matchesSubject = (subjectId && (c.subject?.id === subjectId || c.subjectId === subjectId)) ||
-                               (subjectName && c.category && c.category.toLowerCase().includes(subjectName.toLowerCase()));
-        return matchesGrade && matchesSubject;
-      });
-
-      // If no exact match, try matching by grade only
-      if (matchedCourses.length === 0 && gradeId) {
-        matchedCourses = allPublishedCourses.filter(c => c.grade?.id === gradeId || c.gradeId === gradeId);
-      }
-
-      // If still none, fall back to all published courses
-      const hasDirectMatches = matchedCourses.length > 0;
-      const coursesToDisplay = hasDirectMatches ? matchedCourses : allPublishedCourses;
-
-      if (coursesToDisplay.length === 0) {
-        courseSelect.innerHTML = `<option value="">⚠️ لا توجد مقررات دراسية معتمدة من الإدارة حالياً</option>`;
-        if (courseBadge) courseBadge.innerHTML = `<span style="color:#ef4444;">غير متاح</span>`;
-        if (previewCard) previewCard.style.display = "none";
-        return;
-      }
-
-      courseSelect.innerHTML = coursesToDisplay.map(c => `
-        <option value="${c.id}" ${matchedCourses.some(mc => mc.id === c.id) ? 'selected' : ''}>
-          ${c.title} ${c.grade ? `(${c.grade.name})` : ''} • ${c.category || 'عام'}
-        </option>
-      `).join('');
-
-      if (hasDirectMatches) {
-        if (courseBadge) courseBadge.innerHTML = `<span style="color:#10b981; font-weight:800;">✓ مقرر معتمد لهذا الصف</span>`;
-      } else {
-        if (courseBadge) courseBadge.innerHTML = `<span style="color:#f59e0b;">اختر من المقررات العامة المتاحة</span>`;
-      }
-
-      updateCoursePreview(courseSelect.value);
-    };
-
-    const updateCoursePreview = (courseId) => {
-      const selectedCourse = allPublishedCourses.find(c => c.id === courseId);
-      if (!selectedCourse || !previewCard) {
-        if (previewCard) previewCard.style.display = "none";
-        return;
-      }
-
-      previewCard.style.display = "flex";
-      if (previewImg) previewImg.src = selectedCourse.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=80&auto=format';
-      if (previewTitle) previewTitle.textContent = selectedCourse.title;
-      if (previewLessons) previewLessons.textContent = `📚 ${selectedCourse.lessonsCount || (selectedCourse.lessons || []).length || 0} درس في المنهج`;
-      if (previewType) {
-        previewType.textContent = selectedCourse.isFree ? '🎁 مقرر عام مجاني' : `💳 ${selectedCourse.price} ${selectedCourse.currency || 'EGP'}`;
-      }
     };
 
     stageBtns.forEach(btn => {
@@ -959,16 +878,7 @@ export default class TeacherGroupsView {
     });
 
     subjectSelect?.addEventListener("change", () => {
-      const selectedGradeId = gradeSelect?.value;
-      const selectedSubjectId = subjectSelect?.value;
-      const selectedOpt = subjectSelect?.options[subjectSelect.selectedIndex];
-      const subjectName = selectedOpt?.getAttribute("data-name") || selectedOpt?.text || "";
-      updateCoursesUI(selectedGradeId, selectedSubjectId, subjectName);
       updateSuggestedGroupName();
-    });
-
-    courseSelect?.addEventListener("change", (e) => {
-      updateCoursePreview(e.target.value);
     });
 
     // Initialize with PRIMARY stage
@@ -977,7 +887,8 @@ export default class TeacherGroupsView {
     // Form Submission
     document.getElementById("create-group-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const courseId = document.getElementById("modal-group-course-id")?.value;
+      const gradeId = gradeSelect?.value;
+      const subjectId = subjectSelect?.value;
       const scheduleTime = document.getElementById("modal-group-time")?.value.trim() || "6:00م";
       const meetingLink = document.getElementById("modal-group-meeting-link")?.value.trim() || null;
 
@@ -985,9 +896,10 @@ export default class TeacherGroupsView {
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
       const name = document.getElementById("modal-group-name")?.value.trim() || `مجموعة ${scheduleDays} (${scheduleTime})`;
+      const description = document.getElementById("modal-group-desc")?.value.trim() || "";
 
-      if (!courseId) {
-        showToast("يرجى اختيار الكورس / المقرر الدراسي.", "error");
+      if (!gradeId || !subjectId) {
+        showToast("يرجى اختيار المرحلة والصف والمادة الدراسية للمجموعة.", "error");
         return;
       }
 
@@ -998,10 +910,13 @@ export default class TeacherGroupsView {
       }
 
       try {
-        await apiFetch(`/courses/${courseId}/groups`, {
+        await apiFetch("/groups", {
           method: "POST",
           body: JSON.stringify({
+            subjectId,
+            gradeId,
             name,
+            description,
             scheduleDays,
             scheduleTime,
             scheduleText,

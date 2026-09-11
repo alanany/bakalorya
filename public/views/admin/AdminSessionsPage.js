@@ -652,6 +652,7 @@ export const AdminSessionsPage = {
 
   // ── Render Edit Group Modal (Admin Full Control) ──────────────────────────────
   renderEditGroupModal(group) {
+    document.querySelectorAll("#admin-edit-group-modal-wrapper").forEach(el => el.remove());
     const container = document.getElementById("admin-edit-group-modal-container") || document.body;
     const teachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
 
@@ -791,6 +792,12 @@ export const AdminSessionsPage = {
               <input type="url" id="edit-group-meeting-link" value="${group.meetingLink || ''}" placeholder="https://zoom.us/j/... أو Meet" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
             </div>
 
+            <!-- Group Description / Summary -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">محتوى أو ملخص المجموعة والخطة الدراسية (Course Details & Summary):</label>
+              <textarea id="edit-group-description" rows="3" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; line-height:1.5; resize:vertical; box-sizing:border-box;">${group.description || ''}</textarea>
+            </div>
+
             <!-- Submit Buttons -->
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
               <button type="button" id="cancel-admin-edit-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:20px;">إلغاء</button>
@@ -808,7 +815,9 @@ export const AdminSessionsPage = {
     container.appendChild(wrapper);
     if (window.lucide) window.lucide.createIcons();
 
-    const closeModal = () => { wrapper.remove(); };
+    const closeModal = () => {
+      document.querySelectorAll("#admin-edit-group-modal-wrapper").forEach(el => el.remove());
+    };
     wrapper.querySelector("#close-admin-edit-group-modal")?.addEventListener("click", closeModal);
     wrapper.querySelector("#cancel-admin-edit-group-btn")?.addEventListener("click", closeModal);
 
@@ -826,6 +835,7 @@ export const AdminSessionsPage = {
       const studentHourlyRate = parseFloat(wrapper.querySelector("#edit-group-student-rate")?.value) || 40;
       const teacherHourlyRate = parseFloat(wrapper.querySelector("#edit-group-teacher-rate")?.value) || 100;
       const meetingLink = wrapper.querySelector("#edit-group-meeting-link")?.value.trim() || null;
+      const description = wrapper.querySelector("#edit-group-description")?.value.trim() || "";
 
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='edit-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
@@ -842,6 +852,7 @@ export const AdminSessionsPage = {
           method: "PUT",
           body: JSON.stringify({
             name,
+            description,
             teacherId,
             status,
             scheduleDays,
@@ -860,10 +871,14 @@ export const AdminSessionsPage = {
           })
         });
 
-        showToast("تم تحديث كافة بيانات المجموعة بنجاح! 🎉💾", "success");
         closeModal();
-        await this.loadAllData();
-        this.renderTab("groups");
+        showToast("تم تحديث كافة بيانات المجموعة بنجاح! 🎉💾", "success");
+        try {
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (reloadErr) {
+          console.error("Error refreshing tab after group edit:", reloadErr);
+        }
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -1415,12 +1430,13 @@ export const AdminSessionsPage = {
 
   // ── Render Approve Group Modal (Admin Approval & Pricing/Dates Calculation) ────
   renderApproveGroupModal(group) {
+    document.querySelectorAll("#admin-approve-group-modal-wrapper").forEach(el => el.remove());
     const wrapper = document.createElement("div");
     wrapper.id = "admin-approve-group-modal-wrapper";
     document.body.appendChild(wrapper);
 
     const closeModal = () => {
-      wrapper.remove();
+      document.querySelectorAll("#admin-approve-group-modal-wrapper").forEach(el => el.remove());
     };
 
     const dayIndexMap = {
@@ -1538,6 +1554,14 @@ export const AdminSessionsPage = {
               </div>
             </div>
 
+            <!-- Group Description / Plan Summary -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                محتوى ووصف المجموعة والخطة التدريسية (يظهر للطلاب كملخص للدورة):
+              </label>
+              <textarea id="approve-group-description" rows="2" class="form-input" placeholder="وصف محتوى وخطة المجموعة..." style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; line-height:1.5; resize:vertical; box-sizing:border-box;">${group.description || group.course?.description || ''}</textarea>
+            </div>
+
             <!-- Schedule Days Checkboxes -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
@@ -1612,6 +1636,22 @@ export const AdminSessionsPage = {
               </div>
             </div>
 
+            <!-- Pricing: Monthly Subscription Price & Platform Commission -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  الاشتراك الشهري للطالب (ج.م.): <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="number" id="approve-group-monthly-price" value="${group.monthlyPrice || (initialStudentRate * 8)}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; font-size:0.95rem; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  نسبة عمولة المنصة (%):
+                </label>
+                <input type="number" id="approve-group-commission" value="${group.platformCommissionPercent !== undefined ? group.platformCommissionPercent : 50}" min="0" max="100" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; font-size:0.95rem; box-sizing:border-box;">
+              </div>
+            </div>
+
             <!-- Meeting Link -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">رابط قاعة البث (Zoom / Google Meet):</label>
@@ -1669,6 +1709,11 @@ export const AdminSessionsPage = {
         endDateInput.value = computedEnd;
       }
 
+      const monthlyInput = wrapper.querySelector("#approve-group-monthly-price");
+      if (monthlyInput && !monthlyInput.dataset.userEdited) {
+        monthlyInput.value = studentRateVal * 8;
+      }
+
       const summaryStudent = wrapper.querySelector("#summary-student-total");
       if (summaryStudent) {
         summaryStudent.innerText = `${studentRateVal * totalSessionsVal} ج.م. (${studentRateVal} ج.م. × ${totalSessionsVal} حصة)`;
@@ -1685,6 +1730,9 @@ export const AdminSessionsPage = {
       }
     };
 
+    wrapper.querySelector("#approve-group-monthly-price")?.addEventListener("input", (e) => {
+      e.target.dataset.userEdited = "true";
+    });
     wrapper.querySelector("#approve-group-start-date")?.addEventListener("change", updateCalculations);
     wrapper.querySelector("#approve-group-total-sessions")?.addEventListener("input", updateCalculations);
     wrapper.querySelector("#approve-group-student-rate")?.addEventListener("input", updateCalculations);
@@ -1697,6 +1745,7 @@ export const AdminSessionsPage = {
       e.preventDefault();
 
       const name = wrapper.querySelector("#approve-group-name")?.value.trim() || group.name || group.title;
+      const description = wrapper.querySelector("#approve-group-description")?.value.trim() || "";
       const teacherId = wrapper.querySelector("#approve-group-teacher")?.value || group.teacher?.id;
       const meetingLink = wrapper.querySelector("#approve-group-meeting-link")?.value.trim() || null;
       const startDate = wrapper.querySelector("#approve-group-start-date")?.value || null;
@@ -1707,6 +1756,8 @@ export const AdminSessionsPage = {
       const maxStudents = parseInt(wrapper.querySelector("#approve-group-max-students")?.value, 10) || 25;
       const studentHourlyRate = parseFloat(wrapper.querySelector("#approve-group-student-rate")?.value) || 50;
       const teacherHourlyRate = parseFloat(wrapper.querySelector("#approve-group-teacher-rate")?.value) || 120;
+      const monthlyPrice = parseFloat(wrapper.querySelector("#approve-group-monthly-price")?.value) || (studentHourlyRate * 8);
+      const platformCommissionPercent = parseFloat(wrapper.querySelector("#approve-group-commission")?.value) || 50;
       
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='approve-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
@@ -1723,6 +1774,7 @@ export const AdminSessionsPage = {
           method: "POST",
           body: JSON.stringify({
             name,
+            description,
             teacherId,
             meetingLink,
             startDate,
@@ -1735,15 +1787,20 @@ export const AdminSessionsPage = {
             studentHourlyRate,
             teacherHourlyRate,
             sessionPrice: studentHourlyRate,
-            monthlyPrice: studentHourlyRate * 8,
+            monthlyPrice,
+            platformCommissionPercent,
             maxStudents
           })
         });
 
-        showToast("تم اعتماد المجموعة ونشرها للطلاب بنجاح! 🎉🚀", "success");
         closeModal();
-        await this.loadAllData();
-        this.renderTab("groups");
+        showToast("تم اعتماد المجموعة ونشرها للطلاب بنجاح! 🎉🚀", "success");
+        try {
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (reloadErr) {
+          console.error("Error reloading groups tab after approval:", reloadErr);
+        }
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;

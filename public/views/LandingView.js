@@ -1261,7 +1261,7 @@ export default class LandingView {
       const items = this.courses.slice(0, 3);
       if (items.length > 0) {
         const topCourse = items[0];
-        const topTarget = topCourse.subject?.id ? `#subject-groups/${topCourse.subject.id}` : `#subject-groups/${topCourse.id}`;
+        const topTarget = `#subject-groups/${topCourse.id}`;
         const headerEl = mostPopularContainer.parentElement?.querySelector("h3");
         if (headerEl) {
           headerEl.style.cursor = "pointer";
@@ -1272,7 +1272,7 @@ export default class LandingView {
         mostPopularContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات متاحة حالياً.</div>`;
       } else {
         mostPopularContainer.innerHTML = items.map(course => {
-          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          const targetHash = `#subject-groups/${course.id}`;
           return `
             <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='${targetHash}'">
               <img src="${course.image || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
@@ -1296,7 +1296,7 @@ export default class LandingView {
       const items = [...this.courses].reverse().slice(0, 3);
       if (items.length > 0) {
         const topCourse = items[0];
-        const topTarget = topCourse.subject?.id ? `#subject-groups/${topCourse.subject.id}` : `#subject-groups/${topCourse.id}`;
+        const topTarget = `#subject-groups/${topCourse.id}`;
         const headerEl = newReleasesContainer.parentElement?.querySelector("h3");
         if (headerEl) {
           headerEl.style.cursor = "pointer";
@@ -1307,7 +1307,7 @@ export default class LandingView {
         newReleasesContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted);">لا توجد دورات حديثة.</div>`;
       } else {
         newReleasesContainer.innerHTML = items.map(course => {
-          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          const targetHash = `#subject-groups/${course.id}`;
           return `
             <div style="display:flex; gap:14px; align-items:center; background:var(--bg-card); padding:12px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer; transition:all 0.2s;" onclick="window.location.hash='${targetHash}'">
               <img src="${course.image || 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=200'}" style="width:56px; height:56px; object-fit:cover; border-radius:10px; flex-shrink:0;">
@@ -1353,7 +1353,7 @@ export default class LandingView {
         gradientFeaturedContainer.innerHTML = `<div style="font-size:0.85rem; color:#ffffff; grid-column:1/-1;">لا توجد دورات مضافة حالياً.</div>`;
       } else {
         gradientFeaturedContainer.innerHTML = items.map(course => {
-          const targetHash = course.subject?.id ? `#subject-groups/${course.subject.id}` : `#subject-groups/${course.id}`;
+          const targetHash = `#subject-groups/${course.id}`;
           return `
             <div class="glass-card" style="background:#ffffff; color:#0f172a; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 24px rgba(0,0,0,0.15); cursor:pointer; transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'" onclick="window.location.hash='${targetHash}'">
               <div>

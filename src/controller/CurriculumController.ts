@@ -540,27 +540,26 @@ export class CurriculumController {
         const cTitle = safeStr(c.title);
         const cSubName = safeStr(c.subject?.name);
 
-        const matchesCourseId = requestedCourse && cId === requestedCourse.id;
-        const matchesSubId = (subject.id && cSubId === subject.id) || (subjectId && cSubId === subjectId);
-        const matchesGrade = subGradeId && cGradeId ? cGradeId === subGradeId : false;
-        const matchesCat = (subName && (cCat.includes(subName) || subName.includes(cCat))) ||
-                           (subNameEn && (cCat.includes(subNameEn) || subNameEn.includes(cCat))) ||
-                           (subCat && (cCat.includes(subCat) || subCat.includes(cCat))) ||
-                           (cTitle && subName && (cTitle.includes(subName) || subName.includes(cTitle)));
-        const matchesStage = (c.grade?.stage === subStage || !c.grade?.stage) && (
-          (cSubName && subName && cSubName === subName) || matchesCat
+        const matchesCourseId = !!(requestedCourse && cId === requestedCourse.id);
+        const matchesSubId = !!((subject.id && cSubId === subject.id) || (subjectId && cSubId === subjectId));
+        const matchesCat = !!(
+          (subName && (cCat.includes(subName) || subName.includes(cCat))) ||
+          (subNameEn && (cCat.includes(subNameEn) || subNameEn.includes(cCat))) ||
+          (subCat && (cCat.includes(subCat) || subCat.includes(cCat))) ||
+          (cTitle && subName && (cTitle.includes(subName) || subName.includes(cTitle)))
         );
 
-        return matchesCourseId || matchesSubId || (matchesGrade && matchesCat) || matchesStage;
+        if (matchesCourseId) return true;
+        if (matchesSubId) return true;
+        if (subGradeId && cGradeId) {
+          return cGradeId === subGradeId && (matchesCat || (cSubName && subName && cSubName === subName));
+        }
+        return matchesCat && (c.grade?.stage === subStage || !c.grade?.stage);
       });
 
-      // If no matching courses found, include requestedCourse or all published courses
-      if (matchingCourses.length === 0) {
-        if (requestedCourse) {
-          matchingCourses = [requestedCourse];
-        } else if (allCourses.length > 0) {
-          matchingCourses = allCourses.slice(0, 4);
-        }
+      // If no matching courses found, only include requestedCourse if specifically requested
+      if (matchingCourses.length === 0 && requestedCourse) {
+        matchingCourses = [requestedCourse];
       }
 
       // Ensure requested course is first in the array
@@ -585,17 +584,11 @@ export class CurriculumController {
             relations: ["course", "course.grade", "course.teacher", "teacher"]
           });
         } else {
-          groups = await groupRepo.find({
-            relations: ["course", "course.grade", "course.teacher", "teacher"]
-          });
+          groups = [];
         }
       } catch (e) {
         console.warn("Could not query groups by course ids:", e);
-        try {
-          groups = await groupRepo.find({ relations: ["course", "course.grade", "course.teacher", "teacher"] });
-        } catch (e2) {
-          groups = [];
-        }
+        groups = [];
       }
 
       // 7. Fetch available grades in this stage for filtering
@@ -633,7 +626,7 @@ export class CurriculumController {
           continue;
         }
 
-        // Skip groups pending approval, rejected, or closed
+        // Only show approved groups (OPEN or FULL) to students - skip pending, rejected, or closed
         if (group.status === "PENDING_APPROVAL" || group.status === "REJECTED" || group.status === "CLOSED") {
           continue;
         }
@@ -712,6 +705,8 @@ export class CurriculumController {
         });
       }
 
+      const primaryCourse = requestedCourse || (matchingCourses.length > 0 ? matchingCourses[0] : null);
+
       return res.status(200).json({
         subject: {
           id: subject.id,
@@ -719,10 +714,30 @@ export class CurriculumController {
           nameEn: subject.nameEn || "Course",
           icon: subject.icon || "📖",
           stage: subStage,
-          gradeId: subject.grade?.id || "",
-          gradeName: subject.grade?.name || "المرحلة الدراسية",
-          subtitle: `${subject.grade?.name || ""} • الفصل الدراسي الأول • المنهج الدراسي`
+          gradeId: subject.grade?.id || primaryCourse?.grade?.id || "",
+          gradeName: subject.grade?.name || primaryCourse?.grade?.name || "المرحلة الدراسية",
+          subtitle: `${subject.grade?.name || primaryCourse?.grade?.name || ""} • الفصل الدراسي الأول • المنهج الدراسي`,
+          image: primaryCourse?.image || null,
+          teacher: primaryCourse?.teacher ? {
+            id: primaryCourse.teacher.id,
+            name: primaryCourse.teacher.name,
+            avatar: primaryCourse.teacher.avatar
+          } : null
         },
+        primaryCourse: primaryCourse ? {
+          id: primaryCourse.id,
+          title: primaryCourse.title,
+          description: primaryCourse.description,
+          image: primaryCourse.image,
+          price: primaryCourse.price,
+          currency: primaryCourse.currency || "ج.م.",
+          gradeName: primaryCourse.grade?.name || subject.grade?.name || "",
+          teacher: primaryCourse.teacher ? {
+            id: primaryCourse.teacher.id,
+            name: primaryCourse.teacher.name,
+            avatar: primaryCourse.teacher.avatar
+          } : null
+        } : null,
         courses: matchingCourses.map(c => ({
           id: c.id,
           title: c.title,
@@ -730,7 +745,7 @@ export class CurriculumController {
           image: c.image,
           price: c.price,
           isFree: c.isFree,
-          currency: c.currency || "EGP",
+          currency: c.currency || "ج.م.",
           category: c.category,
           gradeId: c.grade?.id,
           gradeName: c.grade?.name,

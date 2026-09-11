@@ -1328,35 +1328,6 @@ export default class AdminView {
       });
     });
 
-    // Admin Approve/Reject Pending Groups
-    this.container.querySelectorAll(".admin-open-approve-group-modal-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        const group = (this.pendingCourseGroups || []).find(g => String(g.id) === String(id));
-        if (group) {
-          this.renderApproveGroupModal(group);
-        }
-      });
-    });
-
-    this.container.querySelectorAll(".admin-reject-group-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        const confirmed = await confirmDialog({ message: "هل أنت متأكد من رفض هذه المجموعة الدراسية؟", danger: true });
-        if (!confirmed) return;
-        btn.disabled = true;
-        try {
-          await apiFetch(`/admin/groups/${id}/reject`, { method: "POST" });
-          showToast("تم رفض المجموعة.", "info");
-          await this.loadAllData();
-          this.renderTab("groups");
-        } catch (err) {
-          btn.disabled = false;
-          showToast(err.message || "فشل رفض المجموعة.", "error");
-        }
-      });
-    });
-
     // Approve Teacher Application
     this.container.querySelectorAll(".approve-application-btn").forEach(btn => {
       btn.addEventListener("click", async () => {

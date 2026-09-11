@@ -14,6 +14,9 @@ export class CourseGroup {
   @Column()
   name: string; // e.g. "مجموعة أ (السبت والثلاثاء ٦:٠٠ م)"
 
+  @Column({ type: "text", nullable: true })
+  description: string; // محتوى أو ملخص المجموعة والخطة الدراسية التي يحددها المعلم
+
   @ManyToOne(() => Course, course => course.groups, { onDelete: "CASCADE" })
   course: Course;
 

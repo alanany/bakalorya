@@ -105,6 +105,7 @@ router.get("/curriculum/courses/:subjectId/groups", CurriculumController.getSubj
 router.get("/landing/explore", CurriculumController.getLandingExplore);
 
 // Course Group Batches & Cohorts
+router.post("/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController.getCourseGroups);
 router.post("/courses/:courseId/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroup);
 router.put("/groups/:id", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.updateGroup);
@@ -118,6 +119,10 @@ router.post("/groups/:id/announcements", authMiddleware, requireRole(["teacher",
 router.delete("/groups/:id/announcements/:announcementId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupAnnouncement);
 router.post("/groups/:id/videos", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.uploadGroupVideo);
 router.delete("/groups/:id/videos/:videoId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupVideo);
+router.post("/groups/:id/lessons", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.addGroupLesson);
+router.post("/groups/:id/lessons/import-from-course", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.importCourseLessons);
+router.put("/groups/:id/lessons/:lessonId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.updateGroupLesson);
+router.delete("/groups/:id/lessons/:lessonId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupLesson);
 router.post("/groups/:id/assignments", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroupAssignment);
 router.post("/groups/:id/resources", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.uploadGroupResource);
 router.delete("/groups/:id/resources/:resourceId", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.deleteGroupResource);

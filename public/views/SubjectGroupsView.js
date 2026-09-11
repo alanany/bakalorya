@@ -20,8 +20,17 @@ export default class SubjectGroupsView {
   }
 
   getCoverPhoto(subjectName, primaryCourse) {
-    if (primaryCourse && primaryCourse.image && String(primaryCourse.image).startsWith("http")) {
-      return primaryCourse.image;
+    if (primaryCourse && primaryCourse.image) {
+      const img = String(primaryCourse.image).trim();
+      if (img && img !== "null" && img !== "undefined") {
+        return img;
+      }
+    }
+    if (this.subjectData && this.subjectData.image) {
+      const img = String(this.subjectData.image).trim();
+      if (img && img !== "null" && img !== "undefined") {
+        return img;
+      }
     }
     const n = String(subjectName || "").toLowerCase();
     if (n.includes("connect") || n.includes("engl") || n.includes("إنجل") || n.includes("لغة")) {
@@ -373,65 +382,18 @@ export default class SubjectGroupsView {
       }
     }
 
-    // Attempt 4: General default fallback
-    if (!loadedRes || !loadedRes.subject) {
-      try {
-        loadedRes = await apiFetch("/curriculum/subjects/default/groups");
-      } catch (err4) {
-        console.warn("Default curriculum groups fallback failed:", err4);
-      }
-    }
 
-    // Attempt 5: Any available course from /courses
-    if (!loadedRes || !loadedRes.subject) {
-      try {
-        const allCourses = await apiFetch("/courses");
-        if (Array.isArray(allCourses) && allCourses.length > 0) {
-          const firstCourse = allCourses[0];
-          let cGroups = [];
-          try {
-            cGroups = await apiFetch(`/courses/${firstCourse.id}/groups`);
-          } catch (_) {}
-
-          loadedRes = {
-            subject: {
-              id: firstCourse.id,
-              name: firstCourse.category || firstCourse.title || "المقرر الدراسي",
-              nameEn: firstCourse.title || "Course",
-              gradeId: firstCourse.grade?.id || "",
-              gradeName: firstCourse.grade?.name || "المرحلة الدراسية"
-            },
-            courses: allCourses.slice(0, 4),
-            groups: (Array.isArray(cGroups) ? cGroups : []).map(g => ({
-              groupId: g.id,
-              groupName: g.name,
-              courseId: firstCourse.id,
-              courseTitle: firstCourse.title,
-              gradeName: firstCourse.grade?.name || "الصف الدراسي",
-              price: g.monthlyPrice || firstCourse.price || 320,
-              monthlyPrice: g.monthlyPrice || firstCourse.price || 320,
-              sessionPrice: g.sessionPrice || 40,
-              teacher: g.teacher || firstCourse.teacher,
-              scheduleDays: g.scheduleDays || "",
-              scheduleText: g.scheduleText || "",
-              availableSeats: g.availableSeats !== undefined ? g.availableSeats : 20,
-              maxStudents: g.maxStudents || 25,
-              isFull: !!g.isFull,
-              status: g.status || "OPEN"
-            })),
-            availableGrades: []
-          };
-        }
-      } catch (err5) {
-        console.warn("All courses fallback failed:", err5);
-      }
-    }
 
     if (loadedRes && loadedRes.subject) {
       this.subjectData = loadedRes.subject;
       this.courses = loadedRes.courses || [];
+      this.primaryCourse = loadedRes.primaryCourse || null;
       this.allGroups = loadedRes.groups || [];
       this.availableGrades = loadedRes.availableGrades || [];
+      if (!this.selectedCourseId) {
+        const matched = this.courses.find(c => String(c.id) === String(this.subjectId));
+        this.selectedCourseId = matched ? matched.id : (this.primaryCourse ? this.primaryCourse.id : "all");
+      }
       this.loading = false;
       try {
         this.renderContent();
@@ -464,6 +426,11 @@ export default class SubjectGroupsView {
         return String(g.gradeId) === String(this.selectedGrade) ||
                (g.gradeName && g.gradeName.toLowerCase().includes(this.selectedGrade.toLowerCase()));
       });
+    }
+
+    // 0.5. Course filter
+    if (this.selectedCourseId && this.selectedCourseId !== "all") {
+      list = list.filter(g => String(g.courseId) === String(this.selectedCourseId));
     }
 
     // 1. Days filter
@@ -516,15 +483,22 @@ export default class SubjectGroupsView {
     if (!contentEl || !this.subjectData) return;
 
     const sub = this.subjectData;
-    const matchedCourse = (this.courses || []).find(c => String(c.id) === String(this.subjectId));
-    const primaryCourse = matchedCourse || ((this.courses && this.courses.length > 0) ? this.courses[0] : null);
-    const coverImage = this.getCoverPhoto(sub.name, primaryCourse);
+    const activeCourse = (this.courses || []).find(c => String(c.id) === String(this.selectedCourseId)) ||
+                         this.primaryCourse ||
+                         ((this.courses && this.courses.length > 0) ? this.courses[0] : null);
+    const coverImage = this.getCoverPhoto(sub.name, activeCourse);
+    const courseTitle = activeCourse?.title || sub.name;
+    const gradeName = activeCourse?.gradeName || sub.gradeName || "المرحلة الدراسية";
+    const courseDesc = activeCourse?.description || `شرح مبسط ومتابعة مباشرة وتأسيس قوي لمقرر ${sub.name} مع نخبة من أفضل المعلمين المعتمدين.`;
+    const teacher = activeCourse?.teacher || sub.teacher || null;
+    const coursePrice = activeCourse?.price || 320;
+    const currency = activeCourse?.currency || "ج.م.";
 
     // Update breadcrumb
     const bcGrade = document.getElementById("breadcrumb-grade");
     const bcSubject = document.getElementById("breadcrumb-subject");
-    if (bcGrade) bcGrade.innerText = sub.gradeName || "المرحلة الدراسية";
-    if (bcSubject) bcSubject.innerText = sub.name;
+    if (bcGrade) bcGrade.innerText = gradeName;
+    if (bcSubject) bcSubject.innerText = courseTitle;
 
     const filteredGroups = this.getFilteredGroups();
 
@@ -550,56 +524,123 @@ export default class SubjectGroupsView {
     const availableGradesList = Array.from(gradeMap.entries()).map(([id, name]) => ({ id, name }));
 
     contentEl.innerHTML = `
-      <!-- 1. HERO COVER PHOTO & COURSE TITLE ONLY -->
+      <!-- 0. COURSE TABS (WHEN MULTIPLE COURSES EXIST) -->
+      ${this.courses.length > 1 ? `
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:12px 18px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+          <div style="display:flex; align-items:center; gap:8px; font-weight:900; font-size:0.9rem; color:var(--text-color);">
+            <span style="color:#e51d74;">📚</span>
+            <span>المقررات المتوفرة لهذه المادة (${this.courses.length}):</span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="course-tab-pill ${(!this.selectedCourseId || this.selectedCourseId === 'all') ? 'active' : ''}" data-course-id="all" style="
+              background: ${(!this.selectedCourseId || this.selectedCourseId === 'all') ? '#e51d74' : 'var(--bg-app)'};
+              color: ${(!this.selectedCourseId || this.selectedCourseId === 'all') ? '#ffffff' : 'var(--text-color)'};
+              border: 1px solid ${(!this.selectedCourseId || this.selectedCourseId === 'all') ? '#e51d74' : 'var(--border-color)'};
+              padding: 8px 16px;
+              border-radius: 12px;
+              font-size: 0.84rem;
+              font-weight: 800;
+              cursor: pointer;
+              transition: all 0.2s;
+            ">
+              🌟 جميع المقررات (${this.allGroups.length} مجموعات)
+            </button>
+            ${this.courses.map(c => {
+              const isSelected = this.selectedCourseId === c.id;
+              const cGroupsCount = (this.allGroups || []).filter(g => String(g.courseId) === String(c.id)).length;
+              return `
+                <button type="button" class="course-tab-pill ${isSelected ? 'active' : ''}" data-course-id="${c.id}" style="
+                  background: ${isSelected ? '#e51d74' : 'var(--bg-app)'};
+                  color: ${isSelected ? '#ffffff' : 'var(--text-color)'};
+                  border: 1px solid ${isSelected ? '#e51d74' : 'var(--border-color)'};
+                  padding: 8px 16px;
+                  border-radius: 12px;
+                  font-size: 0.84rem;
+                  font-weight: 800;
+                  cursor: pointer;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  transition: all 0.2s;
+                ">
+                  <span>${c.title}</span>
+                  <span style="background:${isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)'}; padding:1px 6px; border-radius:8px; font-size:0.72rem;">${cGroupsCount}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- 1. HERO COVER PHOTO & REAL COURSE DETAILS -->
       <div class="course-cover-hero-banner" style="
         position: relative;
         width: 100%;
-        min-height: 250px;
+        min-height: 290px;
         border-radius: 26px;
         overflow: hidden;
         margin-bottom: 24px;
-        background-image: linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(15,23,42,0.85) 90%), url('${coverImage}');
+        background-image: linear-gradient(180deg, rgba(15,23,42,0.2) 0%, rgba(15,23,42,0.68) 45%, rgba(15,23,42,0.96) 100%), url('${coverImage}');
         background-size: cover;
         background-position: center;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.16);
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
-        padding: clamp(20px, 4vw, 36px);
+        padding: clamp(22px, 4vw, 36px);
         color: #ffffff;
       ">
         <!-- Top Badges inside Cover -->
-        <div style="position: absolute; top: 18px; right: 20px; display: flex; gap: 8px; flex-wrap: wrap;">
-          <span style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem; border: 1px solid rgba(255,255,255,0.2);">
-            ${sub.gradeName || 'المرحلة التعليمية'}
+        <div style="position: absolute; top: 20px; right: 22px; display: flex; gap: 8px; flex-wrap: wrap; z-index: 3;">
+          <span style="background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.84rem; border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; gap: 6px;">
+            <span>🎓</span>
+            <span>${gradeName}</span>
           </span>
-          <span style="background: rgba(16,185,129,0.9); backdrop-filter: blur(8px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
-            منهج رسمي معتمد 🇪🇬
+          <span style="background: rgba(16,185,129,0.92); backdrop-filter: blur(10px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+            <span>🇪🇬</span>
+            <span>منهج رسمي معتمد</span>
           </span>
+          ${sub.name ? `
+            <span style="background: rgba(229,29,116,0.9); backdrop-filter: blur(10px); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.84rem;">
+              ${sub.name}
+            </span>
+          ` : ''}
         </div>
 
-        <!-- Title & Subtitle inside Cover -->
-        <div style="position: relative; z-index: 2; max-width: 850px;">
+        <!-- Title, Description & Teacher Meta inside Cover -->
+        <div style="position: relative; z-index: 2; max-width: 900px;">
           <h1 style="
-            font-size: clamp(1.7rem, 4.5vw, 2.7rem);
+            font-size: clamp(1.75rem, 4.5vw, 2.7rem);
             font-weight: 900;
             color: #ffffff;
-            margin: 0 0 8px 0;
-            text-shadow: 0 3px 12px rgba(0,0,0,0.7);
+            margin: 0 0 10px 0;
+            text-shadow: 0 3px 14px rgba(0,0,0,0.8);
             line-height: 1.25;
             letter-spacing: -0.5px;
           ">
-            ${primaryCourse?.title || sub.name}
+            ${courseTitle}
           </h1>
+
           <p style="
-            font-size: clamp(0.88rem, 2vw, 1.05rem);
-            color: rgba(255,255,255,0.92);
-            margin: 0;
-            font-weight: 700;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+            font-size: clamp(0.9rem, 2vw, 1.05rem);
+            color: rgba(255,255,255,0.94);
+            margin: 0 0 16px 0;
+            font-weight: 600;
+            line-height: 1.6;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            max-width: 800px;
           ">
-            مجموعات المتابعة والتدريس المباشر لمقرر ${sub.name} • ${sub.gradeName || ''}
+            ${courseDesc}
           </p>
+
+          <!-- Key Meta Pills -->
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); font-weight: 800; font-size: 0.86rem; color: #ffffff;">
+              <span>👥</span>
+              <span>${filteredGroups.length} مجموعات تفاعلية نشطة</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -720,6 +761,23 @@ export default class SubjectGroupsView {
 
   renderGroupsList(groupsToRender) {
     const list = groupsToRender !== undefined ? groupsToRender : this.getFilteredGroups();
+
+    if (this.allGroups.length === 0) {
+      return `
+        <div style="grid-column:1/-1; text-align:center; padding:70px 20px; background:var(--bg-card); border-radius:24px; border:1px solid var(--border-color);">
+          <div style="width:72px; height:72px; border-radius:24px; background:rgba(229,29,116,0.1); color:#e51d74; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px; font-size:2.2rem;">
+            📚
+          </div>
+          <h3 style="font-size:1.35rem; font-weight:900; color:var(--text-color); margin-bottom:8px;">لا توجد مجموعات دراسية متاحة لهذه المادة حتى الآن</h3>
+          <p style="font-size:0.92rem; color:var(--text-muted); max-width:480px; margin:0 auto 20px; line-height:1.6;">
+            لم يقم المعلمون بفتح مجموعات دراسية لهذه المادة بعد. يمكنك العودة واستكشاف المجموعات والمواد المتاحة الأخرى.
+          </p>
+          <a href="#landing" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:11px 26px; border-radius:14px; text-decoration:none; font-weight:800; font-size:0.9rem; background:#e51d74; color:#fff;">
+            <span>استكشاف باقي المواد الدراسية 🧭</span>
+          </a>
+        </div>
+      `;
+    }
 
     if (list.length === 0) {
       return `
@@ -977,6 +1035,15 @@ export default class SubjectGroupsView {
   }
 
   attachEvents() {
+    // -1. Course Tab Pills
+    document.querySelectorAll(".course-tab-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const courseId = btn.getAttribute("data-course-id");
+        this.selectedCourseId = courseId;
+        this.renderContent();
+      });
+    });
+
     // 0. Grade Select ("for any grades")
     const gradeSelect = document.getElementById("filter-grade-select");
     gradeSelect?.addEventListener("change", (e) => {
