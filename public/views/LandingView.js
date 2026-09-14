@@ -320,7 +320,7 @@ export default class LandingView {
               <p style="font-size:1.05rem; color:#93c5fd; line-height:1.6; margin-bottom:28px;">
                 أظهرت النتائج ارتفاعاً ملحوظاً في المعدلات العامة واستيعاب المفاهيم الصعبة مع حلول التدارك والبث المباشر.
               </p>
-              <a href="#courses-section" style="color:#ffffff; font-weight:800; font-size:1rem; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+              <a href="#about" style="color:#ffffff; font-weight:800; font-size:1rem; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
                 اعرف المزيد عن نتائج الطلاب <i data-lucide="arrow-left" style="width:18px;height:18px; color:#38bdf8;"></i>
               </a>
             </div>
@@ -571,7 +571,7 @@ export default class LandingView {
               <h2 style="font-size:1.7rem; font-weight:900; margin:0; color:var(--text-color);">أحدث المقالات والنصائح للانطلق 📝</h2>
               <p style="color:var(--text-muted); font-size:0.95rem; margin-top:4px;">إرشادات ومنهجيات لم مساعدة طلاب انطلق على المذاكرة بذكاء وتفادي التوتر</p>
             </div>
-            <a href="#courses-section" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح جميع المقالات ➔</a>
+            <a href="#courses" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح الدورات التعليمية ➔</a>
           </div>
 
           <div id="landing-blogs-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
@@ -1339,7 +1339,7 @@ export default class LandingView {
           <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:18px 10px; background:var(--bg-card); border-radius:12px; border:1px dashed var(--border-color);">
             <div style="font-weight:700; color:var(--text-color); margin-bottom:4px;">لا توجد مجموعات مفتوحة حالياً</div>
             <div style="font-size:0.75rem; margin-bottom:10px;">يمكنك استكشاف المقررات والمناهج والانضمام فور فتح المجموعات الجديدة.</div>
-            <a href="#curriculum-courses" style="display:inline-block; font-size:0.75rem; font-weight:800; color:#10b981; text-decoration:none; background:rgba(16,185,129,0.1); padding:4px 12px; border-radius:8px;">استعراض المناهج ↗</a>
+            <a href="#courses" style="display:inline-block; font-size:0.75rem; font-weight:800; color:#10b981; text-decoration:none; background:rgba(16,185,129,0.1); padding:4px 12px; border-radius:8px;">استعراض المناهج ↗</a>
           </div>
         `;
       } else {

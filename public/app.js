@@ -1929,6 +1929,29 @@ export async function router() {
     return router();
   }
 
+  // Handle in-page anchor navigation (e.g. #teacher-groups-section) without resetting active view
+  const definedRoutes = new Set([
+    "", "#", "#landing", "#login", "#signup", "#staff-login", "#teacher-login", "#admin-login",
+    "#auth", "#student-dashboard", "#student-subscriptions", "#student-groups",
+    "#student-private-sessions", "#subscription-sessions", "#course", "#teacher-portal",
+    "#teacher-financial", "#teacher-private-sessions", "#teacher-groups", "#teacher-assignments",
+    "#teacher-availability", "#teacher", "#teacher-apply", "#enrollment-requests",
+    "#teacher-blogs", "#blog", "#classroom", "#group", "#group-hub", "#admin-dashboard",
+    "#courses", "#manage-course", "#course-preview", "#course-details", "#schedule",
+    "#assignments", "#resources", "#tests", "#students", "#settings", "#notifications",
+    "#search", "#about", "#contact", "#faq", "#subscription-plans", "#subject-groups",
+    "#course-groups", "#subject"
+  ]);
+
+  if (routeBase && routeBase.startsWith("#") && !definedRoutes.has(routeBase)) {
+    const elId = routeBase.substring(1);
+    const existingEl = document.getElementById(elId);
+    if (existingEl && state.currentViewInstance) {
+      existingEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+  }
+
   // Destroy old view
   if (state.currentViewInstance && typeof state.currentViewInstance.onDestroy === "function") {
     state.currentViewInstance.onDestroy();

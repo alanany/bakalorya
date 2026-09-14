@@ -59,6 +59,7 @@ export default class TeacherDetailsView {
         this.courses.map(c => apiFetch(`/courses/${c.id}/groups`).catch(() => []))
       );
       this.groups = groupsResults.flat().filter(g => g.status === 'OPEN' || g.status === 'IN_PROGRESS' || g.status === 'CLOSED');
+      this.teacherGroups = this.groups;
 
       this.renderContent();
     } catch (err) {
@@ -154,9 +155,10 @@ export default class TeacherDetailsView {
                   style="padding:10px 22px; border-radius:30px; font-size:0.88rem; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(16,185,129,0.3); cursor:pointer;">
                   <i data-lucide="sparkles"></i> طلب حصة خاصة (1-on-1) 🎯
                 </button>
-                <a href="#teacher-groups-section" class="btn-secondary" style="text-decoration:none; padding:10px 20px; border-radius:30px; font-size:0.88rem; font-weight:800; color:#e51d74; border-color:rgba(229,29,116,0.3); background:rgba(229,29,116,0.06); display:inline-flex; align-items:center; gap:8px;">
+                <button type="button" id="scroll-to-teacher-groups-btn" class="btn-secondary" onclick="document.getElementById('teacher-groups-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                  style="cursor:pointer; text-decoration:none; padding:10px 20px; border-radius:30px; font-size:0.88rem; font-weight:800; color:#e51d74; border:1px solid rgba(229,29,116,0.3); background:rgba(229,29,116,0.06); display:inline-flex; align-items:center; gap:8px;">
                   <i data-lucide="users"></i> المجموعات الدراسية (${this.groups.length}) 👥
-                </a>
+                </button>
               </div>
 
             </div>
@@ -555,12 +557,18 @@ export default class TeacherDetailsView {
       });
     });
 
+    // Scroll to groups button
+    this.container.querySelector("#scroll-to-teacher-groups-btn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("teacher-groups-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
     // Group Enroll Buttons
     this.container.querySelectorAll(".teacher-group-enroll-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const groupId = btn.getAttribute("data-group-id");
-        const groupObj = (this.teacherGroups || []).find(g => g.id === groupId) || {};
-        const courseObj = groupObj.course || (this.courses || []).find(c => c.id === btn.getAttribute("data-course-id")) || {};
+        const groupObj = (this.groups || this.teacherGroups || []).find(g => g.id === groupId) || {};
+        const courseObj = groupObj.course || (this.courses || []).find(c => c.id === (btn.getAttribute("data-course-id") || groupObj.courseId || groupObj.course?.id)) || {};
 
         openGroupPaymentModal({
           courseId: courseObj.id || groupObj.course?.id,
