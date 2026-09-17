@@ -179,6 +179,79 @@ export default class SettingsView {
             `}
           </div>
 
+          <!-- Change Password Card (For Students, Teachers, and all platform users) -->
+          <div class="glass-card" style="padding:32px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="shield-check" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.2rem; margin:0 0 2px 0; font-weight:800; color:var(--text-main);">
+                  الأمان وتغيير كلمة المرور 🔒
+                </h3>
+                <p style="color:var(--text-muted); font-size:0.84rem; margin:0;">
+                  تحديث كلمة المرور الخاصة بحسابك لحماية بياناتك الأكاديمية والوصول الآمن.
+                </p>
+              </div>
+            </div>
+
+            <form id="settings-change-password-form" style="display:flex; flex-direction:column; gap:16px; margin-top:20px;">
+              <div class="form-group">
+                <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="lock" style="width:14px;height:14px;color:var(--primary);"></i>
+                  كلمة المرور الحالية (Current Password) *
+                </label>
+                <div style="position:relative;">
+                  <input type="password" id="settings-current-password" class="form-input" required placeholder="أدخل كلمة المرور الحالية" style="padding-left:42px;">
+                  <button type="button" class="btn-toggle-password" data-target="settings-current-password" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" title="إظهار / إخفاء">
+                    <i data-lucide="eye" style="width:16px;height:16px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                <div class="form-group">
+                  <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="key" style="width:14px;height:14px;color:#10b981;"></i>
+                    كلمة المرور الجديدة (New Password) *
+                  </label>
+                  <div style="position:relative;">
+                    <input type="password" id="settings-new-password" class="form-input" required minlength="6" placeholder="6 أحرف أو أرقام على الأقل" style="padding-left:42px;">
+                    <button type="button" class="btn-toggle-password" data-target="settings-new-password" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" title="إظهار / إخفاء">
+                      <i data-lucide="eye" style="width:16px;height:16px;"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="check-check" style="width:14px;height:14px;color:#10b981;"></i>
+                    تأكيد كلمة المرور الجديدة (Confirm Password) *
+                  </label>
+                  <div style="position:relative;">
+                    <input type="password" id="settings-confirm-password" class="form-input" required minlength="6" placeholder="أعد إدخال كلمة المرور" style="padding-left:42px;">
+                    <button type="button" class="btn-toggle-password" data-target="settings-confirm-password" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" title="إظهار / إخفاء">
+                      <i data-lucide="eye" style="width:16px;height:16px;"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Password Requirements Note -->
+              <div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                <i data-lucide="info" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;"></i>
+                <span>يجب أن تتكون كلمة المرور من 6 خانات على الأقل، ويُفضل استخدام حروف وأرقام لضمان قوة الأمان.</span>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                <button type="submit" id="settings-password-submit-btn" class="btn-primary" style="padding:10px 24px; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; gap:8px;">
+                  <i data-lucide="lock" style="width:16px;height:16px;"></i>
+                  <span>تحديث كلمة المرور</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           <div class="glass-card" style="padding:32px;">
             <h3 style="font-size:1.2rem; margin-bottom:24px; display:flex; align-items:center; gap:8px;">
               <i data-lucide="globe"></i> Preferences
@@ -394,6 +467,77 @@ export default class SettingsView {
     document.getElementById("settings-theme-btn")?.addEventListener("click", () => {
       document.getElementById("theme-toggle").click(); // Trigger global theme toggle
       this.render(); // Re-render to update button text/icon
+    });
+
+    // 5. Password visibility toggles
+    this.container.querySelectorAll(".btn-toggle-password").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        btn.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" style="width:16px;height:16px;"></i>`;
+        if (window.lucide) window.lucide.createIcons();
+      });
+    });
+
+    // 6. Change Password Form Handler
+    const changePasswordForm = document.getElementById("settings-change-password-form");
+    changePasswordForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const currentPassword = document.getElementById("settings-current-password")?.value || "";
+      const newPassword = document.getElementById("settings-new-password")?.value || "";
+      const confirmPassword = document.getElementById("settings-confirm-password")?.value || "";
+      const submitBtn = document.getElementById("settings-password-submit-btn");
+
+      if (!currentPassword || !newPassword) {
+        showToast("يرجى إدخال كلمة المرور الحالية والجديدة.", "error");
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showToast("كلمة المرور الجديدة يجب أن لا تقل عن 6 أحرف أو أرقام.", "error");
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showToast("كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقين.", "error");
+        return;
+      }
+
+      if (currentPassword === newPassword) {
+        showToast("كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية.", "error");
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:16px;height:16px;"></i> جاري التحديث...`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      try {
+        const res = await apiFetch("/users/change-password", {
+          method: "POST",
+          body: JSON.stringify({
+            currentPassword,
+            newPassword,
+            confirmPassword
+          })
+        });
+
+        showToast(res.message || "تم تغيير كلمة المرور بنجاح! 🔒", "success");
+        changePasswordForm.reset();
+      } catch (err) {
+        console.error("Change password failed:", err);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="lock" style="width:16px;height:16px;"></i> <span>تحديث كلمة المرور</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
     });
   }
 

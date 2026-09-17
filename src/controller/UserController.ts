@@ -288,6 +288,60 @@ export class UserController {
     }
   }
 
+  // Change Password for any authenticated user (Student, Teacher, Admin)
+  static async changePassword(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "غير مصرح / Unauthorized" });
+      }
+
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "يرجى إدخال كلمة المرور الحالية وكلمة المرور الجديدة." });
+      }
+
+      if (typeof newPassword !== "string" || newPassword.length < 6) {
+        return res.status(400).json({ error: "كلمة المرور الجديدة يجب أن تكون 6 أحرف أو أرقام على الأقل." });
+      }
+
+      if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+        return res.status(400).json({ error: "كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقين." });
+      }
+
+      const userRepository = AppDataSource.getRepository(User);
+      const user = await userRepository.findOneBy({ id: userId });
+
+      if (!user) {
+        return res.status(404).json({ error: "المستخدم غير موجود." });
+      }
+
+      if (user.password) {
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+          return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة." });
+        }
+
+        const isSame = await bcrypt.compare(newPassword, user.password);
+        if (isSame) {
+          return res.status(400).json({ error: "كلمة المرور الجديدة يجب أن تكون مختلفة عن كلمة المرور الحالية." });
+        }
+      }
+
+      user.password = await bcrypt.hash(newPassword, 10);
+      await userRepository.save(user);
+
+      return res.json({
+        success: true,
+        message: "تم تغيير كلمة المرور بنجاح! 🔒"
+      });
+    } catch (error) {
+      console.error("Change password error:", error);
+      return res.status(500).json({ error: "حدث خطأ أثناء تغيير كلمة المرور، يرجى المحاولة لاحقاً." });
+    }
+  }
+
   // Add Student (Admin only)
   static async addStudent(req: AuthRequest, res: Response) {
     try {

@@ -148,39 +148,7 @@ export default class AuthView {
                   الانتقال لبوابة تسجيل دخول الطلاب 👨‍🎓 ↗
                 </a>
               </div>
-
-              <!-- Staff Demo Accounts Box -->
-              <div class="auth-demo-box" style="margin-top:16px;">
-                <div class="auth-demo-title">
-                  <i data-lucide="shield-check" style="width:15px; height:15px; color:var(--primary);"></i>
-                  <span>حسابات تجريبية للدخول السريع (كادر المنصة):</span>
-                </div>
-                <div class="auth-demo-grid">
-                  <button class="auth-demo-btn" id="fill-teacher-btn" title="حساب معلم دورات وبث مباشر">
-                    <span>👨‍🏫 معلم دورات</span>
-                  </button>
-                  <button class="auth-demo-btn" id="fill-session-teacher-btn" title="حساب معلم حصص خاصة">
-                    <span>⏱️ معلم حصص</span>
-                  </button>
-                  <button class="auth-demo-btn" id="fill-admin-btn" title="حساب مشرف لوحة التحكم">
-                    <span>🛡️ مشرف أدمن</span>
-                  </button>
-                </div>
-              </div>
-            ` : `
-              <!-- Student Demo Account Box -->
-              <div class="auth-demo-box" style="margin-top:16px;">
-                <div class="auth-demo-title">
-                  <i data-lucide="key-round" style="width:15px; height:15px; color:var(--primary);"></i>
-                  <span>تجربة سريعة بحساب طالب جاهز:</span>
-                </div>
-                <div class="auth-demo-grid" style="grid-template-columns: 1fr;">
-                  <button class="auth-demo-btn" id="fill-student-btn" title="تسجيل الدخول بحساب طالب تجريبي">
-                    <span>👨‍🎓 تجربة بحساب طالب (student@bakalorya.com)</span>
-                  </button>
-                </div>
-              </div>
-            `}
+            ` : ""}
 
           </div>
 
@@ -329,58 +297,6 @@ export default class AuthView {
       });
     }
 
-    // Quick demo buttons
-    document.getElementById("fill-teacher-btn")?.addEventListener("click", async () => {
-      window.location.hash = "#staff-login";
-      this.isStaffMode = true;
-      this.isRegisterMode = false;
-      await this.render();
-      const email = document.getElementById("login-email");
-      const pass = document.getElementById("login-password");
-      if (email && pass) {
-        email.value = "teacher1@bakalorya.com";
-        pass.value = "teacher123";
-      }
-    });
-
-    document.getElementById("fill-session-teacher-btn")?.addEventListener("click", async () => {
-      window.location.hash = "#staff-login";
-      this.isStaffMode = true;
-      this.isRegisterMode = false;
-      await this.render();
-      const email = document.getElementById("login-email");
-      const pass = document.getElementById("login-password");
-      if (email && pass) {
-        email.value = "sessionteacher@bakalorya.com";
-        pass.value = "teacher123";
-      }
-    });
-
-    document.getElementById("fill-student-btn")?.addEventListener("click", async () => {
-      window.location.hash = "#login";
-      this.isStaffMode = false;
-      this.isRegisterMode = false;
-      await this.render();
-      const email = document.getElementById("login-email");
-      const pass = document.getElementById("login-password");
-      if (email && pass) {
-        email.value = "student@bakalorya.com";
-        pass.value = "password123";
-      }
-    });
-
-    document.getElementById("fill-admin-btn")?.addEventListener("click", async () => {
-      window.location.hash = "#staff-login";
-      this.isStaffMode = true;
-      this.isRegisterMode = false;
-      await this.render();
-      const email = document.getElementById("login-email");
-      const pass = document.getElementById("login-password");
-      if (email && pass) {
-        email.value = "admin@bakalorya.com";
-        pass.value = "admin123";
-      }
-    });
 
     // Submit handler
     document.getElementById("auth-submit-form")?.addEventListener("submit", async (e) => {

@@ -267,6 +267,8 @@ router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
 router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
+router.post("/users/change-password", authMiddleware, UserController.changePassword);
+router.post("/auth/change-password", authMiddleware, UserController.changePassword);
 router.get("/users/students", authMiddleware, requireRole(["teacher", "admin"]), UserController.getStudents);
 router.post("/teacher/students", authMiddleware, requireRole(["admin"]), UserController.addStudent);
 router.delete("/teacher/students/:studentId", authMiddleware, requireRole(["admin"]), UserController.deleteStudent);

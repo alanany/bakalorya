@@ -51,14 +51,14 @@ export default class AdminView {
           <form id="admin-direct-login-form" style="display:flex; flex-direction:column; gap:14px; text-align:start;">
             <div>
               <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:4px;">البريد الإلكتروني للأدمن:</label>
-              <input type="email" id="admin-login-email" class="form-input" value="admin@bakalorya.com" required style="padding:10px; width:100%;">
+              <input type="email" id="admin-login-email" class="form-input" placeholder="admin@example.com" required style="padding:10px; width:100%;">
             </div>
             <div>
               <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:4px;">كلمة السر:</label>
-              <input type="password" id="admin-login-password" class="form-input" value="admin123" required style="padding:10px; width:100%;">
+              <input type="password" id="admin-login-password" class="form-input" placeholder="••••••••" required style="padding:10px; width:100%;">
             </div>
             <button type="submit" class="btn-primary" style="padding:12px; font-weight:800; font-size:0.95rem; justify-content:center; margin-top:8px;">
-              <i data-lucide="log-in"></i> تسجيل الدخول التلقائي كـ Admin 🚀
+              <i data-lucide="log-in"></i> تسجيل الدخول كـ Admin 🛡️
             </button>
           </form>
         </div>
