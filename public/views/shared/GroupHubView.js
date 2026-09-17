@@ -196,10 +196,12 @@ export default class GroupHubView {
                     <i data-lucide="clock" style="width:15px; height:15px; color:var(--primary);"></i>
                     <span>${sessionDuration} دقيقة / حصة</span>
                   </div>
+                  ${(!isTeacher && !isAdmin) ? `
                   <div style="background:var(--bg-app); padding:8px 14px; border-radius:12px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:800; color:#d97706;">
                     <i data-lucide="credit-card" style="width:15px; height:15px;"></i>
                     <span>${monthlyPrice} ج.م. شهرياً</span>
                   </div>
+                  ` : ''}
                 </div>
 
               </div>

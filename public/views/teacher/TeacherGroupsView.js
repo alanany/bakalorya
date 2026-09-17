@@ -549,6 +549,7 @@ export default class TeacherGroupsView {
         </div>
 
         <!-- Students Capacity Info -->
+        ${!isPending ? `
         <div style="display:flex; flex-direction:column; gap:6px; font-size:0.8rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; font-weight:800;">
             <span style="color:var(--text-muted);">👥 الطلاب المسجلون:</span>
@@ -558,6 +559,7 @@ export default class TeacherGroupsView {
             <div style="width:${capacityPct}%; height:100%; background:${capacityPct >= 95 ? '#ef4444' : capacityPct >= 75 ? '#f59e0b' : '#10b981'}; border-radius:10px;"></div>
           </div>
         </div>
+        ` : ''}
 
         <!-- Pending Notice or Actions -->
         ${isPending ? `
