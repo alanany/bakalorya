@@ -272,7 +272,7 @@ export class CurriculumController {
       const stage = req.query.stage as string;
 
       const queryBuilder = gradeRepo.createQueryBuilder("grade")
-        .leftJoinAndSelect("grade.subjects", "subject")
+        .leftJoinAndSelect("grade.subjects", "subject", "subject.isActive = :active", { active: true })
         .orderBy("grade.order", "ASC")
         .addOrderBy("subject.name", "ASC");
 
@@ -294,7 +294,7 @@ export class CurriculumController {
       const subjectRepo = AppDataSource.getRepository(Subject);
       const { gradeId, stage } = req.query;
 
-      const whereClause: any = {};
+      const whereClause: any = { isActive: true };
       if (gradeId) whereClause.grade = { id: String(gradeId) };
       if (stage) whereClause.stage = String(stage).toUpperCase();
 
@@ -308,6 +308,188 @@ export class CurriculumController {
     } catch (err: any) {
       console.error("Error in getSubjects:", err);
       return res.status(500).json({ error: "Failed to fetch subjects." });
+    }
+  }
+
+  // GET /admin/curriculum/grades — returns all grades with ALL subjects (including hidden) for admin
+  static async getAdminGrades(req: Request, res: Response) {
+    try {
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const stage = req.query.stage as string;
+
+      const queryBuilder = gradeRepo.createQueryBuilder("grade")
+        .leftJoinAndSelect("grade.subjects", "subject")
+        .orderBy("grade.order", "ASC")
+        .addOrderBy("subject.name", "ASC");
+
+      if (stage) {
+        queryBuilder.where("grade.stage = :stage", { stage: stage.toUpperCase() });
+      }
+
+      const grades = await queryBuilder.getMany();
+      return res.status(200).json(grades);
+    } catch (err: any) {
+      console.error("Error in getAdminGrades:", err);
+      return res.status(500).json({ error: "Failed to fetch grades." });
+    }
+  }
+
+  // POST /admin/curriculum/grades — create a new grade
+  static async createGrade(req: Request, res: Response) {
+    try {
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const { name, nameEn, stage, order, code } = req.body;
+
+      if (!name || !stage) {
+        return res.status(400).json({ error: "name and stage are required." });
+      }
+
+      const grade = new Grade();
+      grade.name = name;
+      grade.nameEn = nameEn || "";
+      grade.stage = stage;
+      grade.order = order || 0;
+      grade.code = code || "";
+
+      const saved = await gradeRepo.save(grade);
+      return res.status(201).json(saved);
+    } catch (err: any) {
+      console.error("Error in createGrade:", err);
+      return res.status(500).json({ error: "Failed to create grade." });
+    }
+  }
+
+  // POST /admin/curriculum/grades/:gradeId/subjects — add a subject to a grade
+  static async createSubject(req: Request, res: Response) {
+    try {
+      const subjectRepo = AppDataSource.getRepository(Subject);
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const { gradeId } = req.params;
+      const { name, nameEn, icon, isLanguageTrack } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ error: "name is required." });
+      }
+
+      const grade = await gradeRepo.findOneBy({ id: gradeId });
+      if (!grade) {
+        return res.status(404).json({ error: "Grade not found." });
+      }
+
+      const subject = new Subject();
+      subject.name = name;
+      subject.nameEn = nameEn || "";
+      subject.icon = icon || "📖";
+      subject.isLanguageTrack = !!isLanguageTrack;
+      subject.isActive = true;
+      subject.stage = grade.stage;
+      subject.grade = grade;
+
+      const saved = await subjectRepo.save(subject);
+      return res.status(201).json(saved);
+    } catch (err: any) {
+      console.error("Error in createSubject:", err);
+      return res.status(500).json({ error: "Failed to create subject." });
+    }
+  }
+
+  // PUT /admin/curriculum/subjects/:id — update subject details
+  static async updateSubject(req: Request, res: Response) {
+    try {
+      const subjectRepo = AppDataSource.getRepository(Subject);
+      const { id } = req.params;
+      const { name, nameEn, icon, isLanguageTrack, isActive } = req.body;
+
+      const subject = await subjectRepo.findOne({ where: { id }, relations: ["grade"] });
+      if (!subject) {
+        return res.status(404).json({ error: "Subject not found." });
+      }
+
+      if (name !== undefined) subject.name = name;
+      if (nameEn !== undefined) subject.nameEn = nameEn;
+      if (icon !== undefined) subject.icon = icon;
+      if (isLanguageTrack !== undefined) subject.isLanguageTrack = !!isLanguageTrack;
+      if (isActive !== undefined) subject.isActive = !!isActive;
+
+      const saved = await subjectRepo.save(subject);
+      return res.status(200).json(saved);
+    } catch (err: any) {
+      console.error("Error in updateSubject:", err);
+      return res.status(500).json({ error: "Failed to update subject." });
+    }
+  }
+
+  // PATCH /admin/curriculum/subjects/:id/toggle — toggle isActive
+  static async toggleSubjectVisibility(req: Request, res: Response) {
+    try {
+      const subjectRepo = AppDataSource.getRepository(Subject);
+      const { id } = req.params;
+
+      const subject = await subjectRepo.findOne({ where: { id }, relations: ["grade"] });
+      if (!subject) {
+        return res.status(404).json({ error: "Subject not found." });
+      }
+
+      subject.isActive = !subject.isActive;
+      const saved = await subjectRepo.save(subject);
+      return res.status(200).json({ id: saved.id, isActive: saved.isActive, message: saved.isActive ? "تم إظهار المادة بنجاح" : "تم إخفاء المادة بنجاح" });
+    } catch (err: any) {
+      console.error("Error in toggleSubjectVisibility:", err);
+      return res.status(500).json({ error: "Failed to toggle subject visibility." });
+    }
+  }
+
+  // DELETE /admin/curriculum/subjects/:id — delete a subject (only if no courses attached)
+  static async deleteSubject(req: Request, res: Response) {
+    try {
+      const subjectRepo = AppDataSource.getRepository(Subject);
+      const courseRepo = AppDataSource.getRepository(Course);
+      const { id } = req.params;
+
+      const subject = await subjectRepo.findOneBy({ id });
+      if (!subject) {
+        return res.status(404).json({ error: "Subject not found." });
+      }
+
+      const courseCount = await courseRepo.count({ where: { subject: { id } } });
+      if (courseCount > 0) {
+        return res.status(409).json({ error: `لا يمكن حذف هذه المادة لأنها مرتبطة بـ ${courseCount} دورة/دورات. يمكنك إخفاؤها بدلاً من الحذف.` });
+      }
+
+      await subjectRepo.remove(subject);
+      return res.status(200).json({ message: "تم حذف المادة بنجاح." });
+    } catch (err: any) {
+      console.error("Error in deleteSubject:", err);
+      return res.status(500).json({ error: "Failed to delete subject." });
+    }
+  }
+
+  // DELETE /admin/curriculum/grades/:id — delete a grade (only if no subjects and no courses attached)
+  static async deleteGrade(req: Request, res: Response) {
+    try {
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const courseRepo = AppDataSource.getRepository(Course);
+      const { id } = req.params;
+
+      const grade = await gradeRepo.findOne({ where: { id }, relations: ["subjects"] });
+      if (!grade) {
+        return res.status(404).json({ error: "Grade not found." });
+      }
+
+      const courseCount = await courseRepo.count({ where: { grade: { id } } });
+      if (courseCount > 0) {
+        return res.status(409).json({ error: `لا يمكن حذف هذا الصف لأنه مرتبط بـ ${courseCount} دورة/دورات.` });
+      }
+
+      if (grade.subjects && grade.subjects.length > 0) {
+        return res.status(409).json({ error: `لا يمكن حذف هذا الصف لأنه يحتوي على ${grade.subjects.length} مادة/مواد. احذف المواد أولاً.` });
+      }
+
+      await gradeRepo.remove(grade);
+      return res.status(200).json({ message: "تم حذف الصف الدراسي بنجاح." });
+    } catch (err: any) {
+      console.error("Error in deleteGrade:", err);
+      return res.status(500).json({ error: "Failed to delete grade." });
     }
   }
 
@@ -329,7 +511,8 @@ export class CurriculumController {
         .leftJoinAndSelect("course.groups", "groups")
         .leftJoinAndSelect("groups.teacher", "groupTeacher")
         .where("course.status = :status", { status: "PUBLISHED" })
-        .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')");
+        .andWhere("(teacher.id IS NULL OR teacher.status = 'ACTIVE')")
+        .andWhere("(subject.id IS NULL OR subject.isActive = true)");
 
       if (subjectId) {
         qb.andWhere("course.subject.id = :subjectId", { subjectId: String(subjectId) });
@@ -449,6 +632,11 @@ export class CurriculumController {
           relations: ["grade"]
         });
 
+        // Block access to hidden subjects
+        if (subject && subject.isActive === false) {
+          return res.status(404).json({ error: "هذه المادة غير متاحة حالياً." });
+        }
+
         // 2. If subject not found, try finding Course by that ID
         if (!subject) {
           requestedCourse = await courseRepo.findOne({
@@ -521,13 +709,15 @@ export class CurriculumController {
       const subGradeId = subject.grade?.id;
       const subStage = subject.stage || subject.grade?.stage || "PRIMARY";
 
-      // 5. Fetch published courses matching this subject and grade
+      // 5. Fetch published courses matching this subject and grade (only with active subjects)
       let allCourses: Course[] = [];
       try {
         allCourses = await courseRepo.find({
           where: { status: "PUBLISHED" },
           relations: ["teacher", "grade", "subject", "lessons"]
         });
+        // Filter out courses whose subject is hidden
+        allCourses = allCourses.filter(c => !c.subject || c.subject.isActive !== false);
       } catch (e) {
         allCourses = [];
       }

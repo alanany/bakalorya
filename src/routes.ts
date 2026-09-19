@@ -104,6 +104,15 @@ router.get("/curriculum/subjects/:subjectId/groups", CurriculumController.getSub
 router.get("/curriculum/courses/:subjectId/groups", CurriculumController.getSubjectGroups);
 router.get("/landing/explore", CurriculumController.getLandingExplore);
 
+// Admin Curriculum Management (Grades & Subjects)
+router.get("/admin/curriculum/grades", authMiddleware, requireRole(["admin"]), CurriculumController.getAdminGrades);
+router.post("/admin/curriculum/grades", authMiddleware, requireRole(["admin"]), CurriculumController.createGrade);
+router.delete("/admin/curriculum/grades/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteGrade);
+router.post("/admin/curriculum/grades/:gradeId/subjects", authMiddleware, requireRole(["admin"]), CurriculumController.createSubject);
+router.put("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin"]), CurriculumController.updateSubject);
+router.patch("/admin/curriculum/subjects/:id/toggle", authMiddleware, requireRole(["admin"]), CurriculumController.toggleSubjectVisibility);
+router.delete("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteSubject);
+
 // Course Group Batches & Cohorts
 router.post("/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController.getCourseGroups);

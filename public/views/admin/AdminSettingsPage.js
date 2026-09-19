@@ -1,323 +1,422 @@
-import { apiFetch, state, showToast, t } from '../../app.js';
+import { apiFetch, state, showToast } from '../../app.js';
 
 // ── AdminSettingsPage ─────────────────────────────────────────────────────────
-// Methods for Platform & WhatsApp Settings — assigned to AdminView.prototype
+// Settings page with internal sub-navigation (sub-pages)
 
 export const AdminSettingsPage = {
 
+  _settingsSection: 'contact', // active sub-section
+
   renderSettingsTab() {
-    const settings = this.platformSettings || state.platformSettings || {
-      whatsappNumber: '+213 555 123 456',
-      contactPhone: '+213 555 123 456',
-      contactEmail: 'support@entlqedu.com',
-      whatsappUrl: 'https://wa.me/213555123456'
-    };
+    const settings = this.platformSettings || state.platformSettings || {};
+    this._settingsSection = this._settingsSection || 'contact';
+
+    const SECTIONS = [
+      { key: 'contact',  icon: 'message-circle',  label: 'بيانات التواصل والواتساب' },
+      { key: 'payment',  icon: 'wallet',           label: 'بيانات الدفع والتحويل' },
+      { key: 'password', icon: 'lock-keyhole',     label: 'تغيير كلمة المرور' },
+    ];
 
     return `
-      <div style="max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:28px;">
-        
-        <!-- Header Banner -->
-        <div class="glass-card" style="padding:28px; border-radius:24px; border:2px solid var(--border-color); background:linear-gradient(135deg, rgba(37, 211, 102, 0.08), rgba(99, 102, 241, 0.08)); position:relative; overflow:hidden;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; position:relative; z-index:2;">
-            <div style="display:flex; align-items:center; gap:18px;">
-              <div style="width:58px; height:58px; border-radius:18px; background:linear-gradient(135deg, #10b981, #059669); color:#ffffff; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(16,185,129,0.35); flex-shrink:0;">
-                <i data-lucide="settings-2" style="width:30px; height:30px;"></i>
-              </div>
-              <div>
-                <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.15); color:#059669; font-size:0.75rem; font-weight:800; padding:3px 12px; border-radius:20px; margin-bottom:6px;">
-                  <i data-lucide="shield-check" style="width:13px; height:13px;"></i> إعدادات المنصة والتواصل الرسمية
-                </div>
-                <h2 style="font-size:1.5rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main);">
-                  ⚙️ إعدادات المنصة ورقم الواتساب
-                </h2>
-                <p style="color:var(--text-muted); font-size:0.88rem; margin:0; line-height:1.5;">
-                  تحكم كامل في رقم الواتساب الرسمي المربوط بالصفحة الرئيسية والزر العائم، بالإضافة لبيانات الدعم الفني.
-                </p>
-              </div>
-            </div>
+      <style>
+        .set-layout { display:flex; gap:0; min-height:560px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; overflow:hidden; }
+        .set-sidebar { width:230px; flex-shrink:0; border-inline-end:1px solid var(--border-color); padding:20px 12px; display:flex; flex-direction:column; gap:4px; background:var(--bg-app); }
+        .set-sidebar-title { font-size:0.7rem; font-weight:900; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; padding:4px 10px 10px 10px; }
+        .set-nav-btn { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:14px; border:none; background:transparent; cursor:pointer; width:100%; text-align:right; font-size:0.85rem; font-weight:700; color:var(--text-muted); transition:all 0.18s; }
+        .set-nav-btn i { width:17px; height:17px; flex-shrink:0; }
+        .set-nav-btn:hover { background:rgba(99,102,241,0.07); color:var(--primary); }
+        .set-nav-btn.active { background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; }
+        .set-nav-btn.active i { color:var(--primary); }
+        .set-content { flex:1; padding:32px 28px; overflow-y:auto; }
+        .set-section-header { margin-bottom:28px; }
+        .set-section-header h3 { font-size:1.2rem; font-weight:900; color:var(--text-main); margin:0 0 6px 0; }
+        .set-section-header p { font-size:0.84rem; color:var(--text-muted); margin:0; line-height:1.5; }
+        .set-divider { height:1px; background:var(--border-color); margin:20px 0; }
+        .set-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
+        .set-fgrp { display:flex; flex-direction:column; gap:6px; }
+        .set-fgrp label { font-size:0.8rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; }
+        .set-fgrp input, .set-fgrp select, .set-fgrp textarea { padding:11px 14px; border-radius:13px; border:1.5px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; outline:none; transition:border-color 0.2s; width:100%; box-sizing:border-box; }
+        .set-fgrp input:focus, .set-fgrp select:focus, .set-fgrp textarea:focus { border-color:var(--primary); }
+        .set-fgrp .hint { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+        .set-save-row { display:flex; justify-content:flex-end; margin-top:28px; padding-top:20px; border-top:1px solid var(--border-color); }
+        .set-btn { display:inline-flex; align-items:center; gap:8px; padding:12px 28px; border-radius:14px; border:none; cursor:pointer; font-size:0.9rem; font-weight:800; transition:all 0.2s; }
+        .set-btn-primary { background:linear-gradient(135deg,var(--primary),#6d28d9); color:#fff; box-shadow:0 6px 20px rgba(99,102,241,0.3); }
+        .set-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(99,102,241,0.4); }
+        .set-btn-red { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 6px 20px rgba(239,68,68,0.3); }
+        .set-btn-red:hover { transform:translateY(-2px); }
+        .pw-eye-wrap { position:relative; }
+        .pw-eye-wrap input { padding-inline-start:44px; }
+        .pw-eye-btn { position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); padding:4px; }
+        .pw-strength-bar { margin-top:8px; display:none; }
+        .pw-strength-track { height:4px; border-radius:4px; background:var(--border-color); overflow:hidden; }
+        .pw-strength-fill { height:100%; width:0%; transition:all 0.3s; border-radius:4px; }
+        @media(max-width:640px) { .set-layout { flex-direction:column; } .set-sidebar { width:100%; flex-direction:row; overflow-x:auto; border-inline-end:none; border-bottom:1px solid var(--border-color); } }
+      </style>
 
-            <!-- Live WhatsApp Action Button -->
-            <a id="admin-preview-wa-link" href="${settings.whatsappUrl || 'https://wa.me/213555123456'}" target="_blank" class="btn-secondary" style="padding:10px 20px; font-size:0.88rem; border-color:#10b981; color:#059669; border-radius:30px; font-weight:800; display:inline-flex; align-items:center; gap:8px; text-decoration:none; background:#ffffff; box-shadow:0 4px 15px rgba(16,185,129,0.2);" title="تجربة رابط الواتساب الفعلي الآن">
-              <i data-lucide="external-link" style="width:16px; height:16px;"></i> تجربة محادثة واتساب الحالية
-            </a>
-          </div>
+      <div class="set-layout">
+        <!-- Sub nav -->
+        <div class="set-sidebar">
+          <div class="set-sidebar-title">إعدادات المنصة</div>
+          ${SECTIONS.map(s => `
+            <button class="set-nav-btn${this._settingsSection === s.key ? ' active' : ''}" data-set-section="${s.key}">
+              <i data-lucide="${s.icon}"></i>
+              ${s.label}
+            </button>
+          `).join('')}
         </div>
 
-        <!-- Settings Cards Grid -->
-        <div style="display:grid; grid-template-columns: 1fr; gap:24px;">
-          
-          <div class="glass-card" style="padding:32px; border-radius:24px; border:1px solid var(--border-color);">
-            
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
-              <div style="width:40px; height:40px; border-radius:12px; background:rgba(37,211,102,0.15); color:#059669; display:flex; align-items:center; justify-content:center;">
-                <i data-lucide="message-square" style="width:22px; height:22px;"></i>
-              </div>
-              <div>
-                <h3 style="font-size:1.15rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">بيانات التواصل والربط المباشر</h3>
-                <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">سيتم تطبيق التعديلات فوراً على كافة صفحات المنصة دون الحاجة لإعادة تشغيل السيرفر.</p>
-              </div>
-            </div>
-
-            <form id="admin-platform-settings-form" style="display:flex; flex-direction:column; gap:22px;">
-              
-              <!-- WhatsApp Number -->
-              <div class="form-group" style="margin:0;">
-                <label style="font-size:0.9rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                  <span style="display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="message-circle" style="width:18px; height:18px; color:#10b981;"></i>
-                    رقم الواتساب الرسمي (WhatsApp Number) <span style="color:var(--error,#ef4444);">*</span>
-                  </span>
-                  <span style="font-size:0.75rem; color:#059669; font-weight:700; background:rgba(16,185,129,0.1); padding:2px 10px; border-radius:12px;">يظهر بالزر العائم والفوتر</span>
-                </label>
-                <div style="position:relative;">
-                  <input type="text" id="setting-whatsapp-number" class="form-input" value="${settings.whatsappNumber || '+213 555 123 456'}" placeholder="مثال: +213 555 123 456 أو +20 101 234 5678" required style="padding:14px 16px; font-size:1rem; font-weight:700; border-radius:14px; width:100%; border:2px solid var(--border-color);">
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:0.78rem; color:var(--text-muted);">
-                  <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i>
-                  <span>يقبل الأرقام بالصيغة الدولية (+213... / +20...) أو المحلية (0555... / 010...) ويتم تحويلها تلقائياً لرابط https://wa.me</span>
-                </div>
-              </div>
-
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
-                
-                <!-- Contact Phone -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.9rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="phone" style="width:16px; height:16px; color:var(--primary);"></i>
-                    رقم هاتف الاتصال الهاتفي (Contact Phone)
-                  </label>
-                  <input type="text" id="setting-contact-phone" class="form-input" value="${settings.contactPhone || '+213 555 123 456 / +20 100 000 0000'}" placeholder="مثال: +213 555 123 456 / +20 100 000 0000" required style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:14px;">
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    يظهر في قسم أرقام الاتصال الهاتفي بالفوتر وصفحة اتصل بنا
-                  </span>
-                </div>
-
-                <!-- Working Hours -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.9rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="clock" style="width:16px; height:16px; color:#f59e0b;"></i>
-                    ساعات وأوقات العمل الرسمية (Working Hours)
-                  </label>
-                  <input type="text" id="setting-working-hours" class="form-input" value="${settings.workingHours || 'الأحد - الخميس (09:00 ص - 06:00 م)'}" placeholder="الأحد - الخميس (09:00 ص - 06:00 م)" required style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:14px;">
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    تظهر في بطاقة الاتصال بصفحة اتصل بنا
-                  </span>
-                </div>
-
-              </div>
-
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
-
-                <!-- Support Email 1 -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.9rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="mail" style="width:16px; height:16px; color:var(--primary);"></i>
-                    البريد الإلكتروني الرسمي الأساسي (Support Email)
-                  </label>
-                  <input type="email" id="setting-contact-email" class="form-input" value="${settings.contactEmail || 'support@entlqedu.com'}" placeholder="support@entlqedu.com" required style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:14px;">
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    البريد الأساسي للدعم الفني
-                  </span>
-                </div>
-
-                <!-- Support Email 2 -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.9rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="mail-plus" style="width:16px; height:16px; color:var(--primary);"></i>
-                    البريد الإلكتروني للاستفسارات العامة (Info Email)
-                  </label>
-                  <input type="email" id="setting-contact-email2" class="form-input" value="${settings.contactEmail2 || 'info@entlqedu.com'}" placeholder="info@entlqedu.com" style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:14px;">
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    البريد الثانوي للاستفسارات العامة
-                  </span>
-                </div>
-
-              </div>
-
-              <!-- Page Title & Subtitle Section -->
-              <div style="border-top:1px dashed var(--border-color); padding-top:18px; display:flex; flex-direction:column; gap:16px;">
-                <h4 style="font-size:0.98rem; font-weight:800; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="layout" style="width:16px; height:16px; color:var(--primary);"></i>
-                  نصوص وعناوين صفحة "تواصل معنا" (#contact)
-                </h4>
-
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:6px; display:block;">
-                    العنوان الرئيسي لصفحة اتصل بنا (Page Heading):
-                  </label>
-                  <input type="text" id="setting-contact-title" class="form-input" value="${settings.contactTitle || 'نحن هنا لدعمك وإجابة استفساراتك 💬'}" placeholder="نحن هنا لدعمك وإجابة استفساراتك 💬" required style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:12px;">
-                </div>
-
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:6px; display:block;">
-                    الوصف الفرعي لصفحة اتصل بنا (Subtitle):
-                  </label>
-                  <textarea id="setting-contact-subtitle" class="form-input" style="height:70px; resize:vertical; padding:12px; font-size:0.9rem; line-height:1.5; border-radius:12px;" placeholder="سواء كنت طالباً، معلماً، أو ولي أمر...">${settings.contactSubtitle || 'سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.'}</textarea>
-                </div>
-
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.85rem; font-weight:700; color:var(--text-main); margin-bottom:6px; display:block;">
-                    المقر والتواجد الجغرافي (Address / Location):
-                  </label>
-                  <input type="text" id="setting-contact-address" class="form-input" value="${settings.contactAddress || 'الجزائر العاصمة / القاهرة'}" placeholder="الجزائر العاصمة / القاهرة" style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:12px;">
-                </div>
-              </div>
-
-              <!-- Platform Financial Transfer Accounts Section -->
-              <div style="border-top:2px solid var(--border-color); padding-top:24px; display:flex; flex-direction:column; gap:18px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                  <div style="width:38px; height:38px; border-radius:12px; background:rgba(245, 158, 11, 0.15); color:#d97706; display:flex; align-items:center; justify-content:center;">
-                    <i data-lucide="wallet" style="width:22px; height:22px;"></i>
-                  </div>
-                  <div>
-                    <h4 style="font-size:1.1rem; font-weight:900; color:var(--text-main); margin:0 0 2px 0;">
-                      💳 بيانات التحويل المالي المعتمدة للمنصة
-                    </h4>
-                    <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
-                      أرقام وحسابات الدفع التي تظهر للطلاب في نافذة الاشتراك ودفع رسوم المجموعات (مع زر النسخ الفوري).
-                    </p>
-                  </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
-                  
-                  <!-- Vodafone Cash -->
-                  <div class="form-group" style="margin:0;">
-                    <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                      <span style="color:#ef4444; font-size:1rem;">🔴</span>
-                      <span>رقم فودافون كاش (Vodafone Cash)</span>
-                      <span style="color:var(--error,#ef4444);">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="setting-vodafone-cash" 
-                      class="form-input" 
-                      value="${settings.vodafoneCashNumber || '01098765432'}" 
-                      placeholder="مثال: 01098765432" 
-                      required 
-                      style="padding:12px 14px; font-size:0.95rem; font-weight:700; font-family:monospace; border-radius:14px;"
-                    >
-                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                      الرقم الأساسي لمحفظة فودافون كاش الرسمية للمنصة
-                    </span>
-                  </div>
-
-                  <!-- InstaPay Handle -->
-                  <div class="form-group" style="margin:0;">
-                    <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                      <span style="color:#8b5cf6; font-size:1rem;">⚡</span>
-                      <span>عنوان / معرف إنستاباي (InstaPay Handle)</span>
-                      <span style="color:var(--error,#ef4444);">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="setting-instapay-handle" 
-                      class="form-input" 
-                      value="${settings.instapayHandle || 'bakalorya@instapay'}" 
-                      placeholder="مثال: bakalorya@instapay" 
-                      required 
-                      style="padding:12px 14px; font-size:0.95rem; font-weight:700; border-radius:14px;"
-                    >
-                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                      معرف حساب إنستاباي المعتمد (IPA Address / Username)
-                    </span>
-                  </div>
-
-                </div>
-
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
-                  
-                  <!-- Orange Cash -->
-                  <div class="form-group" style="margin:0;">
-                    <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                      <span style="color:#f97316; font-size:1rem;">🟠</span>
-                      <span>رقم أورنج كاش (Orange Cash) <small style="color:var(--text-muted); font-weight:normal;">(اختياري)</small></span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="setting-orange-cash" 
-                      class="form-input" 
-                      value="${settings.orangeCashNumber || ''}" 
-                      placeholder="مثال: 01200000000" 
-                      style="padding:12px 14px; font-size:0.95rem; font-weight:700; font-family:monospace; border-radius:14px;"
-                    >
-                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                      يظهر تلقائياً في نافذة الدفع إذا تم إدخاله
-                    </span>
-                  </div>
-
-                  <!-- Etisalat Cash -->
-                  <div class="form-group" style="margin:0;">
-                    <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                      <span style="color:#10b981; font-size:1rem;">🟢</span>
-                      <span>رقم اتصالات كاش (Etisalat Cash) <small style="color:var(--text-muted); font-weight:normal;">(اختياري)</small></span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="setting-etisalat-cash" 
-                      class="form-input" 
-                      value="${settings.etisalatCashNumber || ''}" 
-                      placeholder="مثال: 01100000000" 
-                      style="padding:12px 14px; font-size:0.95rem; font-weight:700; font-family:monospace; border-radius:14px;"
-                    >
-                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                      يظهر تلقائياً في نافذة الدفع إذا تم إدخاله
-                    </span>
-                  </div>
-
-                </div>
-
-                <!-- Bank Account / IBAN Details -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="landmark" style="width:16px; height:16px; color:var(--primary);"></i>
-                    <span>بيانات الحساب البنكي / الآيبان (Bank Details & IBAN) <small style="color:var(--text-muted); font-weight:normal;">(اختياري)</small></span>
-                  </label>
-                  <textarea 
-                    id="setting-bank-details" 
-                    class="form-input" 
-                    style="height:65px; resize:vertical; padding:12px; font-size:0.9rem; line-height:1.5; border-radius:12px;" 
-                    placeholder="مثال: بنك مصر - حساب رقم 123456789 - IBAN: EG0000000000000000000000"
-                  >${settings.bankAccountDetails || ''}</textarea>
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    تظهر بيانات الحساب للطلاب الراغبين في التحويل البنكي المباشر
-                  </span>
-                </div>
-
-                <!-- Payment Instructions -->
-                <div class="form-group" style="margin:0;">
-                  <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <i data-lucide="file-text" style="width:16px; height:16px; color:#f59e0b;"></i>
-                    <span>ملاحظات وتعليمات التحويل للطلاب (Payment Notes / Notice)</span>
-                  </label>
-                  <textarea 
-                    id="setting-payment-instructions" 
-                    class="form-input" 
-                    style="height:65px; resize:vertical; padding:12px; font-size:0.9rem; line-height:1.5; border-radius:12px;" 
-                    placeholder="مثال: يرجى إتمام التحويل بالمبلغ المطلوب ثم إدخال بيانات العملية وإرفاق صورة الإيصال بالأسفل لاعتماد اشتراكك فورياً."
-                  >${settings.paymentInstructions || ''}</textarea>
-                  <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
-                    التنبيه أو التعليمات التي تقرأها الطالب أسفل أرقام التحويل المالي مباشرةً
-                  </span>
-                </div>
-              </div>
-
-              <!-- Submit Button -->
-              <div style="display:flex; justify-content:flex-end; align-items:center; gap:14px; margin-top:10px; padding-top:18px; border-top:1px solid var(--border-color);">
-                <button type="submit" id="save-platform-settings-btn" class="btn-primary" style="padding:14px 34px; font-size:0.95rem; font-weight:900; border-radius:16px; display:inline-flex; align-items:center; gap:10px; background:linear-gradient(135deg, #059669, #10b981); border:none; box-shadow:0 6px 20px rgba(16,185,129,0.35);">
-                  <i data-lucide="check-circle-2" style="width:20px; height:20px;"></i>
-                  <span>حفظ إعدادات المنصة وبيانات التحويل 💾</span>
-                </button>
-              </div>
-
-            </form>
-
-          </div>
-
+        <!-- Content panel -->
+        <div class="set-content" id="set-content-panel">
+          ${this._renderSettingsSection(settings)}
         </div>
-
       </div>
     `;
-  }
+  },
+
+  _renderSettingsSection(settings) {
+    settings = settings || this.platformSettings || state.platformSettings || {};
+    switch (this._settingsSection) {
+      case 'contact':  return this._renderContactSection(settings);
+      case 'payment':  return this._renderPaymentSection(settings);
+      case 'password': return this._renderPasswordSection();
+      default: return '';
+    }
+  },
+
+  _renderContactSection(s) {
+    return `
+      <div class="set-section-header">
+        <h3>📞 بيانات التواصل والواتساب</h3>
+        <p>رقم الواتساب الرسمي، بيانات الاتصال، وساعات العمل التي تظهر في أقسام الموقع المختلفة.</p>
+      </div>
+
+      <form id="admin-platform-settings-form">
+        <div class="set-fgrp" style="margin-bottom:18px;">
+          <label><i data-lucide="message-circle" style="width:15px;height:15px;color:#10b981;"></i> رقم الواتساب الرسمي <span style="color:#ef4444;">*</span></label>
+          <input type="text" id="setting-whatsapp-number" value="${s.whatsappNumber || ''}" placeholder="+20 101 234 5678">
+          <span class="hint">يُحوَّل تلقائياً إلى رابط wa.me ويظهر في الزر العائم والفوتر.</span>
+        </div>
+
+        <div class="set-form-grid">
+          <div class="set-fgrp">
+            <label><i data-lucide="phone" style="width:14px;height:14px;"></i> رقم الاتصال الهاتفي</label>
+            <input type="text" id="setting-contact-phone" value="${s.contactPhone || ''}" placeholder="+20 100 000 0000">
+            <span class="hint">يظهر في الفوتر وصفحة اتصل بنا.</span>
+          </div>
+          <div class="set-fgrp">
+            <label><i data-lucide="clock" style="width:14px;height:14px;color:#f59e0b;"></i> ساعات العمل</label>
+            <input type="text" id="setting-working-hours" value="${s.workingHours || ''}" placeholder="الأحد – الخميس (9ص – 6م)">
+          </div>
+        </div>
+
+        <div class="set-form-grid" style="margin-top:18px;">
+          <div class="set-fgrp">
+            <label><i data-lucide="mail" style="width:14px;height:14px;"></i> البريد الإلكتروني الأساسي</label>
+            <input type="email" id="setting-contact-email" value="${s.contactEmail || ''}" placeholder="support@bakalorya.com">
+          </div>
+          <div class="set-fgrp">
+            <label><i data-lucide="mail-plus" style="width:14px;height:14px;"></i> بريد الاستفسارات العامة</label>
+            <input type="email" id="setting-contact-email2" value="${s.contactEmail2 || ''}" placeholder="info@bakalorya.com">
+          </div>
+        </div>
+
+        <div class="set-divider"></div>
+        <p style="font-size:0.82rem;font-weight:800;color:var(--text-main);margin:0 0 14px 0;">🗺️ نصوص صفحة "تواصل معنا"</p>
+
+        <div class="set-fgrp" style="margin-bottom:14px;">
+          <label>العنوان الرئيسي للصفحة</label>
+          <input type="text" id="setting-contact-title" value="${s.contactTitle || ''}" placeholder="نحن هنا لدعمك وإجابة استفساراتك 💬">
+        </div>
+        <div class="set-fgrp" style="margin-bottom:14px;">
+          <label>الوصف الفرعي</label>
+          <textarea id="setting-contact-subtitle" style="height:70px;resize:vertical;" placeholder="سواء كنت طالباً، معلماً، أو ولي أمر...">${s.contactSubtitle || ''}</textarea>
+        </div>
+        <div class="set-fgrp">
+          <label>العنوان / الموقع الجغرافي</label>
+          <input type="text" id="setting-contact-address" value="${s.contactAddress || ''}" placeholder="القاهرة / الجزائر العاصمة">
+        </div>
+
+        <div class="set-save-row">
+          <button type="submit" id="save-platform-settings-btn" class="set-btn set-btn-primary">
+            <i data-lucide="save" style="width:16px;height:16px;"></i> حفظ بيانات التواصل
+          </button>
+        </div>
+      </form>
+    `;
+  },
+
+  _renderPaymentSection(s) {
+    return `
+      <div class="set-section-header">
+        <h3>💳 بيانات الدفع والتحويل المالي</h3>
+        <p>أرقام وحسابات الدفع التي تظهر للطلاب في نافذة الاشتراك عند السداد.</p>
+      </div>
+
+      <form id="admin-platform-settings-form">
+        <div class="set-form-grid">
+          <div class="set-fgrp">
+            <label><span style="color:#ef4444;">🔴</span> فودافون كاش <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="setting-vodafone-cash" value="${s.vodafoneCashNumber || ''}" placeholder="01098765432" style="font-family:monospace;">
+            <span class="hint">الرقم الأساسي لمحفظة فودافون كاش الرسمية.</span>
+          </div>
+          <div class="set-fgrp">
+            <label><span style="color:#8b5cf6;">⚡</span> إنستاباي (IPA) <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="setting-instapay-handle" value="${s.instapayHandle || ''}" placeholder="bakalorya@instapay">
+            <span class="hint">معرف حساب إنستاباي (IPA Address).</span>
+          </div>
+          <div class="set-fgrp">
+            <label><span style="color:#f97316;">🟠</span> أورنج كاش <small style="color:var(--text-muted);font-weight:normal;">(اختياري)</small></label>
+            <input type="text" id="setting-orange-cash" value="${s.orangeCashNumber || ''}" placeholder="01200000000" style="font-family:monospace;">
+          </div>
+          <div class="set-fgrp">
+            <label><span style="color:#10b981;">🟢</span> اتصالات كاش <small style="color:var(--text-muted);font-weight:normal;">(اختياري)</small></label>
+            <input type="text" id="setting-etisalat-cash" value="${s.etisalatCashNumber || ''}" placeholder="01100000000" style="font-family:monospace;">
+          </div>
+        </div>
+
+        <div class="set-divider"></div>
+
+        <div class="set-fgrp" style="margin-bottom:16px;">
+          <label><i data-lucide="landmark" style="width:14px;height:14px;"></i> بيانات الحساب البنكي / الآيبان <small style="color:var(--text-muted);font-weight:normal;">(اختياري)</small></label>
+          <textarea id="setting-bank-details" style="height:65px;resize:vertical;" placeholder="بنك مصر - حساب رقم 123456789 - IBAN: EG000...">${s.bankAccountDetails || ''}</textarea>
+        </div>
+
+        <div class="set-fgrp">
+          <label><i data-lucide="file-text" style="width:14px;height:14px;color:#f59e0b;"></i> تعليمات التحويل للطلاب</label>
+          <textarea id="setting-payment-instructions" style="height:65px;resize:vertical;" placeholder="يرجى إتمام التحويل ثم إرفاق صورة الإيصال...">${s.paymentInstructions || ''}</textarea>
+          <span class="hint">تظهر أسفل أرقام التحويل مباشرةً في نافذة الدفع.</span>
+        </div>
+
+        <div class="set-save-row">
+          <button type="submit" id="save-platform-settings-btn" class="set-btn set-btn-primary">
+            <i data-lucide="save" style="width:16px;height:16px;"></i> حفظ بيانات الدفع
+          </button>
+        </div>
+      </form>
+    `;
+  },
+
+  _renderPasswordSection() {
+    return `
+      <div class="set-section-header">
+        <h3>🔒 تغيير كلمة المرور</h3>
+        <p>غيّر كلمة مرور حساب الأدمن. يُنصح بكلمة مرور قوية لا تقل عن 8 أحرف.</p>
+      </div>
+
+      <form id="admin-change-password-form" style="max-width:460px;display:flex;flex-direction:column;gap:18px;">
+
+        <div class="set-fgrp">
+          <label><i data-lucide="lock" style="width:14px;height:14px;color:var(--text-muted);"></i> كلمة المرور الحالية</label>
+          <div class="pw-eye-wrap">
+            <input type="password" id="admin-curr-password" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="pw-eye-btn" data-target="admin-curr-password"><i data-lucide="eye" style="width:15px;height:15px;"></i></button>
+          </div>
+        </div>
+
+        <div class="set-fgrp">
+          <label><i data-lucide="lock-keyhole" style="width:14px;height:14px;color:#ef4444;"></i> كلمة المرور الجديدة</label>
+          <div class="pw-eye-wrap">
+            <input type="password" id="admin-new-password" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-eye-btn" data-target="admin-new-password"><i data-lucide="eye" style="width:15px;height:15px;"></i></button>
+          </div>
+          <div class="pw-strength-bar" id="admin-pw-strength-bar">
+            <div class="pw-strength-track"><div class="pw-strength-fill" id="admin-pw-strength-fill"></div></div>
+            <p id="admin-pw-strength-label" style="font-size:0.72rem;margin:4px 0 0 0;color:var(--text-muted);"></p>
+          </div>
+        </div>
+
+        <div class="set-fgrp">
+          <label><i data-lucide="shield-check" style="width:14px;height:14px;color:#10b981;"></i> تأكيد كلمة المرور الجديدة</label>
+          <div class="pw-eye-wrap">
+            <input type="password" id="admin-confirm-password" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-eye-btn" data-target="admin-confirm-password"><i data-lucide="eye" style="width:15px;height:15px;"></i></button>
+          </div>
+          <p id="admin-confirm-match" style="font-size:0.73rem;margin:4px 0 0 0;display:none;"></p>
+        </div>
+
+        <div class="set-save-row" style="margin-top:8px;">
+          <button type="submit" id="admin-change-pw-btn" class="set-btn set-btn-red">
+            <i data-lucide="key-round" style="width:16px;height:16px;"></i> تغيير كلمة المرور
+          </button>
+        </div>
+      </form>
+    `;
+  },
+
+  // ── Events ──────────────────────────────────────────────────────────────────
+
+  bindSettingsEvents() {
+    // Sub-section navigation
+    document.querySelectorAll('[data-set-section]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._settingsSection = btn.getAttribute('data-set-section');
+        try {
+          if (window.location.hash !== `#admin-dashboard/settings/${this._settingsSection}`) {
+            history.pushState(null, "", `#admin-dashboard/settings/${this._settingsSection}`);
+          }
+        } catch (err) {}
+        // Update active button
+        document.querySelectorAll('[data-set-section]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // Re-render content panel only
+        const panel = document.getElementById('set-content-panel');
+        if (panel) {
+          panel.innerHTML = this._renderSettingsSection();
+          if (window.lucide) window.lucide.createIcons();
+          this._bindCurrentSectionEvents();
+        }
+      });
+    });
+
+    this._bindCurrentSectionEvents();
+  },
+
+  _bindCurrentSectionEvents() {
+    if (this._settingsSection === 'contact' || this._settingsSection === 'payment') {
+      this._bindPlatformSettingsForm();
+    }
+    if (this._settingsSection === 'password') {
+      this.bindChangePasswordEvents();
+    }
+  },
+
+  _bindPlatformSettingsForm() {
+    document.getElementById('admin-platform-settings-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('save-platform-settings-btn');
+      if (!submitBtn) return;
+
+      const origHTML = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px;height:16px;animation:spin 1s linear infinite;"></i> جارٍ الحفظ...`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const body = {};
+        const g = id => document.getElementById(id)?.value?.trim?.() ?? undefined;
+        const ga = id => document.getElementById(id)?.value ?? undefined; // for textarea
+
+        if (this._settingsSection === 'contact') {
+          body.whatsappNumber        = g('setting-whatsapp-number');
+          body.contactPhone          = g('setting-contact-phone');
+          body.workingHours          = g('setting-working-hours');
+          body.contactEmail          = g('setting-contact-email');
+          body.contactEmail2         = g('setting-contact-email2');
+          body.contactTitle          = g('setting-contact-title');
+          body.contactSubtitle       = ga('setting-contact-subtitle');
+          body.contactAddress        = g('setting-contact-address');
+        } else {
+          body.vodafoneCashNumber    = g('setting-vodafone-cash');
+          body.instapayHandle        = g('setting-instapay-handle');
+          body.orangeCashNumber      = g('setting-orange-cash');
+          body.etisalatCashNumber    = g('setting-etisalat-cash');
+          body.bankAccountDetails    = ga('setting-bank-details');
+          body.paymentInstructions   = ga('setting-payment-instructions');
+        }
+
+        const res = await apiFetch('/admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+
+        if (res && res.settings) {
+          this.platformSettings = res.settings;
+          state.platformSettings = { ...state.platformSettings, ...res.settings };
+        }
+        showToast('✅ تم الحفظ بنجاح', 'success');
+      } catch (err) {
+        showToast(err.message || 'فشل الحفظ', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origHTML;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+  },
+
+  bindChangePasswordEvents() {
+    // Show/hide toggles
+    document.querySelectorAll('.pw-eye-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.getAttribute('data-target'));
+        if (!input) return;
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        const icon = btn.querySelector('i');
+        if (icon) { icon.setAttribute('data-lucide', showing ? 'eye' : 'eye-off'); if (window.lucide) window.lucide.createIcons(); }
+      });
+    });
+
+    // Strength meter
+    const newPwInput   = document.getElementById('admin-new-password');
+    const strengthBar  = document.getElementById('admin-pw-strength-bar');
+    const strengthFill = document.getElementById('admin-pw-strength-fill');
+    const strengthLbl  = document.getElementById('admin-pw-strength-label');
+
+    newPwInput?.addEventListener('input', () => {
+      const val = newPwInput.value;
+      if (!val) { strengthBar.style.display = 'none'; return; }
+      strengthBar.style.display = 'block';
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+      const lvls = [
+        { w:'25%', c:'#ef4444', t:'🔴 ضعيفة جداً' },
+        { w:'50%', c:'#f59e0b', t:'🟠 مقبولة' },
+        { w:'75%', c:'#3b82f6', t:'🔵 جيدة' },
+        { w:'100%',c:'#10b981', t:'🟢 قوية جداً' },
+      ];
+      const l = lvls[Math.min(score, 3)];
+      strengthFill.style.width = l.w; strengthFill.style.background = l.c;
+      strengthLbl.textContent = l.t; strengthLbl.style.color = l.c;
+    });
+
+    // Confirm match
+    const confirmInput = document.getElementById('admin-confirm-password');
+    const matchLbl     = document.getElementById('admin-confirm-match');
+    confirmInput?.addEventListener('input', () => {
+      const v = confirmInput.value;
+      if (!v) { matchLbl.style.display = 'none'; return; }
+      matchLbl.style.display = 'block';
+      if ((newPwInput?.value || '') === v) {
+        matchLbl.textContent = '✅ كلمتا المرور متطابقتان'; matchLbl.style.color = '#10b981';
+      } else {
+        matchLbl.textContent = '❌ كلمتا المرور غير متطابقتين'; matchLbl.style.color = '#ef4444';
+      }
+    });
+
+    // Form submit
+    document.getElementById('admin-change-password-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const currentPassword = document.getElementById('admin-curr-password')?.value?.trim();
+      const newPassword     = document.getElementById('admin-new-password')?.value?.trim();
+      const confirmPassword = document.getElementById('admin-confirm-password')?.value?.trim();
+
+      if (!currentPassword || !newPassword || !confirmPassword) { showToast('يرجى ملء جميع الحقول', 'error'); return; }
+      if (newPassword.length < 6)      { showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
+      if (newPassword !== confirmPassword) { showToast('كلمتا المرور غير متطابقتين', 'error'); return; }
+
+      const btn = document.getElementById('admin-change-pw-btn');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> جارٍ الحفظ...`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        await apiFetch('/auth/change-password', { method:'POST', body:JSON.stringify({ currentPassword, newPassword, confirmPassword }) });
+        showToast('✅ تم تغيير كلمة المرور بنجاح', 'success');
+        ['admin-curr-password','admin-new-password','admin-confirm-password'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+        if (strengthBar) strengthBar.style.display = 'none';
+        if (matchLbl) matchLbl.style.display = 'none';
+      } catch (err) {
+        showToast(err.message || 'فشل تغيير كلمة المرور', 'error');
+      } finally {
+        btn.disabled = false; btn.innerHTML = orig;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+  },
 
 };

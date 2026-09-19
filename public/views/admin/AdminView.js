@@ -10,12 +10,23 @@ import { AdminReportsPage }        from './AdminReportsPage.js';
 import { AdminEarningsPage }       from './AdminEarningsPage.js';
 import { AdminPlansPage }          from './AdminPlansPage.js';
 import { AdminSettingsPage }       from './AdminSettingsPage.js';
+import { AdminCurriculumPage }     from './AdminCurriculumPage.js';
 
 export default class AdminView {
 
   constructor(container, initialTab = "stats") {
     this.container = container;
-    this.activeTab = initialTab || "stats";
+    let mainTab = initialTab || "stats";
+    let subTab = null;
+    if (typeof mainTab === "string" && mainTab.includes("/")) {
+      const parts = mainTab.split("/");
+      mainTab = parts[0];
+      subTab = parts.slice(1).join("/");
+    }
+    this.activeTab = mainTab;
+    if (mainTab === "settings" && subTab) {
+      this._settingsSection = subTab;
+    }
     window.adminViewInstance = this;
     this.stats = {};
     this.allMembers = [];
@@ -367,11 +378,11 @@ export default class AdminView {
             </button>
 
             <div class="admin-nav-section">إدارة المنصة</div>
-            <button class="admin-nav-btn ${this.activeTab === "categories" ? "active" : ""}" data-tab="categories">
-              <i data-lucide="layers"></i>
-              إدارة التصنيفات
-              <span class="admin-nav-badge" id="admin-badge-categories">0</span>
+            <button class="admin-nav-btn ${this.activeTab === "curriculum" ? "active" : ""}" data-tab="curriculum">
+              <i data-lucide="book-marked"></i>
+              🎓 المراحل والمواد الدراسية
             </button>
+
             <button class="admin-nav-btn ${this.activeTab === "courses" ? "active" : ""}" data-tab="courses">
               <i data-lucide="book-open"></i>
               إدارة الدورات
@@ -402,14 +413,6 @@ export default class AdminView {
               خطط وباقات الاشتراكات
               <span class="admin-nav-badge" id="admin-badge-plans">0</span>
             </button>
-            <button class="admin-nav-btn ${this.activeTab === "settings" ? "active" : ""}" data-tab="settings">
-              <i data-lucide="settings"></i>
-              ⚙️ إعدادات المنصة والواتساب
-            </button>
-            <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
-              <i data-lucide="dollar-sign"></i>
-              المدفوعات والمستحقات
-            </button>
 
             <div class="admin-nav-section">إدارة الأعضاء</div>
             <button class="admin-nav-btn ${this.activeTab === "teachers" ? "active" : ""}" data-tab="teachers">
@@ -430,6 +433,16 @@ export default class AdminView {
             <button class="admin-nav-btn ${this.activeTab === "members" ? "active" : ""}" data-tab="members">
               <i data-lucide="shield"></i>
               جميع الأعضاء
+            </button>
+
+            <div class="admin-nav-section">إعدادات النظام</div>
+            <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
+              <i data-lucide="dollar-sign"></i>
+              المدفوعات والمستحقات
+            </button>
+            <button class="admin-nav-btn ${this.activeTab === "settings" ? "active" : ""}" data-tab="settings" style="border:1px solid rgba(99,102,241,0.25); background:rgba(99,102,241,0.06);">
+              <i data-lucide="settings-2"></i>
+              ⚙️ إعدادات المنصة
             </button>
           </nav>
 
@@ -570,8 +583,11 @@ export default class AdminView {
         btn.classList.add("active");
         closeSidebar();
         try {
-          if (window.location.hash !== `#admin-dashboard/${tab}`) {
-            history.pushState(null, "", `#admin-dashboard/${tab}`);
+          const targetUrl = tab === "settings" && this._settingsSection
+            ? `#admin-dashboard/settings/${this._settingsSection}`
+            : `#admin-dashboard/${tab}`;
+          if (window.location.hash !== targetUrl) {
+            history.pushState(null, "", targetUrl);
           }
         } catch (err) { }
         this.renderTab(this.activeTab);
@@ -592,6 +608,7 @@ export default class AdminView {
   static TAB_META = {
     stats: { heading: "📊 الإحصائيات العامة", sub: "نظرة شاملة على مؤشرات أداء المنصة" },
     reports: { heading: "📈 التقارير والسجلات", sub: "تقارير مفصلة عن النشاط والأداء" },
+    curriculum: { heading: "🎓 إدارة المراحل والمواد الدراسية", sub: "إضافة وإخفاء وتعديل الصفوف الدراسية والمواد لكل مرحلة تعليمية" },
     categories: { heading: "🗂️ إدارة التصنيفات", sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
     courses: { heading: "📚 إدارة الدورات", sub: "مراجعة والإشراف على جميع دورات المنصة" },
     enrollments: { heading: "🎓 طلبات وتسجيلات الكورسات", sub: "مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات" },
@@ -622,6 +639,12 @@ export default class AdminView {
       content.innerHTML = this.renderStatsTab();
       this.bindAdminStatsEvents();
     }
+    else if (tab === "curriculum") {
+      content.innerHTML = "";
+      const page = new AdminCurriculumPage(content, this);
+      page.render();
+      return; // page manages its own icons/events
+    }
     else if (tab === "categories") content.innerHTML = this.renderCategoriesTab();
     else if (tab === "teachers") content.innerHTML = this.renderTeachersTab();
     else if (tab === "students") content.innerHTML = this.renderStudentsTab();
@@ -638,7 +661,10 @@ export default class AdminView {
     else if (tab === "subscriptions") content.innerHTML = this.renderSubscriptionsTab();
     else if (tab === "earnings") content.innerHTML = this.renderEarningsTab();
     else if (tab === "plans") content.innerHTML = this.renderPlansTab();
-    else if (tab === "settings") content.innerHTML = this.renderSettingsTab();
+    else if (tab === "settings") {
+      content.innerHTML = this.renderSettingsTab();
+      this.bindSettingsEvents?.();
+    }
 
     // Always keep sidebar badges fresh
     this.updateBadges();
@@ -1562,78 +1588,6 @@ export default class AdminView {
       });
     });
 
-    // Platform & WhatsApp Settings Form Handler
-    document.getElementById("admin-platform-settings-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById("save-platform-settings-btn");
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div> <span>جاري الحفظ...</span>`;
-      }
-
-      const whatsappNumber = document.getElementById("setting-whatsapp-number")?.value.trim();
-      const contactPhone = document.getElementById("setting-contact-phone")?.value.trim();
-      const contactEmail = document.getElementById("setting-contact-email")?.value.trim();
-      const contactEmail2 = document.getElementById("setting-contact-email2")?.value.trim();
-      const workingHours = document.getElementById("setting-working-hours")?.value.trim();
-      const contactTitle = document.getElementById("setting-contact-title")?.value.trim();
-      const contactSubtitle = document.getElementById("setting-contact-subtitle")?.value.trim();
-      const contactAddress = document.getElementById("setting-contact-address")?.value.trim();
-
-      // Platform Financial Transfer Accounts
-      const vodafoneCashNumber = document.getElementById("setting-vodafone-cash")?.value.trim();
-      const instapayHandle = document.getElementById("setting-instapay-handle")?.value.trim();
-      const orangeCashNumber = document.getElementById("setting-orange-cash")?.value.trim();
-      const etisalatCashNumber = document.getElementById("setting-etisalat-cash")?.value.trim();
-      const bankAccountDetails = document.getElementById("setting-bank-details")?.value.trim();
-      const paymentInstructions = document.getElementById("setting-payment-instructions")?.value.trim();
-
-      try {
-        const res = await apiFetch("/admin/settings", {
-          method: "PUT",
-          body: JSON.stringify({
-            whatsappNumber,
-            contactPhone,
-            contactEmail,
-            contactEmail2,
-            workingHours,
-            contactTitle,
-            contactSubtitle,
-            contactAddress,
-            vodafoneCashNumber,
-            instapayHandle,
-            orangeCashNumber,
-            etisalatCashNumber,
-            bankAccountDetails,
-            paymentInstructions
-          })
-        });
-
-        if (res && res.settings) {
-          this.platformSettings = res.settings;
-          state.platformSettings = { ...state.platformSettings, ...res.settings };
-          showToast(res.message || "تم حفظ كافة إعدادات المنصة وبيانات التحويل المالي بنجاح! ✅", "success");
-
-          // Update preview link & floating whatsapp button
-          const previewLink = document.getElementById("admin-preview-wa-link");
-          if (previewLink && res.settings.whatsappUrl) {
-            previewLink.href = res.settings.whatsappUrl;
-          }
-          const floatingWa = document.querySelector(".floating-whatsapp");
-          if (floatingWa && res.settings.whatsappUrl) {
-            floatingWa.setAttribute("href", res.settings.whatsappUrl);
-          }
-        }
-      } catch (err) {
-        showToast(err.message || "فشل حفظ إعدادات المنصة.", "error");
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width:18px; height:18px;"></i> <span>حفظ إعدادات المنصة وبيانات التحويل 💾</span>`;
-          if (window.lucide) window.lucide.createIcons();
-        }
-      }
-    });
   }
 
   // ── Render Category Modal (Create / Edit) ──────────────────────────────────

@@ -22,6 +22,9 @@ export class Subject {
   @Column({ default: false })
   isLanguageTrack: boolean; // True if it's for Languages / اللغات (e.g. Science, Mathematics, Connect Plus)
 
+  @Column({ default: true })
+  isActive: boolean; // Admin can hide/show subjects from the platform
+
   @ManyToOne(() => Grade, grade => grade.subjects, { onDelete: "CASCADE" })
   grade: Grade;
 

@@ -99,6 +99,14 @@ router.get("/curriculum/subjects", CurriculumController_1.CurriculumController.g
 router.get("/curriculum/subjects/:subjectId/groups", CurriculumController_1.CurriculumController.getSubjectGroups);
 router.get("/curriculum/courses/:subjectId/groups", CurriculumController_1.CurriculumController.getSubjectGroups);
 router.get("/landing/explore", CurriculumController_1.CurriculumController.getLandingExplore);
+// Admin Curriculum Management (Grades & Subjects)
+router.get("/admin/curriculum/grades", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.getAdminGrades);
+router.post("/admin/curriculum/grades", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.createGrade);
+router.delete("/admin/curriculum/grades/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteGrade);
+router.post("/admin/curriculum/grades/:gradeId/subjects", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.createSubject);
+router.put("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.updateSubject);
+router.patch("/admin/curriculum/subjects/:id/toggle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.toggleSubjectVisibility);
+router.delete("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteSubject);
 // Course Group Batches & Cohorts
 router.post("/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController_1.CourseGroupController.getCourseGroups);
@@ -245,6 +253,8 @@ router.get("/teachers", UserController_1.UserController.getTeachers);
 router.get("/teachers/:id", UserController_1.UserController.getTeacherById);
 router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController.updateProfile);
 router.post("/users/avatar", auth_1.authMiddleware, uploadSingleAvatar, UserController_1.UserController.uploadAvatar);
+router.post("/users/change-password", auth_1.authMiddleware, UserController_1.UserController.changePassword);
+router.post("/auth/change-password", auth_1.authMiddleware, UserController_1.UserController.changePassword);
 router.get("/users/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), UserController_1.UserController.getStudents);
 router.post("/teacher/students", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), UserController_1.UserController.addStudent);
 router.delete("/teacher/students/:studentId", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), UserController_1.UserController.deleteStudent);
