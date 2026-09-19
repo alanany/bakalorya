@@ -1230,7 +1230,7 @@ export default class AdminView {
 
     // Admin Groups Add Button
     this.container.querySelector("#admin-groups-add-btn")?.addEventListener("click", () => {
-      this.renderGroupSessionModal();
+      this.renderAdminCreateGroupModal();
     });
 
     this.container.querySelectorAll(".admin-view-group-students-btn").forEach(btn => {

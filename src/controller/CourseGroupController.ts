@@ -152,9 +152,14 @@ export class CourseGroupController {
         return res.status(403).json({ error: "Only teachers or admins can create course groups." });
       }
 
-      const teacher = req.user!.role === "teacher"
-        ? (await userRepo.findOneBy({ id: req.user!.id }))
-        : (course.teacher || (await userRepo.findOneBy({ id: req.user!.id })));
+      let teacher: User | null = null;
+      if (req.user!.role === "teacher") {
+        teacher = await userRepo.findOneBy({ id: req.user!.id });
+      } else if (req.body.teacherId) {
+        teacher = await userRepo.findOneBy({ id: req.body.teacherId });
+      } else {
+        teacher = course.teacher || (await userRepo.findOneBy({ id: req.user!.id }));
+      }
       const isAdmin = req.user!.role === "admin";
 
       const defaultTeacherHourly = teacher?.hourlyRate || 100;
@@ -784,18 +789,16 @@ export class CourseGroupController {
 
       const isClosed = group.status === "CLOSED" || group.status === "IN_PROGRESS";
 
-      // If group is closed by admin, receipt image and financial data are strictly mandatory
-      if (isClosed) {
-        if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
-          return res.status(400).json({ 
-            error: "هذه المجموعة مغلقة للتسجيل. يلزم إرفاق صورة إيصال التحويل لإتمام إضافة الطالب." 
-          });
-        }
-        if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) <= 0) {
-          return res.status(400).json({ 
-            error: "هذه المجموعة مغلقة للتسجيل. يلزم إدخال المبلغ المالي المدفوع بشكل صحيح." 
-          });
-        }
+      // Receipt image and financial data are strictly mandatory when adding/enrolling a student
+      if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
+        return res.status(400).json({ 
+          error: "يلزم إرفاق صورة إيصال التحويل / السداد لإتمام تسكين الطالب في المجموعة." 
+        });
+      }
+      if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) <= 0) {
+        return res.status(400).json({ 
+          error: "يلزم إدخال المبلغ المالي المدفوع بشكل صحيح." 
+        });
       }
 
       // Check current capacity and available seats
@@ -812,15 +815,9 @@ export class CourseGroupController {
       // If student is not already active in this group, enforce or adjust capacity
       if (!enrollment || enrollment.status !== "active") {
         if (activeCount >= maxSeats) {
-          if (isClosed) {
-            // Auto-expand group maxSeats for admin exception with receipt
-            group.maxStudents = activeCount + 1;
-            await groupRepo.save(group);
-          } else {
-            return res.status(400).json({
-              error: `عذراً، اكتملت جميع مقاعد هذه المجموعة (${maxSeats} من ${maxSeats} مقعداً). لا توجد مقاعد شاغرة لإضافة طلاب جدد.`
-            });
-          }
+          // Auto-expand group maxSeats for admin adding student with confirmed receipt
+          group.maxStudents = activeCount + 1;
+          await groupRepo.save(group);
         }
       }
 

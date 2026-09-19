@@ -650,6 +650,495 @@ export const AdminSessionsPage = {
     `;
   },
 
+  // ── Render Admin Create & Schedule Online Group Modal ────────────────────────
+  async renderAdminCreateGroupModal() {
+    document.querySelectorAll("#admin-create-group-modal-wrapper").forEach(el => el.remove());
+    const container = document.getElementById("admin-edit-group-modal-container") || document.body;
+    const teachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
+
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to load curriculum grades:", e);
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "admin-create-group-modal-wrapper";
+    wrapper.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div class="glass-card" style="width:100%; max-width:680px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+          
+          <!-- Modal Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18)); color:#8b5cf6; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="plus-circle" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.25rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                  ➕ إضافة وجدولة مجموعة أونلاين جديدة
+                </h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                  اختر المرحلة والصف والمادة، وعيّن المعلم المشرف والمواعيد والأسعار والسعة للمجموعة.
+                </p>
+              </div>
+            </div>
+            <button id="close-admin-create-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
+              &times;
+            </button>
+          </div>
+
+          <form id="admin-create-group-form" style="display:flex; flex-direction:column; gap:16px; overflow-y:auto; padding-inline-end:4px;">
+            
+            <!-- 1. CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT) -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="graduation-cap" style="width:16px; height:16px; color:#8b5cf6;"></i>
+                  <span>1. المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
+                </label>
+                <span style="font-size:0.72rem; font-weight:800; color:#8b5cf6; background:rgba(139,92,246,0.1); padding:2px 10px; border-radius:10px;">
+                  مناهج معتمدة
+                </span>
+              </div>
+
+              <!-- Stage Buttons -->
+              <div>
+                <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
+                  المرحلة التعليمية:
+                </label>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                  <button type="button" class="admin-create-stage-btn active" data-stage="PRIMARY" style="padding:9px 6px; border-radius:12px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#fff; transition:all 0.2s ease;">
+                    🎒 الابتدائية
+                  </button>
+                  <button type="button" class="admin-create-stage-btn" data-stage="PREPARATORY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                    📚 الإعدادية
+                  </button>
+                  <button type="button" class="admin-create-stage-btn" data-stage="SECONDARY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
+                    🎓 الثانوية العامة
+                  </button>
+                </div>
+              </div>
+
+              <!-- Grade & Subject Dropdowns -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label for="admin-create-group-grade-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
+                    الصف الدراسي <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="admin-create-group-grade-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
+                    <option value="">-- جاري التحميل... --</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label for="admin-create-group-subject-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
+                    المادة الدراسية <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="admin-create-group-subject-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
+                    <option value="">-- اختر الصف أولاً --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. TEACHER ASSIGNMENT & STATUS -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:12px;">
+                <div>
+                  <label for="admin-create-group-teacher-select" style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    <i data-lucide="user-check" style="width:15px; height:15px; color:#10b981;"></i>
+                    <span>2. تعيين المعلم المشرف على المجموعة: <span style="color:#ef4444;">*</span></span>
+                  </label>
+                  <select id="admin-create-group-teacher-select" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;" required>
+                    <option value="">-- اختر المعلم المسؤول --</option>
+                    ${teachers.map(t => `
+                      <option value="${t.id}" data-link="${t.meetingLink || ''}" data-rate="${t.hourlyRate || 100}">
+                        👨‍🏫 ${t.name} (${t.phone || t.email || 'معلم'})
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+
+                <div>
+                  <label for="admin-create-group-status" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    حالة المجموعة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="admin-create-group-status" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem; font-weight:800;">
+                    <option value="OPEN" selected>🟢 متاحة للتسجيل فوراً</option>
+                    <option value="PENDING_APPROVAL">⏳ قيد المراجعة والاعتماد</option>
+                    <option value="IN_PROGRESS">🔒 مغلقة وبدأت الدراسة</option>
+                    <option value="CLOSED">🔒 مغلقة</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. GROUP NAME & SUMMARY -->
+            <div>
+              <label for="admin-create-group-name" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                اسم المجموعة الدراسية: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="admin-create-group-name" placeholder="مثال: مجموعة الرياضيات - الصف الأول الثانوي (الأحد والثلاثاء)" required
+                style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <div>
+              <label for="admin-create-group-desc" style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                <span>وصف وملخص المجموعة ومحتوى الدورة:</span>
+                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر للطلاب في صفحة المجموعة 📖</span>
+              </label>
+              <textarea id="admin-create-group-desc" rows="2" placeholder="اكتب نبذة أو ملخصاً عن الموضوعات التي سيتم تغطيتها ومواعيد المراجعات واختبارات المتابعة..."
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- 4. SCHEDULE DAYS, TIME & MEETING LINK -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
+                </label>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
+                  ${["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"].map((day, idx) => `
+                    <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-card); font-size:0.82rem; font-weight:700; cursor:pointer;">
+                      <input type="checkbox" name="admin-create-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#8b5cf6; width:15px; height:15px;">
+                      <span>${day}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label for="admin-create-group-time" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    توقيت بدء الحصة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <select id="admin-create-group-time" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;" required>
+                    <option value="09:00 ص">09:00 ص (9:00 صباحاً)</option>
+                    <option value="10:00 ص">10:00 ص (10:00 صباحاً)</option>
+                    <option value="11:00 ص">11:00 ص (11:00 صباحاً)</option>
+                    <option value="12:00 م">12:00 م (12:00 ظهراً)</option>
+                    <option value="01:00 م">01:00 م (1:00 ظهراً)</option>
+                    <option value="02:00 م">02:00 م (2:00 ظهراً)</option>
+                    <option value="03:00 م">03:00 م (3:00 عصراً)</option>
+                    <option value="03:30 م">03:30 م (3:30 عصراً)</option>
+                    <option value="04:00 م">04:00 م (4:00 عصراً)</option>
+                    <option value="04:30 م">04:30 م (4:30 عصراً)</option>
+                    <option value="05:00 م">05:00 م (5:00 مساءً)</option>
+                    <option value="05:30 م">05:30 م (5:30 مساءً)</option>
+                    <option value="06:00 م" selected>06:00 م (6:00 مساءً)</option>
+                    <option value="06:30 م">06:30 م (6:30 مساءً)</option>
+                    <option value="07:00 م">07:00 م (7:00 مساءً)</option>
+                    <option value="07:30 م">07:30 م (7:30 مساءً)</option>
+                    <option value="08:00 م">08:00 م (8:00 مساءً)</option>
+                    <option value="08:30 م">08:30 م (8:30 مساءً)</option>
+                    <option value="09:00 م">09:00 م (9:00 مساءً)</option>
+                    <option value="09:30 م">09:30 م (9:30 مساءً)</option>
+                    <option value="10:00 م">10:00 م (10:00 مساءً)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label for="admin-create-group-duration" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    مدة الحصة:
+                  </label>
+                  <select id="admin-create-group-duration" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;">
+                    <option value="60" selected>60 دقيقة (ساعة كاملة)</option>
+                    <option value="90">90 دقيقة (ساعة ونصف)</option>
+                    <option value="120">120 دقيقة (ساعتان)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label for="admin-create-group-meeting-link" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  رابط البث المباشر (Zoom / Google Meet) - اختياري:
+                </label>
+                <input type="url" id="admin-create-group-meeting-link" placeholder="https://zoom.us/j/... أو https://meet.google.com/..."
+                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- 5. PRICING, CAPACITY & COMMISSION -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="coins" style="width:16px; height:16px; color:#f59e0b;"></i>
+                <span>الأسعار والسعة وعمولة المنصة 💰</span>
+              </label>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px;">
+                <div>
+                  <label for="admin-create-group-max-students" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                    السعة القصوى (المقاعد):
+                  </label>
+                  <input type="number" id="admin-create-group-max-students" value="25" min="1" max="100" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
+                </div>
+
+                <div>
+                  <label for="admin-create-group-session-price" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                    سعر الحصة للطالب (ج.م):
+                  </label>
+                  <input type="number" id="admin-create-group-session-price" value="40" min="0" step="5" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
+                </div>
+
+                <div>
+                  <label for="admin-create-group-monthly-price" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                    سعر الاشتراك الشهري (ج.م):
+                  </label>
+                  <input type="number" id="admin-create-group-monthly-price" value="320" min="0" step="10" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
+                </div>
+
+                <div>
+                  <label for="admin-create-group-teacher-rate" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                    أجر المعلم بالساعة (ج.م):
+                  </label>
+                  <input type="number" id="admin-create-group-teacher-rate" value="100" min="0" step="10" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
+                </div>
+
+                <div>
+                  <label for="admin-create-group-commission" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                    نسبة عمولة المنصة (%):
+                  </label>
+                  <input type="number" id="admin-create-group-commission" value="50" min="0" max="100" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:6px; padding-top:12px; border-top:1px solid var(--border-color);">
+              <button type="button" id="cancel-admin-create-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:18px; font-size:0.88rem;">
+                إلغاء
+              </button>
+              <button type="submit" id="submit-admin-create-group-btn" class="btn-primary" style="padding:10px 28px; border-radius:18px; font-weight:900; background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; font-size:0.9rem; display:inline-flex; align-items:center; gap:8px;">
+                <i data-lucide="plus-circle" style="width:18px; height:18px;"></i>
+                <span>➕ إضافة وجدولة المجموعة الآن 🚀</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    container.appendChild(wrapper);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => {
+      document.querySelectorAll("#admin-create-group-modal-wrapper").forEach(el => el.remove());
+    };
+    wrapper.querySelector("#close-admin-create-group-modal")?.addEventListener("click", closeModal);
+    wrapper.querySelector("#cancel-admin-create-group-btn")?.addEventListener("click", closeModal);
+
+    // Curriculum Logic for Admin Group Modal
+    const stageBtns = wrapper.querySelectorAll(".admin-create-stage-btn");
+    const gradeSelect = wrapper.querySelector("#admin-create-group-grade-select");
+    const subjectSelect = wrapper.querySelector("#admin-create-group-subject-select");
+    const groupNameInput = wrapper.querySelector("#admin-create-group-name");
+    const teacherSelect = wrapper.querySelector("#admin-create-group-teacher-select");
+    const meetingLinkInput = wrapper.querySelector("#admin-create-group-meeting-link");
+    const teacherRateInput = wrapper.querySelector("#admin-create-group-teacher-rate");
+    const sessionPriceInput = wrapper.querySelector("#admin-create-group-session-price");
+    const monthlyPriceInput = wrapper.querySelector("#admin-create-group-monthly-price");
+
+    let isManualName = false;
+    groupNameInput?.addEventListener("input", () => {
+      isManualName = true;
+    });
+
+    const updateSuggestedGroupName = () => {
+      if (isManualName) return;
+      const selectedSubjectOpt = subjectSelect?.options[subjectSelect.selectedIndex];
+      const selectedGradeOpt = gradeSelect?.options[gradeSelect.selectedIndex];
+      const subjectName = selectedSubjectOpt && selectedSubjectOpt.value ? selectedSubjectOpt.getAttribute("data-name") || selectedSubjectOpt.text : "";
+      const gradeName = selectedGradeOpt && selectedGradeOpt.value ? selectedGradeOpt.text : "";
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='admin-create-group-days']:checked")).map(cb => cb.value);
+      const daysText = checkedDays.join(" و ");
+
+      if (subjectName) {
+        groupNameInput.value = `مجموعة ${subjectName} - ${gradeName || ''} (${daysText || 'أسبوعي'})`.trim();
+      }
+    };
+
+    wrapper.querySelectorAll("input[name='admin-create-group-days']").forEach(cb => {
+      cb.addEventListener("change", updateSuggestedGroupName);
+    });
+
+    let isManualMonthlyPrice = false;
+    monthlyPriceInput?.addEventListener("input", () => {
+      isManualMonthlyPrice = true;
+    });
+    sessionPriceInput?.addEventListener("input", () => {
+      if (!isManualMonthlyPrice) {
+        const sp = parseFloat(sessionPriceInput.value) || 0;
+        monthlyPriceInput.value = sp * 8;
+      }
+    });
+
+    teacherSelect?.addEventListener("change", () => {
+      const selectedOpt = teacherSelect.options[teacherSelect.selectedIndex];
+      if (selectedOpt && selectedOpt.value) {
+        const tLink = selectedOpt.getAttribute("data-link");
+        const tRate = selectedOpt.getAttribute("data-rate");
+        if (tLink && (!meetingLinkInput.value || meetingLinkInput.value.trim() === "")) {
+          meetingLinkInput.value = tLink;
+        }
+        if (tRate && teacherRateInput) {
+          teacherRateInput.value = tRate;
+        }
+      }
+    });
+
+    const updateStageUI = (stage) => {
+      stageBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute("data-stage") === stage;
+        btn.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = "#ffffff";
+        } else {
+          btn.style.background = "var(--bg-card)";
+          btn.style.borderColor = "var(--border-color)";
+          btn.style.color = "var(--text-main)";
+        }
+      });
+
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        updateSubjectsUI(gradeSelect.value);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId) => {
+      const selectedGrade = allGrades.find(g => g.id === gradeId);
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `<option value="">لا توجد مواد مسجلة</option>`;
+        return;
+      }
+
+      subjectSelect.innerHTML = subjects.map(s => `
+        <option value="${s.id}" data-name="${s.name}">
+          ${s.name} ${s.isLanguageTrack ? '(لغات 🌐)' : '(عام 🇪🇬)'}
+        </option>
+      `).join('');
+
+      updateSuggestedGroupName();
+    };
+
+    stageBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        updateStageUI(btn.getAttribute("data-stage"));
+      });
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    subjectSelect?.addEventListener("change", () => {
+      updateSuggestedGroupName();
+    });
+
+    // Initialize with PRIMARY stage
+    updateStageUI("PRIMARY");
+
+    // Form Submission
+    wrapper.querySelector("#admin-create-group-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const gradeId = gradeSelect?.value;
+      const subjectId = subjectSelect?.value;
+      const teacherId = teacherSelect?.value || null;
+      const status = wrapper.querySelector("#admin-create-group-status")?.value || "OPEN";
+      const scheduleTime = wrapper.querySelector("#admin-create-group-time")?.value?.trim() || "06:00 م";
+      const duration = parseInt(wrapper.querySelector("#admin-create-group-duration")?.value, 10) || 60;
+      const meetingLink = wrapper.querySelector("#admin-create-group-meeting-link")?.value?.trim() || null;
+      const maxStudents = parseInt(wrapper.querySelector("#admin-create-group-max-students")?.value, 10) || 25;
+      const sessionPrice = parseFloat(wrapper.querySelector("#admin-create-group-session-price")?.value) || 40;
+      const monthlyPrice = parseFloat(wrapper.querySelector("#admin-create-group-monthly-price")?.value) || (sessionPrice * 8);
+      const teacherHourlyRate = parseFloat(wrapper.querySelector("#admin-create-group-teacher-rate")?.value) || 100;
+      const commission = parseFloat(wrapper.querySelector("#admin-create-group-commission")?.value) || 50;
+
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='admin-create-group-days']:checked")).map(cb => cb.value);
+      const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
+      const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
+      const name = wrapper.querySelector("#admin-create-group-name")?.value?.trim() || `مجموعة ${scheduleDays} (${scheduleTime})`;
+      const description = wrapper.querySelector("#admin-create-group-desc")?.value?.trim() || "";
+
+      if (!gradeId || !subjectId) {
+        showToast("يرجى اختيار المرحلة والصف والمادة الدراسية للمجموعة.", "error");
+        return;
+      }
+
+      if (!teacherId) {
+        showToast("يرجى تعيين المعلم المشرف على هذه المجموعة.", "error");
+        return;
+      }
+
+      const submitBtn = wrapper.querySelector("#submit-admin-create-group-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i data-lucide="loader-2" style="width:18px; height:18px; animation:spin 1s linear infinite;"></i> جاري الإضافة والجدولة...`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      try {
+        const newGroup = await apiFetch("/groups", {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId,
+            gradeId,
+            teacherId,
+            name,
+            description,
+            scheduleDays,
+            scheduleTime,
+            scheduleText,
+            sessionDuration: duration,
+            maxStudents,
+            sessionPrice,
+            monthlyPrice,
+            studentHourlyRate: sessionPrice,
+            teacherHourlyRate,
+            platformCommissionPercent: commission,
+            meetingLink
+          })
+        });
+
+        if (newGroup && newGroup.id && status !== "OPEN") {
+          await apiFetch(`/groups/${newGroup.id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status })
+          }).catch(() => {});
+        }
+
+        closeModal();
+        showToast("تمت إضافة وجدولة المجموعة وتعيين المعلم بنجاح! 🎉🚀", "success");
+        await this.loadAllData();
+        this.renderTab("groups");
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="plus-circle" style="width:18px; height:18px;"></i> ➕ إضافة وجدولة المجموعة الآن 🚀`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+        showToast(err.message || "فشل إنشاء وجدولة المجموعة.", "error");
+      }
+    });
+  },
+
   // ── Render Edit Group Modal (Admin Full Control) ──────────────────────────────
   renderEditGroupModal(group) {
     document.querySelectorAll("#admin-edit-group-modal-wrapper").forEach(el => el.remove());
@@ -2238,43 +2727,48 @@ export const AdminSessionsPage = {
           <div class="modal-body" style="padding:22px 26px; max-height:72vh; overflow-y:auto; display:flex; flex-direction:column; gap:18px;">
 
             <!-- Add Student to Group Bar / Closed Group Exception Form -->
-            ${!isClosed && isFull ? `
-              <div style="background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.35); padding:14px 18px; border-radius:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <i data-lucide="lock" style="width:18px; height:18px; color:#ef4444;"></i>
+            <!-- Add Student to Group Form with Mandatory Receipt Upload -->
+            <div style="background:linear-gradient(135deg, rgba(139,92,246,0.06), rgba(229,29,116,0.04)); border:1.5px solid rgba(139,92,246,0.25); padding:20px 22px; border-radius:20px; box-shadow:0 4px 20px rgba(139,92,246,0.06);">
+              
+              <!-- Header -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:12px; background:rgba(139,92,246,0.18); color:#8b5cf6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="user-plus" style="width:18px; height:18px;"></i>
+                  </div>
                   <div>
-                    <strong style="font-size:0.88rem; color:#ef4444; display:block;">اكتملت مقاعد هذه المجموعة بالكامل (${maxSeats} من ${maxSeats} مقعداً)</strong>
-                    <span style="font-size:0.76rem; color:var(--text-muted);">لا يمكن إضافة طلاب جدد إلا بعد زيادة سعة المجموعة في نافذة التعديل أو إزالة طالب.</span>
+                    <strong style="font-size:0.95rem; color:var(--text-main); display:block;">➕ إضافة وتسكين طالب جديد في هذه المجموعة (إيصال السداد إلزامي) 💳</strong>
+                    <span style="font-size:0.78rem; color:var(--text-muted);">يلزم تسجيل بيانات الدفع ورفع صورة إيصال التحويل المعتمد لتفعيل مقعد الطالب والحصص تلقائياً.</span>
                   </div>
                 </div>
-                <span style="font-size:0.78rem; font-weight:800; background:rgba(239,68,68,0.15); color:#ef4444; padding:4px 10px; border-radius:10px;">
-                  0 مقاعد متاحة
-                </span>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  ${isClosed ? `
+                    <span style="font-size:0.75rem; font-weight:800; color:#d97706; background:rgba(245,158,11,0.15); padding:4px 10px; border-radius:10px; border:1px solid rgba(245,158,11,0.3);">
+                      🔒 مغلقة للتسجيل
+                    </span>
+                  ` : ''}
+                  ${isFull ? `
+                    <span style="font-size:0.75rem; font-weight:800; color:#ef4444; background:rgba(239,68,68,0.15); padding:4px 10px; border-radius:10px; border:1px solid rgba(239,68,68,0.3);">
+                      🔴 سعة مكتملة (تسكين استثنائي)
+                    </span>
+                  ` : `
+                    <span style="font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:4px 12px; border-radius:12px; border:1px solid rgba(16,185,129,0.25);">
+                      ✨ متبقي ${availableSeats} مقاعد شاغرة
+                    </span>
+                  `}
+                </div>
               </div>
-            ` : isClosed ? `
-              <div style="background:linear-gradient(135deg, rgba(245,158,11,0.06), rgba(99,102,241,0.05)); border:1.5px solid rgba(245,158,11,0.35); padding:18px 20px; border-radius:20px; box-shadow:0 4px 20px rgba(245,158,11,0.08);">
-                
-                <!-- Notice Header -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <div style="width:32px; height:32px; border-radius:10px; background:rgba(245,158,11,0.18); color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                      <i data-lucide="lock" style="width:16px; height:16px;"></i>
-                    </div>
-                    <div>
-                      <strong style="font-size:0.92rem; color:var(--text-main); display:block;">إضافة طالب لمجموعة مغلقة (إيصال سداد وبيانات مالية إلزامية) 🔒💳</strong>
-                      <span style="font-size:0.77rem; color:#b45309;">هذه المجموعة مغلقة للتسجيل. لإضافة طالب استثنائياً يلزم تسجيل بيانات الدفع ورفع صورة إيصال التحويل المعتمد.</span>
-                    </div>
-                  </div>
-                  <span style="font-size:0.76rem; font-weight:900; color:#d97706; background:rgba(245,158,11,0.15); padding:4px 12px; border-radius:12px; border:1px solid rgba(245,158,11,0.3);">
-                    🔒 مغلقة للتسجيل
-                  </span>
-                </div>
 
+              ${availableStudents.length === 0 ? `
+                <div style="padding:16px 20px; text-align:center; color:var(--text-muted); font-size:0.88rem; background:var(--bg-app); border-radius:14px; border:1px dashed var(--border-color);">
+                  جميع طلاب المنصة مسجلون بالفعل في هذه المجموعة الدراسية.
+                </div>
+              ` : `
                 <div style="display:flex; flex-direction:column; gap:12px;">
                   
                   <!-- Student Selection -->
                   <div>
-                    <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:5px; color:var(--text-main);">
+                    <label for="select-new-group-student" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:5px; color:var(--text-main);">
                       اختر الطالب المطلوب تسكينه: <span style="color:#ef4444;">*</span>
                     </label>
                     <select id="select-new-group-student" class="form-select" required style="width:100%; border-radius:12px; padding:10px 14px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
@@ -2286,7 +2780,7 @@ export const AdminSessionsPage = {
                   <!-- Financial Data Fields -->
                   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
                     <div>
-                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                      <label for="add-student-amount" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
                         المبلغ المدفوع (EGP): <span style="color:#ef4444;">*</span>
                       </label>
                       <input type="number" id="add-student-amount" value="${groupPrice || 320}" min="1" step="0.5" required class="form-input" 
@@ -2294,7 +2788,7 @@ export const AdminSessionsPage = {
                     </div>
 
                     <div>
-                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                      <label for="add-student-provider" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
                         طريقة التحويل والدفع: <span style="color:#ef4444;">*</span>
                       </label>
                       <select id="add-student-provider" class="form-select" style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
@@ -2309,7 +2803,7 @@ export const AdminSessionsPage = {
                     </div>
 
                     <div>
-                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                      <label for="add-student-txid" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
                         رقم هاتف المحول / رقم العملية:
                       </label>
                       <input type="text" id="add-student-txid" placeholder="010xxxxxxxx أو رقم الحوالة" class="form-input"
@@ -2323,12 +2817,12 @@ export const AdminSessionsPage = {
                       <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
                         صورة إيصال التحويل / السداد: <span style="color:#ef4444;">*</span>
                       </label>
-                      <div style="position:relative; border:2px dashed rgba(245,158,11,0.5); border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
+                      <div style="position:relative; border:2px dashed rgba(139,92,246,0.45); border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
                         <input type="file" id="add-student-receipt-file" accept="image/*" required
                           style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer;">
                         <div style="display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:0.82rem;">
-                          <i data-lucide="upload-cloud" style="width:18px; height:18px; color:#f59e0b;"></i>
-                          <span id="add-student-file-label">انقر أو اسحب صورة الإيصال هنا (مطلوبة)</span>
+                          <i data-lucide="upload-cloud" style="width:18px; height:18px; color:#8b5cf6;"></i>
+                          <span id="add-student-file-label">انقر أو اسحب صورة الإيصال هنا (مطلوبة 🧾)</span>
                         </div>
                       </div>
                       
@@ -2339,15 +2833,15 @@ export const AdminSessionsPage = {
                     </div>
 
                     <div>
-                      <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                      <label for="add-student-notes" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
                         ملاحظات المشرف / المرجع:
                       </label>
-                      <input type="text" id="add-student-notes" placeholder="مثال: إضافة استثنائية مع إيصال معتمد" class="form-input"
+                      <input type="text" id="add-student-notes" placeholder="مثال: تسكين رسمي مع إيصال معتمد" class="form-input"
                         style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
                       
                       <div style="display:flex; justify-content:flex-end; margin-top:12px;">
                         <button type="button" id="add-student-to-group-btn" class="btn-primary" 
-                          style="padding:11px 24px; border-radius:14px; font-weight:900; font-size:0.88rem; gap:8px; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; color:#fff; box-shadow:0 4px 14px rgba(245,158,11,0.3); cursor:pointer;">
+                          style="padding:11px 24px; border-radius:14px; font-weight:900; font-size:0.88rem; gap:8px; background:linear-gradient(135deg, #8b5cf6, #ec4899); border:none; color:#fff; box-shadow:0 4px 14px rgba(139,92,246,0.3); cursor:pointer;">
                           <i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد إضافة الطالب واعتماد الإيصال والمقعد ✅
                         </button>
                       </div>
@@ -2355,28 +2849,8 @@ export const AdminSessionsPage = {
                   </div>
 
                 </div>
-              </div>
-            ` : `
-              <div style="background:var(--bg-app); border:1px solid var(--border-color); padding:16px 18px; border-radius:18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                  <label style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
-                    <i data-lucide="user-plus" style="width:16px; height:16px; color:#8b5cf6;"></i> ➕ إضافة وتسكين طالب جديد في هذه المجموعة
-                  </label>
-                  <span style="font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:3px 10px; border-radius:12px; border:1px solid rgba(16,185,129,0.25);">
-                    ✨ متبقي ${availableSeats} مقاعد شاغرة
-                  </span>
-                </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                  <select id="select-new-group-student" class="form-select" style="flex:1; min-width:240px; border-radius:14px; padding:10px 14px; font-size:0.88rem;">
-                    <option value="">-- اختر طالباً لإضافته وتفعيل مقعده وتوليد الحصص له --</option>
-                    ${availableStudents.map(st => `<option value="${st.id}">${st.name} (${st.email || st.phone || 'طالب'})</option>`).join('')}
-                  </select>
-                  <button type="button" id="add-student-to-group-btn" class="btn-primary" style="padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.85rem; gap:6px; background:#8b5cf6; border-color:#8b5cf6;">
-                    <i data-lucide="plus" style="width:14px; height:14px;"></i> إضافة وتفعيل المقعد والحصص
-                  </button>
-                </div>
-              </div>
-            `}
+              `}
+            </div>
 
             <!-- Students List -->
             ${students.length === 0 ? `
@@ -2541,27 +3015,27 @@ export const AdminSessionsPage = {
       const txIdVal = txIdInput?.value?.trim();
       const notesVal = notesInput?.value?.trim();
 
-      if (isClosed) {
-        if (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0) {
-          showToast("هذه المجموعة مغلقة للتسجيل. يجب إدخال المبلغ المالي المدفوع.", "warning");
-          return;
-        }
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-          showToast("هذه المجموعة مغلقة للتسجيل. يجب إرفاق صورة إيصال التحويل لإتمام الإضافة!", "warning");
-          return;
-        }
+      if (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0) {
+        showToast("يرجى إدخال المبلغ المالي المدفوع بشكل صحيح.", "warning");
+        return;
+      }
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showToast("يرجى إرفاق ورفع صورة إيصال التحويل / السداد لإتمام تسكين الطالب!", "warning");
+        return;
       }
 
       const addBtn = document.getElementById("add-student-to-group-btn");
       if (addBtn) {
         addBtn.disabled = true;
-        addBtn.innerText = "جاري المعالجة... ⏳";
+        addBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري المعالجة ورفع الإيصال... ⏳`;
+        if (window.lucide) window.lucide.createIcons();
       }
 
       try {
         let receiptUrl = null;
         if (fileInput && fileInput.files && fileInput.files[0]) {
-          if (addBtn) addBtn.innerText = "جاري رفع صورة الإيصال... ⏳";
+          if (addBtn) addBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري رفع صورة الإيصال إلى الخادم... ⏳`;
+          if (window.lucide) window.lucide.createIcons();
           const formData = new FormData();
           formData.append("file", fileInput.files[0]);
           const token = state.token || localStorage.getItem("token");
@@ -2577,21 +3051,24 @@ export const AdminSessionsPage = {
           receiptUrl = uploadData.url;
         }
 
-        if (addBtn) addBtn.innerText = "جاري تفعيل مقعد الطالب... ⏳";
+        if (addBtn) {
+          addBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري تسكين الطالب وتفعيل المقعد... ⏳`;
+          if (window.lucide) window.lucide.createIcons();
+        }
 
         if (isDbCourseGroup) {
           const res = await apiFetch(`/admin/groups/${dbGroupId}/add-student`, {
             method: "POST",
             body: JSON.stringify({
               studentId,
-              amount: amountVal ? parseFloat(amountVal) : undefined,
+              amount: parseFloat(amountVal),
               provider: providerVal || undefined,
               providerTransactionId: txIdVal || undefined,
               receiptUrl: receiptUrl || undefined,
               notes: notesVal || undefined
             })
           });
-          showToast(res.message || "تمت إضافة الطالب للمجموعة وتفعيل مقعده بنجاح! 🎉", "success");
+          showToast(res.message || "تمت إضافة الطالب للمجموعة ورفع الإيصال وتفعيل المقعد بنجاح! 🎉🧾", "success");
         } else {
           const res = await apiFetch("/admin/group-sessions/add-student", {
             method: "POST",
@@ -2607,9 +3084,7 @@ export const AdminSessionsPage = {
         showToast(err.message || "فشل إضافة الطالب إلى المجموعة", "error");
         if (addBtn) {
           addBtn.disabled = false;
-          addBtn.innerHTML = isClosed 
-            ? `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد إضافة الطالب واعتماد الإيصال والمقعد ✅`
-            : `<i data-lucide="plus" style="width:14px; height:14px;"></i> إضافة وتفعيل المقعد والحصص`;
+          addBtn.innerHTML = `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد إضافة الطالب واعتماد الإيصال والمقعد ✅`;
           if (window.lucide) window.lucide.createIcons();
         }
       }
