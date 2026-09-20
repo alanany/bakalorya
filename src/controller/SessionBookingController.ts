@@ -12,6 +12,7 @@ import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
+import { sanitizeString } from "../utils/sanitize";
 
 export class SessionBookingController {
   // Student books 1-on-1 private session using active subscription credit
@@ -38,95 +39,99 @@ export class SessionBookingController {
     }
 
     try {
-      const subscriptionRepository = AppDataSource.getRepository(Subscription);
-      const ledgerRepository = AppDataSource.getRepository(SessionCreditLedger);
-      const sessionRepository = AppDataSource.getRepository(Session);
-      const userRepository = AppDataSource.getRepository(User);
+      const result = await AppDataSource.transaction(async (manager) => {
+        const subscriptionRepository = manager.getRepository(Subscription);
+        const ledgerRepository = manager.getRepository(SessionCreditLedger);
+        const sessionRepository = manager.getRepository(Session);
+        const userRepository = manager.getRepository(User);
 
-      const subscription = await subscriptionRepository.findOne({
-        where: { id: subscriptionId },
-        relations: ["teacher", "plan", "student"]
-      });
+        const subscription = await subscriptionRepository.findOne({
+          where: { id: subscriptionId },
+          relations: ["teacher", "plan", "student"]
+        });
 
-      if (!subscription) {
-        return res.status(404).json({ error: "الاشتراك غير موجود." });
-      }
-
-      const isAdmin = req.user!.role === "admin";
-      let student = subscription.student;
-
-      if (!isAdmin) {
-        if (student.id !== req.user!.id) {
-           return res.status(403).json({ error: "غير مصرح لك بحجز موعد لهذا الاشتراك." });
+        if (!subscription) {
+          throw { statusCode: 404, message: "الاشتراك غير موجود." };
         }
-      }
 
-      if (subscription.status !== "ACTIVE") {
-        return res.status(400).json({ error: "عفواً، لا يملك الطالب اشتراكاً نشطاً لهذه المادة." });
-      }
+        const isAdmin = req.user!.role === "admin";
+        let student = subscription.student;
 
-      // Allow admin to override the teacher via req.body.teacherId
-      let sessionTeacher: User | null = subscription.teacher;
-      if (isAdmin && req.body.teacherId) {
-         sessionTeacher = await userRepository.findOneBy({ id: req.body.teacherId, role: "teacher" });
-      }
+        if (!isAdmin) {
+          if (student.id !== req.user!.id) {
+            throw { statusCode: 403, message: "غير مصرح لك بحجز موعد لهذا الاشتراك." };
+          }
+        }
 
-      if (!sessionTeacher) {
-        return res.status(400).json({ error: "الطلب قيد الانتظار لتعيين أستاذ للاشتراك من الإدارة." });
-      }
+        if (subscription.status !== "ACTIVE") {
+          throw { statusCode: 400, message: "عفواً، لا يملك الطالب اشتراكاً نشطاً لهذه المادة." };
+        }
 
-      // Check available credit from ledger (sum of entries)
-      const ledgers = await ledgerRepository.find({
-        where: { subscription: { id: subscription.id } }
+        // Allow admin to override the teacher via req.body.teacherId
+        let sessionTeacher: User | null = subscription.teacher;
+        if (isAdmin && req.body.teacherId) {
+           sessionTeacher = await userRepository.findOneBy({ id: req.body.teacherId, role: "teacher" });
+        }
+
+        if (!sessionTeacher) {
+          throw { statusCode: 400, message: "الطلب قيد الانتظار لتعيين أستاذ للاشتراك من الإدارة." };
+        }
+
+        // Check available credit from ledger (sum of entries)
+        const ledgers = await ledgerRepository.find({
+          where: { subscription: { id: subscription.id } }
+        });
+        const currentCredits = ledgers.reduce((sum, e) => sum + e.amount, 0);
+
+        if (currentCredits <= 0) {
+          throw { statusCode: 400, message: "عفواً، رصيد الحصص الخاص بك في هذا الاشتراك انتهى. يرجى تجديد الاشتراك." };
+        }
+
+        // Double-booking check: Check if teacher or student already has a conflicting scheduled session
+        const startTime = scheduledDate;
+        const endTime = new Date(startTime.getTime() + (subscription.plan?.sessionDurationMins || 60) * 60 * 1000);
+
+        const conflictingSession = await sessionRepository.createQueryBuilder("session")
+          .where("(session.teacherId = :teacherId OR session.studentId = :studentId)", {
+            teacherId: subscription.teacher.id,
+            studentId: student.id
+          })
+          .andWhere("session.status IN (:...activeStatuses)", {
+            activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
+          })
+          .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
+            windowStart: new Date(startTime.getTime() - 45 * 60 * 1000),
+            windowEnd: new Date(startTime.getTime() + 45 * 60 * 1000)
+          })
+          .getOne();
+
+        if (conflictingSession) {
+          throw { statusCode: 400, message: "عفواً، هذا الموعد محجوز بالفعل أو يوجد تضارب مع مواعيد أخرى للأستاذ أو الطالب." };
+        }
+
+        const session = new Session();
+        session.title = sanitizeString(title || `حصة خاصة 1-على-1 في ${subscription.plan?.name || ''}`);
+        session.description = sanitizeString(topic || "حصة مراجعة وشرح تفاعلي مباشر");
+        session.teacher = sessionTeacher;
+        session.student = student;
+        session.subscription = subscription;
+        session.scheduledAt = scheduledDate;
+        session.duration = subscription.plan?.sessionDurationMins || 60;
+        session.status = "SCHEDULED";
+        session.topic = sanitizeString(topic || "");
+        session.meetingLink = sessionTeacher?.meetingLink || null;
+
+        await sessionRepository.save(session);
+
+        return { session, sessionTeacher, student, currentCredits };
       });
-      const currentCredits = ledgers.reduce((sum, e) => sum + e.amount, 0);
 
-      if (currentCredits <= 0) {
-        return res.status(400).json({ error: "عفواً، رصيد الحصص الخاص بك في هذا الاشتراك انتهى. يرجى تجديد الاشتراك." });
-      }
-
-      // Double-booking check: Check if teacher or student already has a conflicting scheduled session
-      const startTime = scheduledDate;
-      const endTime = new Date(startTime.getTime() + (subscription.plan?.sessionDurationMins || 60) * 60 * 1000);
-
-      const conflictingSession = await sessionRepository.createQueryBuilder("session")
-        .where("(session.teacherId = :teacherId OR session.studentId = :studentId)", {
-          teacherId: subscription.teacher.id,
-          studentId: student.id
-        })
-        .andWhere("session.status IN (:...activeStatuses)", {
-          activeStatuses: ["SCHEDULED", "CONFIRMED", "scheduled", "live"]
-        })
-        .andWhere("session.scheduledAt >= :windowStart AND session.scheduledAt <= :windowEnd", {
-          windowStart: new Date(startTime.getTime() - 45 * 60 * 1000),
-          windowEnd: new Date(startTime.getTime() + 45 * 60 * 1000)
-        })
-        .getOne();
-
-      if (conflictingSession) {
-        return res.status(400).json({ error: "عفواً، هذا الموعد محجوز بالفعل أو يوجد تضارب مع مواعيد أخرى للأستاذ أو الطالب." });
-      }
-
-      const session = new Session();
-      session.title = title || `حصة خاصة 1-على-1 في ${subscription.plan?.name || ''}`;
-      session.description = topic || "حصة مراجعة وشرح تفاعلي مباشر";
-      session.teacher = sessionTeacher;
-      session.student = student;
-      session.subscription = subscription;
-      session.scheduledAt = scheduledDate;
-      session.duration = subscription.plan?.sessionDurationMins || 60;
-      session.status = "SCHEDULED";
-      session.topic = topic || "";
-      session.meetingLink = sessionTeacher?.meetingLink || null;
-
-      await sessionRepository.save(session);
-
-      // Notify teacher about the new booking
+      // Notify teacher about the new booking (outside transaction)
       try {
         await NotificationController.createNotification(
-          sessionTeacher.id,
+          result.sessionTeacher.id,
           "حصة جديدة محجوزة 🗓️",
-          `حجز الطالب "${student.name}" حصة بتاريخ ${scheduledDate.toLocaleDateString("ar")}.${topic ? ' الموضوع: ' + topic : ''}`,
+          `حجز الطالب "${result.student.name}" حصة بتاريخ ${scheduledDate.toLocaleDateString("ar")}.${topic ? ' الموضوع: ' + sanitizeString(topic) : ''}`,
           "info",
           "#teacher-private-sessions"
         );
@@ -137,10 +142,13 @@ export class SessionBookingController {
       // Note: Booking does NOT consume credit from ledger yet.
       return res.status(201).json({
         message: "تم حجز موعد الحصة بنجاح! الرصيد متاح ولم يتم الخصم حتى إتمام الحصة.",
-        session,
-        remainingCredits: currentCredits
+        session: result.session,
+        remainingCredits: result.currentCredits
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err && err.statusCode) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
       console.error("Book session error:", err);
       return res.status(500).json({ error: "Internal server error." });
     }

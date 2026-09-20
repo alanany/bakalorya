@@ -248,7 +248,12 @@ export default class StudentsView {
           <div style="display:flex; align-items:center; gap:12px;">
             <img src="${student.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(student.name)}`}" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
             <div>
-              <div style="font-weight:800; color:var(--text-main); font-size:0.95rem;">${student.name}</div>
+              <div style="font-weight:800; color:var(--text-main); font-size:0.95rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span>${student.name}</span>
+                ${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') 
+                  ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>` 
+                  : ''}
+              </div>
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:4px;">
                 <i data-lucide="mail" style="width:12px; height:12px; color:var(--primary);"></i> ${student.email}
               </div>
@@ -313,9 +318,15 @@ export default class StudentsView {
         <!-- Actions (Admin Only) -->
         ${state.user?.role === 'admin' ? `
           <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
-            <button class="btn-secondary delete-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; display:inline-flex; align-items:center; gap:4px;" title="حذف الحساب">
-              <i data-lucide="trash-2" style="width:13px; height:13px;"></i> حذف الحساب
-            </button>
+            <div style="display:inline-flex; gap:6px; align-items:center;">
+              <button class="btn-secondary toggle-block-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" data-blocked="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'true' : 'false'}" style="padding:6px 12px; font-size:0.78rem; border-color:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? '#10b981' : 'var(--error)'}; color:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? '#10b981' : 'var(--error)'}; border-radius:20px; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'إلغاء الحظر' : 'حظر الطالب من تسجيل الدخول'}">
+                <i data-lucide="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'check-circle' : 'shield-alert'}" style="width:13px; height:13px;"></i>
+                ${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'إلغاء الحظر' : 'حظر الطالب'}
+              </button>
+              <button class="btn-secondary delete-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--error); color:var(--error); border-radius:20px; display:inline-flex; align-items:center; gap:4px;" title="حذف الحساب">
+                <i data-lucide="trash-2" style="width:13px; height:13px;"></i> حذف الحساب
+              </button>
+            </div>
           </td>
         ` : ''}
       </tr>
@@ -326,7 +337,49 @@ export default class StudentsView {
     const wrapper = this.container.querySelector("#students-table-wrapper");
     if (!wrapper) return;
 
-    // Toggle Ban Button
+    // Toggle Student Login Block (Academy Access) - Admin Only
+    wrapper.querySelectorAll(".toggle-block-student-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-student-id");
+        const name = btn.getAttribute("data-student-name") || "الطالب";
+        const isCurrentlyBlocked = btn.getAttribute("data-blocked") === "true";
+
+        if (!isCurrentlyBlocked) {
+          const confirmed = await confirmDialog({
+            title: "حظر الطالب من تسجيل الدخول 🚫",
+            message: `هل أنت متأكد من رغبتك في حظر الطالب "${name}" ومنعه من تسجيل الدخول إلى الأكاديمية؟`,
+            confirmText: "نعم، تأكيد الحظر",
+            cancelText: "إلغاء",
+            danger: true
+          });
+          if (!confirmed) return;
+        } else {
+          const confirmed = await confirmDialog({
+            title: "إلغاء حظر الطالب ✅",
+            message: `هل تريد إلغاء حظر الطالب "${name}" والسماح له بتسجيل الدخول إلى الأكاديمية مجدداً؟`,
+            confirmText: "نعم، إلغاء الحظر",
+            cancelText: "تراجع",
+            danger: false
+          });
+          if (!confirmed) return;
+        }
+
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/users/${id}/block`, {
+            method: "PATCH",
+            body: JSON.stringify({ isBlocked: !isCurrentlyBlocked })
+          });
+          showToast(res.message || (isCurrentlyBlocked ? "تم إلغاء الحظر بنجاح" : "تم حظر الحساب بنجاح"), "success");
+          await this.loadStudents();
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل تغيير حالة الحظر", "error");
+        }
+      });
+    });
+
+    // Toggle Ban Button (Single Course Ban)
     wrapper.querySelectorAll(".toggle-ban-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const enrollId = btn.getAttribute("data-id");

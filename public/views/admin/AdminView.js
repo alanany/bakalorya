@@ -1439,6 +1439,51 @@ export default class AdminView {
       });
     });
 
+    // Toggle Block User (Teacher or Student)
+    this.container.querySelectorAll(".toggle-block-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "المستخدم";
+        const isCurrentlyBlocked = btn.getAttribute("data-blocked") === "true";
+        const role = btn.getAttribute("data-role") || "user";
+        const roleLabel = role === "teacher" ? "المعلم" : (role === "student" ? "الطالب" : "المستخدم");
+
+        if (!isCurrentlyBlocked) {
+          const confirmed = await confirmDialog({
+            title: `حظر ${roleLabel} من تسجيل الدخول 🚫`,
+            message: `هل أنت متأكد من رغبتك في حظر ${roleLabel} "${name}" ومنعه من تسجيل الدخول إلى الأكاديمية؟`,
+            confirmText: "نعم، تأكيد الحظر",
+            cancelText: "إلغاء",
+            danger: true
+          });
+          if (!confirmed) return;
+        } else {
+          const confirmed = await confirmDialog({
+            title: `إلغاء حظر ${roleLabel} ✅`,
+            message: `هل تريد إلغاء حظر ${roleLabel} "${name}" والسماح له بتسجيل الدخول إلى الأكاديمية مجدداً؟`,
+            confirmText: "نعم، إلغاء الحظر",
+            cancelText: "تراجع",
+            danger: false
+          });
+          if (!confirmed) return;
+        }
+
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/users/${id}/block`, {
+            method: "PATCH",
+            body: JSON.stringify({ isBlocked: !isCurrentlyBlocked })
+          });
+          showToast(res.message || (isCurrentlyBlocked ? "تم إلغاء الحظر بنجاح" : "تم حظر الحساب بنجاح"), "success");
+          await this.loadAllData();
+          this.renderTab(this.activeTab);
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل تغيير حالة الحظر", "error");
+        }
+      });
+    });
+
     // Delete Member
     this.container.querySelectorAll(".delete-user-btn").forEach(btn => {
       btn.addEventListener("click", async () => {

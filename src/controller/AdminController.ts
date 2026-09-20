@@ -11,6 +11,7 @@ import { Lesson } from "../entity/Lesson";
 import { Grade } from "../entity/Grade";
 import { Subject } from "../entity/Subject";
 import { SubscriptionPlan } from "../entity/SubscriptionPlan";
+import { AuditLog } from "../entity/AuditLog";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
@@ -107,7 +108,7 @@ export class AdminController {
       const users = await userRepo.find({
         where,
         order: { createdAt: "DESC" },
-        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "meetingLink", "teacherCapabilities", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "meetingLink", "teacherCapabilities", "status", "isBlocked", "blockReason", "createdAt"]
       });
 
       return res.json(users);
@@ -166,7 +167,7 @@ export class AdminController {
 
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, createdAt: user.createdAt },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, isBlocked: user.isBlocked, status: user.status, createdAt: user.createdAt },
         whatsappNotification
       });
     } catch (err) {
@@ -174,10 +175,10 @@ export class AdminController {
     }
   }
 
-  // PUT /admin/users/:id — Edit any user's profile, role, or password
+  // PUT /admin/users/:id — Edit any user's profile, role, status or password
   static async updateUser(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink } = req.body;
+    const { name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, status, isBlocked, blockReason } = req.body;
 
     try {
       const userRepo = AppDataSource.getRepository(User);
@@ -207,6 +208,30 @@ export class AdminController {
         }
         user.role = role;
       }
+      if (isBlocked !== undefined) {
+        if (req.user?.id === id && isBlocked) {
+          return res.status(400).json({ error: "لا يمكنك حظر حسابك الإداري الحالي." });
+        }
+        user.isBlocked = !!isBlocked;
+        user.status = isBlocked ? "BLOCKED" : (status || "ACTIVE");
+        if (isBlocked && blockReason !== undefined) {
+          user.blockReason = blockReason;
+        } else if (!isBlocked) {
+          user.blockReason = undefined;
+        }
+      } else if (status !== undefined && ["PENDING", "ACTIVE", "SUSPENDED", "INACTIVE", "BLOCKED"].includes(status)) {
+        user.status = status;
+        if (status === "BLOCKED" || status === "SUSPENDED") {
+          user.isBlocked = true;
+          if (blockReason !== undefined) user.blockReason = blockReason;
+        } else if (status === "ACTIVE") {
+          user.isBlocked = false;
+          user.blockReason = undefined;
+        }
+      }
+      if (blockReason !== undefined && user.isBlocked) {
+        user.blockReason = blockReason;
+      }
       if (req.body.teacherCapabilities && Array.isArray(req.body.teacherCapabilities)) {
         user.teacherCapabilities = req.body.teacherCapabilities;
       }
@@ -217,10 +242,84 @@ export class AdminController {
       await userRepo.save(user);
       return res.json({
         message: "User updated successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, status: user.status, isBlocked: user.isBlocked, blockReason: user.blockReason }
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to update user." });
+    }
+  }
+
+  // PATCH /admin/users/:id/block — Block or Unblock teacher/student from login
+  static async toggleBlockUser(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { isBlocked, reason } = req.body || {};
+
+    if (req.user?.id === id) {
+      return res.status(400).json({ error: "لا يمكنك حظر حسابك الإداري الحالي." });
+    }
+
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const auditRepo = AppDataSource.getRepository(AuditLog);
+
+      const user = await userRepo.findOneBy({ id });
+      if (!user) return res.status(404).json({ error: "المستخدم غير موجود." });
+
+      // Determine new block state
+      const newBlockedState = (typeof isBlocked === "boolean") ? isBlocked : !user.isBlocked;
+      user.isBlocked = newBlockedState;
+      user.status = newBlockedState ? "BLOCKED" : "ACTIVE";
+      if (newBlockedState) {
+        user.blockReason = reason || "تم حظر الحساب بواسطة إدارة المنصة.";
+      } else {
+        user.blockReason = undefined;
+      }
+
+      await userRepo.save(user);
+
+      // Audit Log
+      try {
+        if (req.user?.id) {
+          const actor = await userRepo.findOneBy({ id: req.user.id });
+          if (actor) {
+            const audit = new AuditLog();
+            audit.actor = actor;
+            audit.action = newBlockedState ? "USER_BLOCKED" : "USER_UNBLOCKED";
+            audit.entityType = "User";
+            audit.entityId = user.id;
+            audit.metadata = JSON.stringify({
+              targetEmail: user.email,
+              targetRole: user.role,
+              isBlocked: user.isBlocked,
+              reason: user.blockReason
+            });
+            await auditRepo.save(audit);
+          }
+        }
+      } catch (auditErr) {
+        console.error("Audit log error on toggleBlockUser:", auditErr);
+      }
+
+      const roleName = user.role === "teacher" ? "المعلم" : (user.role === "student" ? "الطالب" : "المستخدم");
+      const actionMsg = newBlockedState 
+        ? `تم حظر ${roleName} (${user.name}) ومنعه من تسجيل الدخول إلى الأكاديمية بنجاح. 🚫` 
+        : `تم إلغاء حظر ${roleName} (${user.name}) والسماح له بتسجيل الدخول بنجاح! ✅`;
+
+      return res.json({
+        message: actionMsg,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          isBlocked: user.isBlocked,
+          blockReason: user.blockReason
+        }
+      });
+    } catch (err) {
+      console.error("Toggle block error:", err);
+      return res.status(500).json({ error: "فشل تغيير حالة حظر المستخدم." });
     }
   }
 

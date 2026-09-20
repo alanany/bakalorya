@@ -75,7 +75,7 @@ export class UserController {
       // Fetch all students registered in platform
       const allStudents = await userRepo.find({
         where: { role: "student" },
-        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "createdAt"],
+        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "status", "isBlocked", "createdAt"],
         order: { createdAt: "DESC" }
       });
 
@@ -145,6 +145,8 @@ export class UserController {
           phone: s.phone,
           location: s.location,
           education: s.education,
+          status: s.status,
+          isBlocked: s.isBlocked,
           createdAt: s.createdAt,
           enrollments: sEnrollments,
           hasSessionAssignment: isSessionStudent || isSubStudent

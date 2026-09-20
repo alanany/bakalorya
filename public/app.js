@@ -1420,50 +1420,90 @@ export async function checkPendingRequestsNotification() {
   }
 }
 
-// ─── API Fetch ─────────────────────────────────────────────────────────────────
+// ─── API Fetch & Multi-Request Deduplication ───────────────────────────────────
+
+const inFlightMutations = new Map();
 
 export async function apiFetch(endpoint, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
   const cleanEndpoint = endpoint.startsWith("/api/")
     ? endpoint.slice(4)
     : (endpoint === "/api" ? "" : (endpoint.startsWith("/") ? endpoint : `/${endpoint}`));
   const url = `${window.location.origin}/api${cleanEndpoint}`;
-  const headers = { "Content-Type": "application/json", ...options.headers };
+
+  // Multi-request guard: Prevent concurrent duplicate mutating requests
+  const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  let mutationKey = null;
+  if (isMutation && !options.allowConcurrent) {
+    const bodyStr = typeof options.body === "string" 
+      ? options.body 
+      : (options.body instanceof FormData ? "[FormData]" : JSON.stringify(options.body || ""));
+    mutationKey = `${method}:${cleanEndpoint}:${bodyStr}`;
+
+    if (inFlightMutations.has(mutationKey)) {
+      console.warn(`[apiFetch] Duplicate in-flight request avoided: ${method} ${cleanEndpoint}`);
+      return inFlightMutations.get(mutationKey);
+    }
+  }
+
+  const headers = { ...options.headers };
+  if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
   try {
     headers["X-Timezone"] = getUserTimezone();
   } catch (e) {}
 
+  // Auto-attach Idempotency-Key on critical mutations if not provided
+  if (isMutation && !headers["Idempotency-Key"]) {
+    headers["Idempotency-Key"] = `ik_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
   // Endpoints that should fail silently without a toast
   const silentEndpoints = ["/sessions", "/teachers", "/blogs", "/resources", "/categories", "/curriculum", "/landing/explore"];
   const isSilent = silentEndpoints.some(e => cleanEndpoint.startsWith(e)) || cleanEndpoint.includes("/qa");
 
-  try {
-    const response = await fetch(url, { ...options, headers });
-    let data;
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
-      data = { error: text || "Invalid server response" };
-    }
-
-    if (!response.ok) {
-      if (response.status === 401 && cleanEndpoint !== "/auth/me") {
-        clearAuth(true);
+  const requestPromise = (async () => {
+    try {
+      const response = await fetch(url, { ...options, method, headers });
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        data = { error: text || "Invalid server response" };
       }
-      const err = new Error(data.error || "Something went wrong.");
-      Object.assign(err, data);
-      throw err;
+
+      if (!response.ok) {
+        if ((response.status === 401 && cleanEndpoint !== "/auth/me") ||
+            (response.status === 403 && data.error && (data.error.includes("حظر") || data.error.includes("معلق")) && !cleanEndpoint.startsWith("/admin/"))) {
+          clearAuth(true);
+        }
+        const err = new Error(data.error || "Something went wrong.");
+        Object.assign(err, data);
+        throw err;
+      }
+      return data;
+    } catch (error) {
+      console.error(`API Fetch Error [${endpoint}]:`, error);
+      if (endpoint !== "/auth/me" && !isSilent && !options.silentError) {
+        showToast(error.message, "error");
+      }
+      throw error;
+    } finally {
+      if (mutationKey) {
+        inFlightMutations.delete(mutationKey);
+      }
     }
-    return data;
-  } catch (error) {
-    console.error(`API Fetch Error [${endpoint}]:`, error);
-    if (endpoint !== "/auth/me" && !isSilent && !options.silentError) {
-      showToast(error.message, "error");
-    }
-    throw error;
+  })();
+
+  if (mutationKey) {
+    inFlightMutations.set(mutationKey, requestPromise);
   }
+
+  return requestPromise;
 }
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────

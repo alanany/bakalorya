@@ -18,7 +18,13 @@ export class User {
   role: "student" | "teacher" | "admin";
 
   @Column({ default: "ACTIVE" })
-  status: "PENDING" | "ACTIVE" | "SUSPENDED" | "INACTIVE";
+  status: "PENDING" | "ACTIVE" | "SUSPENDED" | "INACTIVE" | "BLOCKED";
+
+  @Column({ default: false })
+  isBlocked: boolean;
+
+  @Column({ nullable: true })
+  blockReason?: string;
 
   @Column({ type: "simple-array", nullable: true })
   teacherCapabilities: string[]; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]

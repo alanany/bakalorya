@@ -77,13 +77,20 @@ export const AdminUsersPage = {
                   ${teacherData.map(item => {
           const u = item.teacher;
           const joinDate = new Date(u.createdAt).toLocaleDateString();
+          const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
           return `
-                      <tr style="border-bottom:1px solid var(--border-color);">
+                      <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
                             <div>
-                              <div style="font-weight:700;font-size:0.9rem;">${u.name}</div>
+                              <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span>${u.name}</span>
+                                ${isBlocked 
+                                  ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
+                                  : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">✅ نشط</span>`
+                                }
+                              </div>
                               ${u.education ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">🎓 ${u.education}</div>` : ''}
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
                             </div>
@@ -135,6 +142,9 @@ export const AdminUsersPage = {
                             `}
                             <button class="btn-secondary communicate-user-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج التواصل">
                               <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
+                            </button>
+                            <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="teacher" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:6px 11px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};font-weight:700;" title="${isBlocked ? 'إلغاء حظر المعلم والسماح له بتسجيل الدخول' : 'حظر المعلم ومنعه من تسجيل الدخول إلى الأكاديمية'}">
+                              <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر المعلم'}
                             </button>
                             <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
@@ -310,13 +320,21 @@ export const AdminUsersPage = {
                     const studentWaText = encodeURIComponent(`مرحباً ${u.name}، نتواصل معك من إدارة منصة انطلق.`);
                     const parentWaText = encodeURIComponent(`مرحباً ولي أمر الطالب ${u.name}، نتواصل معكم من إدارة منصة انطلق.`);
 
+                    const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
+
                     return `
-                      <tr style="border-bottom:1px solid var(--border-color);">
+                      <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
                             <div>
-                              <div style="font-weight:700;font-size:0.9rem;">${u.name}</div>
+                              <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span>${u.name}</span>
+                                ${isBlocked 
+                                  ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
+                                  : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">✅ نشط</span>`
+                                }
+                              </div>
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
                             </div>
                           </div>
@@ -366,6 +384,9 @@ export const AdminUsersPage = {
                         </td>
                         <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="student" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:5px 10px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${isBlocked ? 'إلغاء حظر الطالب والسماح له بتسجيل الدخول' : 'حظر الطالب ومنعه من تسجيل الدخول إلى الأكاديمية'}">
+                              <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر الطالب'}
+                            </button>
                             <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
                             </button>
@@ -433,12 +454,17 @@ export const AdminUsersPage = {
       roleBadge = `<span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;background:rgba(245,158,11,0.15);color:#f59e0b;">${t("admin.role.admin")}</span>`;
     }
 
+    const isBlocked = user.isBlocked || user.status === 'BLOCKED' || user.status === 'SUSPENDED';
+
     return `
-      <tr style="border-bottom:1px solid var(--border-color);">
+      <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
         <td style="padding:14px 20px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <img src="${user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + user.name}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
-            <span style="font-weight:600;font-size:0.9rem;">${user.name}</span>
+            <img src="${user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + user.name}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
+            <div>
+              <div style="font-weight:600;font-size:0.9rem;">${user.name}</div>
+              ${isBlocked ? `<span style="padding:1px 6px;border-radius:6px;font-size:0.68rem;font-weight:800;background:rgba(239,68,68,0.15);color:var(--error,#ef4444);display:inline-block;margin-top:2px;">🚫 محظور من الدخول</span>` : ''}
+            </div>
           </div>
         </td>
         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
@@ -451,7 +477,9 @@ export const AdminUsersPage = {
             </div>
           ` : ''}
         </td>
-        <td style="padding:14px 20px;">${roleBadge}</td>
+        <td style="padding:14px 20px;">
+          ${roleBadge}
+        </td>
         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">${joinDate}</td>
         <td style="padding:14px 20px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -463,6 +491,11 @@ export const AdminUsersPage = {
             <button class="btn-secondary communicate-user-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج التواصل">
               <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
             </button>
+            ${!isMe ? `
+              <button class="btn-secondary toggle-block-btn" data-id="${user.id}" data-name="${user.name}" data-role="${user.role}" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:6px 10px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${isBlocked ? 'إلغاء حظر الحساب والسماح له بالدخول' : 'حظر الحساب ومنعه من تسجيل الدخول'}">
+                <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر الحساب'}
+              </button>
+            ` : ''}
             <button class="btn-secondary edit-member-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
               <i data-lucide="edit" style="width:12px;height:12px;"></i> ${t("admin.editMember")}
             </button>
@@ -612,6 +645,31 @@ export const AdminUsersPage = {
                   </label>
                 </div>
               </div>
+
+              <!-- Account Access & Login Status (Admin Only) -->
+              <div style="background:${(user && (user.isBlocked || user.status === 'BLOCKED' || user.status === 'SUSPENDED')) ? 'rgba(239,68,68,0.06)' : 'var(--bg-app)'}; border:1px solid ${(user && (user.isBlocked || user.status === 'BLOCKED' || user.status === 'SUSPENDED')) ? 'rgba(239,68,68,0.3)' : 'var(--border-color)'}; border-radius:12px; padding:12px 14px; margin-top:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <label for="member-status-select" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0; display:block;">
+                      صلاحية الدخول وحالة الحساب (Login Access)
+                    </label>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin:2px 0 0 0;">
+                      التحكم في إمكانية تسجيل دخول المعلم أو الطالب للأكاديمية
+                    </p>
+                  </div>
+                  <select id="member-status-select" class="form-select" style="width:auto; min-width:180px; padding:6px 12px; font-size:0.84rem; font-weight:700;">
+                    <option value="ACTIVE" ${(!user || (!user.isBlocked && user.status !== 'BLOCKED' && user.status !== 'SUSPENDED')) ? 'selected' : ''}>✅ نشط ومسموح بالدخول</option>
+                    <option value="BLOCKED" ${(user && (user.isBlocked || user.status === 'BLOCKED' || user.status === 'SUSPENDED')) ? 'selected' : ''}>🚫 محظور من تسجيل الدخول</option>
+                  </select>
+                </div>
+                <div id="member-block-reason-group" style="display:${(user && (user.isBlocked || user.status === 'BLOCKED' || user.status === 'SUSPENDED')) ? 'block' : 'none'}; margin-top:10px;">
+                  <label for="member-block-reason" style="font-size:0.8rem; font-weight:700; color:var(--error,#ef4444); margin-bottom:4px; display:block;">
+                    سبب الحظر (ملاحظة تظهر للمستخدم عند محاولة تسجيل الدخول):
+                  </label>
+                  <input type="text" id="member-block-reason" class="form-input" value="${user?.blockReason || ''}" placeholder="مثال: مخالفة شروط الاستخدام أو تعليق الحساب مؤقتاً" style="padding:6px 10px; font-size:0.82rem;">
+                </div>
+              </div>
+
             </div>
             <div class="modal-footer" style="padding:12px 20px;">
               <button type="button" class="btn-secondary" id="cancel-member-modal" style="padding:8px 18px; font-size:0.88rem;">${t("common.cancel")}</button>
@@ -712,6 +770,14 @@ export const AdminUsersPage = {
       if (teacherEduGroup) teacherEduGroup.style.display = selectedRole === "teacher" ? "block" : "none";
     });
 
+    document.getElementById("member-status-select")?.addEventListener("change", (e) => {
+      const isBlocked = e.target.value === "BLOCKED";
+      const reasonGroup = document.getElementById("member-block-reason-group");
+      if (reasonGroup) {
+        reasonGroup.style.display = isBlocked ? "block" : "none";
+      }
+    });
+
     document.getElementById("member-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("member-name").value;
@@ -733,6 +799,10 @@ export const AdminUsersPage = {
       const meetingLink = document.getElementById("member-meeting-link")?.value.trim() || "";
       const avatar = document.getElementById("member-avatar-url")?.value?.trim() || undefined;
 
+      const isBlocked = document.getElementById("member-status-select")?.value === "BLOCKED";
+      const blockReason = isBlocked ? (document.getElementById("member-block-reason")?.value.trim() || undefined) : undefined;
+      const status = isBlocked ? "BLOCKED" : "ACTIVE";
+
       const teacherCapabilities = [];
       if (role === "teacher") {
         if (document.getElementById("cap-course")?.checked) teacherCapabilities.push("COURSE_INSTRUCTOR");
@@ -743,13 +813,13 @@ export const AdminUsersPage = {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status })
           });
           showToast(t("admin.toast.userUpdated") || "تم تحديث بيانات العضو بنجاح! ✅", "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status })
           });
           showToast(t("admin.toast.userCreated") || "تم إنشاء حساب العضو بنجاح! 🎉", "success");
           handleWhatsAppResponse(res);

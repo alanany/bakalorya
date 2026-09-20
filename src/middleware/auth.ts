@@ -14,7 +14,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: "Access denied. No token provided." });
@@ -28,6 +28,21 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = decoded;
+
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { id: decoded.id },
+      select: ["id", "status", "isBlocked"]
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "المستخدم غير موجود." });
+    }
+
+    if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+      return res.status(403).json({ error: "تم حظر هذا الحساب من دخول الأكاديمية من قبل الإدارة." });
+    }
+
     next();
   } catch (err) {
     res.status(401).json({ error: "Invalid token." });

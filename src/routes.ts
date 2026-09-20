@@ -24,6 +24,9 @@ import { PlatformSettingController } from "./controller/PlatformSettingControlle
 import { CurriculumController } from "./controller/CurriculumController";
 import { CourseGroupController } from "./controller/CourseGroupController";
 import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability } from "./middleware/auth";
+import { authRateLimiter, sensitiveActionLimiter } from "./middleware/rateLimiter";
+import { concurrencyLock } from "./middleware/concurrencyLock";
+import { idempotency } from "./middleware/idempotency";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
@@ -83,13 +86,13 @@ const uploadSingleAvatar = (req: any, res: any, next: any) => {
 
 const router = Router();
 
-// Auth Routes
-router.post("/auth/register", AuthController.register);
-router.post("/auth/login", AuthController.login);
-router.post("/auth/student/login", AuthController.studentLogin);
-router.post("/auth/student-login", AuthController.studentLogin);
-router.post("/auth/staff/login", AuthController.staffLogin);
-router.post("/auth/staff-login", AuthController.staffLogin);
+// Auth Routes (Hardened against brute force, credential stuffing, and duplicate submissions)
+router.post("/auth/register", authRateLimiter, concurrencyLock, AuthController.register);
+router.post("/auth/login", authRateLimiter, AuthController.login);
+router.post("/auth/student/login", authRateLimiter, AuthController.studentLogin);
+router.post("/auth/student-login", authRateLimiter, AuthController.studentLogin);
+router.post("/auth/staff/login", authRateLimiter, AuthController.staffLogin);
+router.post("/auth/staff-login", authRateLimiter, AuthController.staffLogin);
 router.get("/auth/me", authMiddleware, AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvitation);
 
@@ -185,7 +188,7 @@ router.get("/courses/:courseId/subscription-plans", SubscriptionController.getPl
 router.post("/subscription-plans", authMiddleware, requireRole(["admin"]), SubscriptionController.createPlan);
 router.put("/subscription-plans/:id", authMiddleware, requireRole(["admin"]), SubscriptionController.updatePlan);
 
-router.post("/subscriptions", authMiddleware, SubscriptionController.subscribe);
+router.post("/subscriptions", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, SubscriptionController.subscribe);
 router.get("/subscriptions/my", authMiddleware, SubscriptionController.getMySubscriptions);
 router.get("/subscriptions/my/course/:courseId", authMiddleware, SubscriptionController.getCourseQuota);
 router.get("/courses/:courseId/my-quota", authMiddleware, SubscriptionController.getCourseQuota);
@@ -205,9 +208,9 @@ router.get("/teachers/:id/availability", TeacherAvailabilityController.getByTeac
 router.post("/teacher/availability", authMiddleware, requireCapability("SESSION_TEACHER"), TeacherAvailabilityController.setAvailability);
 router.delete("/teacher/availability/:id", authMiddleware, requireCapability("SESSION_TEACHER"), TeacherAvailabilityController.deleteSlot);
 
-// Private Session Booking & Completion
-router.post("/sessions/book", authMiddleware, SessionBookingController.bookSession);
-router.post("/sessions/batch-schedule", authMiddleware, SessionBookingController.batchScheduleSessions);
+// Private Session Booking & Completion (Protected by concurrency lock, idempotency & rate limits)
+router.post("/sessions/book", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, SessionBookingController.bookSession);
+router.post("/sessions/batch-schedule", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, SessionBookingController.batchScheduleSessions);
 router.post("/sessions/group-schedule", authMiddleware, requireRole(["admin"]), SessionBookingController.scheduleGroupSession);
 router.post("/sessions/group-preview-conflicts", authMiddleware, requireRole(["admin"]), SessionBookingController.previewGroupConflicts);
 router.post("/admin/group-sessions/add-student", authMiddleware, requireRole(["admin"]), SessionBookingController.addStudentToGroupSession);
@@ -215,7 +218,7 @@ router.post("/admin/group-sessions/remove-student", authMiddleware, requireRole(
 router.get("/subscriptions/:id/schedule-details", authMiddleware, SessionBookingController.getSubscriptionScheduleDetails);
 router.post("/sessions/preview-package-schedule", authMiddleware, SessionBookingController.previewPackageSchedule);
 router.post("/sessions/recheck-schedule-conflicts", authMiddleware, SessionBookingController.recheckScheduleConflicts);
-router.post("/sessions/confirm-package-schedule", authMiddleware, SessionBookingController.confirmPackageSchedule);
+router.post("/sessions/confirm-package-schedule", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", authMiddleware, requireCapability("SESSION_TEACHER"), SessionBookingController.completeSession);
 router.post("/sessions/:id/cancel", authMiddleware, SessionBookingController.cancelSession);
 router.post("/sessions/:id/no-show", authMiddleware, requireCapability("SESSION_TEACHER"), SessionBookingController.noShowSession);
@@ -250,7 +253,7 @@ router.patch("/sessions/:id/status", authMiddleware, requireRole(["teacher", "ad
 
 // Student Portal & Enrollments
 router.get("/student/enrollments", authMiddleware, StudentController.getEnrollments);
-router.post("/student/enrollments", authMiddleware, StudentController.enroll);
+router.post("/student/enrollments", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, StudentController.enroll);
 router.post("/student/enrollments/:courseId/lessons/complete", authMiddleware, StudentController.completeLesson);
 router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", authMiddleware, StudentController.toggleLessonObjective);
 router.post("/student/enrollments/:courseId/activity-submit", authMiddleware, StudentController.submitActivityFile);
@@ -264,14 +267,14 @@ router.patch("/notifications/:id/read", authMiddleware, NotificationController.m
 router.patch("/notifications/read-all", authMiddleware, NotificationController.markAllAsRead);
 router.delete("/notifications/:id", authMiddleware, NotificationController.delete);
 
-// Reviews & Ratings
-router.post("/reviews", authMiddleware, ReviewController.create);
+// Reviews & Ratings (Protected against spam & duplicate submissions)
+router.post("/reviews", authMiddleware, sensitiveActionLimiter, concurrencyLock, ReviewController.create);
 router.get("/reviews/course/:courseId", ReviewController.getByCourse);
 router.get("/reviews/teacher/:teacherId", ReviewController.getByTeacher);
 router.delete("/reviews/:id", authMiddleware, ReviewController.delete);
 
 // Teachers & Users
-router.post("/teacher-applications", TeacherApplicationController.apply);
+router.post("/teacher-applications", sensitiveActionLimiter, concurrencyLock, TeacherApplicationController.apply);
 router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
@@ -325,6 +328,7 @@ router.get("/admin/users", authMiddleware, requireRole(["admin"]), AdminControll
 router.post("/admin/users", authMiddleware, requireRole(["admin"]), AdminController.createUser);
 router.put("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminController.updateUser);
 router.patch("/admin/users/:id/role", authMiddleware, requireRole(["admin"]), AdminController.updateUserRole);
+router.patch("/admin/users/:id/block", authMiddleware, requireRole(["admin"]), AdminController.toggleBlockUser);
 router.delete("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteUser);
 router.get("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.getCourses);
 router.post("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.createCourse);
