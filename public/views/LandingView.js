@@ -108,11 +108,7 @@ export default class LandingView {
             </div>
 
             <!-- WIDE ACCORDION CONTAINER -->
-            <div id="curriculum-accordion-container" style="max-width:100%; margin:0 auto; position:relative; z-index:1;">
-              <div style="text-align:center; padding:40px 0; color:var(--text-muted);">
-                <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px;border-width:3px;"></div>
-                <p style="font-weight:700; font-size:0.9rem;">جاري تحميل المراحل والمواد الدراسية...</p>
-              </div>
+            <div id="curriculum-accordion-container" style="max-width:100%; margin:0 auto; position:relative; z-index:1; min-height:80px;">
             </div>
 
           </div>
@@ -133,8 +129,7 @@ export default class LandingView {
                 </h3>
                 <span style="font-size:0.75rem; color:var(--primary); font-weight:700;"></span>
               </div>
-              <div id="most-popular-container" style="display:flex; flex-direction:column; gap:14px;">
-                <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
+              <div id="most-popular-container" style="display:flex; flex-direction:column; gap:14px; min-height:60px;">
               </div>
             </div>
 
@@ -146,8 +141,7 @@ export default class LandingView {
                 </h3>
                 <span style="font-size:0.75rem; color:#f59e0b; font-weight:700;"></span>
               </div>
-              <div id="new-releases-container" style="display:flex; flex-direction:column; gap:14px;">
-                <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
+              <div id="new-releases-container" style="display:flex; flex-direction:column; gap:14px; min-height:60px;">
               </div>
             </div>
 
@@ -159,8 +153,7 @@ export default class LandingView {
                 </h3>
                 <span style="font-size:0.75rem; color:#10b981; font-weight:700;">مباشر وتفاعلي</span>
               </div>
-              <div id="trending-sessions-container" style="display:flex; flex-direction:column; gap:14px;">
-                <div style="text-align:center; padding:20px; color:var(--text-muted);"><i data-lucide="loader" class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto;"></i></div>
+              <div id="trending-sessions-container" style="display:flex; flex-direction:column; gap:14px; min-height:60px;">
               </div>
             </div>
 
@@ -187,8 +180,7 @@ export default class LandingView {
             </div>
 
             <!-- Horizontal 4-Cards Grid Dynamic -->
-            <div id="gradient-featured-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
-              <div style="text-align:center; padding:40px; color:#ffffff; grid-column:1/-1;"><i data-lucide="loader" class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto;border-top-color:#fff;"></i></div>
+            <div id="gradient-featured-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; min-height:80px;">
             </div>
 
           </div>
@@ -552,8 +544,7 @@ export default class LandingView {
 
             <!-- Centered Horizontal Cards Scroll Container -->
             <div style="width:100%; display:flex; justify-content:center;">
-              <div id="top-teachers-container" style="display:flex; gap:16px; overflow-x:auto; padding:6px 10px 14px 10px; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; width:max-content; max-width:100%; margin:0 auto; justify-content:center;">
-                <div style="text-align:center; padding:30px; color:var(--text-muted); width:100%;"><i data-lucide="loader" class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></i></div>
+              <div id="top-teachers-container" style="display:flex; gap:16px; overflow-x:auto; padding:6px 10px 14px 10px; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; width:max-content; max-width:100%; margin:0 auto; justify-content:center; min-height:80px;">
               </div>
             </div>
 
@@ -574,8 +565,7 @@ export default class LandingView {
             <a href="#courses" class="btn-secondary" style="padding:10px 22px; font-size:0.85rem; border-radius:20px; text-decoration:none;">تصفح الدورات التعليمية ➔</a>
           </div>
 
-          <div id="landing-blogs-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
-            <div style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;"><i data-lucide="loader" class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto;"></i></div>
+          <div id="landing-blogs-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; min-height:80px;">
           </div>
         </section>
 

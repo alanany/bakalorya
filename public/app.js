@@ -2058,8 +2058,10 @@ export async function router() {
       ViewClass = LandingView;
   }
 
-  // Show spinner
-  viewport.innerHTML = `<div class="app-loader"><div class="spinner"></div></div>`;
+  // Show spinner for secondary views, but skip for landing page to avoid loading circle flash
+  if (ViewClass !== LandingView) {
+    viewport.innerHTML = `<div class="app-loader"><div class="spinner"></div></div>`;
+  }
 
   try {
     const viewInstance = new ViewClass(viewport, routeParam);
