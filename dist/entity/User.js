@@ -18,6 +18,8 @@ let User = class User {
     password; // Hashed password, optional until invitation is accepted
     role;
     status;
+    isBlocked;
+    blockReason;
     teacherCapabilities; // ["COURSE_INSTRUCTOR", "SESSION_TEACHER"]
     hourlyRate;
     invitationToken;
@@ -61,6 +63,14 @@ __decorate([
     (0, typeorm_1.Column)({ default: "ACTIVE" }),
     __metadata("design:type", String)
 ], User.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], User.prototype, "isBlocked", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "blockReason", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "simple-array", nullable: true }),
     __metadata("design:type", Array)

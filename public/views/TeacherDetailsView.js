@@ -33,12 +33,13 @@ export default class TeacherDetailsView {
         enrollmentsPromise = apiFetch("/student/enrollments").catch(() => []);
       }
 
-      const [teacher, allCourses, allBlogs, reviewsRes, myEnrollments] = await Promise.all([
+      const [teacher, allCourses, allBlogs, reviewsRes, myEnrollments, teacherGroups] = await Promise.all([
         apiFetch(`/teachers/${this.teacherId}`).catch(() => null),
         apiFetch(`/courses`).catch(() => []),
         apiFetch(`/blogs`).catch(() => []),
         apiFetch(`/reviews/teacher/${this.teacherId}`).catch(() => ({ reviews: [], totalReviews: 0, averageRating: 0 })),
-        enrollmentsPromise
+        enrollmentsPromise,
+        apiFetch(`/teachers/${this.teacherId}/groups`).catch(() => [])
       ]);
 
       if (!teacher || teacher.error) {
@@ -48,18 +49,41 @@ export default class TeacherDetailsView {
 
       this.teacher = teacher;
       this.myEnrollments = myEnrollments || [];
-      this.courses = Array.isArray(allCourses) ? allCourses.filter(c => c.teacher?.id === this.teacherId) : [];
       this.blogs = Array.isArray(allBlogs) ? allBlogs.filter(b => b.author?.id === this.teacherId) : [];
       this.teacherReviews = reviewsRes?.reviews || [];
       this.teacherAvgRating = reviewsRes?.averageRating || 4.9;
       this.teacherReviewsCount = reviewsRes?.totalReviews || this.teacherReviews.length;
 
-      // Fetch teacher groups from all their courses
-      const groupsResults = await Promise.all(
-        this.courses.map(c => apiFetch(`/courses/${c.id}/groups`).catch(() => []))
-      );
-      this.groups = groupsResults.flat().filter(g => g.status === 'OPEN' || g.status === 'IN_PROGRESS' || g.status === 'CLOSED');
+      // Direct courses where teacher is instructor
+      const directCourses = Array.isArray(allCourses) ? allCourses.filter(c => c.teacher?.id === this.teacherId) : [];
+
+      // Also fetch groups from any courses assigned to this teacher
+      let courseGroups = [];
+      if (directCourses.length > 0) {
+        const groupsResults = await Promise.all(
+          directCourses.map(c => apiFetch(`/courses/${c.id}/groups`).catch(() => []))
+        );
+        courseGroups = groupsResults.flat();
+      }
+
+      // Merge and deduplicate groups by id
+      const groupMap = new Map();
+      (Array.isArray(teacherGroups) ? teacherGroups : []).forEach(g => { if (g && g.id) groupMap.set(g.id, g); });
+      (courseGroups || []).forEach(g => { if (g && g.id && !groupMap.has(g.id)) groupMap.set(g.id, g); });
+
+      this.groups = Array.from(groupMap.values()).filter(g => g.status !== 'REJECTED');
       this.teacherGroups = this.groups;
+
+      // Populate courses: include direct courses plus any courses linked to teacher's groups
+      const courseMap = new Map();
+      directCourses.forEach(c => { if (c && c.id) courseMap.set(c.id, c); });
+      this.groups.forEach(g => {
+        if (g.course && g.course.id && !courseMap.has(g.course.id)) {
+          const matchedCourse = (Array.isArray(allCourses) ? allCourses : []).find(ac => ac.id === g.course.id);
+          courseMap.set(g.course.id, matchedCourse || g.course);
+        }
+      });
+      this.courses = Array.from(courseMap.values());
 
       this.renderContent();
     } catch (err) {
@@ -143,9 +167,6 @@ export default class TeacherDetailsView {
                 </span>
                 <span style="display:flex; align-items:center; gap:6px;">
                   <i data-lucide="users" style="width:16px; height:16px; color:#e51d74;"></i> ${this.groups.length} مجموعات دراسية
-                </span>
-                <span style="display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="book-open" style="width:16px; height:16px; color:var(--accent);"></i> ${this.courses.length} دورات تعليمية
                 </span>
               </div>
 
@@ -307,7 +328,9 @@ export default class TeacherDetailsView {
                             ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(99,102,241,0.12); color:#6366f1;">🔒 بدأت الدراسة</span>`
                             : isFull
                               ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(239,68,68,0.12); color:#ef4444;">مكتملة 🔒</span>`
-                              : `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981;">متاح للتسجيل 🟢</span>`
+                              : (grp.status === 'PENDING_APPROVAL' || grp.status === 'PENDING')
+                                ? `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(245,158,11,0.12); color:#d97706;">⏳ قيد المراجعة</span>`
+                                : `<span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.12); color:#10b981;">متاح للتسجيل 🟢</span>`
                           }
                         </div>
                       </div>
@@ -350,8 +373,30 @@ export default class TeacherDetailsView {
                     </div>
 
                     <!-- Footer Action -->
-                    <div style="border-top:1px solid var(--border-color); padding-top:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="border-top:1px solid var(--border-color); padding-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                      <a href="#course-details/${grp.course?.id || ''}/${grp.id}" class="btn-secondary" style="padding:7px 14px; border-radius:12px; font-size:0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <i data-lucide="book-open" style="width:14px;height:14px;"></i>
+                        <span>تفاصيل المقرر 📖</span>
+                      </a>
                       ${(() => {
+                        const isOwner = state.user && (state.user.id === this.teacherId || state.user.id === grp.teacher?.id);
+                        if (isOwner) {
+                          return `
+                            <a href="#teacher/groups" class="btn-secondary" style="padding:7px 14px; border-radius:12px; font-size:0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; color:#e51d74; border-color:rgba(229,29,116,0.3);">
+                              <i data-lucide="settings" style="width:14px;height:14px;"></i>
+                              <span>إدارة مجموعاتي ⚙️</span>
+                            </a>
+                          `;
+                        }
+
+                        if (grp.status === 'PENDING_APPROVAL' || grp.status === 'PENDING') {
+                          return `
+                            <div style="padding:6px 14px; border-radius:12px; font-weight:800; font-size:0.8rem; background:rgba(245, 158, 11, 0.12); border:1.5px solid #f59e0b; color:#d97706; display:inline-flex; align-items:center; gap:4px;">
+                              <span>⏳ قيد اعتماد الإدارة</span>
+                            </div>
+                          `;
+                        }
+
                         const myEnrollment = (this.myEnrollments || []).find(e => 
                           e.group?.id && String(e.group.id) === String(grp.id)
                         );
@@ -374,6 +419,14 @@ export default class TeacherDetailsView {
                           `;
                         }
 
+                        if (isFull || isClosed) {
+                          return `
+                            <button type="button" class="btn-secondary" disabled style="padding:8px 16px; border-radius:14px; font-size:0.82rem; opacity:0.6; cursor:not-allowed;">
+                              <span>التسجيل مغلق 🔒</span>
+                            </button>
+                          `;
+                        }
+
                         return `
                           <button type="button" class="btn-primary teacher-group-enroll-btn"
                             data-group-id="${grp.id}"
@@ -388,25 +441,6 @@ export default class TeacherDetailsView {
                   </div>
                 `;
               }).join('')}
-            </div>
-          `}
-        </div>
-
-        <!-- Section 2: Teacher's Courses -->
-        <div style="margin-bottom:50px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-            <h2 style="font-size:1.5rem; font-weight:900; margin:0; display:flex; align-items:center; gap:10px;">
-              <i data-lucide="book-open" style="color:var(--primary);"></i> دورات الأستاذ المتاحة (${this.courses.length})
-            </h2>
-          </div>
-
-          ${this.courses.length === 0 ? `
-            <div class="glass-card" style="text-align:center; padding:48px; color:var(--text-muted); border-radius:20px;">
-              لم يقم الأستاذ بنشر دورات تعليمية بعد.
-            </div>
-          ` : `
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:24px;">
-              ${this.courses.map(course => renderCourseCard(course)).join('')}
             </div>
           `}
         </div>

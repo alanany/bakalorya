@@ -116,7 +116,7 @@ router.put("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin
 router.patch("/admin/curriculum/subjects/:id/toggle", authMiddleware, requireRole(["admin"]), CurriculumController.toggleSubjectVisibility);
 router.delete("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteSubject);
 
-// Course Group Batches & Cohorts
+router.get("/groups/:id", CourseGroupController.getGroupById);
 router.post("/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController.getCourseGroups);
 router.post("/courses/:courseId/groups", authMiddleware, requireRole(["teacher", "admin"]), CourseGroupController.createGroup);
@@ -277,6 +277,7 @@ router.delete("/reviews/:id", authMiddleware, ReviewController.delete);
 router.post("/teacher-applications", sensitiveActionLimiter, concurrencyLock, TeacherApplicationController.apply);
 router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
+router.get("/teachers/:id/groups", optionalAuthMiddleware, CourseGroupController.getTeacherGroups);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
 router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
 router.post("/users/change-password", authMiddleware, UserController.changePassword);

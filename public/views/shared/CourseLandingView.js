@@ -21,21 +21,30 @@ export default class CourseLandingView {
 
       // Fetch course, enrollments, subscriptions, and course groups
       const fetchPromises = [
-        apiFetch(`/courses/${this.courseId}`),
+        apiFetch(`/courses/${this.courseId}`).catch(() => null),
         state.user && state.user.role === 'student' ? apiFetch("/student/enrollments").catch(() => []) : Promise.resolve([]),
         state.user && state.user.role === 'student' ? apiFetch("/subscriptions/my").catch(() => []) : Promise.resolve([]),
         apiFetch(`/courses/${this.courseId}/groups`).catch(() => [])
       ];
 
-      const [course, myEnrollments, mySubs, courseGroups] = await Promise.all(fetchPromises);
-      this.course = course;
+      const targetGroupId = this.selectedGroupId || this.initialGroupId;
+      if (targetGroupId) {
+        fetchPromises.push(apiFetch(`/groups/${targetGroupId}`).catch(() => null));
+      }
+
+      const [course, myEnrollments, mySubs, courseGroups, specificGroup] = await Promise.all(fetchPromises);
+      this.course = course || (specificGroup?.course ? specificGroup.course : { title: "المقرر الدراسي", category: "كورس تعليمي" });
       this.mySubscriptions = mySubs || [];
       this.groups = (courseGroups || []).filter(g => g.status === 'OPEN' || g.status === 'IN_PROGRESS' || g.status === 'CLOSED');
+
+      if (specificGroup && !this.groups.some(g => String(g.id) === String(specificGroup.id))) {
+        this.groups.unshift(specificGroup);
+      }
 
       // Pre-select group: prefer URL-provided groupId, else first group
       if (this.initialGroupId) {
         const found = this.groups.find(g => String(g.id) === String(this.initialGroupId));
-        this.selectedGroupId = found ? found.id : (this.groups[0]?.id || null);
+        this.selectedGroupId = found ? found.id : (specificGroup?.id || this.groups[0]?.id || null);
       } else if (!this.selectedGroupId && this.groups.length > 0) {
         this.selectedGroupId = this.groups[0].id;
       }
@@ -54,7 +63,23 @@ export default class CourseLandingView {
         }
       }
 
-      const hasLessons = this.course.lessons && this.course.lessons.length > 0;
+      const rawSelectedGroup = this.groups.find(g => String(g.id) === String(this.selectedGroupId)) || specificGroup || this.groups[0] || null;
+      const selectedGroup = (specificGroup && String(specificGroup.id) === String(rawSelectedGroup?.id)) ? { ...rawSelectedGroup, ...specificGroup } : rawSelectedGroup;
+
+      // 1. ACTIVE TEACHER (المعلم المشرف / معلم المادة)
+      const activeTeacher = selectedGroup?.teacher || this.course?.teacher || null;
+
+      // 2. ACTIVE DESCRIPTION & OBJECTIVES (وصف الدورة والأهداف)
+      const activeDescription = (selectedGroup?.description && selectedGroup.description.trim()) 
+        ? selectedGroup.description 
+        : (this.course?.description || "لا يوجد وصف إضافي لهذه الدورة.");
+
+      // 3. ACTIVE UNITS & LESSONS (محتوى ومنهج الدورة)
+      const activeLessons = (selectedGroup?.lessons && selectedGroup.lessons.length > 0)
+        ? selectedGroup.lessons
+        : (this.course?.lessons || []);
+
+      const hasLessons = activeLessons && activeLessons.length > 0;
 
       const chaptersMap = {};
       let totalDuration = 0;
@@ -62,21 +87,23 @@ export default class CourseLandingView {
         const orderedUnits = Array.isArray(this.course?.unitsOrder) ? [...this.course.unitsOrder] : [];
         const allKnownUnits = Array.from(new Set([
           ...orderedUnits,
-          ...this.course.lessons.map(l => l.chapter || "General")
+          ...activeLessons.map(l => l.chapter || "الوحدة الأولى")
         ])).filter(Boolean);
 
         allKnownUnits.forEach(u => { chaptersMap[u] = []; });
 
-        this.course.lessons.forEach(l => {
-          const chName = l.chapter || "General";
+        activeLessons.forEach(l => {
+          const chName = l.chapter || "الوحدة الأولى";
           if (!chaptersMap[chName]) chaptersMap[chName] = [];
           chaptersMap[chName].push(l);
 
-          const parts = l.duration ? l.duration.split(':') : [];
+          const parts = l.duration ? String(l.duration).split(':') : [];
           if (parts.length === 2) {
             totalDuration += parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          } else if (!isNaN(parseInt(l.duration))) {
+            totalDuration += parseInt(l.duration) * 60;
           } else {
-            totalDuration += 600;
+            totalDuration += 900;
           }
         });
 
@@ -98,8 +125,6 @@ export default class CourseLandingView {
         const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
         return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
       };
-
-      const selectedGroup = this.groups.find(g => String(g.id) === String(this.selectedGroupId)) || this.groups[0] || null;
 
       // Group Details calculations
       const totalSessions = selectedGroup?.totalSessions || 24;
@@ -136,7 +161,7 @@ export default class CourseLandingView {
                 ` : ''}
               </div>
               <h1 style="font-size: clamp(1.5rem, 4.5vw, 2.6rem); font-weight: 800; color: #ffffff; margin-bottom: 0; max-width: 800px; line-height: 1.3; text-shadow: 0 2px 10px rgba(0,0,0,0.6);">
-                ${this.course.title}
+                ${this.course.title}${selectedGroup?.name ? ` - ${selectedGroup.name}` : ''}
               </h1>
             </div>
           </div>
@@ -148,12 +173,12 @@ export default class CourseLandingView {
             <div style="flex: 2; min-width: 320px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:10px;">
                 <h2 style="font-size:1.5rem; font-weight:800; color:var(--text-main); margin:0;">📚 محتوى ومنهج الدورة (Units & Lessons)</h2>
-                <span style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">${Object.keys(chaptersMap).length} وحدات • ${this.course.lessons?.length || 0} دروس • ${durationText}</span>
+                <span style="font-size:0.88rem; color:var(--text-muted); font-weight:700;">${Object.keys(chaptersMap).length} وحدات • ${activeLessons.length} دروس • ${durationText}</span>
               </div>
               
               ${Object.keys(chaptersMap).length === 0 ? `
                 <div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted);">
-                  جاري إعداد وإضافة دروس المنهج في هذه الدورة.
+                  جاري إعداد وإضافة دروس المنهج في هذه المجموعة والدورة.
                 </div>
               ` : `
                 <div style="border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow:hidden; background: var(--card-bg); margin-bottom:30px;">
@@ -186,7 +211,7 @@ export default class CourseLandingView {
               <!-- Course Description Card below curriculum -->
               <div class="glass-card" style="padding: 28px; border-radius:20px;">
                 <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin-bottom:14px;">وصف الدورة والأهداف 📖</h2>
-                <p style="font-size:0.95rem; color:var(--text-muted); line-height:1.8; white-space: pre-wrap; margin:0;">${this.course.description || "لا يوجد وصف إضافي لهذه الدورة."}</p>
+                <p style="font-size:0.95rem; color:var(--text-muted); line-height:1.8; white-space: pre-wrap; margin:0;">${activeDescription}</p>
               </div>
 
             </div>
@@ -343,15 +368,15 @@ export default class CourseLandingView {
               <div class="glass-card" style="padding: 24px; border-radius:20px;">
                 <h2 style="font-size:1.2rem; font-weight:800; color:var(--text-main); margin-bottom:16px;">المعلم المشرف 👨‍🏫</h2>
                 <div style="display:flex; gap:14px; align-items:center; margin-bottom:14px;">
-                  <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:54px; height:54px; border-radius:50%; border: 2px solid var(--primary); object-fit:cover;">
+                  <img src="${activeTeacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(activeTeacher?.name || 'Teacher')}" style="width:54px; height:54px; border-radius:50%; border: 2px solid var(--primary); object-fit:cover;">
                   <div>
-                    <div style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${this.course.teacher?.name || "معلم المادة"}</div>
-                    <div style="font-size:0.82rem; color:var(--text-muted);">${this.course.teacher?.headline || this.course.category || "معلم معتمد"}</div>
+                    <div style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${activeTeacher?.name || "معلم المادة"}</div>
+                    <div style="font-size:0.82rem; color:var(--text-muted);">${activeTeacher?.headline || activeTeacher?.bio || this.course?.category || "معلم معتمد ومسؤول عن المجموعة"}</div>
                   </div>
                 </div>
 
-                ${this.course.teacher ? `
-                  <a href="#teacher/${this.course.teacher.id}" class="btn-secondary"
+                ${activeTeacher && activeTeacher.id ? `
+                  <a href="#teacher/${activeTeacher.id}" class="btn-secondary"
                     style="width:100%; padding:9px; border-radius:12px; font-weight:800; font-size:0.82rem; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; box-sizing:border-box;">
                     <i data-lucide="user" style="width:14px;height:14px;"></i> زيارة صفحة المعلم 👨‍🏫
                   </a>
@@ -376,14 +401,14 @@ export default class CourseLandingView {
       `;
 
       if (window.lucide) window.lucide.createIcons();
-      this.bindEvents();
+      this.bindEvents(activeTeacher);
     } catch (err) {
       console.error(err);
       this.container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--error);">Failed to load course details.</div>`;
     }
   }
 
-  bindEvents() {
+  bindEvents(activeTeacher) {
     // Group Switcher Event
     const groupPickerBtns = this.container.querySelectorAll(".course-group-picker-btn");
     groupPickerBtns.forEach(btn => {
@@ -391,6 +416,8 @@ export default class CourseLandingView {
         const groupId = btn.getAttribute("data-group-id");
         if (groupId && groupId !== this.selectedGroupId) {
           this.selectedGroupId = groupId;
+          this.initialGroupId = groupId;
+          window.location.hash = `#course-details/${this.courseId}/${groupId}`;
           this.render();
         }
       });
@@ -409,7 +436,7 @@ export default class CourseLandingView {
           courseImage: this.course.image,
           groupId: selectedGroup.id || groupId,
           groupName: selectedGroup.name || "المجموعة الدراسية",
-          teacherName: this.course.teacher?.name || "أستاذ المادة",
+          teacherName: activeTeacher?.name || selectedGroup.teacher?.name || this.course.teacher?.name || "أستاذ المادة",
           subjectName: this.course.subject?.name || this.course.category || "",
           scheduleDays: selectedGroup.scheduleDays || "الأحد والأربعاء",
           scheduleTime: selectedGroup.scheduleTime || "06:00 م",

@@ -28,6 +28,9 @@ const PlatformSettingController_1 = require("./controller/PlatformSettingControl
 const CurriculumController_1 = require("./controller/CurriculumController");
 const CourseGroupController_1 = require("./controller/CourseGroupController");
 const auth_1 = require("./middleware/auth");
+const rateLimiter_1 = require("./middleware/rateLimiter");
+const concurrencyLock_1 = require("./middleware/concurrencyLock");
+const idempotency_1 = require("./middleware/idempotency");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -81,13 +84,13 @@ const uploadSingleAvatar = (req, res, next) => {
     });
 };
 const router = (0, express_1.Router)();
-// Auth Routes
-router.post("/auth/register", AuthController_1.AuthController.register);
-router.post("/auth/login", AuthController_1.AuthController.login);
-router.post("/auth/student/login", AuthController_1.AuthController.studentLogin);
-router.post("/auth/student-login", AuthController_1.AuthController.studentLogin);
-router.post("/auth/staff/login", AuthController_1.AuthController.staffLogin);
-router.post("/auth/staff-login", AuthController_1.AuthController.staffLogin);
+// Auth Routes (Hardened against brute force, credential stuffing, and duplicate submissions)
+router.post("/auth/register", rateLimiter_1.authRateLimiter, concurrencyLock_1.concurrencyLock, AuthController_1.AuthController.register);
+router.post("/auth/login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.login);
+router.post("/auth/student/login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.studentLogin);
+router.post("/auth/student-login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.studentLogin);
+router.post("/auth/staff/login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.staffLogin);
+router.post("/auth/staff-login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.staffLogin);
 router.get("/auth/me", auth_1.authMiddleware, AuthController_1.AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController_1.AdminTeacherController.acceptInvitation);
 // Public Platform Stats & Settings
@@ -107,7 +110,7 @@ router.post("/admin/curriculum/grades/:gradeId/subjects", auth_1.authMiddleware,
 router.put("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.updateSubject);
 router.patch("/admin/curriculum/subjects/:id/toggle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.toggleSubjectVisibility);
 router.delete("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteSubject);
-// Course Group Batches & Cohorts
+router.get("/groups/:id", CourseGroupController_1.CourseGroupController.getGroupById);
 router.post("/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController_1.CourseGroupController.getCourseGroups);
 router.post("/courses/:courseId/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), CourseGroupController_1.CourseGroupController.createGroup);
@@ -173,7 +176,7 @@ router.get("/subscription-plans", SubscriptionController_1.SubscriptionControlle
 router.get("/courses/:courseId/subscription-plans", SubscriptionController_1.SubscriptionController.getPlans);
 router.post("/subscription-plans", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.createPlan);
 router.put("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.updatePlan);
-router.post("/subscriptions", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.subscribe);
+router.post("/subscriptions", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, SubscriptionController_1.SubscriptionController.subscribe);
 router.get("/subscriptions/my", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getMySubscriptions);
 router.get("/subscriptions/my/course/:courseId", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getCourseQuota);
 router.get("/courses/:courseId/my-quota", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.getCourseQuota);
@@ -191,9 +194,9 @@ router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_
 router.get("/teachers/:id/availability", TeacherAvailabilityController_1.TeacherAvailabilityController.getByTeacher);
 router.post("/teacher/availability", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), TeacherAvailabilityController_1.TeacherAvailabilityController.setAvailability);
 router.delete("/teacher/availability/:id", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), TeacherAvailabilityController_1.TeacherAvailabilityController.deleteSlot);
-// Private Session Booking & Completion
-router.post("/sessions/book", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.bookSession);
-router.post("/sessions/batch-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.batchScheduleSessions);
+// Private Session Booking & Completion (Protected by concurrency lock, idempotency & rate limits)
+router.post("/sessions/book", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, SessionBookingController_1.SessionBookingController.bookSession);
+router.post("/sessions/batch-schedule", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, SessionBookingController_1.SessionBookingController.batchScheduleSessions);
 router.post("/sessions/group-schedule", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.scheduleGroupSession);
 router.post("/sessions/group-preview-conflicts", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.previewGroupConflicts);
 router.post("/admin/group-sessions/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SessionBookingController_1.SessionBookingController.addStudentToGroupSession);
@@ -201,7 +204,7 @@ router.post("/admin/group-sessions/remove-student", auth_1.authMiddleware, (0, a
 router.get("/subscriptions/:id/schedule-details", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getSubscriptionScheduleDetails);
 router.post("/sessions/preview-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.previewPackageSchedule);
 router.post("/sessions/recheck-schedule-conflicts", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.recheckScheduleConflicts);
-router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
+router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.completeSession);
 router.post("/sessions/:id/cancel", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.cancelSession);
 router.post("/sessions/:id/no-show", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.noShowSession);
@@ -230,7 +233,7 @@ router.delete("/sessions/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["
 router.patch("/sessions/:id/status", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), SessionController_1.SessionController.updateStatus);
 // Student Portal & Enrollments
 router.get("/student/enrollments", auth_1.authMiddleware, StudentController_1.StudentController.getEnrollments);
-router.post("/student/enrollments", auth_1.authMiddleware, StudentController_1.StudentController.enroll);
+router.post("/student/enrollments", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, StudentController_1.StudentController.enroll);
 router.post("/student/enrollments/:courseId/lessons/complete", auth_1.authMiddleware, StudentController_1.StudentController.completeLesson);
 router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", auth_1.authMiddleware, StudentController_1.StudentController.toggleLessonObjective);
 router.post("/student/enrollments/:courseId/activity-submit", auth_1.authMiddleware, StudentController_1.StudentController.submitActivityFile);
@@ -242,15 +245,16 @@ router.get("/notifications/unread-count", auth_1.authMiddleware, NotificationCon
 router.patch("/notifications/:id/read", auth_1.authMiddleware, NotificationController_1.NotificationController.markAsRead);
 router.patch("/notifications/read-all", auth_1.authMiddleware, NotificationController_1.NotificationController.markAllAsRead);
 router.delete("/notifications/:id", auth_1.authMiddleware, NotificationController_1.NotificationController.delete);
-// Reviews & Ratings
-router.post("/reviews", auth_1.authMiddleware, ReviewController_1.ReviewController.create);
+// Reviews & Ratings (Protected against spam & duplicate submissions)
+router.post("/reviews", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, ReviewController_1.ReviewController.create);
 router.get("/reviews/course/:courseId", ReviewController_1.ReviewController.getByCourse);
 router.get("/reviews/teacher/:teacherId", ReviewController_1.ReviewController.getByTeacher);
 router.delete("/reviews/:id", auth_1.authMiddleware, ReviewController_1.ReviewController.delete);
 // Teachers & Users
-router.post("/teacher-applications", TeacherApplicationController_1.TeacherApplicationController.apply);
+router.post("/teacher-applications", rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, TeacherApplicationController_1.TeacherApplicationController.apply);
 router.get("/teachers", UserController_1.UserController.getTeachers);
 router.get("/teachers/:id", UserController_1.UserController.getTeacherById);
+router.get("/teachers/:id/groups", auth_1.optionalAuthMiddleware, CourseGroupController_1.CourseGroupController.getTeacherGroups);
 router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController.updateProfile);
 router.post("/users/avatar", auth_1.authMiddleware, uploadSingleAvatar, UserController_1.UserController.uploadAvatar);
 router.post("/users/change-password", auth_1.authMiddleware, UserController_1.UserController.changePassword);
@@ -297,6 +301,7 @@ router.get("/admin/users", auth_1.authMiddleware, (0, auth_1.requireRole)(["admi
 router.post("/admin/users", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.createUser);
 router.put("/admin/users/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.updateUser);
 router.patch("/admin/users/:id/role", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.updateUserRole);
+router.patch("/admin/users/:id/block", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.toggleBlockUser);
 router.delete("/admin/users/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.deleteUser);
 router.get("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.getCourses);
 router.post("/admin/courses", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminController_1.AdminController.createCourse);

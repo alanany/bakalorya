@@ -786,11 +786,37 @@ export const AdminSessionsPage = {
 
             <div>
               <label for="admin-create-group-desc" style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                <span>وصف وملخص المجموعة ومحتوى الدورة:</span>
-                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر للطلاب في صفحة المجموعة 📖</span>
+                <span>وصف الدورة والأهداف ومحتوى المجموعة 📖:</span>
+                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر للطلاب في صفحة تفاصيل المقرر 📖</span>
               </label>
               <textarea id="admin-create-group-desc" rows="2" placeholder="اكتب نبذة أو ملخصاً عن الموضوعات التي سيتم تغطيتها ومواعيد المراجعات واختبارات المتابعة..."
                 style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- 3.5 CURRICULUM: UNITS & LESSONS -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="book-open" style="width:16px; height:16px; color:#8b5cf6;"></i>
+                  <span>محتوى ومنهج الدورة والوحدات (Units & Lessons)</span>
+                </label>
+                <button type="button" id="admin-import-curriculum-btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem; font-weight:800; border-radius:12px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <i data-lucide="download-cloud" style="width:14px; height:14px;"></i> استيراد منهج المادة المعتمد تلقائياً
+                </button>
+              </div>
+              <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
+                حدد الوحدات والدروس الخاصة بالمجموعة لتظهر للطلاب في صفحة تفاصيل المقرر 📚
+              </p>
+
+              <div id="admin-group-lessons-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-inline-end:4px;">
+                <div id="admin-empty-lessons-hint" style="text-align:center; padding:14px; font-size:0.78rem; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:12px;">
+                  لم يتم إضافة دروس بعد. اضغط على الزر أدناه لإضافة دروس أو استيراد المنهج الجاهز.
+                </div>
+              </div>
+
+              <button type="button" id="admin-add-lesson-row-btn" class="btn-secondary" style="width:100%; padding:8px 14px; font-size:0.82rem; font-weight:800; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">
+                <i data-lucide="plus" style="width:15px; height:15px;"></i> + إضافة درس أو وحدة جديدة للمجموعة
+              </button>
             </div>
 
             <!-- 4. SCHEDULE DAYS, TIME & MEETING LINK -->
@@ -1052,6 +1078,78 @@ export const AdminSessionsPage = {
       updateSuggestedGroupName();
     });
 
+    // Units & Lessons Builder Logic for Admin
+    const lessonsContainer = wrapper.querySelector("#admin-group-lessons-list");
+    const emptyHint = wrapper.querySelector("#admin-empty-lessons-hint");
+
+    const addLessonRow = (unit = "الوحدة الأولى", title = "", duration = "45:00") => {
+      if (emptyHint) emptyHint.style.display = "none";
+      const row = document.createElement("div");
+      row.className = "admin-lesson-input-row";
+      row.style.cssText = "display:grid; grid-template-columns:1.2fr 2fr 1fr 34px; gap:6px; align-items:center; background:var(--bg-card); padding:8px; border-radius:12px; border:1px solid var(--border-color);";
+      row.innerHTML = `
+        <input type="text" class="lesson-chapter-input" placeholder="اسم الوحدة" value="${unit}" style="padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
+        <input type="text" class="lesson-title-input" placeholder="عنوان الدرس" value="${title}" required style="padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
+        <input type="text" class="lesson-duration-input" placeholder="المدة (45:00)" value="${duration}" style="padding:6px 8px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
+        <button type="button" class="remove-lesson-row-btn" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444; width:30px; height:30px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.1rem; padding:0;">
+          &times;
+        </button>
+      `;
+      row.querySelector(".remove-lesson-row-btn").addEventListener("click", () => {
+        row.remove();
+        if (lessonsContainer.querySelectorAll(".admin-lesson-input-row").length === 0 && emptyHint) {
+          emptyHint.style.display = "block";
+        }
+      });
+      lessonsContainer.appendChild(row);
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    wrapper.querySelector("#admin-add-lesson-row-btn")?.addEventListener("click", () => {
+      const count = lessonsContainer.querySelectorAll(".admin-lesson-input-row").length + 1;
+      addLessonRow("الوحدة الأولى", `الدرس #${count}`, "45:00");
+    });
+
+    wrapper.querySelector("#admin-import-curriculum-btn")?.addEventListener("click", async () => {
+      const subjectId = subjectSelect?.value;
+      if (!subjectId) {
+        showToast("يرجى اختيار المادة الدراسية أولاً لاستيراد منهجها.", "warning");
+        return;
+      }
+      try {
+        const importBtn = wrapper.querySelector("#admin-import-curriculum-btn");
+        if (importBtn) importBtn.innerText = "جاري الفحص...";
+
+        let lessonsToImport = [];
+        const course = (this.courses || []).find(c => c.subject?.id === subjectId || c.category === subjectSelect.options[subjectSelect.selectedIndex]?.getAttribute("data-name"));
+        if (course && course.id) {
+          const fullCourse = await apiFetch(`/courses/${course.id}`).catch(() => null);
+          if (fullCourse && fullCourse.lessons && fullCourse.lessons.length > 0) {
+            lessonsToImport = fullCourse.lessons;
+          }
+        }
+        if (lessonsToImport.length === 0) {
+          lessonsToImport = [
+            { chapter: "الوحدة الأولى: المفاهيم والأسس", title: "الدرس 1: شرح المفاهيم الأساسية وتطبيقاتها", duration: "45:00" },
+            { chapter: "الوحدة الأولى: المفاهيم والأسس", title: "الدرس 2: نماذج وتدريبات عملية", duration: "45:00" },
+            { chapter: "الوحدة الثانية: المنهج المتقدم", title: "الدرس 3: مهارات حل المسائل التراكمية", duration: "60:00" },
+            { chapter: "الوحدة الثانية: المنهج المتقدم", title: "الدرس 4: المراجعة النهائية واختبار التقييم", duration: "45:00" }
+          ];
+        }
+
+        lessonsContainer.querySelectorAll(".admin-lesson-input-row").forEach(r => r.remove());
+        lessonsToImport.forEach(l => {
+          addLessonRow(l.chapter || "الوحدة الأولى", l.title || "درس جديد", l.duration || "45:00");
+        });
+        showToast(`تم استيراد ${lessonsToImport.length} دروس بنجاح! 📚`, "success");
+        if (importBtn) importBtn.innerHTML = `<i data-lucide="check" style="width:14px; height:14px;"></i> تم استيراد المنهج`;
+        if (window.lucide) window.lucide.createIcons();
+      } catch (err) {
+        console.error("Error importing curriculum:", err);
+        showToast("تعذر استيراد المنهج تلقائياً.", "error");
+      }
+    });
+
     // Initialize with PRIMARY stage
     updateStageUI("PRIMARY");
 
@@ -1076,6 +1174,15 @@ export const AdminSessionsPage = {
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
       const name = wrapper.querySelector("#admin-create-group-name")?.value?.trim() || `مجموعة ${scheduleDays} (${scheduleTime})`;
       const description = wrapper.querySelector("#admin-create-group-desc")?.value?.trim() || "";
+
+      // Extract custom units & lessons
+      const lessonRows = Array.from(wrapper.querySelectorAll(".admin-lesson-input-row"));
+      const lessons = lessonRows.map((r, idx) => ({
+        chapter: r.querySelector(".lesson-chapter-input")?.value?.trim() || "الوحدة الأولى",
+        title: r.querySelector(".lesson-title-input")?.value?.trim() || `الدرس ${idx + 1}`,
+        duration: r.querySelector(".lesson-duration-input")?.value?.trim() || "45:00",
+        order: idx
+      })).filter(l => l.title);
 
       if (!gradeId || !subjectId) {
         showToast("يرجى اختيار المرحلة والصف والمادة الدراسية للمجموعة.", "error");
@@ -1113,7 +1220,8 @@ export const AdminSessionsPage = {
             studentHourlyRate: sessionPrice,
             teacherHourlyRate,
             platformCommissionPercent: commission,
-            meetingLink
+            meetingLink,
+            lessons
           })
         });
 

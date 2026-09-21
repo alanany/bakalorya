@@ -18,6 +18,110 @@ import { IsNull } from "typeorm";
 import crypto from "crypto";
 
 export class CourseGroupController {
+  // GET /groups/:id
+  static async getGroupById(req: any, res: Response) {
+    try {
+      const { id } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: [
+          "course",
+          "course.teacher",
+          "course.grade",
+          "course.subject",
+          "course.lessons",
+          "teacher",
+          "lessons",
+          "enrollments"
+        ],
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found." });
+      }
+
+      const enrolledCount = (group.enrollments || []).filter(e => !e.status || e.status === "active").length;
+      const availableSeats = Math.max(0, group.maxStudents - enrolledCount);
+      const isFull = enrolledCount >= group.maxStudents;
+
+      // Group specific lessons, or fallback to course lessons
+      let lessons = (group.lessons || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (lessons.length === 0 && group.course?.lessons?.length) {
+        lessons = [...group.course.lessons].sort((a, b) => (a.order || 0) - (b.order || 0));
+      }
+
+      const activeTeacher = group.teacher || group.course?.teacher || null;
+
+      const result = {
+        id: group.id,
+        name: group.name,
+        description: group.description || group.course?.description || "",
+        scheduleDays: group.scheduleDays,
+        scheduleTime: group.scheduleTime,
+        scheduleText: group.scheduleText,
+        maxStudents: group.maxStudents,
+        enrolledCount,
+        availableSeats,
+        isFull,
+        meetingLink: group.meetingLink,
+        status: isFull ? "FULL" : group.status,
+        startDate: group.startDate,
+        endDate: group.endDate,
+        totalSessions: group.totalSessions,
+        sessionDuration: group.sessionDuration,
+        sessionPrice: group.sessionPrice,
+        monthlyPrice: group.monthlyPrice,
+        billingCycle: group.billingCycle,
+        teacher: activeTeacher ? {
+          id: activeTeacher.id,
+          name: activeTeacher.name,
+          avatar: activeTeacher.avatar,
+          headline: (activeTeacher as any).headline || (activeTeacher as any).bio || activeTeacher.education || "معلم معتمد",
+          bio: (activeTeacher as any).bio || activeTeacher.education || "",
+          education: activeTeacher.education,
+          phone: activeTeacher.phone
+        } : null,
+        course: group.course ? {
+          id: group.course.id,
+          title: group.course.title,
+          image: group.course.image,
+          category: group.course.category,
+          degree: group.course.degree,
+          grade: group.course.grade,
+          subject: group.course.subject,
+          description: group.course.description,
+          unitsOrder: group.course.unitsOrder,
+          price: group.course.price,
+          teacher: group.course.teacher ? {
+            id: group.course.teacher.id,
+            name: group.course.teacher.name,
+            avatar: group.course.teacher.avatar,
+            headline: (group.course.teacher as any).headline || group.course.teacher.education || "معلم معتمد"
+          } : null
+        } : null,
+        lessons: lessons.map(l => ({
+          id: l.id,
+          title: l.title,
+          description: l.description,
+          videoUrl: l.videoUrl,
+          duration: l.duration || "45:00",
+          chapter: l.chapter || "الوحدة الأولى",
+          order: l.order || 0,
+          notes: l.notes,
+          resourceUrl: l.resourceUrl,
+          resourceTitle: l.resourceTitle
+        }))
+      };
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      console.error("Error fetching group by id:", err);
+      return res.status(500).json({ error: "Failed to fetch group details." });
+    }
+  }
+
   // GET /courses/:courseId/groups
   static async getCourseGroups(req: any, res: Response) {
     try {
@@ -27,7 +131,7 @@ export class CourseGroupController {
 
       const groups = await groupRepo.find({
         where: { course: { id: courseId } },
-        relations: ["course", "teacher", "enrollments"],
+        relations: ["course", "teacher", "enrollments", "lessons"],
       });
 
       const result = groups.map(g => {
@@ -54,7 +158,24 @@ export class CourseGroupController {
           sessionPrice: g.sessionPrice,
           monthlyPrice: g.monthlyPrice,
           billingCycle: g.billingCycle,
-          teacher: g.teacher ? { id: g.teacher.id, name: g.teacher.name, avatar: g.teacher.avatar } : null
+          teacher: g.teacher ? {
+            id: g.teacher.id,
+            name: g.teacher.name,
+            avatar: g.teacher.avatar,
+            headline: (g.teacher as any).headline || (g.teacher as any).bio || g.teacher.education || "معلم معتمد",
+            bio: (g.teacher as any).bio || g.teacher.education || "",
+            education: g.teacher.education,
+            phone: g.teacher.phone
+          } : null,
+          lessons: (g.lessons || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(l => ({
+            id: l.id,
+            title: l.title,
+            description: l.description,
+            videoUrl: l.videoUrl,
+            duration: l.duration || "45:00",
+            chapter: l.chapter || "الوحدة الأولى",
+            order: l.order || 0
+          }))
         };
       });
 
@@ -87,7 +208,8 @@ export class CourseGroupController {
         sessionPrice,
         billingCycle,
         monthlyPrice,
-        platformCommissionPercent
+        platformCommissionPercent,
+        lessons
       } = req.body;
 
       const scheduleDaysStr = scheduleDays || "";
@@ -194,6 +316,29 @@ export class CourseGroupController {
       group.status = isAdmin ? "OPEN" : "PENDING_APPROVAL";
 
       const saved = await groupRepo.save(group);
+
+      // Save custom units & lessons if provided
+      if (Array.isArray(lessons) && lessons.length > 0) {
+        const lessonRepo = AppDataSource.getRepository(Lesson);
+        for (let i = 0; i < lessons.length; i++) {
+          const l = lessons[i];
+          if (!l || !l.title || !l.title.trim()) continue;
+          const newLesson = new Lesson();
+          newLesson.title = l.title.trim();
+          newLesson.chapter = (l.chapter && l.chapter.trim()) ? l.chapter.trim() : "الوحدة الأولى";
+          newLesson.duration = l.duration ? String(l.duration).trim() : "45:00";
+          newLesson.description = l.description ? l.description.trim() : "";
+          newLesson.order = typeof l.order === "number" ? l.order : i;
+          newLesson.videoUrl = l.videoUrl ? l.videoUrl.trim() : "";
+          newLesson.notes = l.notes ? l.notes.trim() : "";
+          newLesson.resourceUrl = l.resourceUrl || null;
+          newLesson.resourceTitle = l.resourceTitle || null;
+          newLesson.course = course;
+          newLesson.group = saved;
+          await lessonRepo.save(newLesson);
+        }
+      }
+
       return res.status(201).json(saved);
     } catch (err: any) {
       console.error("Error creating course group:", err);
@@ -525,6 +670,27 @@ export class CourseGroupController {
       }
 
       const updated = await groupRepo.save(group);
+
+      if (Array.isArray(req.body.lessons)) {
+        const lessonRepo = AppDataSource.getRepository(Lesson);
+        await lessonRepo.delete({ group: { id: group.id } });
+        for (let i = 0; i < req.body.lessons.length; i++) {
+          const l = req.body.lessons[i];
+          if (!l || !l.title || !l.title.trim()) continue;
+          const newLesson = new Lesson();
+          newLesson.title = l.title.trim();
+          newLesson.chapter = (l.chapter && l.chapter.trim()) ? l.chapter.trim() : "الوحدة الأولى";
+          newLesson.duration = l.duration ? String(l.duration).trim() : "45:00";
+          newLesson.description = l.description ? l.description.trim() : "";
+          newLesson.order = typeof l.order === "number" ? l.order : i;
+          newLesson.videoUrl = l.videoUrl ? l.videoUrl.trim() : "";
+          newLesson.notes = l.notes ? l.notes.trim() : "";
+          newLesson.course = group.course;
+          newLesson.group = group;
+          await lessonRepo.save(newLesson);
+        }
+      }
+
       return res.status(200).json(updated);
     } catch (err: any) {
       console.error("Error updating course group:", err);
@@ -712,6 +878,95 @@ export class CourseGroupController {
       );
 
       return res.status(200).json(groupsWithStats);
+    } catch (err: any) {
+      console.error("Error fetching teacher groups:", err);
+      return res.status(500).json({ error: "Failed to fetch teacher groups." });
+    }
+  }
+
+  // GET /teachers/:id/groups - Get all groups for a specific teacher (public/profile view)
+  static async getTeacherGroups(req: any, res: Response) {
+    try {
+      const { id: teacherId } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+
+      const groups = await groupRepo.find({
+        where: [
+          { teacher: { id: teacherId } },
+          { course: { teacher: { id: teacherId } } }
+        ],
+        relations: ["course", "course.grade", "course.subject", "teacher", "enrollments", "lessons"],
+        order: { createdAt: "DESC" }
+      });
+
+      const isOwnerOrAdmin = req.user && (req.user.id === teacherId || req.user.role === "admin");
+
+      const visibleGroups = groups.filter(g => g.status !== "REJECTED");
+
+      const result = visibleGroups.map(g => {
+        const enrolledCount = (g.enrollments || []).filter(e => !e.status || e.status.toLowerCase() === "active" || e.status.toLowerCase() === "confirmed").length;
+        const maxSeats = g.maxStudents || 25;
+        const availableSeats = Math.max(0, maxSeats - enrolledCount);
+        const isFull = enrolledCount >= maxSeats;
+
+        return {
+          id: g.id,
+          name: g.name,
+          description: g.description,
+          scheduleDays: g.scheduleDays,
+          scheduleTime: g.scheduleTime,
+          scheduleText: g.scheduleText,
+          maxStudents: maxSeats,
+          enrolledCount,
+          availableSeats,
+          isFull,
+          meetingLink: isOwnerOrAdmin ? g.meetingLink : "",
+          status: isFull ? "FULL" : g.status,
+          startDate: g.startDate,
+          endDate: g.endDate,
+          totalSessions: g.totalSessions,
+          sessionDuration: g.sessionDuration,
+          sessionPrice: g.sessionPrice,
+          monthlyPrice: g.monthlyPrice,
+          studentHourlyRate: g.studentHourlyRate,
+          billingCycle: g.billingCycle,
+          course: g.course ? {
+            id: g.course.id,
+            title: g.course.title,
+            description: g.course.description,
+            image: g.course.image,
+            category: g.course.category,
+            grade: g.course.grade ? {
+              id: g.course.grade.id,
+              name: g.course.grade.name,
+              stage: g.course.grade.stage
+            } : null,
+            subject: g.course.subject ? {
+              id: g.course.subject.id,
+              name: g.course.subject.name
+            } : null
+          } : null,
+          teacher: g.teacher ? {
+            id: g.teacher.id,
+            name: g.teacher.name,
+            avatar: g.teacher.avatar,
+            headline: (g.teacher as any).headline || (g.teacher as any).bio || g.teacher.education || "معلم معتمد",
+            bio: (g.teacher as any).bio || g.teacher.education || "",
+            education: g.teacher.education,
+            phone: g.teacher.phone
+          } : null,
+          lessons: (g.lessons || []).sort((a, b) => (a.order || 0) - (b.order || 0)).map(l => ({
+            id: l.id,
+            title: l.title,
+            description: l.description,
+            duration: l.duration || "45:00",
+            chapter: l.chapter || "الوحدة الأولى",
+            order: l.order || 0
+          }))
+        };
+      });
+
+      return res.status(200).json(result);
     } catch (err: any) {
       console.error("Error fetching teacher groups:", err);
       return res.status(500).json({ error: "Failed to fetch teacher groups." });

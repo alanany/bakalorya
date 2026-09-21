@@ -10,6 +10,8 @@ const data_source_1 = require("../data-source");
 const User_1 = require("../entity/User");
 const auth_1 = require("../middleware/auth");
 const whatsapp_1 = require("../utils/whatsapp");
+const rateLimiter_1 = require("../middleware/rateLimiter");
+const sanitize_1 = require("../utils/sanitize");
 class AuthController {
     static async register(req, res) {
         const { name, email, password, role, location, education, phone, parentPhone } = req.body;
@@ -34,19 +36,19 @@ class AuthController {
             }
             const hashedPassword = await bcryptjs_1.default.hash(password, 10);
             const user = new User_1.User();
-            user.name = name;
-            user.email = email;
+            user.name = (0, sanitize_1.sanitizeString)(name).trim();
+            user.email = (0, sanitize_1.sanitizeString)(email).trim().toLowerCase();
             user.password = hashedPassword;
             user.role = userRole;
             if (location)
-                user.location = location;
+                user.location = (0, sanitize_1.sanitizeString)(location).trim();
             if (education)
-                user.education = education;
+                user.education = (0, sanitize_1.sanitizeString)(education).trim();
             if (phone)
-                user.phone = phone;
+                user.phone = (0, sanitize_1.sanitizeString)(phone).trim();
             if (parentPhone)
-                user.parentPhone = parentPhone;
-            user.avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+                user.parentPhone = (0, sanitize_1.sanitizeString)(parentPhone).trim();
+            user.avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.name)}`;
             await userRepository.save(user);
             let whatsappNotification = null;
             if (user.phone) {
@@ -81,6 +83,10 @@ class AuthController {
             if (!isMatch) {
                 return res.status(400).json({ error: "Invalid email or password." });
             }
+            if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+                const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
+                return res.status(403).json({ error: `عفواً، تم حظر هذا الحساب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى التواصل مع الدعم الفني.` });
+            }
             if (expectedRole === "student" && user.role !== "student") {
                 return res.status(403).json({ error: "عفواً، هذا المسار مخصص للطلاب فقط. يرجى استخدام بوابة المعلمين والإدارة." });
             }
@@ -90,9 +96,15 @@ class AuthController {
             const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, auth_1.JWT_SECRET, {
                 expiresIn: "7d",
             });
+            // Clear failed rate limit attempts upon successful authentication
+            try {
+                const ip = req.ip || req.headers["x-forwarded-for"] || "ip";
+                (0, rateLimiter_1.resetRateLimit)("auth_limiter", `${ip}:${email}`);
+            }
+            catch (e) { }
             return res.status(200).json({
                 token,
-                user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [] },
+                user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [], isBlocked: user.isBlocked, status: user.status },
             });
         }
         catch (err) {
@@ -115,6 +127,13 @@ class AuthController {
             if (!isMatch) {
                 return res.status(400).json({ error: "بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور." });
             }
+            // Check if student is blocked
+            if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+                const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
+                return res.status(403).json({
+                    error: `عفواً، تم حظر حساب الطالب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى مراجعة إدارة الأكاديمية.`
+                });
+            }
             // Restrict strictly to Students
             if (user.role !== "student") {
                 const roleName = user.role === "teacher" ? "معلم" : "مشرف / إدارة";
@@ -125,6 +144,12 @@ class AuthController {
             const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, auth_1.JWT_SECRET, {
                 expiresIn: "7d",
             });
+            // Clear failed rate limit attempts upon successful authentication
+            try {
+                const ip = req.ip || req.headers["x-forwarded-for"] || "ip";
+                (0, rateLimiter_1.resetRateLimit)("auth_limiter", `${ip}:${email}`);
+            }
+            catch (e) { }
             return res.status(200).json({
                 token,
                 user: {
@@ -138,7 +163,9 @@ class AuthController {
                     location: user.location,
                     education: user.education,
                     meetingLink: user.meetingLink,
-                    teacherCapabilities: user.teacherCapabilities || []
+                    teacherCapabilities: user.teacherCapabilities || [],
+                    isBlocked: user.isBlocked,
+                    status: user.status
                 },
             });
         }
@@ -162,6 +189,13 @@ class AuthController {
             if (!isMatch) {
                 return res.status(400).json({ error: "بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور." });
             }
+            // Check if staff / teacher is blocked
+            if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+                const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
+                return res.status(403).json({
+                    error: `عفواً، تم حظر هذا الحساب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى مراجعة إدارة الأكاديمية.`
+                });
+            }
             // Restrict strictly to Teacher or Admin
             if (user.role !== "teacher" && user.role !== "admin") {
                 return res.status(403).json({
@@ -171,6 +205,12 @@ class AuthController {
             const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, auth_1.JWT_SECRET, {
                 expiresIn: "7d",
             });
+            // Clear failed rate limit attempts upon successful authentication
+            try {
+                const ip = req.ip || req.headers["x-forwarded-for"] || "ip";
+                (0, rateLimiter_1.resetRateLimit)("auth_limiter", `${ip}:${email}`);
+            }
+            catch (e) { }
             return res.status(200).json({
                 token,
                 user: {
@@ -184,7 +224,9 @@ class AuthController {
                     location: user.location,
                     education: user.education,
                     meetingLink: user.meetingLink,
-                    teacherCapabilities: user.teacherCapabilities || []
+                    teacherCapabilities: user.teacherCapabilities || [],
+                    isBlocked: user.isBlocked,
+                    status: user.status
                 },
             });
         }
@@ -202,8 +244,11 @@ class AuthController {
             if (!user) {
                 return res.status(404).json({ error: "User not found." });
             }
+            if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+                return res.status(403).json({ error: "تم حظر هذا الحساب من دخول الأكاديمية من قبل الإدارة." });
+            }
             return res.status(200).json({
-                user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [] },
+                user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, parentPhone: user.parentPhone, location: user.location, education: user.education, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities || [], isBlocked: user.isBlocked, status: user.status },
             });
         }
         catch (err) {

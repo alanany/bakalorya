@@ -12,7 +12,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const data_source_1 = require("../data-source");
 const User_1 = require("../entity/User");
 exports.JWT_SECRET = process.env.JWT_SECRET || "bakalorya_secret_key_123_456";
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).json({ error: "Access denied. No token provided." });
@@ -24,6 +24,17 @@ function authMiddleware(req, res, next) {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, exports.JWT_SECRET);
         req.user = decoded;
+        const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+        const user = await userRepository.findOne({
+            where: { id: decoded.id },
+            select: ["id", "status", "isBlocked"]
+        });
+        if (!user) {
+            return res.status(401).json({ error: "المستخدم غير موجود." });
+        }
+        if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+            return res.status(403).json({ error: "تم حظر هذا الحساب من دخول الأكاديمية من قبل الإدارة." });
+        }
         next();
     }
     catch (err) {
