@@ -55,9 +55,7 @@ export default class BlogDetailsView {
 
   renderContent() {
     const b = this.blog;
-    const authorName = b.author?.name || "فريق المنصة";
-    const authorAvatar = b.author?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${authorName}`;
-    const pubDate = new Date(b.createdAt).toLocaleDateString("ar", { year: "numeric", month: "long", day: "numeric" });
+    const pubDate = new Date(b.createdAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const formattedContent = b.content ? b.content.split('\n\n').map(p => `<p style="line-height:1.9; font-size:1.1rem; color:var(--text-color); margin-bottom:20px;">${p.trim()}</p>`).join('') : '';
 
     this.container.innerHTML = `
@@ -87,14 +85,11 @@ export default class BlogDetailsView {
             </div>
           </div>
 
-          <!-- Author Info & Metadata Bar -->
-          <div style="padding:20px 32px; background:var(--bg-card); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <img src="${authorAvatar}" style="width:46px; height:46px; border-radius:50%; border:2px solid var(--primary);">
-              <div>
-                <h4 style="font-size:0.95rem; font-weight:700; margin:0 0 2px 0;">${authorName}</h4>
-                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">أستاذ ومؤطر بمنصة انطلق</p>
-              </div>
+          <!-- Metadata Bar (Publication Date & Read Time) -->
+          <div style="padding:18px 32px; background:var(--bg-card); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.88rem; color:var(--text-muted); font-weight:700;">
+              <i data-lucide="newspaper" style="width:18px; height:18px; color:var(--primary);"></i>
+              <span>مقال تربوي وتعليمي</span>
             </div>
             <div style="display:flex; align-items:center; gap:20px; font-size:0.85rem; color:var(--text-muted);">
               <span style="display:flex; align-items:center; gap:6px;">

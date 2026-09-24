@@ -470,9 +470,11 @@ export default class TeacherDetailsView {
                       <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.6; margin:0;">${blog.content.substring(0, 100)}...</p>
                     </div>
                   </div>
-                  <div style="padding:16px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
-                    <span style="font-size:0.8rem; font-weight:700; color:var(--text-color);">${name}</span>
-                    <span style="font-size:0.8rem; font-weight:800; color:var(--primary);">اقرأ المقال ➔</span>
+                  <div style="padding:14px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+                    <span style="font-size:0.78rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="book-open" style="width:14px;height:14px;color:var(--primary);"></i> مقال تعليمي
+                    </span>
+                    <span style="font-size:0.82rem; font-weight:800; color:var(--primary);">اقرأ المقال ➔</span>
                   </div>
                 </div>
               `).join('')}

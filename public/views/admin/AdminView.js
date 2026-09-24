@@ -11,6 +11,7 @@ import { AdminEarningsPage }       from './AdminEarningsPage.js';
 import { AdminPlansPage }          from './AdminPlansPage.js';
 import { AdminSettingsPage }       from './AdminSettingsPage.js';
 import { AdminCurriculumPage }     from './AdminCurriculumPage.js';
+import { AdminBlogsPage }          from './AdminBlogsPage.js';
 
 export default class AdminView {
 
@@ -38,6 +39,7 @@ export default class AdminView {
     this.subscriptions = [];
     this.adminEarnings = null;
     this.allPlans = [];
+    this.allBlogs = [];
     this.platformSettings = null;
     this.subFilter = "all";
     this.expandedStudents = new Set();
@@ -413,6 +415,11 @@ export default class AdminView {
               خطط وباقات الاشتراكات
               <span class="admin-nav-badge" id="admin-badge-plans">0</span>
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "blogs" ? "active" : ""}" data-tab="blogs">
+              <i data-lucide="newspaper"></i>
+              📰 إدارة المدونة والمقالات
+              <span class="admin-nav-badge" id="admin-badge-blogs" style="background:#ec4899; color:#fff;">0</span>
+            </button>
 
             <div class="admin-nav-section">إدارة الأعضاء</div>
             <button class="admin-nav-btn ${this.activeTab === "teachers" ? "active" : ""}" data-tab="teachers">
@@ -512,12 +519,14 @@ export default class AdminView {
     el("admin-badge-applications", pendingApps.length);
     el("admin-badge-subscriptions", (this.subscriptions || []).length);
     el("admin-badge-plans", (this.allPlans || []).length);
+    const pendingBlogs = (this.allBlogs || []).filter(b => b.status === "PENDING");
+    el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
   }
 
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -531,7 +540,8 @@ export default class AdminView {
         apiFetch("/admin/enrollments").catch(() => []),
         apiFetch("/admin/settings").catch(() => ({})),
         apiFetch("/admin/groups/pending-approval").catch(() => []),
-        apiFetch("/admin/all-groups").catch(() => [])
+        apiFetch("/admin/all-groups").catch(() => []),
+        apiFetch("/admin/blogs").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -546,6 +556,7 @@ export default class AdminView {
       this.enrollments = enrollments || [];
       this.pendingCourseGroups = pendingGroups || [];
       this.allCourseGroups = allGroups || [];
+      this.allBlogs = blogs || [];
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -621,6 +632,7 @@ export default class AdminView {
     subscriptions: { heading: "📅 إدارة الاشتراكات", sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
     plans: { heading: "✨ خطط وباقات الاشتراكات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، وتخصيص الباقات لكل كورس" },
+    blogs: { heading: "📰 إدارة المدونة والمقالات", sub: "مراجعة واعتماد أو رفض مقالات المعلمين، ونشر مقالات جديدة كمسؤول" },
     settings: { heading: "⚙️ إعدادات المنصة ورقم الواتساب", sub: "إدارة رقم الواتساب الرسمي، أرقام الدعم الهاتفي، والبريد الإلكتروني للواجهة الرئيسية" },
   };
 
@@ -661,6 +673,10 @@ export default class AdminView {
     else if (tab === "subscriptions") content.innerHTML = this.renderSubscriptionsTab();
     else if (tab === "earnings") content.innerHTML = this.renderEarningsTab();
     else if (tab === "plans") content.innerHTML = this.renderPlansTab();
+    else if (tab === "blogs") {
+      content.innerHTML = this.renderBlogsTab();
+      this.bindBlogsEvents?.();
+    }
     else if (tab === "settings") {
       content.innerHTML = this.renderSettingsTab();
       this.bindSettingsEvents?.();
@@ -1655,4 +1671,5 @@ Object.assign(AdminView.prototype, AdminSubscriptionsPage);
 Object.assign(AdminView.prototype, AdminReportsPage);
 Object.assign(AdminView.prototype, AdminEarningsPage);
 Object.assign(AdminView.prototype, AdminPlansPage);
+Object.assign(AdminView.prototype, AdminBlogsPage);
 Object.assign(AdminView.prototype, AdminSettingsPage);

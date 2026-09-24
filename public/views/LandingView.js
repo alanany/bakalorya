@@ -543,8 +543,8 @@ export default class LandingView {
             </div>
 
             <!-- Centered Horizontal Cards Scroll Container -->
-            <div style="width:100%; display:flex; justify-content:center;">
-              <div id="top-teachers-container" style="display:flex; gap:16px; overflow-x:auto; padding:6px 10px 14px 10px; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; width:max-content; max-width:100%; margin:0 auto; justify-content:center; min-height:80px;">
+            <div style="width:100%; max-width:1200px; margin:0 auto; position:relative; overflow:hidden;">
+              <div id="top-teachers-container" style="display:flex; gap:16px; overflow-x:auto; padding:8px 12px 18px 12px; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; width:100%; min-height:80px; scrollbar-width:none; -ms-overflow-style:none;">
               </div>
             </div>
 
@@ -1418,6 +1418,7 @@ export default class LandingView {
             <a href="#teacher/${teacher.id}" class="btn-secondary" style="width:100%; justify-content:center; font-size:0.75rem; padding:6px 8px; border-radius:14px; text-decoration:none; display:inline-flex;" onclick="event.stopPropagation();">الملف والدورات ➔</a>
           </div>
         `).join("");
+        this.initTeachersAutoScroll();
       }
     }
 
@@ -1441,12 +1442,11 @@ export default class LandingView {
                 <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.6; margin:0;">${blog.content.substring(0, 110)}...</p>
               </div>
             </div>
-            <div style="padding:16px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.02);">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <img src="${blog.author?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${blog.author?.name || 'Teacher'}`}" style="width:32px; height:32px; border-radius:50%; background:var(--bg-app); object-fit:cover;">
-                <span style="font-size:0.8rem; font-weight:700; color:var(--text-color);">${blog.author?.name || 'أستاذ المنصة'}</span>
-              </div>
-              <span style="font-size:0.8rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:4px;">
+            <div style="padding:14px 20px; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.02);">
+              <span style="font-size:0.78rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="book-open" style="width:14px;height:14px;color:var(--primary);"></i> مقال تربوي
+              </span>
+              <span style="font-size:0.82rem; font-weight:800; color:var(--primary); display:flex; align-items:center; gap:4px;">
                 اقرأ المقال ➔
               </span>
             </div>
@@ -1521,21 +1521,128 @@ export default class LandingView {
       });
     });
 
-    // Top Teachers Horizontal Scroll Controls
+    // Top Teachers Carousel & Auto-Scroll
+    this.initTeachersAutoScroll();
+
+    this.bindChartEvents();
+  }
+
+  initTeachersAutoScroll() {
     const teachersContainer = this.container.querySelector("#top-teachers-container");
     const scrollRightBtn = this.container.querySelector("#teachers-scroll-right");
     const scrollLeftBtn = this.container.querySelector("#teachers-scroll-left");
 
-    if (teachersContainer && scrollRightBtn && scrollLeftBtn) {
-      scrollRightBtn.addEventListener("click", () => {
-        teachersContainer.scrollBy({ left: 300, behavior: "smooth" });
-      });
-      scrollLeftBtn.addEventListener("click", () => {
-        teachersContainer.scrollBy({ left: -300, behavior: "smooth" });
-      });
+    if (!teachersContainer) return;
+
+    if (this.teachersAutoScrollTimer) {
+      clearInterval(this.teachersAutoScrollTimer);
+      this.teachersAutoScrollTimer = null;
     }
 
-    this.bindChartEvents();
+    let isPaused = false;
+    let resumeTimeout = null;
+
+    const pause = (resumeDelay = 0) => {
+      isPaused = true;
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      if (resumeDelay > 0) {
+        resumeTimeout = setTimeout(() => {
+          isPaused = false;
+        }, resumeDelay);
+      }
+    };
+
+    const resume = () => {
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      isPaused = false;
+    };
+
+    const getStepSize = () => {
+      const firstCard = teachersContainer.firstElementChild;
+      if (firstCard && firstCard.getBoundingClientRect().width > 50) {
+        return Math.round(firstCard.getBoundingClientRect().width + 16);
+      }
+      return 210;
+    };
+
+    const isRTL = () => {
+      return document.documentElement.dir === "rtl" || getComputedStyle(document.body).direction === "rtl";
+    };
+
+    const adjustAlignment = () => {
+      if (teachersContainer.scrollWidth > teachersContainer.clientWidth + 10) {
+        teachersContainer.style.justifyContent = "flex-start";
+      } else {
+        teachersContainer.style.justifyContent = "center";
+      }
+    };
+    adjustAlignment();
+
+    const doScrollStep = () => {
+      if (isPaused) return;
+
+      const maxScroll = teachersContainer.scrollWidth - teachersContainer.clientWidth;
+      if (maxScroll <= 10) {
+        adjustAlignment();
+        return;
+      }
+
+      teachersContainer.style.justifyContent = "flex-start";
+      const step = getStepSize();
+      const rtl = isRTL();
+
+      if (rtl) {
+        // Modern browsers in RTL: Next cards are towards the left (-scroll)
+        const currentAbs = Math.abs(teachersContainer.scrollLeft);
+
+        if (currentAbs >= maxScroll - 20) {
+          teachersContainer.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          teachersContainer.scrollBy({ left: -step, behavior: "smooth" });
+        }
+      } else {
+        // LTR: Next cards are towards the right (+scroll)
+        if (teachersContainer.scrollLeft >= maxScroll - 20) {
+          teachersContainer.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          teachersContainer.scrollBy({ left: step, behavior: "smooth" });
+        }
+      }
+    };
+
+    // Auto-scroll every 2.8 seconds
+    this.teachersAutoScrollTimer = setInterval(doScrollStep, 2800);
+
+    // Pause on user mouse hover over cards
+    teachersContainer.onmouseenter = () => pause();
+    teachersContainer.onmouseleave = () => resume();
+
+    // Pause on user touch interaction on mobile devices
+    teachersContainer.ontouchstart = () => pause();
+    teachersContainer.ontouchend = () => pause(2500);
+
+    // Manual navigation buttons
+    if (scrollRightBtn) {
+      scrollRightBtn.onclick = () => {
+        pause(4000);
+        const step = getStepSize();
+        // In RTL: right arrow moves backwards towards start (positive); in LTR: moves right (positive)
+        teachersContainer.scrollBy({ left: step, behavior: "smooth" });
+      };
+      scrollRightBtn.onmouseenter = () => pause();
+      scrollRightBtn.onmouseleave = () => resume();
+    }
+
+    if (scrollLeftBtn) {
+      scrollLeftBtn.onclick = () => {
+        pause(4000);
+        const step = getStepSize();
+        // In RTL: left arrow moves forward to next cards (negative); in LTR: moves left (negative)
+        teachersContainer.scrollBy({ left: -step, behavior: "smooth" });
+      };
+      scrollLeftBtn.onmouseenter = () => pause();
+      scrollLeftBtn.onmouseleave = () => resume();
+    }
   }
 
   bindChartEvents() {
@@ -1860,6 +1967,10 @@ export default class LandingView {
   }
 
   onDestroy() {
+    if (this.teachersAutoScrollTimer) {
+      clearInterval(this.teachersAutoScrollTimer);
+      this.teachersAutoScrollTimer = null;
+    }
     if (this.chartInstance) {
       this.chartInstance.destroy();
       this.chartInstance = null;

@@ -1195,7 +1195,6 @@ export function updateHeader() {
           ${createNavSection("الأكاديميا والأنشطة")}
           ${createNavItem("#tests", "check-square", "الاختبارات والتقييمات")}
           ${createNavItem("#resources", "library", "المكتبة والمذكرات")}
-          ${createNavItem("#teacher-blogs", "pen-tool", "المقالات والمدونات")}
           ${createNavItem("#teacher-financial", "wallet", "المحفظة والأرباح")}
           ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
         `;
@@ -1960,7 +1959,7 @@ export async function router() {
     window.location.hash = "#landing";
     return router();
   }
-  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-blogs" || routeBase === "#teacher-private-sessions" || routeBase === "#teacher-groups" || routeBase === "#teacher-financial") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
+  if ((routeBase === "#teacher-portal" || routeBase === "#enrollment-requests" || routeBase === "#teacher-private-sessions" || routeBase === "#teacher-groups" || routeBase === "#teacher-financial") && (!state.user || (state.user.role !== "teacher" && state.user.role !== "admin"))) {
     showToast(t("error.accessRestricted") || "الوصول مقيد للمعلمين والمشرفين.", "error");
     window.location.hash = "#landing";
     return router();
@@ -2031,7 +2030,18 @@ export async function router() {
       }
       ViewClass = RequestsView; 
       break;
-    case "#teacher-blogs": ViewClass = TeacherBlogsView; break;
+    case "#teacher-blogs":
+      if (state.user?.role === "teacher") {
+        showToast("إدارة المدونة والمقالات مخصصة لإدارة المنصة حصراً.", "info");
+        window.location.hash = "#teacher-portal";
+        return;
+      }
+      if (state.user?.role === "admin") {
+        window.location.hash = "#admin-dashboard";
+        return;
+      }
+      window.location.hash = "#landing";
+      return;
     case "#blog": ViewClass = BlogDetailsView; break;
     case "#classroom": ViewClass = ClassroomView; break;
     case "#group":

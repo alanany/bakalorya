@@ -300,11 +300,13 @@ router.get("/categories", CategoryController.getAll);
 router.post("/categories", authMiddleware, requireRole(["admin"]), CategoryController.create);
 router.put("/categories/:id", authMiddleware, requireRole(["admin"]), CategoryController.update);
 router.delete("/categories/:id", authMiddleware, requireRole(["admin"]), CategoryController.delete);
-router.get("/blogs", BlogController.getAll);
-router.get("/blogs/:id", BlogController.getOne);
-router.post("/blogs", authMiddleware, requireRole(["teacher", "admin"]), BlogController.create);
-router.put("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), BlogController.update);
-router.delete("/blogs/:id", authMiddleware, requireRole(["teacher", "admin"]), BlogController.delete);
+router.get("/blogs", optionalAuthMiddleware, BlogController.getAll);
+router.get("/blogs/:id", optionalAuthMiddleware, BlogController.getOne);
+router.post("/blogs", authMiddleware, requireRole(["admin"]), BlogController.create);
+router.put("/blogs/:id", authMiddleware, requireRole(["admin"]), BlogController.update);
+router.delete("/blogs/:id", authMiddleware, requireRole(["admin"]), BlogController.delete);
+router.get("/admin/blogs", authMiddleware, requireRole(["admin"]), BlogController.getAdminBlogs);
+router.patch("/admin/blogs/:id/status", authMiddleware, requireRole(["admin"]), BlogController.updateStatus);
 
 // Assignments & Submissions
 router.get("/assignments/teacher-review", authMiddleware, requireRole(["teacher", "admin"]), AssignmentController.getTeacherAssignmentsReview);

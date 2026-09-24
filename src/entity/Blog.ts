@@ -21,6 +21,12 @@ export class Blog {
   @Column({ default: "📖 5 دقائق قراءة" })
   readTime!: string;
 
+  @Column({ default: "APPROVED" })
+  status!: "PENDING" | "APPROVED" | "REJECTED";
+
+  @Column({ type: "text", nullable: true })
+  rejectionReason?: string;
+
   @ManyToOne(() => User, { onDelete: "CASCADE", eager: true })
   author!: User;
 

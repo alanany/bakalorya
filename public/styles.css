@@ -3629,3 +3629,12 @@ body.sidebar-open {
     padding: 16px 10px;
   }
 }
+
+/* Teachers Carousel Auto-Scroll & Custom Scroll Styling */
+#top-teachers-container {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#top-teachers-container::-webkit-scrollbar {
+  display: none;
+}
