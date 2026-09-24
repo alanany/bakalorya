@@ -45,6 +45,7 @@ import ScheduleView from "./views/shared/ScheduleView.js";
 import ClassroomView from "./views/shared/ClassroomView.js";
 import GroupHubView from "./views/shared/GroupHubView.js";
 import { applyPageSEO } from "./seo.js";
+import { initGoogleAnalytics } from "./analytics.js";
 
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
@@ -892,6 +893,7 @@ async function initApp() {
     document.documentElement.lang = state.language;
     document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
 
+    initGoogleAnalytics();
     setupEventListeners();
     window.addEventListener("hashchange", router);
 

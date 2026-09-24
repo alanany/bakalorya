@@ -1,5 +1,6 @@
 // SEO Manager for Entlq / Bakalorya Single Page Application (SPA)
 // Dynamically updates Title, Meta Tags, OpenGraph, Twitter Cards, and Structured Data on every route transition.
+import { trackPageView } from "./analytics.js";
 
 export const BASE_URL = "https://www.entlqedu.com";
 export const DEFAULT_OG_IMAGE = `${BASE_URL}/assets/logo.png`;
@@ -198,6 +199,9 @@ export function applyPageSEO(routeBase, routeParam = null) {
 
     // 7. Dynamic Breadcrumb Schema for SEO rich results
     updateBreadcrumbSchema(cleanRoute, finalTitle);
+
+    // 8. Track SPA Page View in Google Analytics
+    trackPageView(finalTitle, cleanRoute);
 
   } catch (err) {
     console.warn("SEO update notice:", err);
