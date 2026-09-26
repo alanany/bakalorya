@@ -856,8 +856,27 @@ export class CurriculumController {
 
         const teacher = group.teacher || group.course.teacher;
 
-        const groupPrice = group.monthlyPrice || group.course.price || 320;
-        const sessionPrice = group.sessionPrice || (groupPrice > 0 ? Math.round(groupPrice / 8) : 40);
+        const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+        const daysText = (group.scheduleDays || group.scheduleText || "");
+        const matchedDays = arabicDays.filter(day => daysText.includes(day));
+        const daysCount = matchedDays.length;
+
+        let sessionsPerMonth = 8;
+        if (daysCount > 0) {
+          sessionsPerMonth = daysCount * 4;
+        } else if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 6) {
+          sessionsPerMonth = group.totalSessions;
+        }
+
+        const sessionPrice = group.sessionPrice || group.studentHourlyRate || (group.monthlyPrice > 0 ? Math.round(group.monthlyPrice / sessionsPerMonth) : 40);
+
+        let groupPrice = group.monthlyPrice;
+        if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions === 4 && groupPrice === sessionPrice * 8))) {
+          groupPrice = sessionPrice * sessionsPerMonth;
+          groupRepo.update(group.id, { monthlyPrice: groupPrice }).catch(() => {});
+        } else if (!groupPrice) {
+          groupPrice = group.course?.price || (sessionPrice * sessionsPerMonth);
+        }
 
         groupCards.push({
           groupId: group.id,

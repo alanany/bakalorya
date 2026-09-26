@@ -355,7 +355,10 @@ export default class AuthView {
             method: "POST",
             body: JSON.stringify({ name, email, password, phone, parentPhone, location, education, role: "student" })
           });
-          if (data && data.token && data.user) {
+          if (data && data.pendingApproval) {
+            setLoading(false);
+            this.renderPendingApprovalNotice(data.message, name);
+          } else if (data && data.token && data.user) {
             setAuth(data.token, data.user);
             // Navigation happens, no need to re-enable button
           } else {
@@ -387,6 +390,55 @@ export default class AuthView {
         }
       }
     });
+  }
+
+  renderPendingApprovalNotice(message, name) {
+    const card = document.getElementById("auth-form-card");
+    const titleEl = document.getElementById("auth-header-title");
+    const descEl = document.getElementById("auth-header-desc");
+    const tabsNav = this.container.querySelector(".auth-tabs-nav");
+
+    if (titleEl) titleEl.textContent = "طلب الانضمام قيد المراجعة والاعتماد ⏳";
+    if (descEl) descEl.textContent = "تم استلام بياناتك بنجاح وبانتظار موافقة الإدارة";
+    if (tabsNav) tabsNav.style.display = "none";
+
+    if (card) {
+      card.innerHTML = `
+        <div style="text-align:center; padding:24px 10px; display:flex; flex-direction:column; align-items:center; gap:16px;">
+          <div style="width:76px; height:76px; border-radius:50%; background:linear-gradient(135deg, rgba(245,158,11,0.18), rgba(16,185,129,0.18)); color:#d97706; display:flex; align-items:center; justify-content:center; border:2px solid rgba(245,158,11,0.35); box-shadow:0 12px 28px rgba(245,158,11,0.25);">
+            <i data-lucide="clock" style="width:40px; height:40px;"></i>
+          </div>
+
+          <div>
+            <span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; font-size:0.8rem; font-weight:800; padding:4px 12px; border-radius:20px; display:inline-block; margin-bottom:10px;">
+              ⏳ تم استلام بيانات التسجيل بنجاح
+            </span>
+            <h3 style="font-size:1.35rem; font-weight:900; color:var(--text-main); margin:0 0 10px 0;">
+              أهلاً بك يا ${name || 'طالبنا العزيز'}!
+            </h3>
+            <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.7; margin:0 auto; max-width:420px;">
+              ${message || "تم إنشاء حسابك بنجاح! حسابك الآن <strong>قيد المراجعة والاعتماد من قبل إدارة الأكاديمية</strong> قبل تفعيل الدخول إلى لوحة التحكم."}
+              <br>
+              بمجرد موافقة الإدارة على طلبك، ستتمكن من تسجيل الدخول والوصول لكافة الحصص والدروس.
+            </p>
+          </div>
+
+          <div style="background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); border-radius:14px; padding:14px 18px; font-size:0.82rem; color:var(--text-muted); text-align:start; width:100%; box-sizing:border-box; line-height:1.5;">
+            💡 <strong>ملاحظة هامة:</strong> تتم مراجعة الحسابات الجديدة سريعاً من قبل الإدارة لضمان صحة البيانات وتجهيز الجدول الدراسي. عند اعتماد الحساب ستتمكن من الدخول فوراً.
+          </div>
+
+          <button type="button" id="go-to-login-after-pending" class="btn-primary" style="padding:12px 28px; font-size:0.92rem; font-weight:800; border-radius:14px; width:100%; cursor:pointer;">
+            الانتقال لصفحة الدخول 🔑
+          </button>
+        </div>
+      `;
+
+      if (window.lucide) window.lucide.createIcons();
+
+      document.getElementById("go-to-login-after-pending")?.addEventListener("click", () => {
+        window.location.hash = "#login";
+      });
+    }
   }
 
   onDestroy() { }

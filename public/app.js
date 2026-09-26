@@ -1954,6 +1954,13 @@ export async function router() {
   applyPageSEO(routeBase, routeParam);
 
   // Security
+  if (state.user && state.user.status === "PENDING" && state.user.role === "student") {
+    clearAuth(true);
+    showToast("عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية.", "warning");
+    window.location.hash = "#login";
+    return router();
+  }
+
   if ((routeBase === "#student-dashboard" || routeBase === "#group" || routeBase === "#group-hub") && !state.user) {
     showToast(t("error.loginRequired") || "الرجاء تسجيل الدخول أولاً.", "error");
     window.location.hash = "#landing";

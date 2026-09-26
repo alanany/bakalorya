@@ -167,12 +167,16 @@ export class SessionBookingController {
 
       const session = await sessionRepository.findOne({
         where: { id },
-        relations: ["teacher", "student", "subscription", "group"]
+        relations: ["teacher", "student", "subscription", "group", "course", "group.teacher"]
       });
 
       if (!session) return res.status(404).json({ error: "الحصة غير موجودة." });
 
-      if (session.teacher.id !== req.user!.id && req.user!.role !== "admin") {
+      const teacher = session.teacher || session.group?.teacher || session.course?.teacher;
+      const isTeacher = teacher && teacher.id === req.user!.id;
+      const isAdmin = req.user!.role === "admin";
+
+      if (!isTeacher && !isAdmin) {
         return res.status(403).json({ error: "غير مصرح لك بإكمال هذه الحصة." });
       }
 
@@ -188,21 +192,23 @@ export class SessionBookingController {
 
       // Check if teacher has confirmed attendance during the session window
       if (session.group) {
-        let teacherAttendance = await attendanceRepository.findOne({
-          where: {
-            session: { id: session.id },
-            user: { id: session.teacher.id }
+        if (teacher) {
+          let teacherAttendance = await attendanceRepository.findOne({
+            where: {
+              session: { id: session.id },
+              user: { id: teacher.id }
+            }
+          });
+          if (!teacherAttendance) {
+            teacherAttendance = new SessionAttendance();
+            teacherAttendance.session = session;
+            teacherAttendance.user = teacher;
+            teacherAttendance.status = "PRESENT";
+            teacherAttendance.markedBy = { id: req.user!.id } as User;
+            await attendanceRepository.save(teacherAttendance);
           }
-        });
-        if (!teacherAttendance) {
-          teacherAttendance = new SessionAttendance();
-          teacherAttendance.session = session;
-          teacherAttendance.user = session.teacher;
-          teacherAttendance.status = "PRESENT";
-          teacherAttendance.markedBy = session.teacher;
-          await attendanceRepository.save(teacherAttendance);
         }
-      } else if (req.user!.role !== "admin") {
+      } else if (!isAdmin) {
         const teacherAttendance = await attendanceRepository.findOne({
           where: {
             session: { id: session.id },
@@ -250,26 +256,46 @@ export class SessionBookingController {
         await attendanceRepository.save(attendance);
       }
 
-      // Generate Teacher Earning record based on teacher hourly rate and session duration
+      // Generate Teacher Earning record based on group teacher hourly rate or teacher base rate and session duration
       const durationHours = (session.duration || 60) / 60;
-      const hourlyRate = (session.teacher && session.teacher.hourlyRate && session.teacher.hourlyRate > 0)
-        ? session.teacher.hourlyRate
-        : 150;
+      const hourlyRate = (session.group && session.group.teacherHourlyRate && session.group.teacherHourlyRate > 0)
+        ? session.group.teacherHourlyRate
+        : ((teacher && teacher.hourlyRate && teacher.hourlyRate > 0)
+            ? teacher.hourlyRate
+            : 150);
       const calculatedEarning = Math.round(durationHours * hourlyRate);
 
-      const earning = new TeacherEarning();
-      earning.teacher = session.teacher;
-      earning.sourceType = "SESSION_COMPLETED";
-      earning.sourceId = session.id;
-      earning.amount = calculatedEarning;
-      earning.currency = "EGP";
-      earning.status = "pending";
-      await earningRepository.save(earning);
+      let earning: TeacherEarning | null = null;
+      if (teacher) {
+        earning = await earningRepository.findOne({
+          where: {
+            teacher: { id: teacher.id },
+            sourceType: "SESSION_COMPLETED",
+            sourceId: session.id
+          }
+        });
+
+        if (!earning) {
+          earning = new TeacherEarning();
+          earning.teacher = teacher;
+          earning.sourceType = "SESSION_COMPLETED";
+          earning.sourceId = session.id;
+          earning.amount = calculatedEarning;
+          earning.currency = "EGP";
+          earning.status = "pending";
+          await earningRepository.save(earning);
+        } else {
+          earning.amount = calculatedEarning;
+          await earningRepository.save(earning);
+        }
+      }
 
       return res.status(200).json({
-        message: "تم إتمام الحصة بنجاح وخصم حصة من رصيد الاشتراك وتسجيل المستحقات للمعلم! ✅",
+        message: "تم إتمام الحصة بنجاح واحتساب مستحقات المعلم وإضافتها لمحفظته! ✅",
         session,
-        earning
+        earning,
+        calculatedEarning,
+        hourlyRate
       });
     } catch (err) {
       console.error("Complete session error:", err);

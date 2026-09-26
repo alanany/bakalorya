@@ -29,12 +29,6 @@ export class AuthController {
         return res.status(400).json({ error: "Email already registered." });
       }
 
-      if (phone) {
-        const existingPhone = await userRepository.findOneBy({ phone });
-        if (existingPhone) {
-          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
-        }
-      }
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = new User();
@@ -42,6 +36,11 @@ export class AuthController {
       user.email = sanitizeString(email).trim().toLowerCase();
       user.password = hashedPassword;
       user.role = userRole;
+      if (userRole === "student") {
+        user.status = "PENDING";
+      } else {
+        user.status = "ACTIVE";
+      }
       if (location) user.location = sanitizeString(location).trim();
       if (education) user.education = sanitizeString(education).trim();
       if (phone) user.phone = sanitizeString(phone).trim();
@@ -52,8 +51,25 @@ export class AuthController {
 
       let whatsappNotification: any = null;
       if (user.phone) {
-        const msg = buildRegistrationSuccessMessage(user.name, user.role);
+        const msg = user.role === "student"
+          ? `مرحباً ${user.name}! تم استلام طلب تسجيلك بنجاح في منصة انطلق. طلبك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية وسنقوم بإشعارك فور التفعيل لتتمكن من الدخول إلى لوحة التحكم.`
+          : buildRegistrationSuccessMessage(user.name, user.role);
         whatsappNotification = createWhatsAppNotificationPayload(user.phone, msg);
+      }
+
+      if (user.role === "student") {
+        return res.status(201).json({
+          pendingApproval: true,
+          message: "تم إنشاء حسابك بنجاح! حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية قبل السماح بالدخول إلى لوحة التحكم.",
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: user.status
+          },
+          whatsappNotification
+        });
       }
 
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
@@ -93,6 +109,12 @@ export class AuthController {
       if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
         const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
         return res.status(403).json({ error: `عفواً، تم حظر هذا الحساب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى التواصل مع الدعم الفني.` });
+      }
+
+      if (user.status === "PENDING") {
+        return res.status(403).json({
+          error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية. سيتم تفعيل حسابك والتواصل معك قريباً لتتمكن من الدخول إلى لوحة التحكم."
+        });
       }
 
       if (expectedRole === "student" && user.role !== "student") {
@@ -148,6 +170,13 @@ export class AuthController {
         const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
         return res.status(403).json({ 
           error: `عفواً، تم حظر حساب الطالب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى مراجعة إدارة الأكاديمية.` 
+        });
+      }
+
+      // Check if student account is pending approval
+      if (user.status === "PENDING") {
+        return res.status(403).json({
+          error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية. سيتم تفعيل حسابك والتواصل معك قريباً لتتمكن من الدخول إلى لوحة التحكم."
         });
       }
 

@@ -187,69 +187,91 @@ export default class SubjectGroupsView {
           }
         }
         .nagwa-teacher-group-card {
+          position: relative;
           background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          border-radius: 22px;
+          border: 1.5px solid rgba(99, 102, 241, 0.12);
+          border-radius: 24px;
           overflow: hidden;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .card-header-container {
-          background: rgba(0,0,0,0.02);
-          padding: clamp(14px, 3vw, 18px) clamp(14px, 3vw, 20px);
+        .nagwa-teacher-group-card:hover {
+          transform: translateY(-6px);
+          border-color: rgba(99, 102, 241, 0.45);
+          box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.16), 0 8px 16px -6px rgba(0, 0, 0, 0.05);
+        }
+        .nagwa-teacher-group-card:hover .enroll-group-btn {
+          box-shadow: 0 6px 20px rgba(229, 29, 116, 0.45) !important;
+          transform: translateY(-1px);
+        }
+        .card-top-accent {
+          height: 5px;
+          width: 100%;
+          background: linear-gradient(90deg, var(--primary) 0%, #a855f7 50%, #ec4899 100%);
+        }
+        .card-body-content {
+          padding: 20px 22px 16px 22px;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          gap: 14px;
+        }
+        .card-teacher-price-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-bottom: 1px solid var(--border-color);
-          flex-wrap: wrap;
           gap: 12px;
+          padding: 12px 14px;
+          background: var(--bg-app);
+          border: 1px solid rgba(0, 0, 0, 0.04);
+          border-radius: 16px;
         }
-        .card-body-container {
-          padding: clamp(16px, 3vw, 20px);
+        .card-schedule-box {
           display: flex;
-          flex-direction: column;
-          gap: 12px;
+          align-items: center;
+          gap: 10px;
+          font-size: 0.85rem;
+          font-weight: 750;
+          color: var(--text-main);
+          background: rgba(99, 102, 241, 0.04);
+          border: 1px solid rgba(99, 102, 241, 0.12);
+          border-radius: 14px;
+          padding: 10px 14px;
         }
-        .card-dates-box {
+        .card-specs-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          grid-template-columns: repeat(3, 1fr);
           gap: 8px;
+          text-align: center;
+        }
+        .card-specs-pill {
           background: var(--bg-app);
           border: 1px solid var(--border-color);
           border-radius: 14px;
-          padding: 10px 12px;
+          padding: 8px 6px;
         }
-        .card-specs-box {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 6px;
-          text-align: center;
-        }
-        .card-specs-item {
+        .card-dates-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
           background: var(--bg-app);
           border: 1px solid var(--border-color);
           border-radius: 12px;
-          padding: 8px 4px;
+          font-size: 0.76rem;
+          color: var(--text-muted);
         }
-        .card-actions-row {
+        .card-footer-actions {
           display: flex;
           gap: 10px;
           align-items: center;
-          margin-top: 4px;
-          flex-wrap: wrap;
-        }
-        .card-action-btn-main {
-          flex: 1.4;
-          min-width: 130px;
-          text-align: center;
-        }
-        .card-action-btn-details {
-          flex: 1;
-          min-width: 90px;
-          text-align: center;
+          padding: 14px 22px 18px 22px;
+          background: rgba(0, 0, 0, 0.015);
+          border-top: 1px solid var(--border-color);
         }
       </style>
 
@@ -803,9 +825,30 @@ export default class SubjectGroupsView {
 
     return list.map(group => {
       const isFull = group.isFull || group.availableSeats <= 0;
-      const monthlyPrice = group.monthlyPrice || group.price || 0;
-      const sessionPrice = group.sessionPrice || (monthlyPrice > 0 ? Math.round(monthlyPrice / 8) : 0);
-      const totalSessions = group.totalSessions || 8;
+      const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+      const daysText = (group.scheduleDays || group.scheduleText || "");
+      const matchedDays = arabicDays.filter(day => daysText.includes(day));
+      const daysCount = matchedDays.length;
+      
+      let sessionsPerMonth = 8;
+      if (daysCount > 0) {
+        sessionsPerMonth = daysCount * 4;
+      } else if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 6) {
+        sessionsPerMonth = group.totalSessions;
+      }
+
+      let sessionPrice = group.sessionPrice || group.studentHourlyRate || 0;
+      let monthlyPrice = group.monthlyPrice || group.price || 0;
+
+      if (sessionPrice > 0) {
+        if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+          monthlyPrice = sessionPrice * sessionsPerMonth;
+        }
+      } else if (monthlyPrice > 0) {
+        sessionPrice = Math.round(monthlyPrice / sessionsPerMonth);
+      }
+
+      const totalSessions = group.totalSessions || sessionsPerMonth || 8;
       const duration = group.sessionDuration || 60;
       const startDateText = group.startDate ? formatArabicDate(group.startDate) : "حسب جدول الحصص";
       const endDateText = group.endDate ? formatArabicDate(group.endDate) : "حسب جدول الحصص";
@@ -815,218 +858,249 @@ export default class SubjectGroupsView {
       
       return `
         <div class="nagwa-teacher-group-card">
-          
-          <!-- CARD HEADER -->
-          <div class="card-header-container">
+          <!-- Top Gradient Accent -->
+          <div class="card-top-accent"></div>
+
+          <!-- Card Main Body -->
+          <div class="card-body-content">
             
-            <!-- TEACHER INFO -->
-            <div style="display:flex; align-items:center; gap:12px;">
-              <img src="${teacherAvatar}" 
-                   alt="${teacherName}" 
-                   style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0; background:var(--bg-app);">
-              <div>
-                <h3 style="font-size:clamp(1rem, 2.5vw, 1.15rem); font-weight:900; color:var(--text-color); margin:0 0 4px 0;">
-                  ${teacherName}
-                </h3>
-                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">معلم المادة المعتمد</span>
+            <!-- Top Badges: Grade & Live Seats Indicator -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--primary); font-size:0.76rem; font-weight:800; padding:4px 10px; border-radius:10px; border:1px solid rgba(99,102,241,0.18); display:inline-flex; align-items:center; gap:5px;">
+                <i data-lucide="graduation-cap" style="width:13px; height:13px;"></i>
+                <span>${group.gradeName || 'المرحلة الدراسية'}</span>
+              </span>
+
+              ${isFull ? `
+                <span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.25); font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="alert-circle" style="width:11px; height:11px;"></i>
+                  <span>مكتملة بالكامل</span>
+                </span>
+              ` : `
+                <span class="badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.25); font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
+                  <span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981; display:inline-block;"></span>
+                  <span>متبقي ${group.availableSeats} مقاعد</span>
+                </span>
+              `}
+            </div>
+
+            <!-- Group Title -->
+            <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0; line-height:1.35; display:flex; align-items:center; gap:6px;">
+              <span>${group.groupName || 'مجموعة دراسية'}</span>
+            </h3>
+
+            <!-- Teacher Info & Price Box -->
+            <div class="card-teacher-price-row">
+              <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                <div style="position:relative; flex-shrink:0;">
+                  <img src="${teacherAvatar}" 
+                       alt="${teacherName}" 
+                       style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-card);">
+                  <span style="position:absolute; bottom:0px; right:0px; width:10px; height:10px; background:#10b981; border:1.5px solid var(--bg-card); border-radius:50%;" title="متواجد"></span>
+                </div>
+                <div style="min-width:0;">
+                  <div style="font-size:0.9rem; font-weight:850; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${teacherName}
+                  </div>
+                  <div style="font-size:0.72rem; color:var(--primary); font-weight:700; display:flex; align-items:center; gap:3px;">
+                    <span>معلم معتمد</span>
+                    <span style="color:#f59e0b;">★</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align:left; flex-shrink:0;">
+                <div style="font-size:0.68rem; font-weight:700; color:var(--text-muted); margin-bottom:1px;">الاشتراك الشهري</div>
+                <div style="font-size:1.22rem; font-weight:900; color:#e51d74; line-height:1.1; letter-spacing:-0.5px;">
+                  ${monthlyPrice} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">${group.currency || "ج.م."}</span>
+                </div>
+                ${sessionPrice > 0 ? `
+                  <div style="font-size:0.68rem; color:var(--text-muted); font-weight:600;">(${sessionPrice} ج.م / حصة)</div>
+                ` : ''}
               </div>
             </div>
 
-            <!-- PRICE HEADER -->
-            <div class="card-price-container" style="text-align:left;">
-              <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:2px;">الاشتراك الشهري</div>
-              <div style="font-size:clamp(1.2rem, 3vw, 1.35rem); font-weight:900; color:#e51d74; line-height:1.1;">
-                ${monthlyPrice} ${group.currency || "ج.م."}
+            <!-- Schedule Box -->
+            <div class="card-schedule-box">
+              <span style="width:26px; height:26px; border-radius:8px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="clock" style="width:14px; height:14px;"></i>
+              </span>
+              <span style="line-height:1.4;">${group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime || ""}`.trim() : "حسب جدول المجموعة")}</span>
+            </div>
+
+            <!-- Specs Grid (Sessions, Duration, Capacity) -->
+            <div class="card-specs-grid">
+              <div class="card-specs-pill">
+                <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">عدد الحصص</div>
+                <div style="font-size:0.88rem; font-weight:900; color:var(--text-main); margin-top:2px;">${totalSessions} حصص</div>
               </div>
-              ${sessionPrice > 0 ? `
-                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">(سعر الحصة ${sessionPrice} ج.م.)</div>
-              ` : ''}
+              <div class="card-specs-pill">
+                <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">مدة الحصة</div>
+                <div style="font-size:0.88rem; font-weight:900; color:var(--text-main); margin-top:2px;">${duration} دقيقة</div>
+              </div>
+              <div class="card-specs-pill">
+                <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">سعة الفوج</div>
+                <div style="font-size:0.88rem; font-weight:900; color:var(--text-main); margin-top:2px;">${group.maxStudents || 25} طالب</div>
+              </div>
+            </div>
+
+            <!-- Dates Row -->
+            <div class="card-dates-row">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <i data-lucide="calendar" style="width:12px; height:12px; color:var(--primary);"></i>
+                <span>البداية: <strong>${startDateText}</strong></span>
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span>النهاية: <strong>${endDateText}</strong></span>
+              </div>
             </div>
 
           </div>
 
-          <!-- CARD BODY -->
-          <div class="card-body-container">
-            
-            <!-- GROUP NAME & GRADE ROW -->
-            <div style="font-weight:900; font-size:0.95rem; color:var(--text-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span style="color:#e51d74;">👥</span>
-                <span>${group.groupName || 'مجموعة دراسية'}</span>
-              </div>
-              ${group.gradeName ? `
-                <span style="font-size:0.72rem; font-weight:800; background:rgba(0,86,210,0.08); color:var(--primary); padding:3px 9px; border-radius:10px;">
-                  ${group.gradeName}
-                </span>
-              ` : ''}
-            </div>
+          <!-- Card Footer Actions -->
+          <div class="card-footer-actions">
+            ${(() => {
+              const myEnrollment = (this.myEnrollments || []).find(e => 
+                e.group?.id && String(e.group.id) === String(group.groupId)
+              );
+              const isPending = myEnrollment && (myEnrollment.status === 'pending' || myEnrollment.status === 'PENDING');
+              const isActive = myEnrollment && (myEnrollment.status === 'active' || myEnrollment.status === 'ACTIVE');
 
-            <!-- SCHEDULE ROW -->
-            <div style="display:flex; align-items:center; gap:8px; font-size:clamp(0.82rem, 2vw, 0.92rem); background:rgba(229,29,116,0.06); padding:8px 12px; border-radius:12px; color:#e51d74; font-weight:800; line-height:1.4;">
-              <i data-lucide="calendar" style="width:16px; height:16px; flex-shrink:0;"></i>
-              <span>الجدول: ${group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime || ""}`.trim() : "حسب جدول المجموعة")}</span>
-            </div>
-
-            <!-- DATES GRID (START & END) -->
-            <div class="card-dates-box">
-              <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ البدء</div>
-                <div style="font-size:clamp(0.78rem, 2vw, 0.85rem); font-weight:900; color:var(--text-color); line-height:1.3;">${startDateText}</div>
-              </div>
-              <div>
-                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:800; margin-bottom:2px;">تاريخ الانتهاء</div>
-                <div style="font-size:clamp(0.78rem, 2vw, 0.85rem); font-weight:900; color:var(--text-color); line-height:1.3;">${endDateText}</div>
-              </div>
-            </div>
-
-            <!-- COHORT SPECIFICATIONS (SESSIONS COUNT, DURATION, SEATS) -->
-            <div class="card-specs-box">
-              <div class="card-specs-item">
-                <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">عدد الحصص</div>
-                <div style="font-size:clamp(0.85rem, 2vw, 0.92rem); font-weight:900; color:var(--text-color); margin-top:2px;">${totalSessions}</div>
-              </div>
-              <div class="card-specs-item">
-                <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">مدة الحصة</div>
-                <div style="font-size:clamp(0.85rem, 2vw, 0.92rem); font-weight:900; color:var(--text-color); margin-top:2px;">${duration} دقيقةً</div>
-              </div>
-              <div class="card-specs-item">
-                <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">إجمالي المقاعد</div>
-                <div style="font-size:clamp(0.85rem, 2vw, 0.92rem); font-weight:900; color:var(--text-color); margin-top:2px;">${group.maxStudents || 25}</div>
-              </div>
-            </div>
-
-            <!-- REMAINING SEATS -->
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:clamp(0.82rem, 2vw, 0.88rem); flex-wrap:wrap; gap:4px;">
-              <span style="font-weight:800; color:var(--text-color);">المقاعد المتبقية:</span>
-              <span style="font-weight:900; color:${isFull ? "#ef4444" : "#10b981"};">
-                ${isFull ? "مكتملة بالكامل (0 متبقي) 🔴" : `${group.availableSeats} من إجمالي ${group.maxStudents || 25} 🟢`}
-              </span>
-            </div>
-
-            <!-- ACTION BUTTONS -->
-            <div class="card-actions-row">
-              ${(() => {
-                const myEnrollment = (this.myEnrollments || []).find(e => 
-                  e.group?.id && String(e.group.id) === String(group.groupId)
-                );
-                const isPending = myEnrollment && (myEnrollment.status === 'pending' || myEnrollment.status === 'PENDING');
-                const isActive = myEnrollment && (myEnrollment.status === 'active' || myEnrollment.status === 'ACTIVE');
-
-                if (isPending) {
-                  return `
-                    <div class="card-action-btn-main" style="
-                      background:rgba(245, 158, 11, 0.12);
-                      border:1.5px solid #f59e0b;
-                      color:#d97706;
-                      padding:11px 14px;
-                      border-radius:30px;
-                      font-weight:900;
-                      font-size:clamp(0.85rem, 2vw, 0.92rem);
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      gap:6px;
-                    ">
-                      <span>⏳ قيد المراجعة والاعتماد</span>
-                    </div>
-                  `;
-                }
-
-                if (isActive) {
-                  return `
-                    <button disabled class="card-action-btn-main" style="
-                      background:#10b981;
-                      color:#ffffff;
-                      border:none;
-                      padding:12px 14px;
-                      border-radius:30px;
-                      font-weight:900;
-                      font-size:clamp(0.85rem, 2vw, 0.9rem);
-                      cursor:default;
-                    ">
-                      ✓ أنت مسجل بالمجموعة
-                    </button>
-                  `;
-                }
-
-                if (group.status === 'IN_PROGRESS' || group.status === 'CLOSED') {
-                  return `
-                    <button disabled class="card-action-btn-main" style="
-                      background:#6366f1;
-                      color:#ffffff;
-                      border:none;
-                      padding:12px 16px;
-                      border-radius:30px;
-                      font-weight:900;
-                      font-size:clamp(0.85rem, 2vw, 0.9rem);
-                      cursor:not-allowed;
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      gap:6px;
-                    ">
-                      <span>🔒 مغلقة وبدأت الدراسة</span>
-                    </button>
-                  `;
-                }
-
-                if (isFull) {
-                  return `
-                    <button disabled class="card-action-btn-main" style="
-                      background:#9ca3af;
-                      color:#ffffff;
-                      border:none;
-                      padding:12px 20px;
-                      border-radius:30px;
-                      font-weight:900;
-                      font-size:clamp(0.9rem, 2vw, 1rem);
-                      cursor:not-allowed;
-                    ">
-                      المجموعة مكتملة
-                    </button>
-                  `;
-                }
-
+              if (isPending) {
                 return `
-                  <button class="enroll-group-btn card-action-btn-main" 
-                          data-course-id="${group.courseId}" 
-                          data-group-id="${group.groupId}" 
-                          data-group-name="${group.groupName}"
-                          data-teacher-name="${teacherName}"
-                          data-is-full="${isFull}"
-                          style="
-                            background:#e51d74;
-                            color:#ffffff;
-                            border:none;
-                            padding:12px 20px;
-                            border-radius:30px;
-                            font-weight:900;
-                            font-size:clamp(0.9rem, 2vw, 1rem);
-                            cursor:pointer;
-                            transition:all 0.2s ease;
-                            box-shadow:0 4px 14px rgba(229,29,116,0.35);
-                          ">
-                    حجز مقعد الآن 🚀
+                  <div style="
+                    flex:1.4;
+                    background:rgba(245, 158, 11, 0.12);
+                    border:1.5px solid #f59e0b;
+                    color:#d97706;
+                    padding:10px 14px;
+                    border-radius:14px;
+                    font-weight:900;
+                    font-size:0.85rem;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:6px;
+                  ">
+                    <span>⏳ قيد المراجعة</span>
+                  </div>
+                `;
+              }
+
+              if (isActive) {
+                return `
+                  <button disabled style="
+                    flex:1.4;
+                    background:#10b981;
+                    color:#ffffff;
+                    border:none;
+                    padding:11px 14px;
+                    border-radius:14px;
+                    font-weight:900;
+                    font-size:0.85rem;
+                    cursor:default;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:6px;
+                  ">
+                    <i data-lucide="check-circle" style="width:14px; height:14px;"></i>
+                    <span>أنت مسجل بالمجموعة</span>
                   </button>
                 `;
-              })()}
+              }
 
-              <a href="#course-details/${group.courseId}/${group.groupId}" class="card-action-btn-details" style="
-                background:transparent;
-                color:var(--text-color);
-                border:1px solid var(--border-color);
-                padding:12px 18px;
-                border-radius:30px;
-                font-weight:800;
-                font-size:clamp(0.85rem, 2vw, 0.95rem);
-                text-decoration:none;
-                transition:all 0.2s ease;
-                display:inline-block;
-              " onmouseenter="this.style.background='var(--bg-app)'" onmouseleave="this.style.background='transparent'">
-                تفاصيل المقرر
-              </a>
-            </div>
+              if (group.status === 'IN_PROGRESS' || group.status === 'CLOSED') {
+                return `
+                  <button disabled style="
+                    flex:1.4;
+                    background:#6366f1;
+                    color:#ffffff;
+                    border:none;
+                    padding:11px 14px;
+                    border-radius:14px;
+                    font-weight:900;
+                    font-size:0.85rem;
+                    cursor:not-allowed;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    gap:6px;
+                  ">
+                    <i data-lucide="lock" style="width:14px; height:14px;"></i>
+                    <span>بدأت الدراسة</span>
+                  </button>
+                `;
+              }
 
+              if (isFull) {
+                return `
+                  <button disabled style="
+                    flex:1.4;
+                    background:rgba(0,0,0,0.06);
+                    color:var(--text-muted);
+                    border:1px solid var(--border-color);
+                    padding:11px 14px;
+                    border-radius:14px;
+                    font-weight:900;
+                    font-size:0.85rem;
+                    cursor:not-allowed;
+                  ">
+                    المجموعة مكتملة
+                  </button>
+                `;
+              }
+
+              return `
+                <button class="enroll-group-btn" 
+                        data-course-id="${group.courseId}" 
+                        data-group-id="${group.groupId}" 
+                        data-group-name="${group.groupName}"
+                        data-teacher-name="${teacherName}"
+                        data-is-full="${isFull}"
+                        style="
+                          flex:1.4;
+                          background:linear-gradient(135deg, #e51d74 0%, #be185d 100%);
+                          color:#ffffff;
+                          border:none;
+                          padding:11px 16px;
+                          border-radius:14px;
+                          font-weight:900;
+                          font-size:0.88rem;
+                          cursor:pointer;
+                          transition:all 0.2s ease;
+                          box-shadow:0 4px 14px rgba(229,29,116,0.3);
+                          display:flex;
+                          align-items:center;
+                          justify-content:center;
+                          gap:6px;
+                        ">
+                  <span>حجز مقعد الآن</span>
+                  <i data-lucide="sparkles" style="width:14px; height:14px;"></i>
+                </button>
+              `;
+            })()}
+
+            <a href="#course-details/${group.courseId}/${group.groupId}" style="
+              flex:1;
+              background:var(--bg-card);
+              color:var(--text-main);
+              border:1px solid var(--border-color);
+              padding:11px 14px;
+              border-radius:14px;
+              font-weight:800;
+              font-size:0.85rem;
+              text-decoration:none;
+              transition:all 0.2s ease;
+              text-align:center;
+              display:inline-flex;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+            " onmouseenter="this.style.background='var(--bg-app)'; this.style.borderColor='var(--primary)';" onmouseleave="this.style.background='var(--bg-card)'; this.style.borderColor='var(--border-color)';">
+              <span>تفاصيل</span>
+              <i data-lucide="arrow-left" style="width:13px; height:13px;"></i>
+            </a>
           </div>
 
         </div>
@@ -1129,6 +1203,28 @@ export default class SubjectGroupsView {
 
         const groupObj = this.allGroups.find(g => g.groupId === groupId) || {};
 
+        const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+        const daysText = (groupObj.scheduleDays || groupObj.scheduleText || "");
+        const matchedDays = arabicDays.filter(day => daysText.includes(day));
+        const daysCount = matchedDays.length;
+        
+        let sessionsPerMonth = 8;
+        if (daysCount > 0) {
+          sessionsPerMonth = daysCount * 4;
+        } else if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 6) {
+          sessionsPerMonth = groupObj.totalSessions;
+        }
+
+        const sessionPrice = groupObj.sessionPrice || groupObj.studentHourlyRate || 40;
+        let monthlyPrice = groupObj.monthlyPrice || groupObj.price || 0;
+        if (sessionPrice > 0) {
+          if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+            monthlyPrice = sessionPrice * sessionsPerMonth;
+          }
+        } else if (!monthlyPrice) {
+          monthlyPrice = sessionPrice * sessionsPerMonth;
+        }
+
         openGroupPaymentModal({
           courseId,
           courseTitle: groupObj.courseTitle || this.subjectData?.name || "المقرر الدراسي",
@@ -1138,8 +1234,9 @@ export default class SubjectGroupsView {
           subjectName: this.subjectData?.name || "",
           scheduleDays: groupObj.scheduleDays || "الأحد والأربعاء",
           scheduleTime: groupObj.scheduleTime || "06:00 م",
-          sessionPrice: groupObj.sessionPrice || 40,
-          monthlyPrice: groupObj.monthlyPrice || 320,
+          sessionPrice: sessionPrice,
+          monthlyPrice: monthlyPrice,
+          sessionsPerMonth: sessionsPerMonth,
           totalSessions: groupObj.totalSessions || 24,
           onSuccess: async () => {
             await this.loadData();
@@ -1176,6 +1273,28 @@ export default class SubjectGroupsView {
 
           const groupObj = this.allGroups.find(g => g.groupId === groupId) || {};
 
+          const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+          const daysText = (groupObj.scheduleDays || groupObj.scheduleText || "");
+          const matchedDays = arabicDays.filter(day => daysText.includes(day));
+          const daysCount = matchedDays.length;
+          
+          let sessionsPerMonth = 8;
+          if (daysCount > 0) {
+            sessionsPerMonth = daysCount * 4;
+          } else if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 6) {
+            sessionsPerMonth = groupObj.totalSessions;
+          }
+
+          const sessionPrice = groupObj.sessionPrice || groupObj.studentHourlyRate || 40;
+          let monthlyPrice = groupObj.monthlyPrice || groupObj.price || 0;
+          if (sessionPrice > 0) {
+            if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+              monthlyPrice = sessionPrice * sessionsPerMonth;
+            }
+          } else if (!monthlyPrice) {
+            monthlyPrice = sessionPrice * sessionsPerMonth;
+          }
+
           openGroupPaymentModal({
             courseId,
             courseTitle: groupObj.courseTitle || this.subjectData?.name || "المقرر الدراسي",
@@ -1185,8 +1304,9 @@ export default class SubjectGroupsView {
             subjectName: this.subjectData?.name || "",
             scheduleDays: groupObj.scheduleDays || "الأحد والأربعاء",
             scheduleTime: groupObj.scheduleTime || "06:00 م",
-            sessionPrice: groupObj.sessionPrice || 40,
-            monthlyPrice: groupObj.monthlyPrice || 320,
+            sessionPrice: sessionPrice,
+            monthlyPrice: monthlyPrice,
+            sessionsPerMonth: sessionsPerMonth,
             totalSessions: groupObj.totalSessions || 24,
             onSuccess: async () => {
               await this.loadData();

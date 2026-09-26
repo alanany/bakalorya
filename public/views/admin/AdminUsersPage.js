@@ -285,21 +285,51 @@ export const AdminUsersPage = {
   // ── 3. Dedicated Students Tab (Add Student & Edit Student & View Transcript) ─────
 
   renderStudentsTab() {
-    const students = this.allMembers.filter(u => u.role === "student");
+    const allStudents = this.allMembers.filter(u => u.role === "student");
+    const activeFilter = this.studentStatusFilter || "all";
+
+    const pendingCount = allStudents.filter(u => u.status === 'PENDING').length;
+    const blockedCount = allStudents.filter(u => u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED').length;
+    const activeCount = allStudents.filter(u => u.status === 'ACTIVE' && !u.isBlocked).length;
+
+    let students = allStudents;
+    if (activeFilter === "pending") {
+      students = allStudents.filter(u => u.status === 'PENDING');
+    } else if (activeFilter === "active") {
+      students = allStudents.filter(u => u.status === 'ACTIVE' && !u.isBlocked);
+    } else if (activeFilter === "blocked") {
+      students = allStudents.filter(u => u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED');
+    }
 
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:16px;">
         <div>
-          <h3 style="font-weight:700;margin-bottom:4px;">${t("admin.tab.students")} (${students.length})</h3>
-          <p style="font-size:0.83rem;color:var(--text-muted);margin:0;">قائمة الطلاب المسجلين، بيانات الاتصال، وإمكانية التواصل المباشر عبر الواتساب والبريد الإلكتروني</p>
+          <h3 style="font-weight:700;margin-bottom:4px;">${t("admin.tab.students")} (${allStudents.length})</h3>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin:0;">قائمة الطلاب المسجلين، مراجعة واعتماد طلبات التسجيل الجديدة، وبيانات التواصل المباشر</p>
         </div>
         <button class="btn-primary" id="open-create-student-btn" style="font-size:0.85rem;padding:10px 18px;background:var(--success);">
           <i data-lucide="user-plus"></i> ${t("admin.addStudent")}
         </button>
       </div>
 
+      <!-- Status Filter Tabs -->
+      <div style="display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center;">
+        <button class="filter-tab-btn student-filter-tab-btn ${activeFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+          الكل (${allStudents.length})
+        </button>
+        <button class="filter-tab-btn student-filter-tab-btn ${activeFilter === 'pending' ? 'active' : ''}" data-filter="pending" style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer; ${pendingCount > 0 ? 'background:rgba(245,158,11,0.15); color:#d97706; border-color:rgba(245,158,11,0.4);' : ''}">
+          ⏳ بانتظار الاعتماد والموافقة (${pendingCount})
+        </button>
+        <button class="filter-tab-btn student-filter-tab-btn ${activeFilter === 'active' ? 'active' : ''}" data-filter="active" style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+          ✅ النشطون (${activeCount})
+        </button>
+        <button class="filter-tab-btn student-filter-tab-btn ${activeFilter === 'blocked' ? 'active' : ''}" data-filter="blocked" style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+          🚫 المحظورون (${blockedCount})
+        </button>
+      </div>
+
       ${students.length === 0
-        ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noStudents")}</div>`
+        ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${activeFilter === 'pending' ? 'لا توجد طلبات تسجيل طلاب معلقة حالياً.' : t("admin.noStudents")}</div>`
         : `<div class="glass-card" style="overflow:hidden;padding:0;">
             <div style="overflow-x:auto;">
               <table style="width:100%;border-collapse:collapse;text-align:start;font-size:0.88rem;">
@@ -320,19 +350,22 @@ export const AdminUsersPage = {
                     const studentWaText = encodeURIComponent(`مرحباً ${u.name}، نتواصل معك من إدارة منصة انطلق.`);
                     const parentWaText = encodeURIComponent(`مرحباً ولي أمر الطالب ${u.name}، نتواصل معكم من إدارة منصة انطلق.`);
 
+                    const isPending = u.status === 'PENDING';
                     const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
 
                     return `
-                      <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
+                      <tr style="border-bottom:1px solid var(--border-color);${isPending ? 'background:rgba(245,158,11,0.04);' : (isBlocked ? 'background:rgba(239,68,68,0.03);' : '')}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
                             <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <span>${u.name}</span>
-                                ${isBlocked 
-                                  ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
-                                  : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">✅ نشط</span>`
+                                ${isPending 
+                                  ? `<span class="badge" style="background:rgba(245,158,11,0.15);color:#d97706;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">⏳ بانتظار الموافقة والاعتماد</span>`
+                                  : isBlocked 
+                                    ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
+                                    : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">✅ نشط</span>`
                                 }
                               </div>
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
@@ -383,10 +416,16 @@ export const AdminUsersPage = {
                           </div>
                         </td>
                         <td style="padding:14px 20px;">
-                          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="student" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:5px 10px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${isBlocked ? 'إلغاء حظر الطالب والسماح له بتسجيل الدخول' : 'حظر الطالب ومنعه من تسجيل الدخول إلى الأكاديمية'}">
-                              <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر الطالب'}
-                            </button>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            ${isPending ? `
+                              <button class="btn-primary approve-student-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg, #10b981, #059669);border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,0.3);" title="الموافقة على تسجيل الطالب وتفعيل حسابه">
+                                <i data-lucide="check-circle" style="width:12px;height:12px;"></i> موافقة وتفعيل ✅
+                              </button>
+                            ` : `
+                              <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="student" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:5px 10px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${isBlocked ? 'إلغاء حظر الطالب والسماح له بتسجيل الدخول' : 'حظر الطالب ومنعه من تسجيل الدخول إلى الأكاديمية'}">
+                                <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر الطالب'}
+                              </button>
+                            `}
                             <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
                             </button>

@@ -650,7 +650,42 @@ export const AdminSessionsPage = {
     `;
   },
 
-  // ── Render Admin Create & Schedule Online Group Modal ────────────────────────
+  // ── Helper: Compute Group End Date from Start Date, Total Sessions, and Days ─
+  computeGroupEndDate(startDateStr, totalSessions, daysArray) {
+    if (!startDateStr || !totalSessions || totalSessions <= 0) return "";
+    const parts = startDateStr.split("-").map(Number);
+    if (parts.length !== 3 || isNaN(parts[0])) return "";
+    const cur = new Date(parts[0], parts[1] - 1, parts[2]);
+    if (isNaN(cur.getTime())) return "";
+
+    const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+    const activeDayIndices = (daysArray || [])
+      .map(name => dayNames.indexOf(name.trim()))
+      .filter(idx => idx !== -1);
+
+    const pad = (n) => String(n).padStart(2, "0");
+
+    if (activeDayIndices.length === 0) {
+      const totalWeeks = Math.ceil(totalSessions / 2);
+      cur.setDate(cur.getDate() + (totalWeeks * 7) - 1);
+      return `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+    }
+
+    let count = 0;
+    for (let i = 0; i < 1500; i++) {
+      if (activeDayIndices.includes(cur.getDay())) {
+        count++;
+        if (count >= totalSessions) {
+          return `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+  },
+
+  // ── Render Admin Create & Schedule Online Group Modal (Like Edit Group) ───────
   async renderAdminCreateGroupModal() {
     document.querySelectorAll("#admin-create-group-modal-wrapper").forEach(el => el.remove());
     const container = document.getElementById("admin-edit-group-modal-container") || document.body;
@@ -663,282 +698,189 @@ export const AdminSessionsPage = {
       console.error("Failed to load curriculum grades:", e);
     }
 
+    const teacherOptions = teachers.map(t => `
+      <option value="${t.id}" data-link="${t.meetingLink || ''}" data-rate="${t.hourlyRate || 100}">
+        ${t.name} (${t.phone || t.email || 'معلم'})
+      </option>
+    `).join('');
+
+    const daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const initialDays = ["الأحد", "الثلاثاء"];
+    const initialEndDate = this.computeGroupEndDate(todayStr, 24, initialDays) || todayStr;
+
     const wrapper = document.createElement("div");
     wrapper.id = "admin-create-group-modal-wrapper";
     wrapper.innerHTML = `
       <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
-        <div class="glass-card" style="width:100%; max-width:680px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
+        <div class="glass-card" style="width:100%; max-width:640px; border-radius:28px; padding:26px; max-height:90vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;">
           
-          <!-- Modal Header -->
+          <!-- Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,rgba(139,92,246,0.18),rgba(236,72,153,0.18)); color:#8b5cf6; display:flex; align-items:center; justify-content:center;">
-                <i data-lucide="plus-circle" style="width:24px; height:24px;"></i>
-              </div>
-              <div>
-                <h3 style="font-size:1.25rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                  ➕ إضافة وجدولة مجموعة أونلاين جديدة
-                </h3>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                  اختر المرحلة والصف والمادة، وعيّن المعلم المشرف والمواعيد والأسعار والسعة للمجموعة.
-                </p>
-              </div>
+            <div>
+              <h3 style="font-size:1.2rem; font-weight:900; margin:0 0 4px 0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <i data-lucide="plus-circle" style="width:20px; height:20px; color:#8b5cf6;"></i>
+                إضافة وجدولة مجموعة أونلاين جديدة ➕
+              </h3>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                حدد المرحلة والمادة، المعلم المشرف، المواعيد، الأسعار، السعة، والحالة للمجموعة الجديدة.
+              </p>
             </div>
-            <button id="close-admin-create-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
+            <button id="close-admin-create-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
               &times;
             </button>
           </div>
 
-          <form id="admin-create-group-form" style="display:flex; flex-direction:column; gap:16px; overflow-y:auto; padding-inline-end:4px;">
+          <form id="admin-create-group-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
             
-            <!-- 1. CURRICULUM SELECTOR (STAGE -> GRADE -> SUBJECT) -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="graduation-cap" style="width:16px; height:16px; color:#8b5cf6;"></i>
-                  <span>1. المرحلة والصف والمادة الدراسية 🇪🇬 <span style="color:#ef4444;">*</span></span>
-                </label>
-                <span style="font-size:0.72rem; font-weight:800; color:#8b5cf6; background:rgba(139,92,246,0.1); padding:2px 10px; border-radius:10px;">
-                  مناهج معتمدة
-                </span>
-              </div>
-
-              <!-- Stage Buttons -->
-              <div>
-                <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">
-                  المرحلة التعليمية:
-                </label>
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
-                  <button type="button" class="admin-create-stage-btn active" data-stage="PRIMARY" style="padding:9px 6px; border-radius:12px; font-weight:900; font-size:0.85rem; cursor:pointer; border:2px solid #10b981; background:#10b981; color:#fff; transition:all 0.2s ease;">
-                    🎒 الابتدائية
-                  </button>
-                  <button type="button" class="admin-create-stage-btn" data-stage="PREPARATORY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
-                    📚 الإعدادية
-                  </button>
-                  <button type="button" class="admin-create-stage-btn" data-stage="SECONDARY" style="padding:9px 6px; border-radius:12px; font-weight:800; font-size:0.85rem; cursor:pointer; border:2px solid var(--border-color); background:var(--bg-card); color:var(--text-main); transition:all 0.2s ease;">
-                    🎓 الثانوية العامة
-                  </button>
-                </div>
-              </div>
-
-              <!-- Grade & Subject Dropdowns -->
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
-                  <label for="admin-create-group-grade-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
-                    الصف الدراسي <span style="color:#ef4444;">*</span>
-                  </label>
-                  <select id="admin-create-group-grade-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
-                    <option value="">-- جاري التحميل... --</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label for="admin-create-group-subject-select" style="font-weight:800; font-size:0.8rem; margin-bottom:4px; display:block; color:var(--text-main);">
-                    المادة الدراسية <span style="color:#ef4444;">*</span>
-                  </label>
-                  <select id="admin-create-group-subject-select" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.85rem; width:100%;" required>
-                    <option value="">-- اختر الصف أولاً --</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. TEACHER ASSIGNMENT & STATUS -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-              <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:12px;">
-                <div>
-                  <label for="admin-create-group-teacher-select" style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                    <i data-lucide="user-check" style="width:15px; height:15px; color:#10b981;"></i>
-                    <span>2. تعيين المعلم المشرف على المجموعة: <span style="color:#ef4444;">*</span></span>
-                  </label>
-                  <select id="admin-create-group-teacher-select" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;" required>
-                    <option value="">-- اختر المعلم المسؤول --</option>
-                    ${teachers.map(t => `
-                      <option value="${t.id}" data-link="${t.meetingLink || ''}" data-rate="${t.hourlyRate || 100}">
-                        👨‍🏫 ${t.name} (${t.phone || t.email || 'معلم'})
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
-
-                <div>
-                  <label for="admin-create-group-status" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                    حالة المجموعة: <span style="color:#ef4444;">*</span>
-                  </label>
-                  <select id="admin-create-group-status" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem; font-weight:800;">
-                    <option value="OPEN" selected>🟢 متاحة للتسجيل فوراً</option>
-                    <option value="PENDING_APPROVAL">⏳ قيد المراجعة والاعتماد</option>
-                    <option value="IN_PROGRESS">🔒 مغلقة وبدأت الدراسة</option>
-                    <option value="CLOSED">🔒 مغلقة</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. GROUP NAME & SUMMARY -->
-            <div>
-              <label for="admin-create-group-name" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                اسم المجموعة الدراسية: <span style="color:#ef4444;">*</span>
-              </label>
-              <input type="text" id="admin-create-group-name" placeholder="مثال: مجموعة الرياضيات - الصف الأول الثانوي (الأحد والثلاثاء)" required
-                style="width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
-            </div>
-
-            <div>
-              <label for="admin-create-group-desc" style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                <span>وصف الدورة والأهداف ومحتوى المجموعة 📖:</span>
-                <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر للطلاب في صفحة تفاصيل المقرر 📖</span>
-              </label>
-              <textarea id="admin-create-group-desc" rows="2" placeholder="اكتب نبذة أو ملخصاً عن الموضوعات التي سيتم تغطيتها ومواعيد المراجعات واختبارات المتابعة..."
-                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;"></textarea>
-            </div>
-
-            <!-- 3.5 CURRICULUM: UNITS & LESSONS -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="book-open" style="width:16px; height:16px; color:#8b5cf6;"></i>
-                  <span>محتوى ومنهج الدورة والوحدات (Units & Lessons)</span>
-                </label>
-                <button type="button" id="admin-import-curriculum-btn" class="btn-secondary" style="padding:5px 12px; font-size:0.75rem; font-weight:800; border-radius:12px; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  <i data-lucide="download-cloud" style="width:14px; height:14px;"></i> استيراد منهج المادة المعتمد تلقائياً
-                </button>
-              </div>
-              <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
-                حدد الوحدات والدروس الخاصة بالمجموعة لتظهر للطلاب في صفحة تفاصيل المقرر 📚
-              </p>
-
-              <div id="admin-group-lessons-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-inline-end:4px;">
-                <div id="admin-empty-lessons-hint" style="text-align:center; padding:14px; font-size:0.78rem; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:12px;">
-                  لم يتم إضافة دروس بعد. اضغط على الزر أدناه لإضافة دروس أو استيراد المنهج الجاهز.
-                </div>
-              </div>
-
-              <button type="button" id="admin-add-lesson-row-btn" class="btn-secondary" style="width:100%; padding:8px 14px; font-size:0.82rem; font-weight:800; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">
-                <i data-lucide="plus" style="width:15px; height:15px;"></i> + إضافة درس أو وحدة جديدة للمجموعة
-              </button>
-            </div>
-
-            <!-- 4. SCHEDULE DAYS, TIME & MEETING LINK -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+            <!-- Stage, Grade, Subject -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                  أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
+                  المرحلة التعليمية: <span style="color:#ef4444;">*</span>
                 </label>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
-                  ${["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"].map((day, idx) => `
-                    <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-card); font-size:0.82rem; font-weight:700; cursor:pointer;">
-                      <input type="checkbox" name="admin-create-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#8b5cf6; width:15px; height:15px;">
-                      <span>${day}</span>
-                    </label>
-                  `).join('')}
-                </div>
+                <select id="create-group-stage" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="PRIMARY">🎒 الابتدائية</option>
+                  <option value="PREPARATORY">📚 الإعدادية</option>
+                  <option value="SECONDARY" selected>🎓 الثانوية العامة</option>
+                </select>
               </div>
-
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
-                  <label for="admin-create-group-time" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                    توقيت بدء الحصة: <span style="color:#ef4444;">*</span>
-                  </label>
-                  <select id="admin-create-group-time" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;" required>
-                    <option value="09:00 ص">09:00 ص (9:00 صباحاً)</option>
-                    <option value="10:00 ص">10:00 ص (10:00 صباحاً)</option>
-                    <option value="11:00 ص">11:00 ص (11:00 صباحاً)</option>
-                    <option value="12:00 م">12:00 م (12:00 ظهراً)</option>
-                    <option value="01:00 م">01:00 م (1:00 ظهراً)</option>
-                    <option value="02:00 م">02:00 م (2:00 ظهراً)</option>
-                    <option value="03:00 م">03:00 م (3:00 عصراً)</option>
-                    <option value="03:30 م">03:30 م (3:30 عصراً)</option>
-                    <option value="04:00 م">04:00 م (4:00 عصراً)</option>
-                    <option value="04:30 م">04:30 م (4:30 عصراً)</option>
-                    <option value="05:00 م">05:00 م (5:00 مساءً)</option>
-                    <option value="05:30 م">05:30 م (5:30 مساءً)</option>
-                    <option value="06:00 م" selected>06:00 م (6:00 مساءً)</option>
-                    <option value="06:30 م">06:30 م (6:30 مساءً)</option>
-                    <option value="07:00 م">07:00 م (7:00 مساءً)</option>
-                    <option value="07:30 م">07:30 م (7:30 مساءً)</option>
-                    <option value="08:00 م">08:00 م (8:00 مساءً)</option>
-                    <option value="08:30 م">08:30 م (8:30 مساءً)</option>
-                    <option value="09:00 م">09:00 م (9:00 مساءً)</option>
-                    <option value="09:30 م">09:30 م (9:30 مساءً)</option>
-                    <option value="10:00 م">10:00 م (10:00 مساءً)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label for="admin-create-group-duration" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                    مدة الحصة:
-                  </label>
-                  <select id="admin-create-group-duration" class="form-select" style="width:100%; padding:10px 12px; border-radius:12px; font-size:0.85rem;">
-                    <option value="60" selected>60 دقيقة (ساعة كاملة)</option>
-                    <option value="90">90 دقيقة (ساعة ونصف)</option>
-                    <option value="120">120 دقيقة (ساعتان)</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label for="admin-create-group-meeting-link" style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                  رابط البث المباشر (Zoom / Google Meet) - اختياري:
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  الصف الدراسي: <span style="color:#ef4444;">*</span>
                 </label>
-                <input type="url" id="admin-create-group-meeting-link" placeholder="https://zoom.us/j/... أو https://meet.google.com/..."
-                  style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                <select id="create-group-grade" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="">-- جاري التحميل... --</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  المادة الدراسية: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="create-group-subject" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="">-- اختر الصف أولاً --</option>
+                </select>
               </div>
             </div>
 
-            <!-- 5. PRICING, CAPACITY & COMMISSION -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-              <label style="font-weight:900; font-size:0.88rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
-                <i data-lucide="coins" style="width:16px; height:16px; color:#f59e0b;"></i>
-                <span>الأسعار والسعة وعمولة المنصة 💰</span>
+            <!-- Group Name -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                اسم المجموعة: <span style="color:#ef4444;">*</span>
               </label>
+              <input type="text" id="create-group-name" placeholder="مثال: مجموعة الرياضيات - الصف الأول الثانوي (الأحد والثلاثاء)" required class="form-input"
+                style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
 
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px;">
-                <div>
-                  <label for="admin-create-group-max-students" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                    السعة القصوى (المقاعد):
-                  </label>
-                  <input type="number" id="admin-create-group-max-students" value="25" min="1" max="100" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
-                </div>
-
-                <div>
-                  <label for="admin-create-group-session-price" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                    سعر الحصة للطالب (ج.م):
-                  </label>
-                  <input type="number" id="admin-create-group-session-price" value="40" min="0" step="5" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
-                </div>
-
-                <div>
-                  <label for="admin-create-group-monthly-price" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                    سعر الاشتراك الشهري (ج.م):
-                  </label>
-                  <input type="number" id="admin-create-group-monthly-price" value="320" min="0" step="10" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
-                </div>
-
-                <div>
-                  <label for="admin-create-group-teacher-rate" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                    أجر المعلم بالساعة (ج.م):
-                  </label>
-                  <input type="number" id="admin-create-group-teacher-rate" value="100" min="0" step="10" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
-                </div>
-
-                <div>
-                  <label for="admin-create-group-commission" style="display:block; font-size:0.78rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                    نسبة عمولة المنصة (%):
-                  </label>
-                  <input type="number" id="admin-create-group-commission" value="50" min="0" max="100" class="form-input" style="width:100%; padding:9px 10px; border-radius:10px; font-size:0.85rem;">
-                </div>
+            <!-- Teacher Select & Status -->
+            <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  المعلم المشرف: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="create-group-teacher" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                  <option value="">-- اختر المعلم المسؤول --</option>
+                  ${teacherOptions || `<option value="">معلم المنصة الافتراضي</option>`}
+                </select>
               </div>
+
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  حالة المجموعة للتسجيل: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="create-group-status" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; font-family:'Cairo',sans-serif;">
+                  <option value="OPEN" selected>🟢 متاحة للتسجيل (مفتوحة)</option>
+                  <option value="IN_PROGRESS">🔒 مغلقة للتسجيل وبدأت الدراسة</option>
+                  <option value="CLOSED">🔒 مغلقة للتسجيل</option>
+                  <option value="FULL">🔴 مكتملة العدد</option>
+                  <option value="PENDING_APPROVAL">⏳ قيد المراجعة والاعتماد</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Schedule Days -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
+              </label>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
+                ${daysList.map((day, idx) => `
+                  <label style="display:flex; align-items:center; gap:5px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.8rem; font-weight:700; cursor:pointer;">
+                    <input type="checkbox" name="create-group-days" value="${day}" ${idx === 1 || idx === 3 ? 'checked' : ''} style="accent-color:#e51d74;">
+                    <span>${day}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Schedule Time & Duration -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">توقيت الحصة:</label>
+                <input type="text" id="create-group-time" value="6:00م" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;" placeholder="مثال: 6:00م">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">مدة الحصة (بالدقائق):</label>
+                <input type="number" id="create-group-duration" value="60" min="15" max="180" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Dates (Start & End) -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">تاريخ البدء:</label>
+                <input type="date" id="create-group-start-date" value="${todayStr}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  تاريخ الانتهاء: <span style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">(محسوب تلقائياً ⚡)</span>
+                </label>
+                <input type="date" id="create-group-end-date" value="${initialEndDate}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Total Sessions & Capacity -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">عدد الحصص الإجمالي:</label>
+                <input type="number" id="create-group-total-sessions" value="24" min="1" max="100" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">إجمالي المقاعد (السعة):</label>
+                <input type="number" id="create-group-max-students" value="25" min="1" max="100" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Pricing: Student Rate & Teacher Hourly Rate -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">سعر ساعة الطالب (ج.م.):</label>
+                <input type="number" id="create-group-student-rate" value="40" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:#10b981;">أجر المعلم بالساعة (ج.م.):</label>
+                <input type="number" id="create-group-teacher-rate" value="100" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid #10b981; background:var(--bg-app); color:#10b981; font-weight:800; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Meeting Link -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">رابط البث المباشر (Zoom / Meet):</label>
+              <input type="url" id="create-group-meeting-link" placeholder="https://zoom.us/j/... أو Meet" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+            </div>
+
+            <!-- Group Description / Summary -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">محتوى أو ملخص المجموعة والخطة الدراسية (Course Details & Summary):</label>
+              <textarea id="create-group-description" rows="3" placeholder="اكتب نبذة أو ملخصاً عن الموضوعات التي سيتم تغطيتها ومواعيد المراجعات واختبارات المتابعة..." class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; line-height:1.5; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
 
             <!-- Submit Buttons -->
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:6px; padding-top:12px; border-top:1px solid var(--border-color);">
-              <button type="button" id="cancel-admin-create-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:18px; font-size:0.88rem;">
-                إلغاء
-              </button>
-              <button type="submit" id="submit-admin-create-group-btn" class="btn-primary" style="padding:10px 28px; border-radius:18px; font-weight:900; background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; font-size:0.9rem; display:inline-flex; align-items:center; gap:8px;">
-                <i data-lucide="plus-circle" style="width:18px; height:18px;"></i>
-                <span>➕ إضافة وجدولة المجموعة الآن 🚀</span>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+              <button type="button" id="cancel-admin-create-group-btn" class="btn-secondary" style="padding:10px 20px; border-radius:20px;">إلغاء</button>
+              <button type="submit" id="submit-admin-create-group-btn" class="btn-primary" style="padding:10px 28px; border-radius:20px; font-weight:900; background:#8b5cf6; border-color:#8b5cf6;">
+                ➕ إضافة وجدولة المجموعة الآن 🚀
               </button>
             </div>
 
@@ -957,19 +899,38 @@ export const AdminSessionsPage = {
     wrapper.querySelector("#close-admin-create-group-modal")?.addEventListener("click", closeModal);
     wrapper.querySelector("#cancel-admin-create-group-btn")?.addEventListener("click", closeModal);
 
-    // Curriculum Logic for Admin Group Modal
-    const stageBtns = wrapper.querySelectorAll(".admin-create-stage-btn");
-    const gradeSelect = wrapper.querySelector("#admin-create-group-grade-select");
-    const subjectSelect = wrapper.querySelector("#admin-create-group-subject-select");
-    const groupNameInput = wrapper.querySelector("#admin-create-group-name");
-    const teacherSelect = wrapper.querySelector("#admin-create-group-teacher-select");
-    const meetingLinkInput = wrapper.querySelector("#admin-create-group-meeting-link");
-    const teacherRateInput = wrapper.querySelector("#admin-create-group-teacher-rate");
-    const sessionPriceInput = wrapper.querySelector("#admin-create-group-session-price");
-    const monthlyPriceInput = wrapper.querySelector("#admin-create-group-monthly-price");
+    // Curriculum & Inputs Handling
+    const stageSelect = wrapper.querySelector("#create-group-stage");
+    const gradeSelect = wrapper.querySelector("#create-group-grade");
+    const subjectSelect = wrapper.querySelector("#create-group-subject");
+    const nameInput = wrapper.querySelector("#create-group-name");
+    const teacherSelect = wrapper.querySelector("#create-group-teacher");
+    const teacherRateInput = wrapper.querySelector("#create-group-teacher-rate");
+    const meetingLinkInput = wrapper.querySelector("#create-group-meeting-link");
+    const startDateInput = wrapper.querySelector("#create-group-start-date");
+    const totalSessionsInput = wrapper.querySelector("#create-group-total-sessions");
+    const endDateInput = wrapper.querySelector("#create-group-end-date");
+
+    // Dynamic auto-calculation of End Date from Start Date, Total Sessions, and Days
+    const updateAutoEndDate = () => {
+      const sDate = startDateInput?.value;
+      const tSessions = parseInt(totalSessionsInput?.value, 10) || 0;
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='create-group-days']:checked")).map(cb => cb.value);
+      if (sDate && tSessions > 0) {
+        const computed = this.computeGroupEndDate(sDate, tSessions, checkedDays);
+        if (computed && endDateInput) {
+          endDateInput.value = computed;
+        }
+      }
+    };
+
+    startDateInput?.addEventListener("change", updateAutoEndDate);
+    startDateInput?.addEventListener("input", updateAutoEndDate);
+    totalSessionsInput?.addEventListener("input", updateAutoEndDate);
+    totalSessionsInput?.addEventListener("change", updateAutoEndDate);
 
     let isManualName = false;
-    groupNameInput?.addEventListener("input", () => {
+    nameInput?.addEventListener("input", () => {
       isManualName = true;
     });
 
@@ -979,28 +940,23 @@ export const AdminSessionsPage = {
       const selectedGradeOpt = gradeSelect?.options[gradeSelect.selectedIndex];
       const subjectName = selectedSubjectOpt && selectedSubjectOpt.value ? selectedSubjectOpt.getAttribute("data-name") || selectedSubjectOpt.text : "";
       const gradeName = selectedGradeOpt && selectedGradeOpt.value ? selectedGradeOpt.text : "";
-      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='admin-create-group-days']:checked")).map(cb => cb.value);
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='create-group-days']:checked")).map(cb => cb.value);
       const daysText = checkedDays.join(" و ");
 
       if (subjectName) {
-        groupNameInput.value = `مجموعة ${subjectName} - ${gradeName || ''} (${daysText || 'أسبوعي'})`.trim();
+        nameInput.value = `مجموعة ${subjectName} - ${gradeName || ''} (${daysText || 'أسبوعي'})`.trim();
       }
     };
 
-    wrapper.querySelectorAll("input[name='admin-create-group-days']").forEach(cb => {
-      cb.addEventListener("change", updateSuggestedGroupName);
+    wrapper.querySelectorAll("input[name='create-group-days']").forEach(cb => {
+      cb.addEventListener("change", () => {
+        updateSuggestedGroupName();
+        updateAutoEndDate();
+      });
     });
 
-    let isManualMonthlyPrice = false;
-    monthlyPriceInput?.addEventListener("input", () => {
-      isManualMonthlyPrice = true;
-    });
-    sessionPriceInput?.addEventListener("input", () => {
-      if (!isManualMonthlyPrice) {
-        const sp = parseFloat(sessionPriceInput.value) || 0;
-        monthlyPriceInput.value = sp * 8;
-      }
-    });
+    // Run auto end date calculation initially
+    updateAutoEndDate();
 
     teacherSelect?.addEventListener("change", () => {
       const selectedOpt = teacherSelect.options[teacherSelect.selectedIndex];
@@ -1017,21 +973,6 @@ export const AdminSessionsPage = {
     });
 
     const updateStageUI = (stage) => {
-      stageBtns.forEach(btn => {
-        const isCurrent = btn.getAttribute("data-stage") === stage;
-        btn.classList.toggle("active", isCurrent);
-        if (isCurrent) {
-          const color = stage === "PRIMARY" ? "#10b981" : stage === "PREPARATORY" ? "#3b82f6" : "#e51d74";
-          btn.style.background = color;
-          btn.style.borderColor = color;
-          btn.style.color = "#ffffff";
-        } else {
-          btn.style.background = "var(--bg-card)";
-          btn.style.borderColor = "var(--border-color)";
-          btn.style.color = "var(--text-main)";
-        }
-      });
-
       const stageGrades = allGrades.filter(g => g.stage === stage);
       if (stageGrades.length === 0) {
         if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
@@ -1064,10 +1005,8 @@ export const AdminSessionsPage = {
       updateSuggestedGroupName();
     };
 
-    stageBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        updateStageUI(btn.getAttribute("data-stage"));
-      });
+    stageSelect?.addEventListener("change", (e) => {
+      updateStageUI(e.target.value);
     });
 
     gradeSelect?.addEventListener("change", (e) => {
@@ -1078,80 +1017,8 @@ export const AdminSessionsPage = {
       updateSuggestedGroupName();
     });
 
-    // Units & Lessons Builder Logic for Admin
-    const lessonsContainer = wrapper.querySelector("#admin-group-lessons-list");
-    const emptyHint = wrapper.querySelector("#admin-empty-lessons-hint");
-
-    const addLessonRow = (unit = "الوحدة الأولى", title = "", duration = "45:00") => {
-      if (emptyHint) emptyHint.style.display = "none";
-      const row = document.createElement("div");
-      row.className = "admin-lesson-input-row";
-      row.style.cssText = "display:grid; grid-template-columns:1.2fr 2fr 1fr 34px; gap:6px; align-items:center; background:var(--bg-card); padding:8px; border-radius:12px; border:1px solid var(--border-color);";
-      row.innerHTML = `
-        <input type="text" class="lesson-chapter-input" placeholder="اسم الوحدة" value="${unit}" style="padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
-        <input type="text" class="lesson-title-input" placeholder="عنوان الدرس" value="${title}" required style="padding:6px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
-        <input type="text" class="lesson-duration-input" placeholder="المدة (45:00)" value="${duration}" style="padding:6px 8px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.78rem; font-family:'Cairo',sans-serif; width:100%; box-sizing:border-box;">
-        <button type="button" class="remove-lesson-row-btn" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444; width:30px; height:30px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.1rem; padding:0;">
-          &times;
-        </button>
-      `;
-      row.querySelector(".remove-lesson-row-btn").addEventListener("click", () => {
-        row.remove();
-        if (lessonsContainer.querySelectorAll(".admin-lesson-input-row").length === 0 && emptyHint) {
-          emptyHint.style.display = "block";
-        }
-      });
-      lessonsContainer.appendChild(row);
-      if (window.lucide) window.lucide.createIcons();
-    };
-
-    wrapper.querySelector("#admin-add-lesson-row-btn")?.addEventListener("click", () => {
-      const count = lessonsContainer.querySelectorAll(".admin-lesson-input-row").length + 1;
-      addLessonRow("الوحدة الأولى", `الدرس #${count}`, "45:00");
-    });
-
-    wrapper.querySelector("#admin-import-curriculum-btn")?.addEventListener("click", async () => {
-      const subjectId = subjectSelect?.value;
-      if (!subjectId) {
-        showToast("يرجى اختيار المادة الدراسية أولاً لاستيراد منهجها.", "warning");
-        return;
-      }
-      try {
-        const importBtn = wrapper.querySelector("#admin-import-curriculum-btn");
-        if (importBtn) importBtn.innerText = "جاري الفحص...";
-
-        let lessonsToImport = [];
-        const course = (this.courses || []).find(c => c.subject?.id === subjectId || c.category === subjectSelect.options[subjectSelect.selectedIndex]?.getAttribute("data-name"));
-        if (course && course.id) {
-          const fullCourse = await apiFetch(`/courses/${course.id}`).catch(() => null);
-          if (fullCourse && fullCourse.lessons && fullCourse.lessons.length > 0) {
-            lessonsToImport = fullCourse.lessons;
-          }
-        }
-        if (lessonsToImport.length === 0) {
-          lessonsToImport = [
-            { chapter: "الوحدة الأولى: المفاهيم والأسس", title: "الدرس 1: شرح المفاهيم الأساسية وتطبيقاتها", duration: "45:00" },
-            { chapter: "الوحدة الأولى: المفاهيم والأسس", title: "الدرس 2: نماذج وتدريبات عملية", duration: "45:00" },
-            { chapter: "الوحدة الثانية: المنهج المتقدم", title: "الدرس 3: مهارات حل المسائل التراكمية", duration: "60:00" },
-            { chapter: "الوحدة الثانية: المنهج المتقدم", title: "الدرس 4: المراجعة النهائية واختبار التقييم", duration: "45:00" }
-          ];
-        }
-
-        lessonsContainer.querySelectorAll(".admin-lesson-input-row").forEach(r => r.remove());
-        lessonsToImport.forEach(l => {
-          addLessonRow(l.chapter || "الوحدة الأولى", l.title || "درس جديد", l.duration || "45:00");
-        });
-        showToast(`تم استيراد ${lessonsToImport.length} دروس بنجاح! 📚`, "success");
-        if (importBtn) importBtn.innerHTML = `<i data-lucide="check" style="width:14px; height:14px;"></i> تم استيراد المنهج`;
-        if (window.lucide) window.lucide.createIcons();
-      } catch (err) {
-        console.error("Error importing curriculum:", err);
-        showToast("تعذر استيراد المنهج تلقائياً.", "error");
-      }
-    });
-
-    // Initialize with PRIMARY stage
-    updateStageUI("PRIMARY");
+    // Initialize with default stage
+    updateStageUI(stageSelect?.value || "SECONDARY");
 
     // Form Submission
     wrapper.querySelector("#admin-create-group-form")?.addEventListener("submit", async (e) => {
@@ -1159,30 +1026,22 @@ export const AdminSessionsPage = {
       const gradeId = gradeSelect?.value;
       const subjectId = subjectSelect?.value;
       const teacherId = teacherSelect?.value || null;
-      const status = wrapper.querySelector("#admin-create-group-status")?.value || "OPEN";
-      const scheduleTime = wrapper.querySelector("#admin-create-group-time")?.value?.trim() || "06:00 م";
-      const duration = parseInt(wrapper.querySelector("#admin-create-group-duration")?.value, 10) || 60;
-      const meetingLink = wrapper.querySelector("#admin-create-group-meeting-link")?.value?.trim() || null;
-      const maxStudents = parseInt(wrapper.querySelector("#admin-create-group-max-students")?.value, 10) || 25;
-      const sessionPrice = parseFloat(wrapper.querySelector("#admin-create-group-session-price")?.value) || 40;
-      const monthlyPrice = parseFloat(wrapper.querySelector("#admin-create-group-monthly-price")?.value) || (sessionPrice * 8);
-      const teacherHourlyRate = parseFloat(wrapper.querySelector("#admin-create-group-teacher-rate")?.value) || 100;
-      const commission = parseFloat(wrapper.querySelector("#admin-create-group-commission")?.value) || 50;
+      const status = wrapper.querySelector("#create-group-status")?.value || "OPEN";
+      const name = nameInput?.value?.trim();
+      const duration = parseInt(wrapper.querySelector("#create-group-duration")?.value, 10) || 60;
+      const scheduleTime = wrapper.querySelector("#create-group-time")?.value?.trim() || "6:00م";
+      const startDate = wrapper.querySelector("#create-group-start-date")?.value || null;
+      const endDate = wrapper.querySelector("#create-group-end-date")?.value || null;
+      const totalSessions = parseInt(wrapper.querySelector("#create-group-total-sessions")?.value, 10) || 24;
+      const maxStudents = parseInt(wrapper.querySelector("#create-group-max-students")?.value, 10) || 25;
+      const studentHourlyRate = parseFloat(wrapper.querySelector("#create-group-student-rate")?.value) || 40;
+      const teacherHourlyRate = parseFloat(wrapper.querySelector("#create-group-teacher-rate")?.value) || 100;
+      const meetingLink = wrapper.querySelector("#create-group-meeting-link")?.value?.trim() || null;
+      const description = wrapper.querySelector("#create-group-description")?.value?.trim() || "";
 
-      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='admin-create-group-days']:checked")).map(cb => cb.value);
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='create-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
-      const name = wrapper.querySelector("#admin-create-group-name")?.value?.trim() || `مجموعة ${scheduleDays} (${scheduleTime})`;
-      const description = wrapper.querySelector("#admin-create-group-desc")?.value?.trim() || "";
-
-      // Extract custom units & lessons
-      const lessonRows = Array.from(wrapper.querySelectorAll(".admin-lesson-input-row"));
-      const lessons = lessonRows.map((r, idx) => ({
-        chapter: r.querySelector(".lesson-chapter-input")?.value?.trim() || "الوحدة الأولى",
-        title: r.querySelector(".lesson-title-input")?.value?.trim() || `الدرس ${idx + 1}`,
-        duration: r.querySelector(".lesson-duration-input")?.value?.trim() || "45:00",
-        order: idx
-      })).filter(l => l.title);
 
       if (!gradeId || !subjectId) {
         showToast("يرجى اختيار المرحلة والصف والمادة الدراسية للمجموعة.", "error");
@@ -1197,9 +1056,10 @@ export const AdminSessionsPage = {
       const submitBtn = wrapper.querySelector("#submit-admin-create-group-btn");
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<i data-lucide="loader-2" style="width:18px; height:18px; animation:spin 1s linear infinite;"></i> جاري الإضافة والجدولة...`;
-        if (window.lucide) window.lucide.createIcons();
+        submitBtn.innerText = "جاري الإضافة والجدولة...";
       }
+
+      const sessionsPerMonth = checkedDays.length > 0 ? (checkedDays.length * 4) : (totalSessions <= 6 ? totalSessions : 8);
 
       try {
         const newGroup = await apiFetch("/groups", {
@@ -1208,20 +1068,22 @@ export const AdminSessionsPage = {
             subjectId,
             gradeId,
             teacherId,
-            name,
+            name: name || `مجموعة ${scheduleDays} (${scheduleTime})`,
             description,
+            status,
             scheduleDays,
             scheduleTime,
             scheduleText,
+            startDate,
+            endDate,
+            totalSessions,
             sessionDuration: duration,
-            maxStudents,
-            sessionPrice,
-            monthlyPrice,
-            studentHourlyRate: sessionPrice,
+            studentHourlyRate,
             teacherHourlyRate,
-            platformCommissionPercent: commission,
-            meetingLink,
-            lessons
+            sessionPrice: studentHourlyRate,
+            monthlyPrice: studentHourlyRate * sessionsPerMonth,
+            maxStudents,
+            meetingLink
           })
         });
 
@@ -1234,13 +1096,16 @@ export const AdminSessionsPage = {
 
         closeModal();
         showToast("تمت إضافة وجدولة المجموعة وتعيين المعلم بنجاح! 🎉🚀", "success");
-        await this.loadAllData();
-        this.renderTab("groups");
+        try {
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (reloadErr) {
+          console.error("Error refreshing tab after group creation:", reloadErr);
+        }
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `<i data-lucide="plus-circle" style="width:18px; height:18px;"></i> ➕ إضافة وجدولة المجموعة الآن 🚀`;
-          if (window.lucide) window.lucide.createIcons();
+          submitBtn.innerText = "➕ إضافة وجدولة المجموعة الآن 🚀";
         }
         showToast(err.message || "فشل إنشاء وجدولة المجموعة.", "error");
       }
@@ -1354,7 +1219,9 @@ export const AdminSessionsPage = {
                 <input type="date" id="edit-group-start-date" value="${group.startDate ? new Date(group.startDate).toISOString().slice(0,10) : '2026-09-13'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
               <div>
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">تاريخ الانتهاء:</label>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  تاريخ الانتهاء: <span style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">(محسوب تلقائياً ⚡)</span>
+                </label>
                 <input type="date" id="edit-group-end-date" value="${group.endDate ? new Date(group.endDate).toISOString().slice(0,10) : '2026-12-02'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
             </div>
@@ -1418,6 +1285,34 @@ export const AdminSessionsPage = {
     wrapper.querySelector("#close-admin-edit-group-modal")?.addEventListener("click", closeModal);
     wrapper.querySelector("#cancel-admin-edit-group-btn")?.addEventListener("click", closeModal);
 
+    const editStartDateInput = wrapper.querySelector("#edit-group-start-date");
+    const editTotalSessionsInput = wrapper.querySelector("#edit-group-total-sessions");
+    const editEndDateInput = wrapper.querySelector("#edit-group-end-date");
+
+    const updateEditAutoEndDate = () => {
+      const sDate = editStartDateInput?.value;
+      const tSessions = parseInt(editTotalSessionsInput?.value, 10) || 0;
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='edit-group-days']:checked")).map(cb => cb.value);
+      if (sDate && tSessions > 0) {
+        const computed = this.computeGroupEndDate(sDate, tSessions, checkedDays);
+        if (computed && editEndDateInput) {
+          editEndDateInput.value = computed;
+        }
+      }
+    };
+
+    editStartDateInput?.addEventListener("change", updateEditAutoEndDate);
+    editStartDateInput?.addEventListener("input", updateEditAutoEndDate);
+    editTotalSessionsInput?.addEventListener("input", updateEditAutoEndDate);
+    editTotalSessionsInput?.addEventListener("change", updateEditAutoEndDate);
+    wrapper.querySelectorAll("input[name='edit-group-days']").forEach(cb => {
+      cb.addEventListener("change", updateEditAutoEndDate);
+    });
+
+    if (!group.endDate) {
+      updateEditAutoEndDate();
+    }
+
     wrapper.querySelector("#admin-edit-group-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = wrapper.querySelector("#edit-group-name")?.value.trim();
@@ -1444,6 +1339,8 @@ export const AdminSessionsPage = {
         submitBtn.innerText = "جاري الحفظ...";
       }
 
+      const sessionsPerMonth = checkedDays.length > 0 ? (checkedDays.length * 4) : (totalSessions <= 6 ? totalSessions : 8);
+
       try {
         await apiFetch(`/groups/${group.id}`, {
           method: "PUT",
@@ -1462,7 +1359,7 @@ export const AdminSessionsPage = {
             studentHourlyRate,
             teacherHourlyRate,
             sessionPrice: studentHourlyRate,
-            monthlyPrice: studentHourlyRate * 8,
+            monthlyPrice: studentHourlyRate * sessionsPerMonth,
             maxStudents,
             meetingLink
           })
@@ -1894,6 +1791,9 @@ export const AdminSessionsPage = {
                         <span style="font-size:0.75rem; font-weight:900; background:rgba(16,185,129,0.15); color:#10b981; padding:3px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:4px;">
                           <span style="width:6px; height:6px; border-radius:50%; background:#10b981;"></span> مباشر الآن 🔴
                         </span>
+                        <button class="btn-secondary admin-complete-session-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:6px 12px; font-size:0.78rem; font-weight:800; border-radius:10px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
+                          <i data-lucide="check-circle" style="width:12px; height:12px;"></i> إتمام الحصة 💰
+                        </button>
                         <button class="btn-primary" data-join-meet-id="${s.id}" style="padding:6px 14px; font-size:0.78rem; font-weight:800; border-radius:10px; background:#10b981; border-color:#10b981; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
                           Google Meet 🎥
                         </button>
@@ -1905,6 +1805,9 @@ export const AdminSessionsPage = {
                         <span style="font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.1); color:var(--primary); padding:3px 10px; border-radius:10px;">
                           ⏳ قادمة ومجدولة
                         </span>
+                        <button class="btn-secondary admin-complete-session-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:5px 12px; font-size:0.76rem; font-weight:800; border-radius:10px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
+                          <i data-lucide="check-circle" style="width:12px; height:12px;"></i> إتمام الحصة 💰
+                        </button>
                         ${s.id ? `
                           <button class="btn-secondary" data-join-meet-id="${s.id}" style="padding:5px 12px; font-size:0.76rem; font-weight:800; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
                             <i data-lucide="video" style="width:12px; height:12px;"></i> Google Meet 🎥
@@ -1956,7 +1859,17 @@ export const AdminSessionsPage = {
       if (group) this.renderStartTeachingModal(group);
     });
 
-    container.querySelectorAll(".admin-session-whatsapp-btn").forEach(btn => {
+    wrapper.querySelectorAll(".admin-complete-session-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        const gId = btn.getAttribute("data-group-id") || groupId;
+        this.renderAdminCompleteSessionModal(sessionId, gId, () => {
+          this.renderGroupSessionsViewModal(groupId);
+        });
+      });
+    });
+
+    wrapper.querySelectorAll(".admin-session-whatsapp-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const sessionId = btn.getAttribute("data-id");
         if (sessionId) {
@@ -2598,8 +2511,11 @@ export const AdminSessionsPage = {
                             </button>
                           </div>
                         ` : ''}
-                        <div style="display:flex; gap:6px; margin-top:4px; justify-content:flex-end;">
-                          ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
+                        <div style="display:flex; gap:6px; margin-top:4px; justify-content:flex-end; flex-wrap:wrap; align-items:center;">
+                          ${sess.status?.toLowerCase() !== "completed" && !sess.status?.toLowerCase().includes("cancelled") ? `
+                            <button class="btn-secondary admin-complete-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
+                              <i data-lucide="check-circle" style="width:11px;height:11px;"></i> إتمام 💰
+                            </button>
                             <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px;">تغيير المعلم</button>
                             <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:var(--error);">إلغاء</button>
                           ` : ''}
@@ -2673,7 +2589,10 @@ export const AdminSessionsPage = {
                                 <span>تذكير واتساب 📲</span>
                               </button>
                             ` : ''}
-                            ${sess.status !== "completed" && !sess.status?.includes("cancelled") ? `
+                            ${sess.status?.toLowerCase() !== "completed" && !sess.status?.toLowerCase().includes("cancelled") ? `
+                              <button class="btn-secondary admin-complete-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 11px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
+                                <i data-lucide="check-circle" style="width:12px;height:12px;"></i> إتمام الحصة 💰
+                              </button>
                               <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--primary); color:var(--primary); font-weight:700;">
                                 <i data-lucide="user-check" style="width:12px;height:12px;"></i> تغيير المعلم
                               </button>
@@ -3238,6 +3157,209 @@ export const AdminSessionsPage = {
           showToast(err.message || "فشل إزالة الطالب من المجموعة", "error");
         }
       });
+    });
+  },
+
+  // ── Render Admin Complete Session & Credit Teacher Money Modal ─────────────────
+  renderAdminCompleteSessionModal(sessionId, groupId = null, onCompletedCallback = null) {
+    const existing = document.getElementById("admin-complete-session-modal-wrapper");
+    if (existing) existing.remove();
+
+    let session = (this.allSessions || []).find(s => String(s.id) === String(sessionId));
+    let group = groupId ? (this.allCourseGroups || []).find(g => String(g.id) === String(groupId)) : null;
+    if (!group && session?.group) group = session.group;
+    if (!group && session?.groupId) group = (this.allCourseGroups || []).find(g => String(g.id) === String(session.groupId));
+
+    const teacher = session?.teacher || group?.teacher || session?.course?.teacher;
+    const teacherName = teacher?.name || "معلم المنصة";
+    const duration = session?.duration || group?.sessionDuration || 60;
+    const durationHours = duration / 60;
+
+    // Hourly rate priority: Group rate first, then teacher base rate, fallback 150
+    const hourlyRate = (group && group.teacherHourlyRate && group.teacherHourlyRate > 0)
+      ? group.teacherHourlyRate
+      : ((teacher && teacher.hourlyRate && teacher.hourlyRate > 0) ? teacher.hourlyRate : 150);
+
+    const calculatedAmount = Math.round(durationHours * hourlyRate);
+
+    const sessionTitle = session?.title || (group ? `${group.name || group.title} - حصة مباشرة` : "حصة تعليمية");
+    const groupOrCourseTitle = group?.name || group?.title || session?.course?.title || (session?.student ? `حصة خاصة للطالب: ${session.student.name || 'طالب'}` : "مجموعة دراسية");
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "admin-complete-session-modal-wrapper";
+    document.body.appendChild(wrapper);
+
+    const closeModal = () => { wrapper.remove(); };
+
+    wrapper.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:999999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div class="glass-card" style="width:100%; max-width:580px; border-radius:26px; padding:28px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow-y:auto; border:1.5px solid rgba(16,185,129,0.35); box-shadow:0 25px 60px rgba(0,0,0,0.45); background:var(--bg-card);">
+          
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:48px; height:48px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="check-check" style="width:26px; height:26px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">
+                  إتمام الحصة وإضافة الأجر للمعلم 💰
+                </h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                  توثيق انتهاء الحصة وإيداع مستحقات المعلم المالية في حسابه فوراً
+                </p>
+              </div>
+            </div>
+            <button id="close-admin-complete-modal-x" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">&times;</button>
+          </div>
+
+          <!-- Summary & Earnings Box -->
+          <div style="background:linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.06)); border:1.5px solid rgba(16,185,129,0.25); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:700;">عنوان الحصة</span>
+                <strong style="font-size:0.88rem; color:var(--text-main);">${sessionTitle}</strong>
+              </div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:700;">المجموعة / الكورس</span>
+                <strong style="font-size:0.88rem; color:var(--primary);">${groupOrCourseTitle}</strong>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; border-top:1px dashed rgba(16,185,129,0.2); padding-top:10px;">
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:700;">المعلم المستحق</span>
+                <strong style="font-size:0.88rem; color:var(--text-main); display:flex; align-items:center; gap:5px;">
+                  👨‍🏫 ${teacherName}
+                </strong>
+              </div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:700;">مدة الحصة المعتمدة</span>
+                <strong style="font-size:0.88rem; color:var(--text-main);">⏱️ ${duration} دقيقة (${durationHours} ساعة)</strong>
+              </div>
+            </div>
+
+            <!-- Calculated Amount Highlight -->
+            <div style="background:var(--bg-card); border-radius:14px; padding:12px 16px; border:1px solid rgba(16,185,129,0.3); display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:0.8rem; font-weight:800; color:var(--text-main);">سعر الساعة للمعلم:</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${hourlyRate} ج.م./ساعة ${group?.teacherHourlyRate ? '(أجر المجموعة)' : '(سعر المعلم العام)'}</div>
+              </div>
+              <div style="text-align:end;">
+                <div style="font-size:0.75rem; color:#10b981; font-weight:800;">المستحق المالي المضاف:</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#10b981; line-height:1.1;">+ ${calculatedAmount} ج.م.</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Optional Session Completion Details Form -->
+          <form id="admin-complete-session-form" style="display:flex; flex-direction:column; gap:12px;">
+            
+            <div class="form-group" style="margin:0;">
+              <label style="font-size:0.82rem; font-weight:800; display:block; margin-bottom:5px; color:var(--text-main);">
+                موضوع الدرس / عنوان الحصة (Topic):
+              </label>
+              <input type="text" id="admin-complete-topic" class="form-input" value="${session?.topic || ''}" placeholder="مثال: مراجعة الوحدة الأولى وحل التمارين" style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+            </div>
+
+            <div class="form-group" style="margin:0;">
+              <label style="font-size:0.82rem; font-weight:800; display:block; margin-bottom:5px; color:var(--text-main);">
+                ماذا تم تغطيته في الدرس (What was covered):
+              </label>
+              <textarea id="admin-complete-covered" class="form-input" rows="2" placeholder="أهم النقاط والمفاهيم المشروحة في الحصة..." style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; resize:vertical; box-sizing:border-box;">${session?.whatWasCovered || ''}</textarea>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.82rem; font-weight:800; display:block; margin-bottom:5px; color:var(--text-main);">
+                  تقييم أداء الطلاب:
+                </label>
+                <select id="admin-complete-performance" class="form-input" style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+                  <option value="ممتاز" ${session?.studentPerformance === 'ممتاز' ? 'selected' : ''}>🌟 ممتاز</option>
+                  <option value="جيد جداً" ${session?.studentPerformance === 'جيد جداً' ? 'selected' : ''}>👍 جيد جداً</option>
+                  <option value="متوسط" ${session?.studentPerformance === 'متوسط' ? 'selected' : ''}>👌 متوسط</option>
+                  <option value="يحتاج تدريب" ${session?.studentPerformance === 'يحتاج تدريب' ? 'selected' : ''}>⚠️ يحتاج تدريب ومتابعة</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.82rem; font-weight:800; display:block; margin-bottom:5px; color:var(--text-main);">
+                  ملاحظات إدارية / المعلم:
+                </label>
+                <input type="text" id="admin-complete-notes" class="form-input" value="${session?.teacherNotes || 'تم إتمام وتوثيق الحصة بمعرفة الإدارة'}" placeholder="أي ملاحظات إضافية..." style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+              </div>
+            </div>
+
+            <div style="background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:10px 14px; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
+              💡 <strong>تنبيه إداري:</strong> بمجرد الضغط على تأكيد، سيتم وسم الحصة كـ <strong>مكتملة (COMPLETED)</strong>، وتسجيل حضور المعلم، وإضافة مبلغ <strong>(${calculatedAmount} ج.م.)</strong> في سجل أرباح المعلم فوراً.
+            </div>
+
+            <!-- Footer Actions -->
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; border-top:1px solid var(--border-color); padding-top:14px;">
+              <button type="button" id="cancel-admin-complete-modal-btn" class="btn-secondary" style="padding:9px 18px; border-radius:12px; font-weight:700;">إلغاء</button>
+              <button type="submit" id="admin-submit-complete-btn" class="btn-primary" style="padding:9px 22px; border-radius:12px; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); border:none; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="check-circle" style="width:15px; height:15px;"></i>
+                <span>تأكيد إتمام الحصة وإضافة الأجر (${calculatedAmount} ج.م.) 💰</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    document.getElementById("close-admin-complete-modal-x")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-admin-complete-modal-btn")?.addEventListener("click", closeModal);
+
+    document.getElementById("admin-complete-session-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const topic = document.getElementById("admin-complete-topic")?.value?.trim() || "";
+      const whatWasCovered = document.getElementById("admin-complete-covered")?.value?.trim() || "";
+      const teacherNotes = document.getElementById("admin-complete-notes")?.value?.trim() || "";
+      const studentPerformance = document.getElementById("admin-complete-performance")?.value || "ممتاز";
+
+      const submitBtn = document.getElementById("admin-submit-complete-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>جاري الإتمام وإيداع المستحقات... ⏳</span>`;
+      }
+
+      try {
+        const res = await apiFetch(`/sessions/${sessionId}/complete`, {
+          method: "POST",
+          body: JSON.stringify({
+            topic,
+            whatWasCovered,
+            teacherNotes,
+            studentPerformance
+          })
+        });
+
+        const creditedAmount = res.calculatedEarning || (res.earning && res.earning.amount) || calculatedAmount;
+        showToast(`🎉 تم إتمام الحصة بنجاح وإيداع ${creditedAmount} ج.م. لمستحقات المعلم (${teacherName})! 💰`, "success");
+        closeModal();
+        await this.loadAllData();
+        if (typeof onCompletedCallback === "function") {
+          onCompletedCallback();
+        } else {
+          this.renderTab(this.activeTab || "sessions");
+        }
+      } catch (err) {
+        showToast(err.message || "فشل إتمام الحصة وحساب الأرباح.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `
+            <i data-lucide="check-circle" style="width:15px; height:15px;"></i>
+            <span>تأكيد إتمام الحصة وإضافة الأجر (${calculatedAmount} ج.م.) 💰</span>
+          `;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
     });
   },
 

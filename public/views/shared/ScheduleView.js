@@ -5,7 +5,7 @@ export default class ScheduleView {
     this.container = container;
     this.sessions = [];
     this.courses = [];
-    this.sessionFilter = "weekly"; // Default to weekly timetable with days in rows and sessions in columns
+    this.sessionFilter = "daily"; // Default to daily view
 
     // Set current week start (Sunday)
     const now = new Date();

@@ -220,6 +220,8 @@ export default class StudentView {
     this.subscriptions = [];
     this.assignments = [];
     this.stats = null;
+    this.allGradesData = [];
+    this.suggestedGroupsAutoScrollInterval = null;
   }
 
   async render() {
@@ -231,14 +233,15 @@ export default class StudentView {
     `;
 
     try {
-      const [stats, enrollments, allCourses, sessions, subscriptions, assignments, meData] = await Promise.all([
+      const [stats, enrollments, allCourses, sessions, subscriptions, assignments, meData, allGrades] = await Promise.all([
         apiFetch("/student/stats").catch(() => ({ totalCourses: 0, completedLessonsCount: 0, studyHours: 0 })),
         apiFetch("/student/enrollments").catch(() => []),
         apiFetch("/courses").catch(() => []),
         apiFetch("/sessions").catch(() => []),
         apiFetch("/subscriptions/my").catch(() => []),
         apiFetch("/assignments").catch(() => []),
-        apiFetch("/auth/me").catch(() => null)
+        apiFetch("/auth/me").catch(() => null),
+        apiFetch("/curriculum/grades").catch(() => [])
       ]);
 
       if (meData) {
@@ -251,6 +254,7 @@ export default class StudentView {
       this.rawSessions = Array.isArray(sessions) ? sessions : [];
       this.subscriptions = Array.isArray(subscriptions) ? subscriptions : [];
       this.assignments = Array.isArray(assignments) ? assignments : [];
+      this.allGradesData = Array.isArray(allGrades) ? allGrades : [];
 
       this.renderDashboard();
     } catch (err) {
@@ -376,12 +380,62 @@ export default class StudentView {
       g.nextSession = nextSess;
     });
 
-    // Recommended courses (strictly matching the student's grade/degree)
+    // Grade, Subjects and Groups matching the student's grade/education
     const enrolledIds = new Set(this.enrollments.map(e => e.course?.id).filter(Boolean));
+    const enrolledGroupIds = new Set(this.enrollments.map(e => e.group?.id).filter(Boolean));
     const studentEdu = state.user?.education;
-    const candidateCourses = this.allCourses.filter(c => !enrolledIds.has(c.id) && (c.status === "PUBLISHED" || !c.status));
+    const sKey = normalizeGradeKey(studentEdu);
+
+    // 1. Find matching Grade in Egyptian curriculum
+    const currentGrade = (this.allGradesData || []).find(g => {
+      const gCode = normalizeGradeKey(g.code);
+      const gName = normalizeGradeKey(g.name);
+      const gNameEn = normalizeGradeKey(g.nameEn);
+      return (gCode && gCode === sKey) || (gName && gName === sKey) || (gNameEn && gNameEn === sKey);
+    });
+
+    const gradeSubjects = currentGrade?.subjects ? currentGrade.subjects.filter(s => s.isActive !== false) : [];
+
+    // 2. Extract matching courses and available groups for this grade
+    const matchingGradeCourses = (this.allCourses || []).filter(c => isCourseMatchingStudentGrade(c, studentEdu));
     
-    // Match courses specifically for student's grade/degree
+    const availableGradeGroups = [];
+    matchingGradeCourses.forEach(course => {
+      if (Array.isArray(course.groups)) {
+        course.groups.forEach(g => {
+          if (!enrolledGroupIds.has(g.id)) {
+            availableGradeGroups.push({
+              ...g,
+              course: course,
+              teacher: g.teacher || course.teacher,
+              gradeName: currentGrade?.name || course.grade?.name || getStudentGradeDisplay(studentEdu),
+              subjectName: course.subject?.name || course.category || "المادة الدراسية"
+            });
+          }
+        });
+      }
+    });
+
+    // 3. Fallback: If gradeSubjects is empty, derive subjects from matching courses
+    let finalSubjects = [...gradeSubjects];
+    if (finalSubjects.length === 0 && matchingGradeCourses.length > 0) {
+      const seenNames = new Set();
+      matchingGradeCourses.forEach(c => {
+        const subName = c.subject?.name || c.category || c.title;
+        if (subName && !seenNames.has(subName.trim().toLowerCase())) {
+          seenNames.add(subName.trim().toLowerCase());
+          finalSubjects.push({
+            id: c.subject?.id || c.id,
+            name: subName,
+            nameEn: c.subject?.nameEn || c.title,
+            icon: c.subject?.icon || "📖",
+            isLanguageTrack: c.subject?.isLanguageTrack || false
+          });
+        }
+      });
+    }
+
+    const candidateCourses = this.allCourses.filter(c => !enrolledIds.has(c.id) && (c.status === "PUBLISHED" || !c.status));
     let recommendedCourses = studentEdu ? candidateCourses.filter(c => isCourseMatchingStudentGrade(c, studentEdu)) : [];
     recommendedCourses = recommendedCourses.slice(0, 6);
 
@@ -700,7 +754,7 @@ export default class StudentView {
           </a>
 
           <!-- Circle 2: Enrolled Cohorts & Courses -->
-          <a href="#student-groups" class="circle-stat-pod" title="عرض مجموعاتك وأفواجك الدراسية">
+          <a href="#student-groups" class="circle-stat-pod" title="عرض مجموعاتك الدراسية">
             <div class="circle-ring-wrapper">
               <svg width="84" height="84" viewBox="0 0 84 84">
                 <circle cx="42" cy="42" r="36" fill="transparent" stroke="rgba(99,102,241,0.12)" stroke-width="6.5" />
@@ -711,7 +765,7 @@ export default class StudentView {
               </div>
             </div>
             <div style="text-align:center;">
-              <div class="circle-stat-label">أفواجي التعليمية</div>
+              <div class="circle-stat-label">مجموعاتي التعليمية</div>
               <div class="circle-stat-sub">مجموعاتك ↗</div>
             </div>
           </a>
@@ -826,30 +880,137 @@ export default class StudentView {
           <!-- Left Column (Main Track) -->
           <div style="display:flex; flex-direction:column; gap:32px;">
             
-            <!-- Section: Recommended Courses for You -->
+            <!-- Section: Education Subjects and Groups for Your Grade -->
             <div id="student-recommended-courses-section">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+              <style>
+                .creative-grade-subject-card:hover {
+                  transform: translateY(-4px);
+                  box-shadow: 0 10px 24px rgba(0,0,0,0.08) !important;
+                  border-color: rgba(99,102,241,0.4) !important;
+                }
+                .suggested-groups-scroll-container {
+                  display: flex;
+                  gap: 20px;
+                  overflow-x: auto;
+                  padding: 12px 28px 24px 28px;
+                  scroll-snap-type: x mandatory;
+                  scroll-padding: 0 28px;
+                  scroll-behavior: smooth;
+                  -webkit-overflow-scrolling: touch;
+                }
+                .suggested-groups-scroll-container::-webkit-scrollbar {
+                  height: 6px;
+                }
+                .suggested-groups-scroll-container::-webkit-scrollbar-track {
+                  background: rgba(0,0,0,0.04);
+                  border-radius: 10px;
+                  margin: 0 28px;
+                }
+                .suggested-groups-scroll-container::-webkit-scrollbar-thumb {
+                  background: rgba(99,102,241,0.22);
+                  border-radius: 10px;
+                }
+                .suggested-groups-scroll-container::-webkit-scrollbar-thumb:hover {
+                  background: var(--primary);
+                }
+                .suggested-group-card {
+                  position: relative;
+                  overflow: hidden;
+                  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .suggested-group-card:hover {
+                  transform: translateY(-6px);
+                  box-shadow: 0 18px 36px -8px rgba(99,102,241,0.18), 0 6px 16px -4px rgba(0,0,0,0.08) !important;
+                  border-color: rgba(99,102,241,0.45) !important;
+                }
+                .suggested-group-card:hover .suggested-card-cta-btn {
+                  box-shadow: 0 6px 18px rgba(79,70,229,0.4) !important;
+                }
+                .suggested-carousel-arrow {
+                  position: absolute;
+                  top: 50%;
+                  transform: translateY(-50%);
+                  z-index: 10;
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 50%;
+                  border: 1.5px solid var(--border-color);
+                  background: var(--bg-card);
+                  color: var(--text-main);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  cursor: pointer;
+                  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+                  backdrop-filter: blur(12px);
+                  -webkit-backdrop-filter: blur(12px);
+                  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .suggested-carousel-arrow.right {
+                  right: 2px;
+                }
+                .suggested-carousel-arrow.left {
+                  left: 2px;
+                }
+                .suggested-carousel-arrow:hover {
+                  background: var(--primary) !important;
+                  color: #ffffff !important;
+                  border-color: var(--primary) !important;
+                  box-shadow: 0 6px 22px rgba(99,102,241,0.45) !important;
+                  transform: translateY(-50%) scale(1.1) !important;
+                }
+                .suggested-carousel-arrow:active {
+                  transform: translateY(-50%) scale(0.95) !important;
+                }
+                @media (max-width: 640px) {
+                  .suggested-groups-scroll-container {
+                    padding: 10px 16px 20px 16px;
+                    gap: 14px;
+                    scroll-padding: 0 16px;
+                  }
+                  .suggested-carousel-arrow.right { right: 0px; width: 34px; height: 34px; }
+                  .suggested-carousel-arrow.left { left: 0px; width: 34px; height: 34px; }
+                }
+              </style>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
                 <div>
-                  <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <i data-lucide="sparkles" style="width:20px; height:20px; color:#a855f7;"></i>
-                    <span>دورات مقترحة لتعزيز مهاراتك</span>
-                    <span class="badge" style="font-size:0.75rem; background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">
-                      🎯 لصف: ${getStudentGradeDisplay(state.user?.education)}
-                    </span>
-                    <button type="button" class="btn-change-student-grade" style="background:rgba(99,102,241,0.08); border:1px dashed var(--primary); color:var(--primary); border-radius:12px; padding:2px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s ease;">
-                      <i data-lucide="refresh-cw" style="width:11px; height:11px;"></i> تغيير الصف 🔄
-                    </button>
+                  <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="sparkles" style="width:20px; height:20px; color:#f59e0b;"></i>
+                    <span>مجموعات مقترحة (${availableGradeGroups.length})</span>
                   </h3>
-                  <p style="color:var(--text-muted); font-size:0.82rem; margin:2px 0 0 0;">اخترنا لك هذه المناهج والدورات المتوافقة مع مرحلتك الدراسية</p>
+                  <p style="font-size:0.78rem; color:var(--text-muted); margin:2px 0 0 0; font-weight:600;">مجموعات دراسية مقترحة لصفك للتسجيل الفوري مع أفضل المعلمين</p>
                 </div>
-                <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none;">
-                  تصفح كافة المقررات (${this.allCourses.length}) ↗
-                </a>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--primary); font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
+                    <span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981; display:inline-block;"></span>
+                    تمرير تلقائي ⚡
+                  </span>
+                  <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <span>تصفح كافة المقررات</span>
+                    <i data-lucide="arrow-left" style="width:13px; height:13px;"></i>
+                  </a>
+                </div>
               </div>
 
-              ${recommendedCourses.length > 0 ? `
-                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px;">
-                  ${recommendedCourses.map(c => this.renderCourseCard(c, 0, false, null)).join('')}
+              ${availableGradeGroups.length > 0 ? `
+                <!-- Carousel Container with Left and Right Arrows -->
+                <div class="suggested-groups-carousel-wrapper" style="position:relative; width:100%;">
+                  
+                  <!-- Right Floating Arrow -->
+                  <button type="button" id="btn-scroll-suggested-right" class="suggested-carousel-arrow right" title="التمرير لليمين">
+                    <i data-lucide="chevron-right" style="width:18px; height:18px;"></i>
+                  </button>
+
+                  <!-- Scroll Track -->
+                  <div id="suggested-groups-scroll-track" class="suggested-groups-scroll-container">
+                    ${availableGradeGroups.map(g => this.renderGradeGroupCard(g)).join('')}
+                  </div>
+
+                  <!-- Left Floating Arrow -->
+                  <button type="button" id="btn-scroll-suggested-left" class="suggested-carousel-arrow left" title="التمرير لليسار">
+                    <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+                  </button>
+
                 </div>
               ` : `
                 <div class="glass-card" style="padding:28px 20px; text-align:center; border-radius:18px; border:1px dashed rgba(99,102,241,0.3); background:rgba(99,102,241,0.02); display:flex; flex-direction:column; align-items:center; gap:10px;">
@@ -858,17 +1019,14 @@ export default class StudentView {
                   </div>
                   <div>
                     <h4 style="font-size:0.98rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">
-                      لا توجد دورات إضافية متاحة حالياً لصف: ${getStudentGradeDisplay(state.user?.education)}
+                      لا توجد مجموعات مقترحة جديدة متاحة حالياً لصفك
                     </h4>
                     <p style="font-size:0.82rem; color:var(--text-muted); margin:0; max-width:460px; line-height:1.5;">
-                      المناهج المقترحة هنا ترتبط تلقائياً بصفك الدراسي. يمكنك تغيير صفك لعرض المناهج المقترحة للمراحل الأخرى أو استعراض جميع المقررات العامة.
+                      المجموعات المقترحة تظهر فور توفر مقاعد بمجموعات جديدة تناسب مرحلتك الدراسية. يمكنك استعراض كافة المقررات العامة في أي وقت.
                     </p>
                   </div>
                   <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px;">
-                    <button type="button" class="btn-primary btn-change-student-grade" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
-                      <i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> تغيير الصف الدراسي 🔄
-                    </button>
-                    <a href="#courses" class="btn-secondary" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                    <a href="#courses" class="btn-primary" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
                       <i data-lucide="book-open" style="width:13px; height:13px;"></i> استعراض كافة المقررات ↗
                     </a>
                   </div>
@@ -1226,6 +1384,63 @@ export default class StudentView {
         this.openChangeGradeModal();
       });
     });
+
+    // Horizontal Auto-Scroll with Right and Left Floating Arrows
+    const scrollTrack = this.container.querySelector("#suggested-groups-scroll-track");
+    if (scrollTrack) {
+      if (this.suggestedGroupsAutoScrollInterval) {
+        clearInterval(this.suggestedGroupsAutoScrollInterval);
+        this.suggestedGroupsAutoScrollInterval = null;
+      }
+
+      const cardWidth = 310;
+      let isPaused = false;
+
+      // Automatic Scroll Step
+      const triggerAutoScroll = () => {
+        if (isPaused) return;
+        const isRtl = document.dir === "rtl" || getComputedStyle(scrollTrack).direction === "rtl";
+        const currentScroll = Math.abs(scrollTrack.scrollLeft);
+        const maxScroll = scrollTrack.scrollWidth - scrollTrack.clientWidth;
+
+        if (maxScroll <= 15) return; // not enough cards to scroll
+
+        if (currentScroll >= maxScroll - 20) {
+          // Reached the end, loop back smoothly to start
+          scrollTrack.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          // Advance forward (negative in RTL, positive in LTR)
+          const delta = isRtl ? -cardWidth : cardWidth;
+          scrollTrack.scrollBy({ left: delta, behavior: "smooth" });
+        }
+      };
+
+      // Auto-scroll every 3.5 seconds
+      this.suggestedGroupsAutoScrollInterval = setInterval(triggerAutoScroll, 3500);
+
+      // Pause on hover or touch so student can interact comfortably
+      const carouselWrapper = this.container.querySelector(".suggested-groups-carousel-wrapper") || scrollTrack;
+      carouselWrapper.addEventListener("mouseenter", () => { isPaused = true; });
+      carouselWrapper.addEventListener("mouseleave", () => { isPaused = false; });
+      carouselWrapper.addEventListener("touchstart", () => { isPaused = true; }, { passive: true });
+      carouselWrapper.addEventListener("touchend", () => {
+        setTimeout(() => { isPaused = false; }, 2500);
+      }, { passive: true });
+
+      // Right arrow click: scroll right
+      this.container.querySelector("#btn-scroll-suggested-right")?.addEventListener("click", () => {
+        isPaused = true;
+        scrollTrack.scrollBy({ left: 335, behavior: "smooth" });
+        setTimeout(() => { isPaused = false; }, 3500);
+      });
+
+      // Left arrow click: scroll left
+      this.container.querySelector("#btn-scroll-suggested-left")?.addEventListener("click", () => {
+        isPaused = true;
+        scrollTrack.scrollBy({ left: -335, behavior: "smooth" });
+        setTimeout(() => { isPaused = false; }, 3500);
+      });
+    }
   }
 
   async renderPrayerTimesModal() {
@@ -1557,10 +1772,239 @@ export default class StudentView {
     });
   }
 
+  getSubjectTheme(name) {
+    const n = String(name || "").toLowerCase();
+    if (n.includes("عرب") || n.includes("arabic")) {
+      return { gradient: "linear-gradient(135deg, #0d9488 0%, #042f2e 100%)", color: "#0d9488", icon: "📖" };
+    }
+    if (n.includes("engl") || n.includes("connect") || n.includes("إنجل") || n.includes("لغة")) {
+      return { gradient: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)", color: "#2563eb", icon: "🔤" };
+    }
+    if (n.includes("رياض") || n.includes("math")) {
+      return { gradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", color: "#7c3aed", icon: "📐" };
+    }
+    if (n.includes("فيزي") || n.includes("physic")) {
+      return { gradient: "linear-gradient(135deg, #d97706 0%, #78350f 100%)", color: "#d97706", icon: "⚡" };
+    }
+    if (n.includes("كيمي") || n.includes("chem")) {
+      return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🧪" };
+    }
+    if (n.includes("أحيا") || n.includes("bio")) {
+      return { gradient: "linear-gradient(135deg, #10b981 0%, #065f46 100%)", color: "#10b981", icon: "🧬" };
+    }
+    if (n.includes("علوم") || n.includes("scien")) {
+      return { gradient: "linear-gradient(135deg, #059669 0%, #064e3b 100%)", color: "#059669", icon: "🔬" };
+    }
+    if (n.includes("تاريخ") || n.includes("history") || n.includes("جغراف") || n.includes("دراسات") || n.includes("فلسف")) {
+      return { gradient: "linear-gradient(135deg, #b45309 0%, #78350f 100%)", color: "#b45309", icon: "🏛️" };
+    }
+    if (n.includes("ict") || n.includes("حاسب") || n.includes("برمج") || n.includes("معلومات")) {
+      return { gradient: "linear-gradient(135deg, #0891b2 0%, #164e63 100%)", color: "#0891b2", icon: "💻" };
+    }
+    if (n.includes("فرنس") || n.includes("french") || n.includes("ألمان") || n.includes("german")) {
+      return { gradient: "linear-gradient(135deg, #e11d48 0%, #881337 100%)", color: "#e11d48", icon: "🌍" };
+    }
+    return { gradient: "linear-gradient(135deg, #6366f1 0%, #4338ca 100%)", color: "#6366f1", icon: "📚" };
+  }
+
+  renderGradeSubjectCard(subject, currentGrade, subjectGroupsCount) {
+    const theme = this.getSubjectTheme(subject.name);
+    const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+    const gradeName = currentGrade?.name || "المرحلة الدراسية";
+
+    return `
+      <a href="#subject-groups/${subject.id}" class="creative-grade-subject-card" style="
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 18px;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      ">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+          <div style="
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: ${theme.gradient};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            flex-shrink: 0;
+          ">
+            ${iconToDisplay}
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+            <span class="badge" style="
+              background: ${subject.isLanguageTrack ? 'rgba(37,99,235,0.1)' : 'rgba(16,185,129,0.1)'};
+              color: ${subject.isLanguageTrack ? '#2563eb' : '#10b981'};
+              font-size: 0.72rem;
+              font-weight: 800;
+              padding: 3px 8px;
+              border-radius: 8px;
+            ">
+              ${subject.isLanguageTrack ? 'لغات (Language)' : 'عام (عربي)'}
+            </span>
+            ${subjectGroupsCount > 0 ? `
+              <span class="badge" style="background:rgba(229,29,116,0.1); color:#e51d74; font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px;">
+                ${subjectGroupsCount} مجموعات نشطة 🔥
+              </span>
+            ` : ''}
+          </div>
+        </div>
+
+        <div>
+          <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0 0 4px 0; line-height:1.35;">
+            ${subject.name}
+          </h4>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin:0; line-height:1.4;">
+            ${gradeName} • مجموعات شرح ومراجعات تفاعلية
+          </p>
+        </div>
+
+        <div style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-top: 10px;
+          border-top: 1px solid var(--border-color);
+          font-size: 0.8rem;
+          font-weight: 800;
+          color: ${theme.color};
+        ">
+          <span>استعراض المجموعات 👥</span>
+          <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
+        </div>
+      </a>
+    `;
+  }
+
+  renderGradeGroupCard(group) {
+    const teacherName = group.teacher?.name || "معلم معتمد";
+    const teacherAvatar = group.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+    const schedule = group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime ? 'الساعة ' + group.scheduleTime : ''}` : 'مواعيد منتظمة أسبوعياً');
+    const seatsLeft = group.availableSeats !== undefined ? group.availableSeats : (group.maxStudents ? Math.max(0, group.maxStudents - (group.enrolledCount || 0)) : 10);
+    const isFull = seatsLeft <= 0 || group.isFull;
+    const price = group.monthlyPrice || group.price || group.course?.price || 0;
+    const courseTitle = group.course?.title || group.name || "مجموعة دراسية";
+    const subjectName = group.subjectName || group.course?.subject?.name || group.course?.category || "";
+    const targetLink = group.course?.id ? `#subject-groups/${group.course.id}` : (group.course?.subject?.id ? `#subject-groups/${group.course.subject.id}` : '#courses');
+
+    return `
+      <div class="glass-card suggested-group-card" style="
+        flex: 0 0 315px;
+        min-width: 300px;
+        max-width: 330px;
+        scroll-snap-align: start;
+        background: var(--bg-card);
+        border: 1.5px solid rgba(99, 102, 241, 0.12);
+        border-radius: 22px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        position: relative;
+        overflow: hidden;
+      ">
+        <!-- Top Gradient Accent Bar -->
+        <div style="height: 5px; width: 100%; background: linear-gradient(90deg, var(--primary) 0%, #a855f7 50%, #ec4899 100%);"></div>
+
+        <div style="padding: 18px 20px 14px 20px; display: flex; flex-direction: column; flex: 1;">
+          
+          <!-- Header: Subject Pill & Live Seats Badge -->
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--primary); font-size:0.75rem; font-weight:800; padding:4px 10px; border-radius:10px; border:1px solid rgba(99,102,241,0.18); display:inline-flex; align-items:center; gap:5px;">
+              <i data-lucide="book-open" style="width:12px; height:12px;"></i>
+              <span>${subjectName || 'مقرر دراسي'}</span>
+            </span>
+            
+            ${isFull ? `
+              <span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.25); font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="alert-circle" style="width:11px; height:11px;"></i>
+                <span>مكتملة</span>
+              </span>
+            ` : `
+              <span class="badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.25); font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
+                <span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981; display:inline-block;"></span>
+                <span>متبقي ${seatsLeft} مقاعد</span>
+              </span>
+            `}
+          </div>
+
+          <!-- Group Title & Curriculum Subtitle -->
+          <h4 style="font-size:1.02rem; font-weight:850; color:var(--text-main); margin:0 0 4px 0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="${group.name || courseTitle}">
+            ${group.name || courseTitle}
+          </h4>
+          ${group.name && group.name !== courseTitle ? `
+            <div style="font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${courseTitle}
+            </div>
+          ` : '<div style="margin-bottom:8px;"></div>'}
+
+          <!-- Teacher Profile Card -->
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:14px; background:var(--bg-app); border:1px solid rgba(0,0,0,0.04); margin-bottom:10px;">
+            <div style="position:relative; flex-shrink:0;">
+              <img src="${teacherAvatar}" alt="${teacherName}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-card);">
+              <span style="position:absolute; bottom:0px; right:0px; width:10px; height:10px; background:#10b981; border:1.5px solid var(--bg-card); border-radius:50%;" title="متواجد"></span>
+            </div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:0.83rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${teacherName}
+              </div>
+              <div style="font-size:0.7rem; font-weight:700; color:var(--primary); display:flex; align-items:center; gap:3px;">
+                <span>معلم معتمد</span>
+                <span style="color:#f59e0b;">★</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule & Timing Box -->
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.76rem; color:var(--text-muted); padding:8px 12px; border-radius:12px; background:rgba(99,102,241,0.03); border:1px solid rgba(99,102,241,0.08); margin-top:auto;">
+            <span style="width:24px; height:24px; border-radius:8px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="clock" style="width:13px; height:13px;"></i>
+            </span>
+            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700;">
+              ${schedule}
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Footer: Price & CTA -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:rgba(0,0,0,0.02); border-top:1px solid var(--border-color); gap:10px;">
+          <div>
+            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:700; margin-bottom:1px;">الاشتراك الشهري</div>
+            <div style="font-size:1.15rem; font-weight:900; color:var(--primary); line-height:1.2; letter-spacing:-0.5px;">
+              ${price > 0 ? `${price} <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">ج.م</span>` : '<span style="color:#10b981;">مجاناً 🎉</span>'}
+            </div>
+          </div>
+          <a href="${targetLink}" class="btn-primary suggested-card-cta-btn" style="padding:8px 16px; font-size:0.8rem; font-weight:800; border-radius:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(79,70,229,0.25); transition:all 0.2s ease;">
+            <span>تفاصيل</span>
+            <i data-lucide="arrow-left" style="width:13px; height:13px;"></i>
+          </a>
+        </div>
+      </div>
+    `;
+  }
+
   onDestroy() {
     if (this.clockInterval) {
       clearInterval(this.clockInterval);
       this.clockInterval = null;
+    }
+    if (this.suggestedGroupsAutoScrollInterval) {
+      clearInterval(this.suggestedGroupsAutoScrollInterval);
+      this.suggestedGroupsAutoScrollInterval = null;
     }
   }
 }

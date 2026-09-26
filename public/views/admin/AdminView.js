@@ -506,10 +506,21 @@ export default class AdminView {
   updateBadges() {
     const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
     const students = (this.allMembers || []).filter(u => u.role === "student");
+    const pendingStudents = students.filter(u => u.status === "PENDING");
     const pendingApps = (this.teacherApplications || []).filter(a => a.status === "pending");
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
     el("admin-badge-teachers", teachers.length);
-    el("admin-badge-students", students.length);
+    el("admin-badge-students", pendingStudents.length > 0 ? `${pendingStudents.length} معلق` : students.length);
+    const studentBadge = document.getElementById("admin-badge-students");
+    if (studentBadge) {
+      if (pendingStudents.length > 0) {
+        studentBadge.style.background = "#f59e0b";
+        studentBadge.style.color = "#fff";
+      } else {
+        studentBadge.style.background = "";
+        studentBadge.style.color = "";
+      }
+    }
     el("admin-badge-courses", (this.courses || []).length);
     el("admin-badge-enrollments", (this.enrollments || []).length);
     el("admin-badge-sessions", (this.allSessions || []).length);
@@ -1144,6 +1155,15 @@ export default class AdminView {
       });
     });
 
+    // Admin Complete Session & Credit Teacher Money
+    this.container.querySelectorAll(".admin-complete-session-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        const groupId = btn.getAttribute("data-group-id");
+        this.renderAdminCompleteSessionModal(sessionId, groupId);
+      });
+    });
+
     // Admin Cancel Session
     this.container.querySelectorAll(".admin-cancel-session-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -1452,6 +1472,43 @@ export default class AdminView {
         if (user && typeof this.renderCommunicateModal === "function") {
           this.renderCommunicateModal(user);
         }
+      });
+    });
+
+    // Approve Pending Student
+    this.container.querySelectorAll(".approve-student-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "الطالب";
+        const confirmed = await confirmDialog({
+          title: "اعتماد وتفعيل حساب الطالب ✅",
+          message: `هل أنت متأكد من رغبتك في اعتماد وتفعيل حساب الطالب "${name}" والسماح له بالدخول إلى لوحة التحكم فوراً؟`,
+          confirmText: "نعم، اعتماد وتفعيل الحساب ✅",
+          cancelText: "تراجع"
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/admin/users/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: "ACTIVE", isBlocked: false })
+          });
+          showToast(`🎉 تم اعتماد وتفعيل حساب الطالب (${name}) بنجاح!`, "success");
+          await this.loadAllData();
+          this.renderTab("students");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل اعتماد وتفعيل حساب الطالب", "error");
+        }
+      });
+    });
+
+    // Student Filter Tabs
+    this.container.querySelectorAll(".student-filter-tab-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const filter = e.currentTarget.getAttribute("data-filter");
+        this.studentStatusFilter = filter;
+        this.renderTab("students");
       });
     });
 

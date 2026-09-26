@@ -127,13 +127,28 @@ export default class CourseLandingView {
       };
 
       // Group Details calculations
+      const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+      const daysText = (selectedGroup?.scheduleDays || selectedGroup?.scheduleText || "");
+      const matchedDays = arabicDays.filter(day => daysText.includes(day));
+      const daysCount = matchedDays.length;
+
       const totalSessions = selectedGroup?.totalSessions || 24;
+      let sessionsPerMonth = 8;
+      if (daysCount > 0) {
+        sessionsPerMonth = daysCount * 4;
+      } else if (totalSessions > 0 && totalSessions <= 6) {
+        sessionsPerMonth = totalSessions;
+      }
+
       const sessionDuration = selectedGroup?.sessionDuration || 60;
       const maxSeats = selectedGroup?.maxStudents || 25;
       const enrolledCount = selectedGroup?.enrolledCount || 0;
       const availableSeats = selectedGroup?.availableSeats !== undefined ? selectedGroup.availableSeats : Math.max(0, maxSeats - enrolledCount);
       const sessionPrice = selectedGroup?.studentHourlyRate || selectedGroup?.sessionPrice || 40;
-      const monthlyPrice = sessionPrice * 8;
+      let monthlyPrice = selectedGroup?.monthlyPrice || (sessionPrice * sessionsPerMonth);
+      if (sessionPrice > 0 && (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8)) {
+        monthlyPrice = sessionPrice * sessionsPerMonth;
+      }
       const startDateText = selectedGroup?.startDate ? formatArabicDate(selectedGroup.startDate) : "الأحد 13 سبتمبر 2026";
       const endDateText = selectedGroup?.endDate ? formatArabicDate(selectedGroup.endDate) : "الأربعاء 2 ديسمبر 2026";
       const isClosed = selectedGroup && (selectedGroup.status === 'IN_PROGRESS' || selectedGroup.status === 'CLOSED');
@@ -329,7 +344,7 @@ export default class CourseLandingView {
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-color);">
-                      <span style="font-size:0.92rem; color:var(--text-muted); font-weight:700;">السعر لـ 8 حصص</span>
+                      <span style="font-size:0.92rem; color:var(--text-muted); font-weight:700;">السعر لـ ${sessionsPerMonth} حصص</span>
                       <span style="font-size:1.15rem; font-weight:900; color:var(--primary);">${monthlyPrice} ج.م.</span>
                     </div>
 
@@ -430,6 +445,25 @@ export default class CourseLandingView {
         const groupId = enrollGroupBtn.getAttribute("data-group-id");
         const selectedGroup = this.groups.find(g => g.id === groupId) || this.groups[0] || {};
 
+        const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+        const daysText = (selectedGroup.scheduleDays || selectedGroup.scheduleText || "");
+        const matchedDays = arabicDays.filter(day => daysText.includes(day));
+        const daysCount = matchedDays.length;
+
+        const totalSessions = selectedGroup.totalSessions || 24;
+        let sessionsPerMonth = 8;
+        if (daysCount > 0) {
+          sessionsPerMonth = daysCount * 4;
+        } else if (totalSessions > 0 && totalSessions <= 6) {
+          sessionsPerMonth = totalSessions;
+        }
+
+        const sessionPrice = selectedGroup.studentHourlyRate || selectedGroup.sessionPrice || 40;
+        let monthlyPrice = selectedGroup.monthlyPrice || (sessionPrice * sessionsPerMonth);
+        if (sessionPrice > 0 && (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8)) {
+          monthlyPrice = sessionPrice * sessionsPerMonth;
+        }
+
         openGroupPaymentModal({
           courseId: this.course.id,
           courseTitle: this.course.title,
@@ -440,9 +474,10 @@ export default class CourseLandingView {
           subjectName: this.course.subject?.name || this.course.category || "",
           scheduleDays: selectedGroup.scheduleDays || "الأحد والأربعاء",
           scheduleTime: selectedGroup.scheduleTime || "06:00 م",
-          sessionPrice: selectedGroup.sessionPrice || 40,
-          monthlyPrice: selectedGroup.monthlyPrice || 320,
-          totalSessions: selectedGroup.totalSessions || 24,
+          sessionPrice: sessionPrice,
+          monthlyPrice: monthlyPrice,
+          sessionsPerMonth: sessionsPerMonth,
+          totalSessions: totalSessions,
           onSuccess: async () => {
             await this.render();
           }

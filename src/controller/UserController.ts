@@ -233,13 +233,6 @@ export class UserController {
         return res.json(safeUser);
       }
 
-      if (phone) {
-        const existingPhoneUser = await userRepository.findOneBy({ phone });
-        if (existingPhoneUser && existingPhoneUser.id !== user.id) {
-          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
-        }
-      }
-
       if (name) user.name = name;
       if (phone !== undefined) user.phone = phone;
       if (req.body.parentPhone !== undefined) user.parentPhone = req.body.parentPhone;
@@ -361,13 +354,6 @@ export class UserController {
       const courseRepo = AppDataSource.getRepository(Course);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
 
-      // Check phone uniqueness if provided
-      if (phone) {
-        const existingPhoneUser = await userRepo.findOneBy({ phone });
-        if (existingPhoneUser && existingPhoneUser.email !== email) {
-          return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
-        }
-      }
 
       // Check if user already exists
       let student = await userRepo.findOneBy({ email });

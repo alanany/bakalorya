@@ -42,11 +42,39 @@ export function openGroupPaymentModal(options) {
     subjectName = "",
     scheduleDays = "الأحد والأربعاء",
     scheduleTime = "06:00 م",
-    sessionPrice = 40,
-    monthlyPrice = 320,
+    sessionPrice: rawSessionPrice,
+    monthlyPrice: rawMonthlyPrice,
+    sessionsPerMonth: rawSessionsPerMonth,
     totalSessions = 24,
     onSuccess
   } = options;
+
+  const arabicDays = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+  const daysText = (scheduleDays || "");
+  const matchedDays = arabicDays.filter(day => daysText.includes(day));
+  const daysCount = matchedDays.length;
+
+  let sessionsPerMonth = rawSessionsPerMonth;
+  if (!sessionsPerMonth) {
+    if (daysCount > 0) {
+      sessionsPerMonth = daysCount * 4;
+    } else if (totalSessions && totalSessions > 0 && totalSessions <= 6) {
+      sessionsPerMonth = totalSessions;
+    } else {
+      sessionsPerMonth = 8;
+    }
+  }
+
+  const sessionPrice = rawSessionPrice !== undefined ? Number(rawSessionPrice) : 40;
+  let monthlyPrice = rawMonthlyPrice !== undefined ? Number(rawMonthlyPrice) : 0;
+
+  if (sessionPrice > 0) {
+    if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+      monthlyPrice = sessionPrice * sessionsPerMonth;
+    }
+  } else if (!monthlyPrice) {
+    monthlyPrice = sessionPrice * sessionsPerMonth;
+  }
 
   // Retrieve platform financial transfer accounts from global settings
   const pSettings = state.platformSettings || {};
@@ -177,7 +205,7 @@ export function openGroupPaymentModal(options) {
             align-items: center;
           ">
             <div>
-              <span style="font-weight:900; font-size:0.95rem; color:var(--text-main);">رسوم الاشتراك للشهر (8 حصص):</span>
+              <span style="font-weight:900; font-size:0.95rem; color:var(--text-main);">رسوم الاشتراك للشهر (${sessionsPerMonth} حصص):</span>
               <span style="font-size:0.75rem; color:var(--text-muted); display:block;">(سعر الحصة ${sessionPrice} ج.م.)</span>
             </div>
             <div style="font-size:1.4rem; font-weight:900; color:#e51d74;">

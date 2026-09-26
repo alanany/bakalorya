@@ -43,6 +43,10 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
       return res.status(403).json({ error: "تم حظر هذا الحساب من دخول الأكاديمية من قبل الإدارة." });
     }
 
+    if (user.status === "PENDING") {
+      return res.status(403).json({ error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية قبل السماح بالدخول." });
+    }
+
     next();
   } catch (err) {
     res.status(401).json({ error: "Invalid token." });
