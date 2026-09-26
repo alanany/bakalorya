@@ -276,7 +276,7 @@ export default class StudentView {
   renderDashboard() {
     const studentName = state.user?.name || "طالب العلم";
     const studentAvatar = state.user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(studentName)}`;
-    
+
     // Greeting by time of day
     const hour = new Date().getHours();
     let timeGreeting = "مرحباً بك";
@@ -301,7 +301,7 @@ export default class StudentView {
     const gradedAssignments = (this.assignments || [])
       .filter(a => a.submission && (a.submission.status === 'graded' || (a.submission.grade !== null && a.submission.grade !== undefined)))
       .sort((a, b) => new Date(b.submission.gradedAt || b.submission.submittedAt || 0) - new Date(a.submission.gradedAt || a.submission.submittedAt || 0));
-    
+
     // Extract student's groups (sorted newer first by enrollment date)
     const groupMap = {};
     const nowTime = Date.now();
@@ -398,7 +398,7 @@ export default class StudentView {
 
     // 2. Extract matching courses and available groups for this grade
     const matchingGradeCourses = (this.allCourses || []).filter(c => isCourseMatchingStudentGrade(c, studentEdu));
-    
+
     const availableGradeGroups = [];
     matchingGradeCourses.forEach(course => {
       if (Array.isArray(course.groups)) {
@@ -972,106 +972,14 @@ export default class StudentView {
                   .suggested-carousel-arrow.left { left: 0px; width: 34px; height: 34px; }
                 }
               </style>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-                <div>
-                  <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="sparkles" style="width:20px; height:20px; color:#f59e0b;"></i>
-                    <span>مجموعات مقترحة (${availableGradeGroups.length})</span>
-                  </h3>
-                  <p style="font-size:0.78rem; color:var(--text-muted); margin:2px 0 0 0; font-weight:600;">مجموعات دراسية مقترحة لصفك للتسجيل الفوري مع أفضل المعلمين</p>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--primary); font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
-                    <span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981; display:inline-block;"></span>
-                    تمرير تلقائي ⚡
-                  </span>
-                  <a href="#courses" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                    <span>تصفح كافة المقررات</span>
-                    <i data-lucide="arrow-left" style="width:13px; height:13px;"></i>
-                  </a>
-                </div>
-              </div>
-
-              ${availableGradeGroups.length > 0 ? `
-                <!-- Carousel Container with Left and Right Arrows -->
-                <div class="suggested-groups-carousel-wrapper" style="position:relative; width:100%;">
-                  
-                  <!-- Right Floating Arrow -->
-                  <button type="button" id="btn-scroll-suggested-right" class="suggested-carousel-arrow right" title="التمرير لليمين">
-                    <i data-lucide="chevron-right" style="width:18px; height:18px;"></i>
-                  </button>
-
-                  <!-- Scroll Track -->
-                  <div id="suggested-groups-scroll-track" class="suggested-groups-scroll-container">
-                    ${availableGradeGroups.map(g => this.renderGradeGroupCard(g)).join('')}
-                  </div>
-
-                  <!-- Left Floating Arrow -->
-                  <button type="button" id="btn-scroll-suggested-left" class="suggested-carousel-arrow left" title="التمرير لليسار">
-                    <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
-                  </button>
-
-                </div>
-              ` : `
-                <div class="glass-card" style="padding:28px 20px; text-align:center; border-radius:18px; border:1px dashed rgba(99,102,241,0.3); background:rgba(99,102,241,0.02); display:flex; flex-direction:column; align-items:center; gap:10px;">
-                  <div style="width:46px; height:46px; border-radius:50%; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
-                    🎯
-                  </div>
-                  <div>
-                    <h4 style="font-size:0.98rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">
-                      لا توجد مجموعات مقترحة جديدة متاحة حالياً لصفك
-                    </h4>
-                    <p style="font-size:0.82rem; color:var(--text-muted); margin:0; max-width:460px; line-height:1.5;">
-                      المجموعات المقترحة تظهر فور توفر مقاعد بمجموعات جديدة تناسب مرحلتك الدراسية. يمكنك استعراض كافة المقررات العامة في أي وقت.
-                    </p>
-                  </div>
-                  <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px;">
-                    <a href="#courses" class="btn-primary" style="font-size:0.82rem; padding:7px 16px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
-                      <i data-lucide="book-open" style="width:13px; height:13px;"></i> استعراض كافة المقررات ↗
-                    </a>
-                  </div>
-                </div>
-              `}
-            </div>
-
-          </div>
+             
 
           <!-- Right Column (Sidebar Academic Profile, Reports & Shortcuts) -->
           <div style="display:flex; flex-direction:column; gap:24px;">
 
 
-            <!-- Quick Learning Hub & Shortcuts -->
-            <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
-              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="compass" style="width:18px; height:18px; color:var(--primary);"></i>
-                أدوات الوصول السريع ⚡
-              </div>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <a href="#schedule" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="calendar" style="width:14px;height:14px;color:var(--primary);"></i> الجدول الدراسي
-                </a>
-                <a href="#student-groups" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="users" style="width:14px;height:14px;color:#f59e0b;"></i> مجموعاتي الدراسية
-                </a>
-                <a href="#student-certificates" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="award" style="width:14px;height:14px;color:#10b981;"></i> شهاداتي
-                </a>
-                <a href="#settings" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
-                  <i data-lucide="settings" style="width:14px;height:14px;color:#6366f1;"></i> الإعدادات
-                </a>
-              </div>
-            </div>
-
-            <!-- Quick Study Tips / Motivation Widget -->
-            <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; color:#f59e0b;">
-                <i data-lucide="lightbulb" style="width:20px; height:20px;"></i>
-                <h4 style="font-size:0.95rem; font-weight:800; margin:0; color:var(--text-main);">نصيحة اليوم للتفوق</h4>
-              </div>
-              <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.6; margin:0;">
-                💡 <strong>قاعدة الـ 25 دقيقة:</strong> ركز في درس واحد لمدة 25 دقيقة متواصلة بدون أي مشتتات، ثم خذ استراحة 5 دقائق لتثبيت المعلومات بأعلى كفاءة.
-              </p>
-            </div>
+            
+         
 
           </div>
 
@@ -1106,7 +1014,7 @@ export default class StudentView {
         // Date in local country timezone
         const dateOptions = { timeZone: userTz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
         const dateParts = new Intl.DateTimeFormat('ar-EG', dateOptions).formatToParts(now);
-        
+
         let weekday = "";
         let day = "";
         let month = "";
@@ -1140,7 +1048,7 @@ export default class StudentView {
 
         const isColonVisible = now.getSeconds() % 2 === 0;
         timeElem.innerHTML = `${h}<span style="opacity:${isColonVisible ? '1' : '0.25'}; transition:opacity 0.15s; color:var(--primary);">:</span>${m}<span style="opacity:${isColonVisible ? '1' : '0.25'}; transition:opacity 0.15s; color:var(--primary);">:</span>${s}`;
-        
+
         if (ampmElem) {
           ampmElem.textContent = dayPeriod === 'PM' ? 'مساءً' : 'صباحاً';
         }
@@ -1275,7 +1183,7 @@ export default class StudentView {
                 <span>عرض ملخص الحصة والواجب 📋</span>
               </button>
             ` : (isLive || isStartingSoon) ? (
-              window.checkedInSessions?.has(session.id) ? `
+        window.checkedInSessions?.has(session.id) ? `
                 <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 12px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                   <i data-lucide="check-circle-2" style="width:15px; height:15px;"></i> تم تأكيد حضورك (حاضر) ✅
                 </span>
@@ -1290,7 +1198,7 @@ export default class StudentView {
                 </button>
                 <div style="font-size:0.72rem; color:var(--text-muted); text-align:center; font-weight:600;">* اضغط لتأكيد حضورك وتفعيل رابط البث المباشر فوراً</div>
               `
-            ) : `
+      ) : `
               <button disabled class="btn-secondary" style="width:100%; padding:10px 14px; font-size:0.82rem; font-weight:800; justify-content:center; border-radius:12px; opacity:0.85; cursor:not-allowed; background:rgba(99,102,241,0.06); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">
                 <i data-lucide="lock" style="width:14px; height:14px; margin-inline-end:6px;"></i> ينشط قبل الموعد بـ 30 دقيقة 🔒
               </button>
@@ -1620,8 +1528,8 @@ export default class StudentView {
               <!-- 6 Prayers Grid -->
               <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
                 ${prayers.map(p => {
-                  const isNext = p.key === nextPrayer.key;
-                  return `
+        const isNext = p.key === nextPrayer.key;
+        return `
                     <div style="background:${isNext ? 'rgba(16,185,129,0.12)' : 'var(--bg-app)'}; border:1.5px solid ${isNext ? '#10b981' : 'var(--border-color)'}; border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; gap:8px; position:relative; overflow:hidden; transition:transform 0.15s;">
                       ${isNext ? `
                         <div style="position:absolute; top:8px; left:8px; width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981;"></div>
@@ -1637,7 +1545,7 @@ export default class StudentView {
                       </div>
                     </div>
                   `;
-                }).join('')}
+      }).join('')}
               </div>
 
               <!-- Quran Quote Banner -->
@@ -1700,11 +1608,11 @@ export default class StudentView {
           <div>
             <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:8px; color:var(--text-main);">المرحلة والصف الدراسي:</label>
             ${renderEducationSelectHTML({
-              id: "quick-education-select",
-              selectedValue: currentEdu,
-              required: true,
-              style: "width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--border-color); background:var(--bg-input, rgba(255,255,255,0.05)); color:var(--text-main); font-size:0.92rem;"
-            })}
+      id: "quick-education-select",
+      selectedValue: currentEdu,
+      required: true,
+      style: "width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--border-color); background:var(--bg-input, rgba(255,255,255,0.05)); color:var(--text-main); font-size:0.92rem;"
+    })}
           </div>
 
           <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:12px; font-size:0.8rem; color:var(--text-muted); display:flex; gap:8px; align-items:flex-start;">
@@ -1758,7 +1666,7 @@ export default class StudentView {
           const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
           storedUser.education = newGrade;
           localStorage.setItem("user", JSON.stringify(storedUser));
-        } catch (_) {}
+        } catch (_) { }
 
         showToast(`تم تحديث المرحلة بنجاح إلى: ${getStudentGradeDisplay(newGrade)} 🎉`, "success");
         closeModal();
