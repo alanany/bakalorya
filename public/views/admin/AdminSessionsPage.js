@@ -81,7 +81,7 @@ export const AdminSessionsPage = {
       const courseTitle = cg.course?.title || "كورس تعليمي";
       const gradeName = cg.course?.grade?.name || "";
       const subjectName = cg.course?.subject?.name || "";
-      
+
       const enrolledCount = cg.enrolledCount !== undefined ? cg.enrolledCount : 0;
       const maxSeats = cg.maxStudents || 25;
       const availableSeats = cg.availableSeats !== undefined ? cg.availableSeats : Math.max(0, maxSeats - enrolledCount);
@@ -274,12 +274,12 @@ export const AdminSessionsPage = {
 
             <div style="display:flex; flex-direction:column; gap:12px;">
               ${this.pendingCourseGroups.map(pg => {
-                const teacherName = pg.teacher?.name || "معلم";
-                const courseTitle = pg.course?.title || "كورس تعليمي";
-                const gradeName = pg.course?.grade?.name || "";
-                const subjectName = pg.course?.subject?.name || "";
+      const teacherName = pg.teacher?.name || "معلم";
+      const courseTitle = pg.course?.title || "كورس تعليمي";
+      const gradeName = pg.course?.grade?.name || "";
+      const subjectName = pg.course?.subject?.name || "";
 
-                return `
+      return `
                   <div class="glass-card" style="padding:16px 18px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
                     <div style="flex:1; min-width:280px;">
                       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
@@ -310,7 +310,7 @@ export const AdminSessionsPage = {
                     </div>
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
           </div>
         ` : ''}
@@ -440,18 +440,18 @@ export const AdminSessionsPage = {
           <!-- 🌟 CREATIVE MODERN ACCORDION LIST 🌟 -->
           <div class="groups-accordion-container" style="display:flex; flex-direction:column; gap:12px;">
             ${filteredGroups.map((grp, idx) => {
-              const startDateText = grp.startDate ? formatArabicDate(grp.startDate) : "13 سبتمبر 2026";
-              const endDateText = grp.endDate ? formatArabicDate(grp.endDate) : "2 ديسمبر 2026";
-              const capPct = Math.min(100, Math.round((grp.enrolledCount / grp.maxSeats) * 100));
-              const isClosedOrTeaching = (grp.status === 'CLOSED' || grp.status === 'IN_PROGRESS');
-              const isFull = grp.isFull || (grp.availableSeats <= 0);
-              const totalFee = (grp.studentHourlyRate || 0) * (grp.totalSessions || 24);
-              const teacherTotal = (grp.teacherHourlyRate || 0) * (grp.totalSessions || 24);
-              
-              // Status Border Color
-              const accentColor = isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : grp.status === 'PENDING_APPROVAL' ? '#f59e0b' : '#10b981';
+      const startDateText = grp.startDate ? formatArabicDate(grp.startDate) : "13 سبتمبر 2026";
+      const endDateText = grp.endDate ? formatArabicDate(grp.endDate) : "2 ديسمبر 2026";
+      const capPct = Math.min(100, Math.round((grp.enrolledCount / grp.maxSeats) * 100));
+      const isClosedOrTeaching = (grp.status === 'CLOSED' || grp.status === 'IN_PROGRESS');
+      const isFull = grp.isFull || (grp.availableSeats <= 0);
+      const totalFee = (grp.studentHourlyRate || 0) * (grp.totalSessions || 24);
+      const teacherTotal = (grp.teacherHourlyRate || 0) * (grp.totalSessions || 24);
 
-              return `
+      // Status Border Color
+      const accentColor = isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : grp.status === 'PENDING_APPROVAL' ? '#f59e0b' : '#10b981';
+
+      return `
                 <div class="glass-card group-accordion-item" data-group-id="${grp.id}" 
                   style="border-radius:20px; border:1px solid var(--border-color); border-inline-start:5px solid ${accentColor}; overflow:hidden; background:var(--bg-card); transition:all 0.25s ease; box-shadow:0 4px 14px rgba(0,0,0,0.03);">
                   
@@ -640,7 +640,7 @@ export const AdminSessionsPage = {
 
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         `}
       </div>
@@ -1091,7 +1091,7 @@ export const AdminSessionsPage = {
           await apiFetch(`/groups/${newGroup.id}`, {
             method: "PUT",
             body: JSON.stringify({ status })
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         closeModal();
@@ -1216,13 +1216,13 @@ export const AdminSessionsPage = {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">تاريخ البدء:</label>
-                <input type="date" id="edit-group-start-date" value="${group.startDate ? new Date(group.startDate).toISOString().slice(0,10) : '2026-09-13'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+                <input type="date" id="edit-group-start-date" value="${group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : '2026-09-13'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                   تاريخ الانتهاء: <span style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">(محسوب تلقائياً ⚡)</span>
                 </label>
-                <input type="date" id="edit-group-end-date" value="${group.endDate ? new Date(group.endDate).toISOString().slice(0,10) : '2026-12-02'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+                <input type="date" id="edit-group-end-date" value="${group.endDate ? new Date(group.endDate).toISOString().slice(0, 10) : '2026-12-02'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
             </div>
 
@@ -1667,7 +1667,7 @@ export const AdminSessionsPage = {
         if (res.group) group = { ...(group || {}), ...res.group };
       } else if (group && group.course) {
         // Fallback filter from allSessions
-        sessions = (this.allSessions || []).filter(s => 
+        sessions = (this.allSessions || []).filter(s =>
           s.course && String(s.course.id) === String(group.course.id)
         );
       }
@@ -1753,12 +1753,12 @@ export const AdminSessionsPage = {
               </div>
             ` : `
               ${sessions.map((s, idx) => {
-                const dt = formatDateTime(s.scheduledAt);
-                const isCompleted = s.status === 'COMPLETED' || s.status === 'completed';
-                const isLive = s.status === 'live';
-                const countdown = getSessionCountdownInfo(s.scheduledAt, s.status);
+      const dt = formatDateTime(s.scheduledAt);
+      const isCompleted = s.status === 'COMPLETED' || s.status === 'completed';
+      const isLive = s.status === 'live';
+      const countdown = getSessionCountdownInfo(s.scheduledAt, s.status);
 
-                return `
+      return `
                   <div style="padding:12px 16px; border-radius:14px; background:var(--bg-app); border:1px solid ${isLive ? '#10b981' : isCompleted ? 'rgba(107,114,128,0.2)' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
                     
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -1818,7 +1818,7 @@ export const AdminSessionsPage = {
 
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
             `}
           </div>
 
@@ -2210,9 +2210,9 @@ export const AdminSessionsPage = {
       const totalSessionsVal = parseInt(wrapper.querySelector("#approve-group-total-sessions")?.value, 10) || 24;
       const studentRateVal = parseFloat(wrapper.querySelector("#approve-group-student-rate")?.value) || 0;
       const teacherRateVal = parseFloat(wrapper.querySelector("#approve-group-teacher-rate")?.value) || 0;
-      
+
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='approve-group-days']:checked")).map(cb => cb.value);
-      
+
       const computedEnd = calculateEndDate(startDateVal, checkedDays, totalSessionsVal);
       const endDateInput = wrapper.querySelector("#approve-group-end-date");
       if (endDateInput && computedEnd) {
@@ -2268,7 +2268,7 @@ export const AdminSessionsPage = {
       const teacherHourlyRate = parseFloat(wrapper.querySelector("#approve-group-teacher-rate")?.value) || 120;
       const monthlyPrice = parseFloat(wrapper.querySelector("#approve-group-monthly-price")?.value) || (studentHourlyRate * 8);
       const platformCommissionPercent = parseFloat(wrapper.querySelector("#approve-group-commission")?.value) || 50;
-      
+
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='approve-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
@@ -2390,7 +2390,7 @@ export const AdminSessionsPage = {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
           <div>
             <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
-              ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0, 8)} (${filteredSessions.length})` : `📹 إدارة الحصص والجلسات المباشرة (${filteredSessions.length})`}
+              ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0, 8)} (${filteredSessions.length})` : `📹 إدارة الحصص والحصص المباشرة (${filteredSessions.length})`}
             </h3>
             <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
           </div>
@@ -2646,7 +2646,7 @@ export const AdminSessionsPage = {
     try {
       // 1. Try to fetch official roster from backend endpoint
       const rosterRes = await apiFetch(`/groups/${groupIdOrSessionId}/roster`).catch(() => null);
-      
+
       if (rosterRes && rosterRes.students) {
         isDbCourseGroup = true;
         targetTitle = rosterRes.group?.name || "المجموعة الدراسية";
@@ -2666,7 +2666,7 @@ export const AdminSessionsPage = {
           groupStatus = matchedGroup.status || "OPEN";
           groupPrice = matchedGroup.monthlyPrice || (matchedGroup.sessionPrice ? matchedGroup.sessionPrice * 8 : (matchedGroup.studentHourlyRate ? matchedGroup.studentHourlyRate * 8 : 320));
 
-          const groupEnrollments = (this.allEnrollments || []).filter(e => 
+          const groupEnrollments = (this.allEnrollments || []).filter(e =>
             e.group && String(e.group.id) === String(groupIdOrSessionId)
           );
 
@@ -2710,7 +2710,7 @@ export const AdminSessionsPage = {
       console.error("Error loading group students modal:", err);
     }
 
-    const availableStudents = (this.allMembers || []).filter(u => 
+    const availableStudents = (this.allMembers || []).filter(u =>
       u.role === "student" && !students.some(st => String(st.studentId) === String(u.id))
     );
 
@@ -2891,14 +2891,14 @@ export const AdminSessionsPage = {
             ` : `
               <div style="display:flex; flex-direction:column; gap:10px;">
                 ${students.map(st => {
-                  const rawPhone = st.phone || '';
-                  const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
-                  const cleanWa = getCleanWhatsAppNumber(rawPhone);
-                  const isPending = st.status === 'pending' || st.status === 'PENDING';
-                  const isActive = st.status === 'active' || st.status === 'ACTIVE';
-                  const waMsg = encodeURIComponent(`مرحباً ${st.name || 'طالبنا العزيز'}، نتواصل معك من إدارة منصة انطلق بخصوص مجموعتك الدراسية (${targetTitle}) مع الأستاذ ${teacherName}.`);
+      const rawPhone = st.phone || '';
+      const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
+      const cleanWa = getCleanWhatsAppNumber(rawPhone);
+      const isPending = st.status === 'pending' || st.status === 'PENDING';
+      const isActive = st.status === 'active' || st.status === 'ACTIVE';
+      const waMsg = encodeURIComponent(`مرحباً ${st.name || 'طالبنا العزيز'}، نتواصل معك من إدارة منصة انطلق بخصوص مجموعتك الدراسية (${targetTitle}) مع الأستاذ ${teacherName}.`);
 
-                  return `
+      return `
                     <div style="padding:14px 18px; border-radius:16px; background:var(--bg-app); border:1px solid ${isPending ? 'rgba(245,158,11,0.35)' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
                       
                       <!-- Left: Student Info -->
@@ -2982,7 +2982,7 @@ export const AdminSessionsPage = {
 
                     </div>
                   `;
-                }).join('')}
+    }).join('')}
               </div>
             `}
           </div>
@@ -4426,7 +4426,7 @@ export const AdminSessionsPage = {
             groupConflictsData = checkRes.items;
             totalConflictsCount = checkRes.totalConflicts || 0;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const conflictStatusEl = document.getElementById("grp-conflict-status-badge");
@@ -4558,7 +4558,7 @@ export const AdminSessionsPage = {
       }
 
       const scheduledDates = generatedDatesList.map(dt => dt.toISOString());
-      
+
       const receiptEnabled = document.getElementById("group-receipt-enabled")?.checked || false;
       const studentReceipts = [];
 
@@ -4959,7 +4959,7 @@ export const AdminSessionsPage = {
     document.getElementById("copy-teacher-msg-btn")?.addEventListener("click", async () => {
       const msg = document.getElementById("whatsapp-teacher-msg-input")?.value || "";
       if (msg) {
-        await navigator.clipboard.writeText(msg).catch(() => {});
+        await navigator.clipboard.writeText(msg).catch(() => { });
         showToast("تم نسخ رسالة المعلم إلى الحافظة بنجاح! 📋", "success");
       }
     });
@@ -4988,7 +4988,7 @@ export const AdminSessionsPage = {
       document.getElementById("copy-student-msg-btn")?.addEventListener("click", async () => {
         const msg = document.getElementById("whatsapp-student-msg-input")?.value || "";
         if (msg) {
-          await navigator.clipboard.writeText(msg).catch(() => {});
+          await navigator.clipboard.writeText(msg).catch(() => { });
           showToast("تم نسخ رسالة الطالب إلى الحافظة بنجاح! 📋", "success");
         }
       });
@@ -5017,7 +5017,7 @@ export const AdminSessionsPage = {
       document.getElementById("copy-group-broadcast-btn")?.addEventListener("click", async () => {
         const msg = document.getElementById("whatsapp-group-broadcast-msg")?.value || "";
         if (msg) {
-          await navigator.clipboard.writeText(msg).catch(() => {});
+          await navigator.clipboard.writeText(msg).catch(() => { });
           showToast("تم نسخ رسالة الفوج الجماعية بنجاح! يمكنك لصقها الآن في جروب الواتساب 📋", "success");
         }
       });
@@ -5050,7 +5050,7 @@ export const AdminSessionsPage = {
         btn.addEventListener("click", async () => {
           const msg = decodeURIComponent(btn.getAttribute("data-text") || "");
           if (msg) {
-            await navigator.clipboard.writeText(msg).catch(() => {});
+            await navigator.clipboard.writeText(msg).catch(() => { });
             showToast("تم نسخ رسالة الطالب بنجاح! 📋", "success");
           }
         });

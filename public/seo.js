@@ -131,7 +131,7 @@ export const SEO_CONFIG = {
   },
   "#admin-dashboard": {
     title: "لوحة التحكم الإدارية | منصة انطلق",
-    description: "إدارة المنصة، المستخدمين، المقررات، والجلسات التعليمية.",
+    description: "إدارة المنصة، المستخدمين، المقررات، والحصص التعليمية.",
     isPublic: false
   },
   "#settings": {

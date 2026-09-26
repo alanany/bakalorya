@@ -1106,7 +1106,7 @@ export const AdminSubscriptionsPage = {
           </div>
           <form id="assign-teacher-sub-form">
             <div class="modal-body">
-              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">اختر المعلم الذي سيتولى تقديم الجلسات لهذا الاشتراك الخاص.</p>
+              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">اختر المعلم الذي سيتولى تقديم الحصص لهذا الاشتراك الخاص.</p>
               <div class="form-group">
                 <label for="assign-teacher-sub-select" style="font-size:0.88rem; font-weight:700; display:block; margin-bottom:6px;">اختر المعلم:</label>
                 <select id="assign-teacher-sub-select" class="form-input" style="width:100%; padding:10px;">
@@ -1446,7 +1446,7 @@ export const AdminSubscriptionsPage = {
         if (avail && avail.length > 0) {
           const daysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
           availBox.innerHTML = avail.map(a => `<span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-size:0.78rem;">✓ ${daysAr[a.dayOfWeek]} (${a.startTime} - ${a.endTime})</span>`).join('');
-          
+
           const availDayNums = avail.map(a => a.dayOfWeek);
           document.querySelectorAll('input[name="wizDays"]').forEach(cb => {
             cb.checked = availDayNums.includes(parseInt(cb.value, 10));
@@ -1458,7 +1458,7 @@ export const AdminSubscriptionsPage = {
         } else {
           availBox.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">لم يتم تسجيل جدول تفرغ محدد (متاح جميع الأيام).</span>';
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     document.getElementById("wiz-teacher-select")?.addEventListener("change", (e) => {
@@ -1553,7 +1553,7 @@ export const AdminSubscriptionsPage = {
         if (!dateInput || !hourSelect) return;
 
         const selectedHour = parseInt(hourSelect.value, 10);
-        const newD = new Date(`${dateInput.value}T${String(selectedHour).padStart(2,'0')}:00:00`);
+        const newD = new Date(`${dateInput.value}T${String(selectedHour).padStart(2, '0')}:00:00`);
         if (isNaN(newD.getTime())) return;
 
         previewData.items[idx].scheduledAt = newD.toISOString();

@@ -304,7 +304,7 @@ export async function joinSessionDirectly(sessionOrId) {
         window.checkedInSessions = window.checkedInSessions || new Set();
         window.checkedInSessions.add(String(session.id));
       })
-      .catch(() => {});
+      .catch(() => { });
   } else if (session.id && now < sessionStart) {
     const isTeacher = state.user?.role === "teacher" || (session.teacher && String(session.teacher.id) === String(state.user?.id));
     if (isTeacher) {
@@ -346,7 +346,7 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
     overlay.style.background = 'rgba(0,0,0,0.65)';
     overlay.style.zIndex = '10000';
 
-  overlay.innerHTML = `
+    overlay.innerHTML = `
     <div class="modal-content" style="max-width:560px; width:92%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
       <div class="modal-header" style="padding:22px 28px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
         <div style="display:flex; align-items:center; gap:14px;">
@@ -400,47 +400,47 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
     </div>
   `;
 
-  document.body.appendChild(overlay);
-  if (window.lucide) window.lucide.createIcons();
-
-  const closeModal = () => { overlay.remove(); };
-  document.getElementById(`close-${modalId}`)?.addEventListener("click", closeModal);
-  document.getElementById(`cancel-${modalId}`)?.addEventListener("click", closeModal);
-
-  document.getElementById("end-session-report-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const submitBtn = document.getElementById("submit-report-btn");
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:14px;height:14px;"></i> جاري الحفظ...`;
+    document.body.appendChild(overlay);
     if (window.lucide) window.lucide.createIcons();
 
-    const payload = {
-      whatWasCovered: document.getElementById("report-covered").value.trim(),
-      topic: document.getElementById("report-covered").value.trim(),
-      studentPerformance: document.getElementById("report-performance").value,
-      homework: document.getElementById("report-homework").value.trim(),
-      teacherNotes: document.getElementById("report-notes").value.trim()
-    };
+    const closeModal = () => { overlay.remove(); };
+    document.getElementById(`close-${modalId}`)?.addEventListener("click", closeModal);
+    document.getElementById(`cancel-${modalId}`)?.addEventListener("click", closeModal);
 
-    try {
-      const res = await apiFetch(`/sessions/${sessionId}/complete`, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      showToast(res.message || "تم إتمام الحصة بنجاح وخصم الرصيد وإيداع المستحقات! ✅", "success");
-      closeModal();
-      if (typeof onSuccess === 'function') {
-        onSuccess();
-      } else {
-        window.location.reload();
+    document.getElementById("end-session-report-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-report-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:14px;height:14px;"></i> جاري الحفظ...`;
+      if (window.lucide) window.lucide.createIcons();
+
+      const payload = {
+        whatWasCovered: document.getElementById("report-covered").value.trim(),
+        topic: document.getElementById("report-covered").value.trim(),
+        studentPerformance: document.getElementById("report-performance").value,
+        homework: document.getElementById("report-homework").value.trim(),
+        teacherNotes: document.getElementById("report-notes").value.trim()
+      };
+
+      try {
+        const res = await apiFetch(`/sessions/${sessionId}/complete`, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        showToast(res.message || "تم إتمام الحصة بنجاح وخصم الرصيد وإيداع المستحقات! ✅", "success");
+        closeModal();
+        if (typeof onSuccess === 'function') {
+          onSuccess();
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `إنهاء الحصة واعتماد الأرصدة ✅`;
+        showToast(err.message || "فشل إنهاء الجلسة وحفظ التقرير", "error");
       }
-    } catch (err) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = `إنهاء الحصة واعتماد الأرصدة ✅`;
-      showToast(err.message || "فشل إنهاء الجلسة وحفظ التقرير", "error");
-    }
-  });
-};
+    });
+  };
 
   if (isTeacher) {
     const isKnownCheckedIn = window.checkedInSessions?.has(String(sessionId));
@@ -478,9 +478,9 @@ export function showStudentSessionReportModal(session) {
   const fmt = typeof formatSessionDateTime === 'function' && session.scheduledAt
     ? formatSessionDateTime(session.scheduledAt, null, {})
     : {
-        dateStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleDateString('ar-EG') : '',
-        timeStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''
-      };
+      dateStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleDateString('ar-EG') : '',
+      timeStr: session.scheduledAt ? new Date(session.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''
+    };
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -902,11 +902,11 @@ async function initApp() {
       loadTranslations(state.language),
       loadPlatformSettings()
     ]);
-    checkAuth().then(() => updateHeader()).catch(() => {});
+    checkAuth().then(() => updateHeader()).catch(() => { });
     await router();
   } catch (err) {
     console.error("initApp failed:", err);
-    try { await router(); } catch (e) {}
+    try { await router(); } catch (e) { }
   }
 }
 
@@ -949,7 +949,7 @@ function setupEventListeners() {
     sidebar?.querySelectorAll(".sidebar-nav-item").forEach(item => {
       const itemHash = (item.getAttribute("href") || "").split("?")[0];
       const isActive = (itemHash === "#landing" && (!currentHash || currentHash === "" || currentHash === "#" || currentHash === "#landing")) ||
-                       (itemHash !== "#landing" && currentHash.startsWith(itemHash));
+        (itemHash !== "#landing" && currentHash.startsWith(itemHash));
       item.classList.toggle("active", isActive);
     });
   };
@@ -1137,7 +1137,7 @@ export function updateHeader() {
     const createNavItem = (href, icon, label, badge = "", extraClass = "") => {
       const itemBase = href.split("?")[0];
       const isActive = (itemBase === "#landing" && (!currentHash || currentHash === "" || currentHash === "#" || currentHash === "#landing")) ||
-                       (itemBase !== "#landing" && currentHash.startsWith(itemBase));
+        (itemBase !== "#landing" && currentHash.startsWith(itemBase));
       return `
         <a href="${href}" class="sidebar-nav-item ${isActive ? 'active' : ''} ${extraClass}" data-hash="${href}">
           <span class="sidebar-nav-icon-box">
@@ -1219,10 +1219,10 @@ export function updateHeader() {
         `;
       }
 
-      const roleBadge = state.user.role === "admin" 
-        ? "🛡️ مشرف الإدارة" 
-        : state.user.role === "teacher" 
-          ? "👨‍🏫 أستاذ معتمد" 
+      const roleBadge = state.user.role === "admin"
+        ? "🛡️ مشرف الإدارة"
+        : state.user.role === "teacher"
+          ? "👨‍🏫 أستاذ معتمد"
           : "👨‍🎓 طالب متميز";
 
       links += `
@@ -1295,7 +1295,7 @@ export function updateHeader() {
         // Immediate visual feedback on click
         sidebarList.querySelectorAll(".sidebar-nav-item").forEach(el => el.classList.remove("active"));
         item.classList.add("active");
-        
+
         // Gentle delay before closing drawer so user sees active response
         setTimeout(() => {
           closeSidebar();
@@ -1436,8 +1436,8 @@ export async function apiFetch(endpoint, options = {}) {
   const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
   let mutationKey = null;
   if (isMutation && !options.allowConcurrent) {
-    const bodyStr = typeof options.body === "string" 
-      ? options.body 
+    const bodyStr = typeof options.body === "string"
+      ? options.body
       : (options.body instanceof FormData ? "[FormData]" : JSON.stringify(options.body || ""));
     mutationKey = `${method}:${cleanEndpoint}:${bodyStr}`;
 
@@ -1454,7 +1454,7 @@ export async function apiFetch(endpoint, options = {}) {
   if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
   try {
     headers["X-Timezone"] = getUserTimezone();
-  } catch (e) {}
+  } catch (e) { }
 
   // Auto-attach Idempotency-Key on critical mutations if not provided
   if (isMutation && !headers["Idempotency-Key"]) {
@@ -1479,7 +1479,7 @@ export async function apiFetch(endpoint, options = {}) {
 
       if (!response.ok) {
         if ((response.status === 401 && cleanEndpoint !== "/auth/me") ||
-            (response.status === 403 && data.error && (data.error.includes("حظر") || data.error.includes("معلق")) && !cleanEndpoint.startsWith("/admin/"))) {
+          (response.status === 403 && data.error && (data.error.includes("حظر") || data.error.includes("معلق")) && !cleanEndpoint.startsWith("/admin/"))) {
           clearAuth(true);
         }
         const err = new Error(data.error || "Something went wrong.");
@@ -1623,17 +1623,17 @@ export function showEnrollmentAcceptanceModal({
 مبروك! تم قبول طلب تسجيلك وانضمامك بنجاح إلى الدورة التعليمية:
 📖 *${courseTitle || 'الدورة التعليمية'}*${teacherName ? ` مع الأستاذ: *${teacherName}*` : ''}
 
-يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والجلسات التفاعلية عبر منصتنا:
+يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والحصص التفاعلية عبر منصتنا:
 🔗 ${window.location.origin}/#courses
 
 نتمنى لك توفيقاً وحصداً لأعلى العلامات في الانطلق! 🌟💯`;
 
   function buildStepHTML() {
-    const dots = [1,2,3].map(s =>
-      `<div style="width:${s===currentStep?'20px':'7px'};height:7px;border-radius:10px;background:${s===currentStep?'var(--primary)':s<currentStep?'rgba(99,102,241,0.45)':'var(--border-color)'};transition:all 0.3s;"></div>`
+    const dots = [1, 2, 3].map(s =>
+      `<div style="width:${s === currentStep ? '20px' : '7px'};height:7px;border-radius:10px;background:${s === currentStep ? 'var(--primary)' : s < currentStep ? 'rgba(99,102,241,0.45)' : 'var(--border-color)'};transition:all 0.3s;"></div>`
     ).join('');
 
-    const titles = ['Step 1','Step 2','Step 3'];
+    const titles = ['Step 1', 'Step 2', 'Step 3'];
 
     let body = '';
     if (currentStep === 1) {
@@ -1666,26 +1666,26 @@ export function showEnrollmentAcceptanceModal({
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px;">
           <div><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_amount"></label>
-            <input type="number" id="pay-amount" class="form-input" placeholder="0.00" min="0" step="0.01" value="${paymentData?paymentData.amount||'':''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
+            <input type="number" id="pay-amount" class="form-input" placeholder="0.00" min="0" step="0.01" value="${paymentData ? paymentData.amount || '' : ''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
           <div><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_currency"></label>
             <select id="pay-currency" class="form-input" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;">
-              <option value="EGP" ${!paymentData||!paymentData.currency||paymentData.currency==='EGP'?'selected':''}>&shy;</option>
-              <option value="USD" ${paymentData&&paymentData.currency==='USD'?'selected':''}>USD</option>
-              <option value="SAR" ${paymentData&&paymentData.currency==='SAR'?'selected':''}>SAR</option>
+              <option value="EGP" ${!paymentData || !paymentData.currency || paymentData.currency === 'EGP' ? 'selected' : ''}>&shy;</option>
+              <option value="USD" ${paymentData && paymentData.currency === 'USD' ? 'selected' : ''}>USD</option>
+              <option value="SAR" ${paymentData && paymentData.currency === 'SAR' ? 'selected' : ''}>SAR</option>
             </select></div>
         </div>
         <div style="margin-bottom:11px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_method"></label>
           <select id="pay-method" class="form-input" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;">
-            <option value="manual" ${!paymentData||!paymentData.provider||paymentData.provider==='manual'?'selected':''}>&shy;</option>
-            <option value="bank_transfer" ${paymentData&&paymentData.provider==='bank_transfer'?'selected':''}>&#128970;</option>
-            <option value="vodafone_cash" ${paymentData&&paymentData.provider==='vodafone_cash'?'selected':''}>Vodafone</option>
-            <option value="instapay" ${paymentData&&paymentData.provider==='instapay'?'selected':''}>InstaPay</option>
-            <option value="other" ${paymentData&&paymentData.provider==='other'?'selected':''}>&#8212;</option>
+            <option value="manual" ${!paymentData || !paymentData.provider || paymentData.provider === 'manual' ? 'selected' : ''}>&shy;</option>
+            <option value="bank_transfer" ${paymentData && paymentData.provider === 'bank_transfer' ? 'selected' : ''}>&#128970;</option>
+            <option value="vodafone_cash" ${paymentData && paymentData.provider === 'vodafone_cash' ? 'selected' : ''}>Vodafone</option>
+            <option value="instapay" ${paymentData && paymentData.provider === 'instapay' ? 'selected' : ''}>InstaPay</option>
+            <option value="other" ${paymentData && paymentData.provider === 'other' ? 'selected' : ''}>&#8212;</option>
           </select></div>
         <div style="margin-bottom:11px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_txid"></label>
-          <input type="text" id="pay-tx-id" class="form-input" value="${paymentData?paymentData.providerTransactionId||'':''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
+          <input type="text" id="pay-tx-id" class="form-input" value="${paymentData ? paymentData.providerTransactionId || '' : ''}" style="padding:8px 10px;font-size:0.87rem;border-radius:10px;width:100%;box-sizing:border-box;"></div>
         <div style="margin-bottom:13px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;" id="_lbl_notes"></label>
-          <textarea id="pay-notes" class="form-input" rows="2" style="padding:8px 10px;font-size:0.84rem;border-radius:10px;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;">${paymentData?paymentData.notes||'':''}</textarea></div>
+          <textarea id="pay-notes" class="form-input" rows="2" style="padding:8px 10px;font-size:0.84rem;border-radius:10px;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;">${paymentData ? paymentData.notes || '' : ''}</textarea></div>
         <div style="margin-bottom:16px;"><label style="font-size:0.77rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;" id="_lbl_receipt"></label>
           <div id="receipt-upload-zone" style="border:2px dashed var(--border-color);border-radius:13px;padding:15px;text-align:center;cursor:pointer;background:var(--bg-app);" onclick="document.getElementById('receipt-file-input').click()">${receiptZone}</div>
           <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="display:none;"></div>
@@ -1761,13 +1761,13 @@ export function showEnrollmentAcceptanceModal({
       const ntEl = document.getElementById('pay-notes');
       if (ntEl) ntEl.placeholder = T['ph.notes'] || '\u0623\u064A \u0645\u0644\u0627\u062d\u0638\u0627\u062a \u062D\u0648\u0644 \u0627\u0644\u062F\u0641\u0639\u0629...';
       s('_lbl_receipt', T['lbl.receipt'] || '\uD83E\uDDFE \u0631\u0641\u0639 \u0627\u0644\u0625\u064A\u0635\u0627\u0644 / \u0635\u0648\u0631\u0629 \u0627\u0644\u062F\u0641\u0639');
-      s('receipt-upload-status', receiptPreviewUrl ? (T['receipt.ok']||'\u2705 \u062a\u0645 \u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0628\u0646\u062c\u0627\u062d') : (T['receipt.hint']||'\u0627\u0636\u063a\u0637 \u0644\u0627\u062e\u062a\u064a\u0627\u0631 \u0635\u0648\u0631\u0629 \u0627\u0644\u0625\u064a\u0635\u0627\u0644'));
+      s('receipt-upload-status', receiptPreviewUrl ? (T['receipt.ok'] || '\u2705 \u062a\u0645 \u0631\u0641\u0639 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0628\u0646\u062c\u0627\u062d') : (T['receipt.hint'] || '\u0627\u0636\u063a\u0637 \u0644\u0627\u062e\u062a\u064a\u0627\u0631 \u0635\u0648\u0631\u0629 \u0627\u0644\u0625\u064a\u0635\u0627\u0644'));
       s('_btn_prev2', T['btn.prev'] || '\u0627\u0644\u0633\u0627\u0628\u0642');
       s('_btn_skip', T['btn.skip'] || '\u062a\u062e\u0637\u064a');
       s('_btn_next2', T['btn.nextGreeting'] || '\u0627\u0644\u062a\u0627\u0644\u064a: \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u062a\u0631\u062d\u064a\u0628');
     } else {
       if (paymentData) {
-        s('_s3_paybanner', (T['pay.recorded'] || '\u2705 \u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639') + (paymentData.receiptUrl ? (' ' + (T['pay.andReceipt']||'\u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644')) : ''));
+        s('_s3_paybanner', (T['pay.recorded'] || '\u2705 \u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062f\u0641\u0639') + (paymentData.receiptUrl ? (' ' + (T['pay.andReceipt'] || '\u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644')) : ''));
       } else {
         s('_s3_nopay', T['pay.skipped'] || '\u062a\u062e\u0637\u064a \u0627\u0644\u062f\u0641\u0639 \u2014 \u0633\u064a\u062a\u0645 \u0642\u0628\u0648\u0644 \u0627\u0644\u0637\u0627\u0644\u0628 \u0628\u062f\u0648\u0646 \u0633\u062c\u0644 \u0645\u0627\u0644\u064a.');
       }
@@ -2030,12 +2030,12 @@ export async function router() {
     case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;
-    case "#enrollment-requests": 
+    case "#enrollment-requests":
       if (state.user?.role === "teacher") {
         window.location.hash = "#teacher-portal";
         return;
       }
-      ViewClass = RequestsView; 
+      ViewClass = RequestsView;
       break;
     case "#teacher-blogs":
       if (state.user?.role === "teacher") {
@@ -2174,7 +2174,7 @@ export function getTimezoneBadgeHTML(tz = getUserTimezone()) {
 
 export function formatSessionDateTime(dateInput, targetTz = null, options = {}) {
   if (!dateInput) return { timeStr: "-", dateStr: "-", fullStr: "-", badgeHTML: "", secondaryTZHTML: "" };
-  
+
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return { timeStr: "-", dateStr: "-", fullStr: "-", badgeHTML: "", secondaryTZHTML: "" };
 
@@ -2200,7 +2200,7 @@ export function formatSessionDateTime(dateInput, targetTz = null, options = {}) 
     try {
       const secTimeStr = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: options.secondaryTz });
       secondaryTZHTML = `<span style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">(${secTimeStr} ${secInfo.flag} ${secInfo.name})</span>`;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   return { timeStr, dateStr, fullStr, badgeHTML, secondaryTZHTML };

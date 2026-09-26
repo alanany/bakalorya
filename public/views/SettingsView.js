@@ -85,11 +85,11 @@ export default class SettingsView {
                     المرحلة والصف الدراسي المقيد به الطالب *
                   </label>
                   ${renderEducationSelectHTML({
-                    id: "settings-student-education",
-                    selectedValue: state.user.education || "Grade 6 (Primary)",
-                    required: true,
-                    style: "padding:12px 14px; font-size:0.9rem; font-weight:700; border-radius:12px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-main);"
-                  })}
+        id: "settings-student-education",
+        selectedValue: state.user.education || "Grade 6 (Primary)",
+        required: true,
+        style: "padding:12px 14px; font-size:0.9rem; font-weight:700; border-radius:12px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-main);"
+      })}
                   <small style="color:var(--text-muted); display:block; margin-top:4px;">* اختيارك للمرحلة يحدد الكورسات والمجموعات الدراسية وحصص البث المخصصة لصفك بدقة.</small>
                 </div>
 
@@ -155,13 +155,13 @@ export default class SettingsView {
                   رقم الهاتف والرمز الدولي (Phone Number &amp; Country Key)
                 </label>
                 ${renderPhoneInputGroup({
-                  selectId: "settings-phone-code",
-                  inputId: "settings-phone-number",
-                  defaultCode: "+213",
-                  value: state.user.phone || "",
-                  placeholder: "0555123456",
-                  required: false
-                })}
+        selectId: "settings-phone-code",
+        inputId: "settings-phone-number",
+        defaultCode: "+213",
+        value: state.user.phone || "",
+        placeholder: "0555123456",
+        required: false
+      })}
                 <small style="color:var(--text-muted); display:block; margin-top:4px;">اختر مفتاح الدولة واكتب رقم هاتفك لاستلام الإشعارات.</small>
               </div>
 
@@ -171,7 +171,7 @@ export default class SettingsView {
                   رابط البث المباشر (Global Meeting Link)
                 </label>
                 <input type="url" id="settings-meeting-link" class="form-input" value="${state.user.meetingLink || ''}" placeholder="https://zoom.us/j/...">
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">هذا الرابط سيستخدم تلقائياً لجميع الجلسات التي ليس لها رابط مخصص في المقرر.</small>
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">هذا الرابط سيستخدم تلقائياً لجميع الحصص التي ليس لها رابط مخصص في المقرر.</small>
               </div>
 
               <button type="submit" class="btn-primary" style="margin-top:24px;">حفظ التغييرات / Save Changes</button>
@@ -404,7 +404,7 @@ export default class SettingsView {
             state.user = { ...state.user, ...updatedUser };
             try {
               localStorage.setItem("user", JSON.stringify(state.user));
-            } catch (_) {}
+            } catch (_) { }
             showToast("تم حفظ المرحلة الدراسية بنجاح! 🎓", "success");
             this.render();
           }
@@ -427,10 +427,10 @@ export default class SettingsView {
         const meetingLinkInput = document.getElementById("settings-meeting-link");
         const phoneCode = document.getElementById("settings-phone-code")?.value || "+20";
         const phoneNum = document.getElementById("settings-phone-number")?.value.trim() || "";
-        
+
         const fullPhone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
 
-        const payload = { 
+        const payload = {
           name: newName,
           phone: fullPhone
         };
@@ -445,11 +445,11 @@ export default class SettingsView {
         }
 
         try {
-          const updatedUser = await apiFetch(`/users/me`, { 
-            method: "PATCH", 
-            body: JSON.stringify(payload) 
+          const updatedUser = await apiFetch(`/users/me`, {
+            method: "PATCH",
+            body: JSON.stringify(payload)
           });
-          
+
           if (updatedUser && updatedUser.id) {
             state.user = updatedUser;
             showToast("تم حفظ إعدادات الملف الشخصي بنجاح! ✅", "success");
@@ -541,5 +541,5 @@ export default class SettingsView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

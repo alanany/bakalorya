@@ -1,17 +1,17 @@
 import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from "../../app.js";
 
 // ── Page Module Imports ──────────────────────────────────────────────────────
-import { AdminStatsPage }         from './AdminStatsPage.js';
-import { AdminUsersPage }          from './AdminUsersPage.js';
-import { AdminCoursesPage }        from './AdminCoursesPage.js';
-import { AdminSessionsPage }       from './AdminSessionsPage.js';
-import { AdminSubscriptionsPage }  from './AdminSubscriptionsPage.js';
-import { AdminReportsPage }        from './AdminReportsPage.js';
-import { AdminEarningsPage }       from './AdminEarningsPage.js';
-import { AdminPlansPage }          from './AdminPlansPage.js';
-import { AdminSettingsPage }       from './AdminSettingsPage.js';
-import { AdminCurriculumPage }     from './AdminCurriculumPage.js';
-import { AdminBlogsPage }          from './AdminBlogsPage.js';
+import { AdminStatsPage } from './AdminStatsPage.js';
+import { AdminUsersPage } from './AdminUsersPage.js';
+import { AdminCoursesPage } from './AdminCoursesPage.js';
+import { AdminSessionsPage } from './AdminSessionsPage.js';
+import { AdminSubscriptionsPage } from './AdminSubscriptionsPage.js';
+import { AdminReportsPage } from './AdminReportsPage.js';
+import { AdminEarningsPage } from './AdminEarningsPage.js';
+import { AdminPlansPage } from './AdminPlansPage.js';
+import { AdminSettingsPage } from './AdminSettingsPage.js';
+import { AdminCurriculumPage } from './AdminCurriculumPage.js';
+import { AdminBlogsPage } from './AdminBlogsPage.js';
 
 export default class AdminView {
 
@@ -397,7 +397,7 @@ export default class AdminView {
             </button>
             <button class="admin-nav-btn ${this.activeTab === "sessions" ? "active" : ""}" data-tab="sessions">
               <i data-lucide="video"></i>
-              إدارة الحصص والجلسات
+              إدارة الحصص والحصص
               <span class="admin-nav-badge" id="admin-badge-sessions">0</span>
             </button>
             <button class="admin-nav-btn ${this.activeTab === "groups" ? "active" : ""}" data-tab="groups">
@@ -634,7 +634,7 @@ export default class AdminView {
     categories: { heading: "🗂️ إدارة التصنيفات", sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
     courses: { heading: "📚 إدارة الدورات", sub: "مراجعة والإشراف على جميع دورات المنصة" },
     enrollments: { heading: "🎓 طلبات وتسجيلات الكورسات", sub: "مراجعة واعتماد طلبات التحويل وتسجيل الطلاب في جميع الكورسات" },
-    sessions: { heading: "📹 إدارة الحصص والجلسات", sub: "متابعة وإلغاء وإعادة جدولة حصص البث المباشر والحصص الخاصة 1-على-1" },
+    sessions: { heading: "📹 إدارة الحصص والحصص", sub: "متابعة وإلغاء وإعادة جدولة حصص البث المباشر والحصص الخاصة 1-على-1" },
     groups: { heading: "👥 المجموعات والحصص الجماعية", sub: "إدارة المجموعات، الطلاب المسجلين بالجروب، وأوقات البث المباشر" },
     teachers: { heading: "👨‍🏫 إدارة المعلمين", sub: "إضافة وتعديل وإدارة حسابات المعلمين" },
     students: { heading: "🎓 إدارة الطلاب", sub: "إضافة وتعديل وإدارة حسابات الطلاب" },
@@ -776,8 +776,8 @@ export default class AdminView {
     this.container.querySelectorAll(".admin-open-approve-group-modal-btn, .admin-approve-group-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        const group = (this.pendingCourseGroups || []).find(g => String(g.id) === String(id)) || 
-                      (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        const group = (this.pendingCourseGroups || []).find(g => String(g.id) === String(id)) ||
+          (this.allCourseGroups || []).find(g => String(g.id) === String(id));
         if (group) {
           this.renderApproveGroupModal(group);
         } else {
@@ -1224,12 +1224,12 @@ export default class AdminView {
       header.addEventListener("click", (e) => {
         // Prevent collapsing if clicked inside a button
         if (e.target.closest("button") || e.target.closest("a")) return;
-        
+
         const item = header.closest(".group-accordion-item");
         if (!item) return;
         const body = item.querySelector(".group-accordion-body");
         const chevron = item.querySelector(".accordion-chevron-icon");
-        
+
         const isOpen = body && body.style.display === "block";
         if (isOpen) {
           body.style.display = "none";
@@ -1341,15 +1341,15 @@ export default class AdminView {
         const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id)) || {};
 
         // Calculate enrolled students count across all sources (group, roster, allEnrollments)
-        const matchedEnrollments = (this.allEnrollments || []).filter(e => 
+        const matchedEnrollments = (this.allEnrollments || []).filter(e =>
           (e.group && String(e.group.id) === String(id))
         );
         const attrCount = parseInt(btn.getAttribute("data-enrolled") || "0", 10);
-        const count = attrCount || 
-                      group.enrolledCount || 
-                      (Array.isArray(group.students) ? group.students.length : 0) || 
-                      (Array.isArray(group.enrollments) ? group.enrollments.length : 0) || 
-                      matchedEnrollments.length;
+        const count = attrCount ||
+          group.enrolledCount ||
+          (Array.isArray(group.students) ? group.students.length : 0) ||
+          (Array.isArray(group.enrollments) ? group.enrollments.length : 0) ||
+          matchedEnrollments.length;
 
         if (count > 0) {
           // If group has students, ONLY show the Cannot Delete Alert Modal!
@@ -1363,9 +1363,9 @@ export default class AdminView {
         }
 
         // ONLY if group has 0 students, show the deletion confirmation dialog
-        const confirmed = await confirmDialog({ 
-          message: `هل أنت متأكد من رغبتك في حذف المجموعة "${name}" نهائياً؟`, 
-          danger: true 
+        const confirmed = await confirmDialog({
+          message: `هل أنت متأكد من رغبتك في حذف المجموعة "${name}" نهائياً؟`,
+          danger: true
         });
         if (!confirmed) return;
         btn.disabled = true;

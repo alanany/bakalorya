@@ -86,7 +86,7 @@ export const AdminStatsPage = {
         </div>
 
         <!-- Sessions -->
-        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(168,85,247,0.2); background:linear-gradient(135deg, rgba(168,85,247,0.06), rgba(168,85,247,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الحصص والجلسات" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'sessions\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/sessions';}">
+        <div class="glass-card stat-card-hover" style="padding:22px 18px; border-radius:20px; border:1px solid rgba(168,85,247,0.2); background:linear-gradient(135deg, rgba(168,85,247,0.06), rgba(168,85,247,0.02)); display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" title="انقر للانتقال إلى قسم إدارة الحصص والحصص" onclick="const btn=document.querySelector('.admin-nav-btn[data-tab=\'sessions\']'); if(btn){btn.click();}else{window.location.hash='#admin-dashboard/sessions';}">
           <div style="width:50px; height:50px; border-radius:14px; background:rgba(168,85,247,0.15); color:#a855f7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i data-lucide="video" style="width:24px; height:24px;"></i>
           </div>
@@ -362,7 +362,7 @@ export const AdminStatsPage = {
               pointHoverRadius: 8
             },
             {
-              label: "إجمالي الحصص والجلسات",
+              label: "إجمالي الحصص والحصص",
               data: sessionsData,
               borderColor: "#06b6d4",
               backgroundColor: grad2,
@@ -453,7 +453,7 @@ export const AdminStatsPage = {
               padding: 12,
               cornerRadius: 12,
               callbacks: {
-                label: function(context) {
+                label: function (context) {
                   const total = context.dataset.data.reduce((a, b) => a + b, 0);
                   const val = context.parsed;
                   const pct = Math.round((val / total) * 100);

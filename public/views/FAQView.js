@@ -20,7 +20,7 @@ export default class FAQView {
       {
         category: "live",
         question: "كيف يمكنني حضور جلسات البث المباشر التفاعلي؟",
-        answer: "ستظهر الجلسات المبرمجة في جدولك وفي صفحة 'البث المباشر'. عند بدء البث من قبل الأستاذ، سيظهر زر 'دخول القاعة الافتراضية' مباشرة."
+        answer: "ستظهر الحصص المبرمجة في جدولك وفي صفحة 'البث المباشر'. عند بدء البث من قبل الأستاذ، سيظهر زر 'دخول القاعة الافتراضية' مباشرة."
       },
       {
         category: "live",
@@ -147,7 +147,7 @@ export default class FAQView {
       filtered = filtered.filter(f => f.category === this.currentCategory);
     }
     if (this.searchQuery) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.question.toLowerCase().includes(this.searchQuery) ||
         f.answer.toLowerCase().includes(this.searchQuery)
       );
@@ -200,5 +200,5 @@ export default class FAQView {
     });
   }
 
-  onDestroy() {}
+  onDestroy() { }
 }

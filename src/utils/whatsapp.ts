@@ -18,7 +18,7 @@ export interface WhatsAppNotificationResult {
 export function formatPhoneForWhatsApp(phone: string, defaultCountryCode: string = "213"): string {
   if (!phone) return "";
   let cleaned = phone.replace(/[^\d+]/g, ""); // Keep only digits and '+'
-  
+
   if (cleaned.startsWith("+")) {
     cleaned = cleaned.substring(1);
   } else if (cleaned.startsWith("00")) {
@@ -27,7 +27,7 @@ export function formatPhoneForWhatsApp(phone: string, defaultCountryCode: string
     // If phone starts with local '0', strip it and prepend default country code
     cleaned = defaultCountryCode + cleaned.substring(1);
   }
-  
+
   return cleaned;
 }
 
@@ -51,7 +51,7 @@ export function buildRegistrationSuccessMessage(
   if (role === "teacher") {
     return `تم تفعيل وتأكيد حسابك بنجاح كـ (معلم) في منصة *انطلق* للتعليم الإلكتروني 🎓.
 
-يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والجلسات المباشرة:
+يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والحصص المباشرة:
 https://entlqedu.com/#staff-login
 
 نتمنى لك رحلة ممتعة وتفوقاً دراسياً باهراً! 🚀✨`;
@@ -60,7 +60,7 @@ https://entlqedu.com/#staff-login
   const greeting = studentName ? `مرحباً ${studentName}! 🎉\n\n` : "";
   return `${greeting}تم تفعيل وتأكيد حسابك بنجاح كـ (طالب) في منصة *انطلق* للتعليم الإلكتروني 🎓.
 
-يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والجلسات المباشرة:
+يمكنك الآن تسجيل الدخول إلى حسابك والبدء في استكشاف الدورات والحصص المباشرة:
 ${platformUrl}/#login
 
 نتمنى لك رحلة ممتعة وتفوقاً دراسياً باهراً! 🚀✨`;
@@ -81,7 +81,7 @@ export function buildEnrollmentAcceptedMessage(
 مبروك! تم قبول طلب تسجيلك وانضمامك بنجاح إلى الدورة التعليمية:
 📖 *${courseTitle}*${teacherInfo}
 
-يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والجلسات التفاعلية عبر الرابط:
+يمكنك الآن الدخول والوصول المباشر لكافة الدروس، الفيديوهات، الملخصات والحصص التفاعلية عبر الرابط:
 🔗 ${platformUrl}/#courses
 
 نتمنى لك توفيقاً وحصداً لأعلى العلامات في الانطلق! 🌟💯`;
@@ -98,7 +98,7 @@ export function createWhatsAppNotificationPayload(
   const formattedPhone = formatPhoneForWhatsApp(phone, defaultCountryCode);
   if (!formattedPhone) return null;
   const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
-  
+
   console.log(`[WhatsApp Notification Log] Destination: ${formattedPhone}`);
   console.log(`[WhatsApp Notification Link]: ${whatsappUrl}`);
 

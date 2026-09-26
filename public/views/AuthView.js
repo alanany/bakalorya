@@ -23,10 +23,10 @@ export default class AuthView {
       return;
     }
 
-    const titleText = this.isStaffMode 
-      ? "بوابة المعلمين والإدارة 🛡️" 
-      : this.isRegisterMode 
-        ? "إنشاء حساب طالب جديد ✨" 
+    const titleText = this.isStaffMode
+      ? "بوابة المعلمين والإدارة 🛡️"
+      : this.isRegisterMode
+        ? "إنشاء حساب طالب جديد ✨"
         : "تسجيل دخول الطلاب 👨‍🎓";
 
     const descText = this.isStaffMode
@@ -53,9 +53,9 @@ export default class AuthView {
               </a>
               <h2 class="auth-showcase-title">أكاديمية انطلق التعليمية</h2>
               <p class="auth-showcase-subtitle">
-                ${this.isStaffMode 
-                  ? "البوابة الموحدة للكادر التعليمي والإداري لإدارة المحتوى، الجلسات التفاعلية، والتقارير الأكاديمية."
-                  : "بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة."}
+                ${this.isStaffMode
+        ? "البوابة الموحدة للكادر التعليمي والإداري لإدارة المحتوى، الحصص التفاعلية، والتقارير الأكاديمية."
+        : "بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة."}
               </p>
             </div>
 
