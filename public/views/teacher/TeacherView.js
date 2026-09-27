@@ -598,7 +598,7 @@ export default class TeacherView {
                   </div>
 
                   <div id="url-input-wrapper" style="display:none; margin-top:10px;">
-                    <input type="url" id="course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                    <input type="text" id="course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg أو رابط مباشر" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
                   </div>
 
                   <input type="hidden" id="course-image-url">

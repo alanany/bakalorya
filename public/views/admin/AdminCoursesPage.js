@@ -1256,7 +1256,7 @@ export const AdminCoursesPage = {
                 </div>
 
                 <div id="admin-url-input-wrapper" style="display:none; margin-top:10px;">
-                  <input type="url" id="admin-course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                  <input type="text" id="admin-course-image-url-direct" class="form-input" placeholder="https://example.com/course-cover.jpg أو رابط مباشر" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
                 </div>
 
                 <input type="hidden" id="admin-course-image">
@@ -2504,7 +2504,7 @@ export const AdminCoursesPage = {
                     غلاف / صورة الدورة
                   </span>
                 </label>
-                <input type="url" id="admin-edit-image" class="form-input" value="${course.image || ''}" placeholder="https://..." style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+                <input type="text" id="admin-edit-image" class="form-input" value="${course.image || ''}" placeholder="https://... أو /uploads/..." style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
               </div>
 
               <!-- Static Meeting Link -->

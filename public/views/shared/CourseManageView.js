@@ -953,7 +953,7 @@ export default class CourseManageView {
             </div>
 
             <div id="manage-url-wrapper" style="display:none; margin-top:10px;">
-              <input type="url" id="manage-image-url-direct" class="form-input" value="${this.course.image || ''}" placeholder="https://example.com/course-cover.jpg" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
+              <input type="text" id="manage-image-url-direct" class="form-input" value="${this.course.image || ''}" placeholder="https://example.com/course-cover.jpg أو رابط مباشر" style="border-radius:12px; padding:10px 14px; font-size:0.85rem;">
             </div>
 
             <input type="hidden" id="manage-image-url" value="${this.course.image || ''}">

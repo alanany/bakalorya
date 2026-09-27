@@ -4,7 +4,7 @@ export default class ParentView {
   constructor(container) {
     this.container = container;
     this._activeChildId = null;
-    this._activeTab = "schedule";
+    this._activeTab = "groups";
     this._children = [];
     this._data = {};
     this.clockInterval = null;

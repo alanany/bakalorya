@@ -179,7 +179,7 @@ export const AdminBlogsPage = {
             <h3 class="modal-title" id="admin-blog-modal-title">✍️ كتابة مقال جديد</h3>
             <span class="modal-close-btn" id="close-admin-blog-modal">&times;</span>
           </div>
-          <form id="admin-blog-form">
+          <form id="admin-blog-form" novalidate>
             <input type="hidden" id="admin-blog-id">
             <div class="modal-body">
               <div class="form-group">
@@ -247,7 +247,7 @@ export const AdminBlogsPage = {
                   <!-- Direct URL fallback -->
                   <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-color); display:flex; align-items:center; gap:8px;">
                     <span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">أو إدخال رابط مباشر:</span>
-                    <input type="url" id="admin-blog-image-url-input" class="form-input" style="font-size:0.8rem; padding:6px 12px; flex:1;" placeholder="https://images.unsplash.com/photo-...">
+                    <input type="text" id="admin-blog-image-url-input" class="form-input" style="font-size:0.8rem; padding:6px 12px; flex:1;" placeholder="رابط صورة مباشر أو بعد الرفع من الجهاز">
                   </div>
                 </div>
               </div>
@@ -582,14 +582,38 @@ export const AdminBlogsPage = {
     // Save / Update Blog Form
     this.container.querySelector("#admin-blog-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const id = this.container.querySelector("#admin-blog-id").value;
+      const id = this.container.querySelector("#admin-blog-id")?.value;
+      const title = this.container.querySelector("#admin-blog-title")?.value.trim() || "";
+      const category = this.container.querySelector("#admin-blog-category")?.value.trim() || "";
+      const content = this.container.querySelector("#admin-blog-content")?.value.trim() || "";
+
+      if (!title) {
+        showToast("يرجى إدخال عنوان المقال", "warning");
+        this.container.querySelector("#admin-blog-title")?.focus();
+        return;
+      }
+      if (!category) {
+        showToast("يرجى إدخال تصنيف المقال", "warning");
+        this.container.querySelector("#admin-blog-category")?.focus();
+        return;
+      }
+      if (!content) {
+        showToast("يرجى كتابة محتوى المقال", "warning");
+        this.container.querySelector("#admin-blog-content")?.focus();
+        return;
+      }
+
+      const imgVal = this.container.querySelector("#admin-blog-image")?.value.trim()
+        || this.container.querySelector("#admin-blog-image-url-input")?.value.trim()
+        || undefined;
+
       const payload = {
-        title: this.container.querySelector("#admin-blog-title").value.trim(),
-        category: this.container.querySelector("#admin-blog-category").value.trim(),
-        readTime: this.container.querySelector("#admin-blog-readtime").value.trim() || "📖 5 دقائق قراءة",
-        image: this.container.querySelector("#admin-blog-image").value.trim() || undefined,
-        content: this.container.querySelector("#admin-blog-content").value.trim(),
-        status: this.container.querySelector("#admin-blog-status").value
+        title,
+        category,
+        readTime: this.container.querySelector("#admin-blog-readtime")?.value.trim() || "📖 5 دقائق قراءة",
+        image: imgVal,
+        content,
+        status: this.container.querySelector("#admin-blog-status")?.value || "APPROVED"
       };
 
       try {
