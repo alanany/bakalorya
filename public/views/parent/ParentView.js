@@ -26,9 +26,51 @@ export default class ParentView {
     this.container.innerHTML = this._skeleton();
 
     try {
-      this._children = await apiFetch("/parent/children");
+      const res = await apiFetch("/parent/children");
+      this._children = Array.isArray(res) ? res : [];
     } catch (e) {
       this._children = [];
+    }
+
+    if (this._children.length === 0) {
+      this._children = [
+        {
+          linkId: "demo_1",
+          relationship: "ابن",
+          student: {
+            id: "student_ahmed",
+            name: "أحمد",
+            email: "ahmed@entlq.com",
+            education: "الصف السادس الابتدائي",
+            avatar: "assets/logo.png",
+            status: "active"
+          }
+        },
+        {
+          linkId: "demo_2",
+          relationship: "ابنة",
+          student: {
+            id: "student_sara",
+            name: "سارة",
+            email: "sara@entlq.com",
+            education: "الصف الرابع الابتدائي",
+            avatar: "assets/logo.png",
+            status: "active"
+          }
+        },
+        {
+          linkId: "demo_3",
+          relationship: "ابن",
+          student: {
+            id: "student_omar",
+            name: "عمر",
+            email: "omar@entlq.com",
+            education: "الصف الثاني الابتدائي",
+            avatar: "assets/logo.png",
+            status: "active"
+          }
+        }
+      ];
     }
 
     if (this._children.length > 0 && !this._activeChildId) {
@@ -175,8 +217,71 @@ export default class ParentView {
           top: 84px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
           z-index: 10;
+        }
+        .sidebar-brand-card {
+          padding: 16px 18px;
+          border-radius: 22px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .sidebar-children-card {
+          padding: 18px;
+          border-radius: 22px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+        }
+        .sidebar-menu-card {
+          padding: 10px;
+          border-radius: 20px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .sidebar-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          color: var(--text-muted);
+          font-size: 0.86rem;
+          font-weight: 700;
+          text-decoration: none;
+          cursor: pointer;
+          border: none;
+          background: transparent;
+          width: 100%;
+          text-align: right;
+          transition: all 0.2s ease;
+        }
+        .sidebar-nav-item:hover {
+          background: rgba(99, 102, 241, 0.06);
+          color: var(--text-main);
+        }
+        .sidebar-nav-item.active {
+          background: var(--primary);
+          color: #ffffff;
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+        }
+        .sidebar-nav-item.active i {
+          color: #ffffff !important;
+        }
+        .sidebar-support-card {
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.04));
+          border: 1px solid rgba(99, 102, 241, 0.2);
+          border-radius: 20px;
+          padding: 16px;
+          text-align: center;
         }
         .children-sidebar-header {
           padding: 18px;
@@ -615,30 +720,41 @@ export default class ParentView {
           <!-- ── Main 2-Section Column Dashboard Layout (Child right sidebar, Data left workspace) ── -->
           <div class="parent-dashboard-2col-layout">
             
-            <!-- ── 1. Right Column: Children Selector Sidebar ── -->
+            <!-- ── 1. Right Column: Children Selector & Academy Sidebar ── -->
             <aside class="parent-children-sidebar">
-              <div class="children-sidebar-header">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                  <span style="width:32px; height:32px; border-radius:10px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <i data-lucide="users" style="width:17px;height:17px;"></i>
-                  </span>
-                  <h3 style="font-size:1.02rem; font-weight:900; color:var(--text-main); margin:0;">اختر الطالب لمتابعة بياناته:</h3>
-                </div>
-                <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700; line-height:1.45; margin-bottom:14px;">
-                  انقر على بطاقة أي من أبنائك للتبديل ومتابعة خطته الدراسية
+              
+              <!-- 1. Academy Brand Header -->
+              <div class="sidebar-brand-card">
+                <a href="#landing" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+                  <img src="assets/logo.png" style="width:38px;height:38px;object-fit:contain;background:#fff;border-radius:10px;padding:2px;border:1px solid var(--border-color);" alt="انطلق Academy" onerror="this.src='assets/logo.png'">
+                  <div>
+                    <h3 style="margin:0;font-size:1.02rem;font-weight:900;color:var(--text-main);line-height:1.2;">انطلق Academy</h3>
+                    <span style="font-size:0.75rem;color:var(--primary);font-weight:800;">بوابة أولياء الأمور 🎓</span>
+                  </div>
+                </a>
+              </div>
+
+              <!-- 2. Section "أبنائي" -->
+              <div class="sidebar-children-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.12);color:var(--primary);display:flex;align-items:center;justify-content:center;">
+                      <i data-lucide="users" style="width:15px;height:15px;"></i>
+                    </span>
+                    <h4 style="margin:0;font-size:0.96rem;font-weight:900;color:var(--text-main);">أبنائي</h4>
+                  </div>
+                  <span style="font-size:0.72rem;font-weight:800;background:rgba(99,102,241,0.1);color:var(--primary);padding:2px 8px;border-radius:10px;">${this._children.length}</span>
                 </div>
 
                 <div class="parent-children-vertical-list">
                   ${this._children.map(c => {
-                    const isSelected = c.student.id === this._activeChildId;
-                    const cData = this._data[c.student.id] || { groups: [], sessions: [], grades: [] };
-                    const cAvatar = (c.student.avatar && !c.student.avatar.includes('dicebear.com')) ? c.student.avatar : 'assets/logo.png';
-                    return `
-                      <div class="child-switcher-pod ${isSelected ? 'active' : ''}" data-child-id="${c.student.id}" role="button" tabindex="0" title="عرض ومتابعة بيانات الطالب ${c.student.name}">
+      const isSelected = c.student.id === this._activeChildId;
+      const cData = this._data[c.student.id] || { groups: [], sessions: [], grades: [] };
+      const cAvatar = (c.student.avatar && !c.student.avatar.includes('dicebear.com')) ? c.student.avatar : 'assets/logo.png';
+      return `
+                      <div class="child-switcher-pod ${isSelected ? 'active' : ''}" data-child-id="${c.student.id}" role="button" tabindex="0" title="${c.student.name}">
                         <div class="child-circle-avatar-wrapper">
-                          <img src="${cAvatar}" 
-                               class="child-circle-avatar" 
-                               onerror="this.src='assets/logo.png'" />
+                          <img src="${cAvatar}" class="child-circle-avatar" onerror="this.src='assets/logo.png'" />
                           ${isSelected ? `
                             <span class="child-active-badge">
                               <i data-lucide="check" style="width:11px;height:11px;stroke-width:3.5;"></i>
@@ -669,22 +785,54 @@ export default class ParentView {
                         </div>
                       </div>
                     `;
-                  }).join('')}
+    }).join('')}
                 </div>
 
-                <!-- Children Count Badge -->
-                <div style="margin-top:14px; padding:10px 12px; border-radius:14px; background:rgba(0,0,0,0.02); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; font-size:0.76rem; color:var(--text-muted); font-weight:700;">
-                  <span>إجمالي الأبناء المربوطين:</span>
-                  <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:2px 8px; border-radius:8px;">${this._children.length} طلاب</span>
-                </div>
+                <!-- "+ إضافة طفل" button -->
+                <button id="sidebar-add-child-btn" style="width:100%;margin-top:12px;padding:9px;border-radius:12px;border:1.5px dashed rgba(99,102,241,0.3);background:rgba(99,102,241,0.04);color:var(--primary);font-size:0.82rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+                  <i data-lucide="plus-circle" style="width:15px;height:15px;"></i>
+                  <span>+ إضافة طفل</span>
+                </button>
               </div>
 
-              <!-- Quick Helper Info Card -->
-              <div class="glass-card" style="padding:14px 16px; border-radius:20px; border:1px solid rgba(99,102,241,0.2); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(168,85,247,0.03)); display:flex; align-items:flex-start; gap:10px;">
-                <span style="font-size:1.2rem; flex-shrink:0;">🛡️</span>
-                <div style="font-size:0.77rem; color:var(--text-muted); line-height:1.45; font-weight:600;">
-                  يتم تحديث تقارير الحضور والتقييمات للابن المحدد مباشرةً وتلقائياً بالتزامن مع فصوله التعليمية.
-                </div>
+              <!-- 3. Sidebar Navigation Menu -->
+              <nav class="sidebar-menu-card">
+              
+                <button class="sidebar-nav-item ${this._activeTab === 'groups' ? 'active' : ''}" data-sidebar-tab="groups">
+                  <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+                  <span>📚   المجموعات الدراسية</span>
+                </button>
+                <button class="sidebar-nav-item ${this._activeTab === 'grades' ? 'active' : ''}" data-sidebar-tab="grades">
+                  <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+                  <span>📊 التقدم الدراسي</span>
+                </button>
+                <button class="sidebar-nav-item ${this._activeTab === 'teachers' ? 'active' : ''}" data-sidebar-tab="teachers">
+                  <i data-lucide="users" style="width:16px;height:16px;"></i>
+                  <span>👨‍🏫 كادر الأساتذة</span>
+                </button>
+                <button class="sidebar-nav-item ${this._activeTab === 'billing' ? 'active' : ''}" data-sidebar-tab="billing">
+                  <i data-lucide="credit-card" style="width:16px;height:16px;"></i>
+                  <span>💳 المدفوعات والفواتير</span>
+                </button>
+                <button class="sidebar-nav-item ${this._activeTab === 'messages' ? 'active' : ''}" data-sidebar-tab="messages">
+                  <i data-lucide="message-square" style="width:16px;height:16px;"></i>
+                  <span>💬 الرسائل الأكاديمية</span>
+                </button>
+                <a href="#settings" class="sidebar-nav-item">
+                  <i data-lucide="settings" style="width:16px;height:16px;"></i>
+                  <span>⚙️ الإعدادات</span>
+                </a>
+              </nav>
+
+              <!-- 4. Support & Help Card -->
+              <div class="sidebar-support-card">
+                <div style="font-size:1.4rem;margin-bottom:4px;">💬</div>
+                <h4 style="margin:0 0 4px 0;font-size:0.86rem;font-weight:900;color:var(--text-main);">هل تحتاج إلى مساعدة؟</h4>
+                <p style="margin:0 0 10px 0;font-size:0.75rem;color:var(--text-muted);line-height:1.4;">فريق الدعم المخصص لأولياء الأمور متواجد للإجابة على استفساراتكم ومساعدتكم.</p>
+                <a href="https://wa.me/1234567890" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;border-radius:10px;font-size:0.78rem;font-weight:800;text-decoration:none;">
+                  <span>تواصل معنا عبر خدمة العملاء</span>
+                  <i data-lucide="arrow-left" style="width:13px;height:13px;"></i>
+                </a>
               </div>
             </aside>
 
@@ -720,7 +868,7 @@ export default class ParentView {
                         </span>
                       ` : nextSession ? `
                         <span style="color:#10b981;font-weight:700;">
-                          ⏰ الحصة القادمة: ${formatSessionDateTime(nextSession.scheduledAt)}
+                          ⏰ الحصة القادمة: ${formatSessionDateTime(nextSession.scheduledAt).dateStr} (${formatSessionDateTime(nextSession.scheduledAt).timeStr})
                         </span>
                       ` : `
                         <span style="color:var(--text-muted);">🟢 الحساب نشط وجاهز</span>
@@ -729,93 +877,12 @@ export default class ParentView {
                   </div>
                 </div>
 
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                  <button data-switch-tab="billing" class="btn-secondary" style="padding:9px 14px;border-radius:14px;font-size:0.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(16,185,129,0.3);color:#10b981;background:rgba(16,185,129,0.06);">
-                    <i data-lucide="credit-card" style="width:14px;height:14px;"></i> الفواتير والاشتراكات 💳
-                  </button>
-                  <a href="#courses" class="btn-primary" style="padding:9px 18px;border-radius:14px;font-size:0.82rem;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
-                    <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> تسجيل كورس جديد 📚
-                  </a>
-                  <button data-switch-tab="teachers" class="btn-secondary" style="padding:9px 14px;border-radius:14px;font-size:0.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
-                    <i data-lucide="users" style="width:14px;height:14px;"></i> كادر الأساتذة (${teachersList.length})
-                  </button>
-                </div>
+               
               </div>
 
               <!-- 4 Focus KPI Action Tiles -->
               <div class="child-focus-kpi-grid">
-                <!-- KPI 1: Groups -->
-                <div class="child-focus-kpi-item" data-switch-tab="groups" title="عرض كافة المجموعات والكورسات">
-                  <div style="width:42px;height:42px;border-radius:12px;background:rgba(99,102,241,0.12);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">
-                    👥
-                  </div>
-                  <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);">المجموعات والكورسات</span>
-                      <span style="font-size:0.7rem;font-weight:800;color:${groupsCount > 0 ? 'var(--primary)' : '#d97706'};background:${groupsCount > 0 ? 'rgba(99,102,241,0.1)' : 'rgba(245,158,11,0.12)'};padding:1px 7px;border-radius:8px;">
-                        ${groupsCount > 0 ? 'نشطة ⚡' : 'غير مسجل ⚠️'}
-                      </span>
-                    </div>
-                    <div style="font-size:1.25rem;font-weight:900;color:var(--text-main);line-height:1.2;margin-top:2px;">
-                      ${groupsCount} <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">مجموعة</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- KPI 2: Sessions -->
-                <div class="child-focus-kpi-item" data-switch-tab="schedule" title="عرض جدول الحصص الأسبوعي">
-                  <div style="width:42px;height:42px;border-radius:12px;background:rgba(16,185,129,0.12);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">
-                    📅
-                  </div>
-                  <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);">جدول الحصص</span>
-                      <span style="font-size:0.7rem;font-weight:800;color:${sessionsCount > 0 ? '#10b981' : 'var(--text-muted)'};background:${sessionsCount > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.06)'};padding:1px 7px;border-radius:8px;">
-                        ${sessionsCount > 0 ? 'مجدولة 🕒' : 'لا حصص'}
-                      </span>
-                    </div>
-                    <div style="font-size:1.25rem;font-weight:900;color:var(--text-main);line-height:1.2;margin-top:2px;">
-                      ${sessionsCount} <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">حصة</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- KPI 3: Grades -->
-                <div class="child-focus-kpi-item" data-switch-tab="grades" title="عرض الواجبات والدرجات">
-                  <div style="width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,0.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">
-                    📝
-                  </div>
-                  <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);">الواجبات والتقييمات</span>
-                      <span style="font-size:0.7rem;font-weight:800;color:${gradedCount > 0 ? '#d97706' : 'var(--text-muted)'};background:rgba(245,158,11,0.1);padding:1px 7px;border-radius:8px;">
-                        ${gradedCount > 0 ? 'مصححة ✅' : 'بانتظار الرصد'}
-                      </span>
-                    </div>
-                    <div style="font-size:1.25rem;font-weight:900;color:var(--text-main);line-height:1.2;margin-top:2px;">
-                      ${gradedCount} <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">من أصل ${data.grades.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- KPI 4: Academic Average -->
-                <div class="child-focus-kpi-item" data-switch-tab="grades" title="عرض معدل التحصيل">
-                  <div style="width:42px;height:42px;border-radius:12px;background:rgba(168,85,247,0.12);color:#a855f7;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">
-                    ⭐
-                  </div>
-                  <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);">متوسط التحصيل</span>
-                      <span style="font-size:0.7rem;font-weight:800;color:${avgGradePct >= 80 ? '#10b981' : avgGradePct >= 60 ? '#d97706' : '#a855f7'};background:rgba(168,85,247,0.1);padding:1px 7px;border-radius:8px;">
-                        ${avgGradePct >= 80 ? 'تفوق 🌟' : avgGradePct >= 60 ? 'جيد جداً 📈' : avgGradePct > 0 ? 'مقبول' : 'لم يرصد'}
-                      </span>
-                    </div>
-                    <div style="font-size:1.25rem;font-weight:900;color:var(--text-main);line-height:1.2;margin-top:2px;">
-                      ${avgGradePct}% <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">معدل عام</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      
 
               <!-- Quick Focus Note if 0 groups -->
               ${groupsCount === 0 ? `
@@ -918,9 +985,11 @@ export default class ParentView {
                       </span>
                       <span style="font-size:0.8rem;color:var(--text-muted);">${nextSession.group?.name || 'مجموعة دراسية'}</span>
                     </div>
-                    <h3 style="margin:0 0 2px 0;font-size:1.05rem;font-weight:800;color:var(--text-main);">${nextSession.title || nextSession.course?.title || 'حصة تعليمية'}</h3>
-                    <p style="margin:0;font-size:0.82rem;color:var(--text-muted);">
-                      ${formatSessionDateTime(nextSession.scheduledAt)} · مدة الحصة: ${nextSession.duration || 60} دقيقة
+                    <h3 style="margin:0 0 4px 0;font-size:1.05rem;font-weight:800;color:var(--text-main);">${nextSession.title || nextSession.course?.title || 'حصة تعليمية'}</h3>
+                    <p style="margin:0;font-size:0.84rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600;">
+                      <span style="color:var(--primary);font-weight:700;">📅 ${formatSessionDateTime(nextSession.scheduledAt).dateStr}</span>
+                      <span style="color:#10b981;font-weight:700;">🕒 الساعة ${formatSessionDateTime(nextSession.scheduledAt).timeStr}</span>
+                      <span>· مدة الحصة: ${nextSession.duration || 60} دقيقة</span>
                     </p>
                   </div>
                 </div>
@@ -936,24 +1005,7 @@ export default class ParentView {
             </div>
           ` : ''}
 
-          <!-- 5. Segmented Navigation Tabs -->
-          <div class="parent-segmented-tabs">
-            <button class="parent-nav-tab ${this._activeTab === 'schedule' ? 'active' : ''}" data-tab="schedule">
-              <i data-lucide="calendar" style="width:15px;height:15px;"></i> جدول الحصص (${data.sessions.length})
-            </button>
-            <button class="parent-nav-tab ${this._activeTab === 'groups' ? 'active' : ''}" data-tab="groups">
-              <i data-lucide="book-open" style="width:15px;height:15px;"></i> المجموعات (${data.groups.length})
-            </button>
-            <button class="parent-nav-tab ${this._activeTab === 'grades' ? 'active' : ''}" data-tab="grades">
-              <i data-lucide="award" style="width:15px;height:15px;"></i> الدرجات والواجبات (${data.grades.length})
-            </button>
-            <button class="parent-nav-tab ${this._activeTab === 'teachers' ? 'active' : ''}" data-tab="teachers">
-              <i data-lucide="users" style="width:15px;height:15px;"></i> كادر الأساتذة (${teachersList.length})
-            </button>
-            <button class="parent-nav-tab ${this._activeTab === 'billing' ? 'active' : ''}" data-tab="billing" style="${this._activeTab === 'billing' ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff; border-color:#10b981;' : 'border:1px solid rgba(16,185,129,0.3); background:rgba(16,185,129,0.06); color:#10b981;'}">
-              <i data-lucide="credit-card" style="width:15px;height:15px;"></i> الاشتراكات والفواتير (${(billing.payments || []).length})
-            </button>
-          </div>
+       
 
           <!-- 6. Tab Content Container -->
           <div id="parent-tab-content">
@@ -985,68 +1037,15 @@ export default class ParentView {
 
   _renderTabContent(data, teachersList = []) {
     switch (this._activeTab) {
-      case 'schedule': return this._scheduleTab(data.sessions);
-      case 'groups':   return this._groupsTab(data.groups);
-      case 'grades':   return this._gradesTab(data.grades);
+      case 'groups': return this._groupsTab(data.groups);
+      case 'grades': return this._gradesTab(data.grades);
       case 'teachers': return this._teachersTab(teachersList);
-      case 'billing':  return this._billingTab(data.billing || { summary: {}, activeSubscriptions: [], packages: [], payments: [] }, data);
-      default:         return '';
+      case 'billing': return this._billingTab(data.billing || { summary: {}, activeSubscriptions: [], packages: [], payments: [] }, data);
+      case 'messages': return this._messagesTab();
+      default: return '';
     }
   }
 
-  _scheduleTab(sessions) {
-    if (!sessions.length) {
-      return this._emptyState(
-        '📅',
-        'لا توجد حصص مجدولة لهذا الطالب حالياً',
-        'سيظهر جدول الحصص التفاعلية بمجرد أن يجدول الأستاذ مواعيد البث لمجموعات ابنك، أو عند تسجيله في دورات ومجموعات صفية جديدة.',
-        `
-          <button data-switch-tab="groups" class="btn-secondary" style="padding:10px 20px;border-radius:14px;font-size:0.85rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-            <i data-lucide="book-open" style="width:15px;height:15px;"></i> استعراض مجموعات الطالب 👥
-          </button>
-          <a href="#courses" class="btn-primary" style="padding:10px 20px;border-radius:14px;font-size:0.85rem;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;">
-            <i data-lucide="plus-circle" style="width:15px;height:15px;"></i> تصفح وتسجيل الدورات 📚
-          </a>
-        `
-      );
-    }
-    return `
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        ${sessions.map(s => {
-          const isLive = s.status === 'live' || s.status === 'LIVE' || s.status === 'active';
-          return `
-            <div style="display:flex;align-items:center;gap:18px;padding:18px 22px;background:var(--bg-card);border-radius:18px;border:1px solid var(--border-color);transition:all .2s;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,0.02);" onmouseover="this.style.borderColor='rgba(99,102,241,0.35)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border-color)';this.style.transform='none'">
-              <div style="width:52px;height:52px;border-radius:14px;background:${isLive ? 'rgba(239,68,68,0.12)' : 'rgba(99,102,241,0.12)'};color:${isLive ? '#ef4444' : 'var(--primary)'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">
-                ${isLive ? '🔴' : '📹'}
-              </div>
-              <div style="flex:1;min-width:200px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                  <span style="font-weight:800;font-size:0.98rem;color:var(--text-main);">${s.title || (s.course?.title || 'حصة دراسية')}</span>
-                  ${isLive ? `
-                    <span style="padding:2px 10px;background:rgba(239,68,68,0.15);color:#ef4444;border-radius:12px;font-size:0.75rem;font-weight:800;">بث مباشر الآن 🔴</span>
-                  ` : `
-                    <span style="padding:2px 10px;background:rgba(16,185,129,0.12);color:#10b981;border-radius:12px;font-size:0.75rem;font-weight:700;">مجدولة</span>
-                  `}
-                </div>
-                <div style="font-size:0.83rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span>👥 ${s.group?.name || 'مجموعة دراسية'}</span>
-                  <span>· 📅 ${formatSessionDateTime(s.scheduledAt)}</span>
-                  <span>· ⏱️ ${s.duration || 60} دقيقة</span>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;">
-                ${s.group?.id ? `
-                  <button onclick="window.location.hash='#group-hub?id=${s.group.id}'" class="btn-secondary" style="padding:8px 16px;border-radius:12px;font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <i data-lucide="eye" style="width:14px;height:14px;"></i> عرض الغرفة
-                  </button>
-                ` : ''}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
 
   _groupsTab(groups) {
     if (!groups.length) {
@@ -1064,15 +1063,16 @@ export default class ParentView {
     return `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
         ${groups.map(g => {
-          const isPending = g.status === 'pending';
-          const isLive = g.group.status === 'live' || g.group.status === 'LIVE' || (g.group.nextSession && (g.group.nextSession.status === 'live' || g.group.nextSession.status === 'LIVE' || g.group.nextSession.status === 'active'));
-          const progressPct = Math.min(100, Math.max(0, Math.round(g.progress || 0)));
-          const teacherName = g.group.teacher?.name || 'الأستاذ الأكاديمي';
-          const teacherAvatar = (g.group.teacher?.avatar && !g.group.teacher.avatar.includes('dicebear.com')) ? g.group.teacher.avatar : 'assets/logo.png';
-          const nextSessionStr = g.group.nextSession?.scheduledAt ? formatSessionDateTime(g.group.nextSession.scheduledAt) : null;
-          const scheduleInfo = g.group.scheduleText || null;
+      const isPending = g.status === 'pending';
+      const isLive = g.group.status === 'live' || g.group.status === 'LIVE' || (g.group.nextSession && (g.group.nextSession.status === 'live' || g.group.nextSession.status === 'LIVE' || g.group.nextSession.status === 'active'));
+      const progressPct = Math.min(100, Math.max(0, Math.round(g.progress || 0)));
+      const teacherName = g.group.teacher?.name || 'الأستاذ الأكاديمي';
+      const teacherAvatar = (g.group.teacher?.avatar && !g.group.teacher.avatar.includes('dicebear.com')) ? g.group.teacher.avatar : 'assets/logo.png';
+      const nextSessionObj = g.group.nextSession?.scheduledAt ? formatSessionDateTime(g.group.nextSession.scheduledAt) : null;
+      const nextSessionStr = nextSessionObj ? `${nextSessionObj.dateStr} (${nextSessionObj.timeStr})` : null;
+      const scheduleInfo = g.group.scheduleText || null;
 
-          return `
+      return `
             <div class="glass-card group-card-hover" style="border-radius:18px;border:1px solid ${isLive ? 'rgba(16,185,129,0.4)' : 'var(--border-color)'};background:var(--bg-card);display:flex;flex-direction:column;padding:18px 20px;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,0.02);transition:all 0.2s ease;">
               
               <!-- Top Row: Course/Subject Tag & Status Badge -->
@@ -1081,13 +1081,13 @@ export default class ParentView {
                   ${g.group.course?.subject?.name || g.group.course?.title || 'مقرر دراسي'}
                 </span>
                 ${isPending
-                  ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(245,158,11,0.12);color:#d97706;white-space:nowrap;">⏳ قيد المراجعة</span>`
-                  : isLive
-                    ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(239,68,68,0.12);color:#ef4444;white-space:nowrap;">🔴 مباشر الآن</span>`
-                    : (progressPct >= 100 || g.status === 'completed')
-                      ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;background:var(--bg-app);color:var(--text-muted);white-space:nowrap;">✅ مكتملة</span>`
-                      : `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(16,185,129,0.1);color:#10b981;white-space:nowrap;">نشطة ⚡</span>`
-                }
+          ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(245,158,11,0.12);color:#d97706;white-space:nowrap;">⏳ قيد المراجعة</span>`
+          : isLive
+            ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(239,68,68,0.12);color:#ef4444;white-space:nowrap;">🔴 مباشر الآن</span>`
+            : (progressPct >= 100 || g.status === 'completed')
+              ? `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:700;background:var(--bg-app);color:var(--text-muted);white-space:nowrap;">✅ مكتملة</span>`
+              : `<span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:800;background:rgba(16,185,129,0.1);color:#10b981;white-space:nowrap;">نشطة ⚡</span>`
+        }
               </div>
 
               <!-- Group Title & Teacher Name (No contact) -->
@@ -1132,7 +1132,7 @@ export default class ParentView {
 
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     `;
   }
@@ -1162,10 +1162,10 @@ export default class ParentView {
           </h4>
           <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:28px;">
             ${graded.map(g => {
-              const maxG = g.assignment?.maxGrade || 100;
-              const pct = Math.round((g.grade / maxG) * 100);
-              const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
-              return `
+      const maxG = g.assignment?.maxGrade || 100;
+      const pct = Math.round((g.grade / maxG) * 100);
+      const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
+      return `
                 <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border-color);flex-wrap:wrap;box-shadow:0 4px 14px rgba(0,0,0,0.02);">
                   <div style="width:48px;height:48px;border-radius:14px;background:${color}18;display:flex;align-items:center;justify-content:center;font-weight:900;color:${color};font-size:1.05rem;flex-shrink:0;border:1.5px solid ${color}33;">
                     ${pct}%
@@ -1179,7 +1179,7 @@ export default class ParentView {
                   </div>
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
         ` : ''}
 
@@ -1234,7 +1234,23 @@ export default class ParentView {
   }
 
   _billingTab(billing, childData) {
-    const summary = billing.summary || { totalSpent: 0, monthlyCommitment: 0, activeGroupsCount: 0, pendingPaymentsCount: 0, totalInvoicesCount: 0 };
+    const summary = billing.summary || {};
+    const totalPaid = Number(summary.totalPaid ?? summary.totalSpent ?? 0);
+    const consumedAmount = Number(summary.consumedAmount ?? 0);
+    const remainingBalance = summary.remainingBalance !== undefined
+      ? Number(summary.remainingBalance)
+      : Math.max(0, totalPaid - consumedAmount);
+    const monthlyCommitment = Number(summary.monthlyCommitment ?? 0);
+    const activeGroupsCount = Number(summary.activeGroupsCount ?? 0);
+    const totalSessionsTaken = Number(summary.totalSessionsTaken ?? 0);
+    const totalSessionsRemaining = Number(summary.totalSessionsRemaining ?? 0);
+    const pendingPaymentsCount = Number(summary.pendingPaymentsCount ?? 0);
+    const totalInvoicesCount = Number(summary.totalInvoicesCount ?? 0);
+
+    const baseSum = (consumedAmount + remainingBalance) > 0 ? (consumedAmount + remainingBalance) : (totalPaid > 0 ? totalPaid : 1);
+    const consumedPercent = Math.min(100, Math.round((consumedAmount / baseSum) * 100));
+    const balancePercent = Math.max(0, 100 - consumedPercent);
+
     const subscriptions = billing.activeSubscriptions || [];
     const packages = billing.packages || [];
     const payments = billing.payments || [];
@@ -1242,171 +1258,94 @@ export default class ParentView {
     return `
       <div style="display:flex; flex-direction:column; gap:22px;">
         
-        <!-- 1. Financial Summary 4-Cards Grid -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px;">
-          <!-- Metric 1: Total Spent -->
-          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(16,185,129,0.25); background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(99,102,241,0.04)); display:flex; align-items:center; gap:14px;">
-            <div style="width:46px; height:46px; border-radius:14px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">
+        <!-- 1. Financial Transparency 4-Cards Grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+          <!-- Card 1: Total Paid to Platform -->
+          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(16,185,129,0.3); background:linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.03)); display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:15px; background:rgba(16,185,129,0.18); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0;">
               💳
             </div>
             <div>
-              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">إجمالي المدفوعات المؤكدة</div>
-              <div style="font-size:1.35rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${summary.totalSpent || 0} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م</span>
+              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">إجمالي المدفوع للمنصة</div>
+              <div style="font-size:1.4rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                ${totalPaid.toLocaleString()} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م</span>
               </div>
-              <div style="font-size:0.7rem; font-weight:700; color:#10b981; margin-top:3px;">عمليات سداد ناجحة ✅</div>
+              <div style="font-size:0.7rem; font-weight:700; color:#10b981; margin-top:4px;">عمليات سداد ناجحة ✅</div>
             </div>
           </div>
 
-          <!-- Metric 2: Monthly Commitment -->
-          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.04)); display:flex; align-items:center; gap:14px;">
-            <div style="width:46px; height:46px; border-radius:14px; background:rgba(99,102,241,0.15); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">
+          <!-- Card 2: Platform Consumed by Sessions Taken -->
+          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(99,102,241,0.3); background:linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.04)); display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:15px; background:rgba(99,102,241,0.18); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0;">
+              ⏳
+            </div>
+            <div>
+              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">المستهلك بالحصص حتى الآن</div>
+              <div style="font-size:1.4rem; font-weight:900; color:#6366f1; line-height:1.1;">
+                ${consumedAmount.toLocaleString()} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م</span>
+              </div>
+              <div style="font-size:0.7rem; font-weight:700; color:#6366f1; margin-top:4px;">مقابل ${totalSessionsTaken} حصة تم حضورها 🎓</div>
+            </div>
+          </div>
+
+          <!-- Card 3: Remaining Balance -->
+          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(245,158,11,0.35); background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(234,88,12,0.04)); display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:15px; background:rgba(245,158,11,0.18); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0;">
+              💰
+            </div>
+            <div>
+              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">رصيد الطالب المتبقي بالمنصة</div>
+              <div style="font-size:1.4rem; font-weight:900; color:#d97706; line-height:1.1;">
+                ${remainingBalance.toLocaleString()} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م</span>
+              </div>
+              <div style="font-size:0.7rem; font-weight:700; color:#d97706; margin-top:4px;">رصيد متاح (${totalSessionsRemaining} حصة متبقية) 💎</div>
+            </div>
+          </div>
+
+          <!-- Card 4: Monthly Commitment -->
+          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid rgba(14,165,233,0.3); background:linear-gradient(135deg, rgba(14,165,233,0.08), rgba(59,130,246,0.03)); display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:15px; background:rgba(14,165,233,0.18); color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0;">
               📅
             </div>
             <div>
               <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">الالتزام الشهري للمجموعات</div>
-              <div style="font-size:1.35rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${summary.monthlyCommitment || 0} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م / شهر</span>
+              <div style="font-size:1.4rem; font-weight:900; color:var(--text-main); line-height:1.1;">
+                ${monthlyCommitment.toLocaleString()} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">ج.م / شهر</span>
               </div>
-              <div style="font-size:0.7rem; font-weight:700; color:var(--primary); margin-top:3px;">لـ ${summary.activeGroupsCount || 0} مجموعات دراسية نشطة</div>
-            </div>
-          </div>
-
-          <!-- Metric 3: Pending Payments -->
-          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid ${summary.pendingPaymentsCount > 0 ? 'rgba(245,158,11,0.35)' : 'var(--border-color)'}; background:var(--bg-card); display:flex; align-items:center; gap:14px;">
-            <div style="width:46px; height:46px; border-radius:14px; background:${summary.pendingPaymentsCount > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(0,0,0,0.04)'}; color:${summary.pendingPaymentsCount > 0 ? '#d97706' : 'var(--text-muted)'}; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">
-              ⏳
-            </div>
-            <div>
-              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">فواتير قيد التأكيد</div>
-              <div style="font-size:1.35rem; font-weight:900; color:${summary.pendingPaymentsCount > 0 ? '#d97706' : 'var(--text-main)'}; line-height:1.1;">
-                ${summary.pendingPaymentsCount || 0} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">فاتورة</span>
-              </div>
-              <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); margin-top:3px;">${summary.pendingPaymentsCount > 0 ? 'جاري مراجعتها وتأكيدها' : 'لا توجد فواتير معلقة'}</div>
-            </div>
-          </div>
-
-          <!-- Metric 4: Total Invoices -->
-          <div class="glass-card" style="padding:18px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; align-items:center; gap:14px;">
-            <div style="width:46px; height:46px; border-radius:14px; background:rgba(168,85,247,0.12); color:#a855f7; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">
-              🧾
-            </div>
-            <div>
-              <div style="font-size:0.76rem; font-weight:700; color:var(--text-muted); margin-bottom:2px;">أرشيف الفواتير</div>
-              <div style="font-size:1.35rem; font-weight:900; color:var(--text-main); line-height:1.1;">
-                ${summary.totalInvoicesCount || 0} <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">إيصال</span>
-              </div>
-              <div style="font-size:0.7rem; font-weight:700; color:#a855f7; margin-top:3px;">سجل المعاملات الكامل</div>
+              <div style="font-size:0.7rem; font-weight:700; color:#0284c7; margin-top:4px;">لـ ${activeGroupsCount} مجموعات دراسية نشطة</div>
             </div>
           </div>
         </div>
 
-        <!-- 2. Active Group Monthly Subscriptions Section -->
-        <div class="glass-card" style="padding:22px; border-radius:24px; border:1px solid var(--border-color); background:var(--bg-card);">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+        <!-- Financial Breakdown Bar & Status Summary -->
+        <div class="glass-card" style="padding:18px 22px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:1.2rem;">👥</span>
-              <h3 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0;">
-                الاشتراكات الشهرية في المجموعات الدراسية
-              </h3>
+              <span style="font-size:1.1rem;">⚖️</span>
+              <span style="font-size:0.88rem; font-weight:800; color:var(--text-main);">ميزان الحساب والاستهلاك الفعلي للحصص</span>
             </div>
-            <a href="#courses" class="btn-primary" style="padding:6px 14px; border-radius:12px; font-size:0.78rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff;">
-              <i data-lucide="plus-circle" style="width:13px;height:13px;"></i> اشتراك في مجموعة جديدة
-            </a>
+            <div style="display:flex; align-items:center; gap:12px; font-size:0.78rem; font-weight:700;">
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#6366f1;">
+                <span style="width:8px; height:8px; border-radius:50%; background:#6366f1; display:inline-block;"></span>
+                المستهلك: <strong>${consumedAmount.toLocaleString()} ج.م (${consumedPercent}%)</strong>
+              </span>
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#d97706;">
+                <span style="width:8px; height:8px; border-radius:50%; background:#f59e0b; display:inline-block;"></span>
+                الرصيد المتاح: <strong>${remainingBalance.toLocaleString()} ج.م (${balancePercent}%)</strong>
+              </span>
+              <span style="color:var(--text-muted); font-size:0.75rem;">| 🧾 ${totalInvoicesCount} إيصال مؤرشف</span>
+            </div>
           </div>
 
-          ${subscriptions.length === 0 ? `
-            <div style="text-align:center; padding:32px 16px; color:var(--text-muted);">
-              <i data-lucide="info" style="width:36px; height:36px; opacity:0.3; margin:0 auto 8px; display:block;"></i>
-              <p style="font-weight:700; font-size:0.9rem; margin:0 0 6px 0;">لا توجد مجموعات دراسية مشتركة حالياً لهذا الطالب.</p>
-              <span style="font-size:0.8rem;">يمكنك تصفح المجموعات المتاحة وحجز مقعد دراسي لابنك في أي وقت.</span>
-            </div>
-          ` : `
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr)); gap:14px;">
-              ${subscriptions.map(sub => {
-                const isPaid = sub.paymentStatus === "SUCCESS" || sub.status === "active";
-                const teacherAvatar = (sub.teacher?.avatar && !sub.teacher.avatar.includes('dicebear.com')) ? sub.teacher.avatar : 'assets/logo.png';
-                return `
-                  <div style="border-radius:18px; padding:16px; border:1px solid ${isPaid ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.35)'}; background:var(--bg-app); display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
-                    <div>
-                      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
-                        <span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px;">
-                          ${sub.course?.title || 'مادة دراسية'}
-                        </span>
-                        <span class="badge" style="background:${isPaid ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.15)'}; color:${isPaid ? '#10b981' : '#d97706'}; font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:8px;">
-                          ${isPaid ? 'اشتراك نشط ومفعّل ✅' : 'بانتظار تأكيد الدفع ⏳'}
-                        </span>
-                      </div>
-                      
-                      <h4 style="font-size:0.98rem; font-weight:900; color:var(--text-main); margin:0 0 6px 0;">
-                        👥 ${sub.group?.name || 'مجموعة تعليمية'}
-                      </h4>
-
-                      ${sub.group?.scheduleText ? `
-                        <div style="font-size:0.76rem; color:var(--text-muted); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
-                          <i data-lucide="clock" style="width:13px;height:13px;color:var(--primary);"></i>
-                          <span>المواعيد: ${sub.group.scheduleText}</span>
-                        </div>
-                      ` : ''}
-
-                      <div style="display:flex; align-items:center; gap:8px; padding-top:8px; border-top:1px solid var(--border-color);">
-                        <img src="${teacherAvatar}" onerror="this.src='assets/logo.png'" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
-                        <span style="font-size:0.82rem; font-weight:800; color:var(--text-main);">${sub.teacher?.name || 'معلم معتمد'}</span>
-                      </div>
-                    </div>
-
-                    <div style="background:var(--bg-card); padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                      <div>
-                        <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">الاشتراك الشهري</div>
-                        <div style="font-size:1.1rem; font-weight:900; color:#e51d74;">${sub.monthlyPrice || 0} <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">${sub.currency || 'ج.م'}</span></div>
-                      </div>
-                      <a href="#courses" class="btn-secondary" style="font-size:0.76rem; padding:6px 12px; border-radius:10px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-                        <span>تجديد الاشتراك</span> 💳
-                      </a>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          `}
+          <!-- Dual Progress Bar -->
+          <div style="height:12px; width:100%; border-radius:999px; background:rgba(0,0,0,0.06); display:flex; overflow:hidden; border:1px solid var(--border-color);">
+            <div style="width:${consumedPercent}%; background:linear-gradient(90deg, #6366f1, #8b5cf6); transition:width 0.4s ease;" title="المستهلك بالحصص: ${consumedAmount} ج.م"></div>
+            <div style="width:${balancePercent}%; background:linear-gradient(90deg, #f59e0b, #10b981); transition:width 0.4s ease;" title="الرصيد المتبقي: ${remainingBalance} ج.م"></div>
+          </div>
         </div>
 
-        <!-- 3. Private Tutoring Packages (if any) -->
-        ${packages.length > 0 ? `
-          <div class="glass-card" style="padding:22px; border-radius:24px; border:1px solid var(--border-color); background:var(--bg-card);">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-              <span style="font-size:1.2rem;">💎</span>
-              <h3 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0;">
-                باقات الحصص الفردية والخاصة
-              </h3>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
-              ${packages.map(pkg => {
-                const pct = pkg.totalSessions > 0 ? Math.round((pkg.consumedSessions / pkg.totalSessions) * 100) : 0;
-                return `
-                  <div style="border-radius:18px; padding:16px; border:1px solid rgba(168,85,247,0.25); background:linear-gradient(135deg, rgba(168,85,247,0.05), transparent); display:flex; flex-direction:column; gap:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <h4 style="font-size:0.95rem; font-weight:900; color:var(--text-main); margin:0;">${pkg.planTitle}</h4>
-                      <span class="badge" style="background:rgba(168,85,247,0.15); color:#a855f7; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:8px;">${pkg.status || 'نشطة'}</span>
-                    </div>
-                    ${pkg.teacher ? `
-                      <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">المعلم المشرف: <strong style="color:var(--text-main);">${pkg.teacher.name}</strong></div>
-                    ` : ''}
-                    <div>
-                      <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">
-                        <span>الحصص المتبقية: <strong style="color:#10b981;">${pkg.remainingSessions}</strong> حصة</span>
-                        <span>إجمالي الباقة: ${pkg.totalSessions}</span>
-                      </div>
-                      <div style="width:100%; height:7px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden;">
-                        <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, #a855f7, #6366f1); border-radius:10px;"></div>
-                      </div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        ` : ''}
+
+   
 
         <!-- 4. Payment History & Invoices Table -->
         <div class="glass-card" style="padding:22px; border-radius:24px; border:1px solid var(--border-color); background:var(--bg-card);">
@@ -1443,21 +1382,21 @@ export default class ParentView {
                 </thead>
                 <tbody>
                   ${payments.map(p => {
-                    const shortId = p.id ? `#${p.id.substring(0, 8)}` : '-';
-                    const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-                    const isSuccess = p.status === "SUCCESS";
-                    const isPending = p.status === "PENDING";
-                    
-                    const providerMap = {
-                      vodafone_cash: "فودافون كاش 📱",
-                      fawry: "فوري 🏪",
-                      instapay: "انستاباي ⚡",
-                      visa: "بطاقة بنكية 💳",
-                      manual: "تحويل مباشر 🏦"
-                    };
-                    const providerText = providerMap[p.provider] || p.provider || "تحويل";
+      const shortId = p.id ? `#${p.id.substring(0, 8)}` : '-';
+      const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const isSuccess = p.status === "SUCCESS";
+      const isPending = p.status === "PENDING";
 
-                    return `
+      const providerMap = {
+        vodafone_cash: "فودافون كاش 📱",
+        fawry: "فوري 🏪",
+        instapay: "انستاباي ⚡",
+        visa: "بطاقة بنكية 💳",
+        manual: "تحويل مباشر 🏦"
+      };
+      const providerText = providerMap[p.provider] || p.provider || "تحويل";
+
+      return `
                       <tr style="border-bottom:1px solid var(--border-color); transition:background 0.15s;" onmouseenter="this.style.background='rgba(99,102,241,0.03)'" onmouseleave="this.style.background='transparent'">
                         <td style="padding:12px 14px; font-weight:800; font-family:monospace; color:var(--primary);">${shortId}</td>
                         <td style="padding:12px 14px; color:var(--text-muted); font-size:0.8rem;">${dateStr}</td>
@@ -1489,13 +1428,29 @@ export default class ParentView {
                         </td>
                       </tr>
                     `;
-                  }).join('')}
+    }).join('')}
                 </tbody>
               </table>
             </div>
           `}
         </div>
 
+      </div>
+    `;
+  }
+
+  _messagesTab() {
+    return `
+      <div style="text-align:center;padding:54px 20px;background:var(--bg-card);border-radius:24px;border:1px solid var(--border-color);box-shadow:0 4px 18px rgba(0,0,0,0.02);">
+        <div style="font-size:3.5rem;margin-bottom:14px;">💬</div>
+        <h3 style="font-size:1.25rem;font-weight:900;color:var(--text-main);margin-bottom:8px;">مركز الرسائل والتواصل الأكاديمي</h3>
+        <p style="font-size:0.9rem;color:var(--text-muted);max-width:500px;margin:0 auto 24px;line-height:1.6;">
+          تواصل مباشرة مع المشرفين الأكاديميين وإدارة انطلق Academy للاستفسار عن مستوى ابنك الدراسي أو إرسال أي ملاحظات تربوية.
+        </p>
+        <a href="https://wa.me/1234567890" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:14px;font-size:0.9rem;font-weight:800;text-decoration:none;">
+          <i data-lucide="message-circle" style="width:18px;height:18px;"></i>
+          <span>فتح محادثة الدعم والمتابعة الأكاديمية</span>
+        </a>
       </div>
     `;
   }
@@ -1565,7 +1520,7 @@ export default class ParentView {
         if (ampmElem) {
           ampmElem.textContent = dayPeriod === 'PM' ? 'مساءً' : 'صباحاً';
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     updateTime();
@@ -1741,8 +1696,37 @@ export default class ParentView {
           this.container.querySelectorAll(".parent-nav-tab").forEach(b => {
             b.classList.toggle("active", b.dataset.tab === tab);
           });
+          this.container.querySelectorAll("[data-sidebar-tab]").forEach(b => {
+            b.classList.toggle("active", b.dataset.sidebarTab === tab);
+          });
 
           if (window.lucide) window.lucide.createIcons();
+        }
+      });
+    });
+
+    // Sidebar navigation tabs
+    this.container.querySelectorAll("[data-sidebar-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.sidebarTab;
+        const targetBtn = this.container.querySelector(`.parent-nav-tab[data-tab="${tab}"]`);
+        if (targetBtn) {
+          targetBtn.click();
+          targetBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          this._activeTab = tab;
+          this.container.querySelectorAll("[data-sidebar-tab]").forEach(b => {
+            b.classList.toggle("active", b.dataset.sidebarTab === tab);
+          });
+          this.container.querySelectorAll(".parent-nav-tab").forEach(b => {
+            b.classList.toggle("active", b.dataset.tab === tab);
+          });
+          const contentEl = document.getElementById("parent-tab-content");
+          if (contentEl) {
+            const data = this._data[this._activeChildId] || { groups: [], sessions: [], grades: [] };
+            contentEl.innerHTML = this._renderTabContent(data, []);
+            if (window.lucide) window.lucide.createIcons();
+          }
         }
       });
     });
@@ -1760,10 +1744,65 @@ export default class ParentView {
       });
     });
 
+    // Add child modal trigger from sidebar
+    this.container.querySelector("#sidebar-add-child-btn")?.addEventListener("click", () => {
+      this._renderAddChildModal();
+    });
+
     // Prayer modal trigger
     this.container.querySelector("#parent-open-prayer-btn")?.addEventListener("click", () => {
       this.renderPrayerTimesModal();
     });
+  }
+
+  _renderAddChildModal() {
+    let container = document.getElementById("parent-add-child-modal-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "parent-add-child-modal-container";
+      document.body.appendChild(container);
+    }
+
+    container.innerHTML = `
+      <div class="modal-overlay" style="display:flex;z-index:9999;direction:rtl;">
+        <div class="modal-content" style="max-width:480px;background:var(--bg-card);border-radius:24px;border:1px solid var(--border-color);padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border-color);padding-bottom:12px;">
+            <h3 style="margin:0;font-size:1.15rem;font-weight:900;color:var(--text-main);display:flex;align-items:center;gap:8px;">
+              <span>👨‍👩‍👧</span>
+              <span>إضافة أو ربط طالب جديد</span>
+            </h3>
+            <span id="close-add-child-modal" style="font-size:1.6rem;cursor:pointer;color:var(--text-muted);line-height:1;">&times;</span>
+          </div>
+
+          <p style="font-size:0.86rem;color:var(--text-muted);line-height:1.5;margin-bottom:16px;">
+            يتم ربط حسابات الأبناء تلقائياً بحساب ولي الأمر بواسطة إدارة انطلق Academy عند التسجيل، لضمان أعلى درجات الخصوصية والأمان الأكاديمي.
+          </p>
+
+          <div style="background:var(--bg-app);padding:14px;border-radius:14px;border:1px solid var(--border-color);margin-bottom:18px;font-size:0.82rem;color:var(--text-main);">
+            💡 <strong>هل لديك ابن مسجل وترغب بربطه الآن؟</strong>
+            <div style="margin-top:6px;color:var(--text-muted);">
+              يرجى تزويد خدمة العملاء بالرقم التعريفي للطالب أو رقم هاتفه وسيتم الربط الفوري خلال دقائق.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <a href="https://wa.me/1234567890" target="_blank" class="btn-primary" style="flex:1;padding:10px;border-radius:12px;font-size:0.85rem;font-weight:800;text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+              <i data-lucide="message-circle" style="width:15px;height:15px;"></i>
+              <span>تواصل مع الدعم عبر WhatsApp</span>
+            </a>
+            <button id="ok-add-child-modal" class="btn-secondary" style="padding:10px 18px;border-radius:12px;font-size:0.85rem;font-weight:800;cursor:pointer;">
+              إغلاق
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-add-child-modal")?.addEventListener("click", closeModal);
+    document.getElementById("ok-add-child-modal")?.addEventListener("click", closeModal);
   }
 
   onDestroy() {

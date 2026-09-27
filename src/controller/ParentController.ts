@@ -462,8 +462,69 @@ export class ParentController {
         };
       }));
 
+      // 1. Calculate consumed value from private tutoring packages
+      let privateConsumedVal = 0;
+      let privateConsumedSessionsCount = 0;
+      let privateRemainingSessionsCount = 0;
+
+      subscriptions.forEach(sub => {
+        const perSession = sub.totalSessions > 0 ? (sub.price / sub.totalSessions) : 0;
+        privateConsumedVal += (sub.consumedSessions || 0) * perSession;
+        privateConsumedSessionsCount += (sub.consumedSessions || 0);
+        privateRemainingSessionsCount += (sub.remainingSessions || 0);
+      });
+
+      // 2. Calculate consumed value from group sessions
+      const { Session } = await import("../entity/Session");
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const groupIds = activeGroups.map(g => g.group?.id).filter(Boolean) as string[];
+
+      let groupConsumedVal = 0;
+      let groupSessionsTakenCount = 0;
+      let groupSessionsRemainingCount = 0;
+
+      if (groupIds.length > 0) {
+        const now = new Date();
+        const groupSessions = await sessionRepo.createQueryBuilder("session")
+          .leftJoinAndSelect("session.group", "group")
+          .where("session.group.id IN (:...groupIds)", { groupIds })
+          .getMany();
+
+        activeGroups.forEach(g => {
+          const grp = g.group;
+          if (!grp?.id) return;
+          const gSessions = groupSessions.filter(s => s.group?.id === grp.id);
+          const pastSessions = gSessions.filter(s =>
+            s.status === "COMPLETED" || s.status === "completed" || new Date(s.scheduledAt).getTime() <= now.getTime()
+          );
+          const futureSessions = gSessions.filter(s =>
+            s.status !== "COMPLETED" && s.status !== "completed" && new Date(s.scheduledAt).getTime() > now.getTime()
+          );
+
+          const defaultSessionsPerMonth = grp.sessionsPerMonth || 8;
+          const sessionPrice = g.sessionPrice > 0
+            ? g.sessionPrice
+            : (g.monthlyPrice > 0 ? (g.monthlyPrice / defaultSessionsPerMonth) : 50);
+
+          groupConsumedVal += pastSessions.length * sessionPrice;
+          groupSessionsTakenCount += pastSessions.length;
+          groupSessionsRemainingCount += futureSessions.length;
+        });
+      }
+
+      const totalSessionsTaken = privateConsumedSessionsCount + groupSessionsTakenCount;
+      const totalSessionsRemaining = privateRemainingSessionsCount + groupSessionsRemainingCount;
+
       const successfulPayments = payments.filter(p => p.status === "SUCCESS");
-      const totalSpent = successfulPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const totalPaid = successfulPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const totalSpent = totalPaid;
+
+      let consumedAmount = Math.round(privateConsumedVal + groupConsumedVal);
+      if (consumedAmount > totalPaid && totalPaid > 0) {
+        consumedAmount = totalPaid;
+      }
+      const remainingBalance = Math.max(0, totalPaid - consumedAmount);
+
       const monthlyCommitment = activeGroups
         .filter(g => g.status === "active")
         .reduce((sum, g) => sum + (Number(g.monthlyPrice) || 0), 0);
@@ -501,7 +562,12 @@ export class ParentController {
 
       return res.json({
         summary: {
+          totalPaid,
           totalSpent,
+          consumedAmount,
+          remainingBalance,
+          totalSessionsTaken,
+          totalSessionsRemaining,
           monthlyCommitment,
           activeGroupsCount: activeGroups.filter(g => g.status === "active").length,
           pendingPaymentsCount: payments.filter(p => p.status === "PENDING").length,
