@@ -33,7 +33,7 @@ async function resetAdmin() {
         email,
         password: passwordHash,
         role: "admin",
-        avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin"
+        avatar: "assets/logo.png"
       });
       await userRepository.save(admin);
       console.log("\n✅ [SUCCESS] New Admin account has been created successfully!");

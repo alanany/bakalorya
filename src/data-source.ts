@@ -32,6 +32,7 @@ import { PlatformSetting } from "./entity/PlatformSetting";
 import { Grade } from "./entity/Grade";
 import { Subject } from "./entity/Subject";
 import { CourseGroup } from "./entity/CourseGroup";
+import { ParentStudentLink } from "./entity/ParentStudentLink";
 
 export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
@@ -40,7 +41,7 @@ export const allEntities = [
   QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
   SessionCreditLedger, TeacherAvailability, SessionAttendance,
   TeacherEarning, Payment, AuditLog, PlatformSetting,
-  Grade, Subject, CourseGroup
+  Grade, Subject, CourseGroup, ParentStudentLink
 ];
 
 export function getDataSourceOptions(): DataSourceOptions {

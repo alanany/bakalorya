@@ -15,7 +15,7 @@ export class User {
   password?: string; // Hashed password, optional until invitation is accepted
 
   @Column({ default: "student" })
-  role: "student" | "teacher" | "admin";
+  role: "student" | "teacher" | "admin" | "parent";
 
   @Column({ default: "ACTIVE" })
   status: "PENDING" | "ACTIVE" | "SUSPENDED" | "INACTIVE" | "BLOCKED";

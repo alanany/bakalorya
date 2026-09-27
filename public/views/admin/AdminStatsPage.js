@@ -238,11 +238,11 @@ export const AdminStatsPage = {
   },
 
   miniUserRow(user, type = "user") {
-    const avatar = user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.name || 'User')}`;
+    const avatar = (user.avatar && !user.avatar.includes('dicebear.com')) ? user.avatar : 'assets/logo.png';
     const badgeText = type === "teacher" ? (user.education || "أستاذ وخبير تربوي") : (user.location || "طالب مسجل");
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-color);">
-        <img src="${avatar}" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border-color);object-fit:cover;">
+        <img src="${avatar}" onerror="this.src='assets/logo.png'" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border-color);object-fit:cover;">
         <div style="flex:1; min-width:0;">
           <div style="font-weight:700;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${user.name}</div>
           <div style="color:var(--text-muted);font-size:0.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${user.email} • ${badgeText}</div>

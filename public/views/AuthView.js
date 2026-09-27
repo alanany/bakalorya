@@ -4,19 +4,21 @@ export default class AuthView {
   constructor(container, mode) {
     this.container = container;
     this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
-    this.isRegisterMode = !this.isStaffMode && (mode === "signup" || window.location.hash.includes("signup"));
+    this.isParentMode = !this.isStaffMode && (mode === "parent" || window.location.hash.includes("parent-login"));
+    this.isRegisterMode = !this.isStaffMode && !this.isParentMode && (mode === "signup" || window.location.hash.includes("signup"));
     this.showPassword = false;
     this.isLoading = false;  // Guard: prevents multiple concurrent requests
   }
 
   async render() {
     this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
-    if (this.isStaffMode) {
+    this.isParentMode = !this.isStaffMode && window.location.hash.includes("parent-login");
+    if (this.isStaffMode || this.isParentMode) {
       this.isRegisterMode = false;
     }
 
     if (state.user) {
-      const targetHash = state.user.role === "admin" ? "#admin-dashboard" : state.user.role === "teacher" ? "#teacher-portal" : "#student-dashboard";
+      const targetHash = state.user.role === "admin" ? "#admin-dashboard" : state.user.role === "teacher" ? "#teacher-portal" : state.user.role === "parent" ? "#parent-dashboard" : "#student-dashboard";
       if (window.location.hash !== targetHash) {
         window.location.hash = targetHash;
       }
@@ -25,15 +27,19 @@ export default class AuthView {
 
     const titleText = this.isStaffMode
       ? "بوابة المعلمين والإدارة 🛡️"
-      : this.isRegisterMode
-        ? "إنشاء حساب طالب جديد ✨"
-        : "تسجيل دخول الطلاب 👨‍🎓";
+      : this.isParentMode
+        ? "بوابة أولياء الأمور 👨‍👩‍👧"
+        : this.isRegisterMode
+          ? "إنشاء حساب طالب جديد ✨"
+          : "تسجيل دخول الطلاب 👨‍🎓";
 
     const descText = this.isStaffMode
       ? "تسجيل الدخول الموحد للأساتذة والمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
-      : this.isRegisterMode
-        ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
-        : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
+      : this.isParentMode
+        ? "سجّل دخولك لمتابعة مستوى أبنائك، الحصص المباشرة، تقارير الحضور، والدرجات الدورية."
+        : this.isRegisterMode
+          ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
+          : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
 
     this.container.innerHTML = `
       <div class="auth-page-wrapper">
@@ -55,7 +61,9 @@ export default class AuthView {
               <p class="auth-showcase-subtitle">
                 ${this.isStaffMode
         ? "البوابة الموحدة للكادر التعليمي والإداري لإدارة المحتوى، الحصص التفاعلية، والتقارير الأكاديمية."
-        : "بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة."}
+        : this.isParentMode
+          ? "بوابة متكاملة لولي الأمر لمتابعة تقدم الأبناء لحظة بلحظة، مواعيد الحصص المباشرة، والدرجات."
+          : "بوابتك الأولى نحو التفوق والتميز الأكاديمي مع نخبة من أفضل الأساتذة في بيئة تعليمية تفاعلية حديثة."}
               </p>
             </div>
 
@@ -63,21 +71,21 @@ export default class AuthView {
             <div class="auth-showcase-features">
               <div class="auth-feature-item">
                 <div class="auth-feature-icon">
-                  <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
+                  <i data-lucide="${this.isParentMode ? 'users' : 'sparkles'}" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>${this.isStaffMode ? "إدارة الكورسات والمحتوى" : "شروحات ومراجعات مكثفة"}</h4>
-                  <p>${this.isStaffMode ? "رفع الحصص، تنظيم بنوك الأسئلة، ومتابعة تسليمات الواجبات." : "دورات متكاملة تغطي كافة المناهج بأسلوب تدريس مبتكر ومبسط."}</p>
+                  <h4>${this.isStaffMode ? "إدارة الكورسات والمحتوى" : this.isParentMode ? "متابعة أبنائك في مكان واحد" : "شروحات ومراجعات مكثفة"}</h4>
+                  <p>${this.isStaffMode ? "رفع الحصص، تنظيم بنوك الأسئلة، ومتابعة تسليمات الواجبات." : this.isParentMode ? "الاطلاع على جميع الأبناء المسجلين والانتقال بينهم بنقرة واحدة." : "دورات متكاملة تغطي كافة المناهج بأسلوب تدريس مبتكر ومبسط."}</p>
                 </div>
               </div>
 
               <div class="auth-feature-item">
                 <div class="auth-feature-icon" style="background: linear-gradient(135deg, #a855f7, #6366f1);">
-                  <i data-lucide="video" style="width:20px; height:20px;"></i>
+                  <i data-lucide="${this.isParentMode ? 'calendar' : 'video'}" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>${this.isStaffMode ? "البث المباشر والحصص الخاصة" : "بث مباشر وفصول تفاعلية"}</h4>
-                  <p>${this.isStaffMode ? "إطلاق الغرف الافتراضية والسبورة الذكية وجدولة المواعيد المتاحة." : "تفاعل لحظي مع الأساتذة مع حل التمارين والرد الفوري على الأسئلة."}</p>
+                  <h4>${this.isStaffMode ? "البث المباشر والحصص الخاصة" : this.isParentMode ? "جدول الحصص والمجموعات" : "بث مباشر وفصول تفاعلية"}</h4>
+                  <p>${this.isStaffMode ? "إطلاق الغرف الافتراضية والسبورة الذكية وجدولة المواعيد المتاحة." : this.isParentMode ? "معرفة مواعيد الحصص القادمة وحالة الحضور والغياب لكل حصة." : "تفاعل لحظي مع الأساتذة مع حل التمارين والرد الفوري على الأسئلة."}</p>
                 </div>
               </div>
 
@@ -86,8 +94,8 @@ export default class AuthView {
                   <i data-lucide="award" style="width:20px; height:20px;"></i>
                 </div>
                 <div class="auth-feature-text">
-                  <h4>${this.isStaffMode ? "إحصائيات وتقارير تفصيلية" : "تقارير أداء ومتابعة دورية"}</h4>
-                  <p>${this.isStaffMode ? "متابعة دقيقة للأرباح والاشتراكات ومعدلات حضور الطلاب." : "اختبارات ذكية وتقارير فورية للدرجات مع إشعارات مباشرة لولي الأمر."}</p>
+                  <h4>${this.isStaffMode ? "إحصائيات وتقارير تفصيلية" : this.isParentMode ? "الدرجات والتقييمات الفورية" : "تقارير أداء ومتابعة دورية"}</h4>
+                  <p>${this.isStaffMode ? "متابعة دقيقة للأرباح والاشتراكات ومعدلات حضور الطلاب." : this.isParentMode ? "تقارير دورية لدرجات الواجبات والاختبارات وملاحظات الأساتذة." : "اختبارات ذكية وتقارير فورية للدرجات مع إشعارات مباشرة لولي الأمر."}</p>
                 </div>
               </div>
             </div>
@@ -95,8 +103,8 @@ export default class AuthView {
             <!-- Trust Badge Footer -->
             <div class="auth-showcase-footer">
               <div class="auth-trust-badge">
-                <i data-lucide="${this.isStaffMode ? 'shield-check' : 'check-circle-2'}" style="width:16px; height:16px;"></i>
-                <span>${this.isStaffMode ? "بوابة الكادر الإداري والأكاديمي المعتمدة" : "منصة تعليمية معتمدة وموثوقة"}</span>
+                <i data-lucide="${this.isStaffMode ? 'shield-check' : this.isParentMode ? 'users' : 'check-circle-2'}" style="width:16px; height:16px;"></i>
+                <span>${this.isStaffMode ? "بوابة الكادر الإداري والأكاديمي المعتمدة" : this.isParentMode ? "بوابة أولياء الأمور المعتمدة" : "منصة تعليمية معتمدة وموثوقة"}</span>
               </div>
               <span style="font-weight:600;">© 2026 Entlq Platform</span>
             </div>
@@ -123,14 +131,18 @@ export default class AuthView {
                 </button>
               </div>
             ` : `
-              <div class="auth-tabs-nav">
-                <button id="tab-login" class="auth-tab-btn ${!this.isRegisterMode ? 'active' : ''}">
-                  <i data-lucide="log-in" style="width:16px; height:16px;"></i>
+              <div class="auth-tabs-nav" style="display:flex; gap:6px;">
+                <button id="tab-login" class="auth-tab-btn ${!this.isRegisterMode && !this.isParentMode ? 'active' : ''}">
+                  <i data-lucide="log-in" style="width:15px; height:15px;"></i>
                   <span>دخول الطلاب</span>
                 </button>
+                <button id="tab-parent" class="auth-tab-btn ${this.isParentMode ? 'active' : ''}">
+                  <i data-lucide="users" style="width:15px; height:15px;"></i>
+                  <span>ولي الأمر</span>
+                </button>
                 <button id="tab-signup" class="auth-tab-btn ${this.isRegisterMode ? 'active' : ''}">
-                  <i data-lucide="user-plus" style="width:16px; height:16px;"></i>
-                  <span>حساب طالب جديد</span>
+                  <i data-lucide="user-plus" style="width:15px; height:15px;"></i>
+                  <span>طالب جديد</span>
                 </button>
               </div>
             `}
@@ -143,12 +155,23 @@ export default class AuthView {
             ${this.isStaffMode ? `
               <!-- Quick Switcher back to Student Portal on Staff page only -->
               <div style="margin-top: 18px; padding: 11px 16px; background: rgba(99,102,241,0.05); border: 1px dashed rgba(99,102,241,0.22); border-radius: 12px; text-align: center; font-size: 0.86rem;">
-                <span style="color:var(--text-muted);">هل أنت طالب بالمنصة؟</span>
+                <span style="color:var(--text-muted);">هل أنت طالب أو ولي أمر؟</span>
                 <a href="#login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
-                  الانتقال لبوابة تسجيل دخول الطلاب 👨‍🎓 ↗
+                  دخول الطلاب 👨‍🎓
+                </a>
+                <span style="color:var(--text-muted); margin:0 4px;">·</span>
+                <a href="#parent-login" style="color:var(--primary); font-weight:800; text-decoration:none;">
+                  دخول ولي الأمر 👨‍👩‍👧
                 </a>
               </div>
-            ` : ""}
+            ` : `
+              <div style="margin-top: 18px; padding: 10px 14px; background: var(--bg-app); border: 1px dashed var(--border-color); border-radius: 12px; text-align: center; font-size: 0.84rem;">
+                <span style="color:var(--text-muted);">هل أنت من الكادر التعليمي أو الإداري؟</span>
+                <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; margin-inline-start:4px;">
+                  بوابة المعلمين والإدارة 🛡️ ↗
+                </a>
+              </div>
+            `}
 
           </div>
 
@@ -222,6 +245,44 @@ export default class AuthView {
           </button>
         </form>
       `;
+    } else if (this.isParentMode) {
+      return `
+        <form id="auth-submit-form" style="display:flex; flex-direction:column; gap: 16px;">
+          
+          <div class="form-group" style="margin:0;">
+            <label for="login-email" style="font-weight:700; font-size:0.88rem; color:var(--text-main);">البريد الإلكتروني لولي الأمر</label>
+            <div class="auth-input-wrapper">
+              <input type="email" id="login-email" class="auth-input-field" placeholder="parent@example.com" required autocomplete="email">
+              <i data-lucide="mail" class="auth-input-icon"></i>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label for="login-password" style="font-weight:700; font-size:0.88rem; color:var(--text-main);">${t("form.password") || "كلمة المرور"}</label>
+              <a href="javascript:void(0)" onclick="alert('يرجى التواصل مع إدارة الأكاديمية لتزويدك ببيانات الدخول أو إعادة ضبط كلمة المرور الخاصة بحساب ولي الأمر.')" style="font-size:0.78rem; color:var(--primary); text-decoration:none; font-weight:600;">
+                نسيت كلمة المرور؟
+              </a>
+            </div>
+            <div class="auth-input-wrapper">
+              <input type="${this.showPassword ? 'text' : 'password'}" id="login-password" class="auth-input-field" placeholder="${t("form.passwordLoginPlaceholder") || "••••••••"}" required autocomplete="current-password">
+              <i data-lucide="lock" class="auth-input-icon"></i>
+              <button type="button" class="auth-password-toggle" id="toggle-password-btn" title="إظهار/إخفاء كلمة المرور">
+                <i data-lucide="${this.showPassword ? 'eye-off' : 'eye'}" style="width:16px; height:16px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.18); border-radius:12px; padding:12px 14px; font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+            💡 <strong>تنويه هام:</strong> حسابات أولياء الأمور يتم إنشاؤها وربطها بالطلاب حصراً عبر إدارة الأكاديمية لضمان أعلى معايير الخصوصية والأمان لأبنائكم.
+          </div>
+
+          <button type="submit" class="btn-primary auth-btn-submit" id="auth-submit-btn" style="background:linear-gradient(135deg, #6366f1, #8b5cf6);">
+            <span>تسجيل دخول ولي الأمر 👨‍👩‍👧</span>
+            <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>
+          </button>
+        </form>
+      `;
     } else {
       return `
         <form id="auth-submit-form" style="display:flex; flex-direction:column; gap: 18px;">
@@ -261,13 +322,26 @@ export default class AuthView {
 
   bindEvents() {
     const tabLogin = document.getElementById("tab-login");
+    const tabParent = document.getElementById("tab-parent");
     const tabSignup = document.getElementById("tab-signup");
 
     if (tabLogin) {
       tabLogin.addEventListener("click", () => {
-        if (this.isRegisterMode) {
+        if (this.isRegisterMode || this.isParentMode) {
           this.isRegisterMode = false;
+          this.isParentMode = false;
           window.location.hash = "#login";
+          this.render();
+        }
+      });
+    }
+
+    if (tabParent) {
+      tabParent.addEventListener("click", () => {
+        if (!this.isParentMode) {
+          this.isParentMode = true;
+          this.isRegisterMode = false;
+          window.location.hash = "#parent-login";
           this.render();
         }
       });
@@ -277,6 +351,7 @@ export default class AuthView {
       tabSignup.addEventListener("click", () => {
         if (!this.isRegisterMode) {
           this.isRegisterMode = true;
+          this.isParentMode = false;
           window.location.hash = "#signup";
           this.render();
         }
@@ -327,6 +402,8 @@ export default class AuthView {
           submitBtn.style.pointerEvents = "";
           if (this.isRegisterMode) {
             submitBtn.innerHTML = `<span>${t("auth.register") || "إنشاء الحساب والتسجيل"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+          } else if (this.isParentMode) {
+            submitBtn.innerHTML = `<span>تسجيل دخول ولي الأمر 👨‍👩‍👧</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
           } else {
             submitBtn.innerHTML = `<span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span> <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
           }
@@ -371,7 +448,7 @@ export default class AuthView {
       } else {
         const email = document.getElementById("login-email").value;
         const password = document.getElementById("login-password").value;
-        const loginEndpoint = this.isStaffMode ? "/auth/staff/login" : "/auth/student/login";
+        const loginEndpoint = this.isStaffMode ? "/auth/staff/login" : this.isParentMode ? "/auth/parent/login" : "/auth/student/login";
 
         try {
           const data = await apiFetch(loginEndpoint, {

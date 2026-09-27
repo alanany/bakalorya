@@ -9,7 +9,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
-    role: "student" | "teacher" | "admin";
+    role: "student" | "teacher" | "admin" | "parent";
     teacherCapabilities?: string[];
   };
 }

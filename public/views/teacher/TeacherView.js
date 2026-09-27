@@ -152,7 +152,7 @@ export default class TeacherView {
       else timeGreeting = "مساء التميز والإنجاز يا أستاذ 🌙";
 
       const teacherName = state.user?.name || "المعلم";
-      const teacherAvatar = state.user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+      const teacherAvatar = (state.user?.avatar && !state.user.avatar.includes('dicebear.com')) ? state.user.avatar : 'assets/logo.png';
 
       this.container.innerHTML = `
         <div class="teacher-portal-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
@@ -1045,7 +1045,7 @@ export default class TeacherView {
 
     const isGroup = session.sessionType === 'group' || (!session.student && (session.group || session.course));
     const studentName = session.student?.name || session.subscription?.student?.name || session.group?.name || (isGroup ? 'طلاب المجموعة' : 'طالب');
-    const studentAvatar = session.student?.avatar || (session.student?.name ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(session.student.name)}` : null);
+    const studentAvatar = (session.student?.avatar && !session.student.avatar.includes('dicebear.com')) ? session.student.avatar : 'assets/logo.png';
 
     const personLabel = (session.student || session.subscription) ? 'الطالب' : 'المجموعة';
     const personName = studentName;

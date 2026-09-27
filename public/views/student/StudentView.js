@@ -225,6 +225,11 @@ export default class StudentView {
   }
 
   async render() {
+    if (state.user && state.user.role === "parent") {
+      window.location.hash = "#parent-dashboard";
+      return;
+    }
+
     this.container.innerHTML = `
       <div style="width:100%; min-height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text-muted);">
         <div class="spinner" style="width:44px; height:44px; border-width:3px; margin-bottom:16px;"></div>
@@ -275,7 +280,7 @@ export default class StudentView {
 
   renderDashboard() {
     const studentName = state.user?.name || "طالب العلم";
-    const studentAvatar = state.user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(studentName)}`;
+    const studentAvatar = (state.user?.avatar && !state.user.avatar.includes('dicebear.com')) ? state.user.avatar : 'assets/logo.png';
 
     // Greeting by time of day
     const hour = new Date().getHours();
@@ -617,8 +622,8 @@ export default class StudentView {
 
       <div class="student-dashboard-modern" style="width:100%; max-width:1440px; margin:0 auto; padding:24px 20px 80px; box-sizing:border-box;">
         
-        <!-- Missing Education Level Alert Banner (if not set) -->
-        ${!state.user?.education ? `
+        <!-- Missing Education Level Alert Banner (only for students if not set) -->
+        ${(!state.user?.education && state.user?.role === "student") ? `
           <div class="glass-card" style="margin-bottom:24px; padding:18px 24px; border-radius:20px; background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06)); border:1.5px solid rgba(245,158,11,0.4); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; box-shadow:0 8px 24px rgba(245,158,11,0.12);">
             <div style="display:flex; align-items:center; gap:14px; min-width:260px; flex:1;">
               <div style="width:44px; height:44px; border-radius:14px; background:rgba(245,158,11,0.2); color:#f59e0b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -1105,7 +1110,7 @@ export default class StudentView {
     const isStartingSoon = !isCompleted && diffMins <= 30 && !isPastSession;
     const teacherTz = session.teacher?.timezone || "Africa/Cairo";
     const formatted = formatSessionDateTime(session.scheduledAt, null, { secondaryTz: teacherTz });
-    const teacherAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(session.teacher?.name || 'teacher')}`;
+    const teacherAvatar = (session.teacher?.avatar && !session.teacher.avatar.includes('dicebear.com')) ? session.teacher.avatar : 'assets/logo.png';
 
     return `
       <div class="creative-session-card ${isLive ? 'is-live' : ''}">
@@ -1798,7 +1803,7 @@ export default class StudentView {
 
   renderGradeGroupCard(group) {
     const teacherName = group.teacher?.name || "معلم معتمد";
-    const teacherAvatar = group.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+    const teacherAvatar = (group.teacher?.avatar && !group.teacher.avatar.includes('dicebear.com')) ? group.teacher.avatar : 'assets/logo.png';
     const schedule = group.scheduleText || (group.scheduleDays ? `${group.scheduleDays} ${group.scheduleTime ? 'الساعة ' + group.scheduleTime : ''}` : 'مواعيد منتظمة أسبوعياً');
     const seatsLeft = group.availableSeats !== undefined ? group.availableSeats : (group.maxStudents ? Math.max(0, group.maxStudents - (group.enrolledCount || 0)) : 10);
     const isFull = seatsLeft <= 0 || group.isFull;

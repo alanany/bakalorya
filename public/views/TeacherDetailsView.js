@@ -109,7 +109,7 @@ export default class TeacherDetailsView {
   renderContent() {
     const tProfile = this.teacher || {};
     const name = tProfile.name || "أستاذ";
-    const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+    const avatar = (tProfile.avatar && !tProfile.avatar.includes('dicebear.com')) ? tProfile.avatar : 'assets/logo.png';
     const education = tProfile.education || "أستاذ وخبير تربوي متميز بالمنصة";
     const location = tProfile.location || "المنصة الرقمية";
     const categories = [...new Set([
@@ -542,7 +542,7 @@ export default class TeacherDetailsView {
               <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:18px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                   <div style="display:flex; align-items:center; gap:12px;">
-                    <img src="${r.student?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.student?.id || 'std'}`}" style="width:44px; height:44px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
+                    <img src="${(r.student?.avatar && !r.student.avatar.includes('dicebear.com')) ? r.student.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:44px; height:44px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
                     <div>
                       <strong style="font-size:0.95rem; color:var(--text-color); display:block;">${r.student?.name || 'طالب مسجل'}</strong>
                       <span style="font-size:0.75rem; color:var(--text-muted);">${new Date(r.createdAt).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })} ${r.course ? `• دورة: ${r.course.title}` : ''}</span>
@@ -659,7 +659,7 @@ export default class TeacherDetailsView {
 
       const tProfile = this.teacher || {};
       const name = tProfile.name || "الأستاذ";
-      const avatar = tProfile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+      const avatar = (tProfile.avatar && !tProfile.avatar.includes('dicebear.com')) ? tProfile.avatar : 'assets/logo.png';
       const phone = tProfile.phone || "";
 
       // Fetch active student subscriptions to see if user already has 1-on-1 credits

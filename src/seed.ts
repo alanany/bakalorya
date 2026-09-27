@@ -108,7 +108,7 @@ async function seed() {
       role:     "student",
       phone:    "+20 01012345678",
       parentPhone: "+20 01099887766",
-      avatar:   "https://api.dicebear.com/7.x/adventurer/svg?seed=Student"
+      avatar:   "assets/logo.png"
     });
     await userRepository.save(student);
 
@@ -117,7 +117,7 @@ async function seed() {
       email:    "teacher@bakalorya.com",
       password: passwordHash,
       role:     "teacher",
-      avatar:   "https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher"
+      avatar:   "assets/logo.png"
     });
     await userRepository.save(teacher);
 
@@ -126,7 +126,7 @@ async function seed() {
       email:    "admin@bakalorya.com",
       password: adminPasswordHash,
       role:     "admin",
-      avatar:   "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin"
+      avatar:   "assets/logo.png"
     });
     await userRepository.save(admin);
 

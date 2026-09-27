@@ -12,6 +12,7 @@ import { Assignment } from "../entity/Assignment";
 import { AssignmentSubmission } from "../entity/AssignmentSubmission";
 import { SessionAttendance } from "../entity/SessionAttendance";
 import { Lesson } from "../entity/Lesson";
+import { ParentStudentLink } from "../entity/ParentStudentLink";
 import { NotificationController } from "./NotificationController";
 import { AuthRequest } from "../middleware/auth";
 import { IsNull } from "typeorm";
@@ -1605,20 +1606,47 @@ export class CourseGroupController {
         return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
       }
 
-      // Check access: Admin, Teacher of the group, or enrolled student
+      // Check access: Admin, Teacher of the group, enrolled student, or parent of enrolled student
       const isTeacher = group.teacher?.id === currentUserId || group.course?.teacher?.id === currentUserId;
       const isAdmin = currentUserRole === "admin";
+      let isParent = false;
+      let effectiveStudentId = currentUserId;
 
       let enrollment: Enrollment | null = null;
       if (!isAdmin && !isTeacher) {
-        enrollment = await enrollmentRepo.findOne({
-          where: { group: { id: group.id }, student: { id: currentUserId } }
-        });
-        if (!enrollment && group.course) {
-          // Check if enrolled in course without group
+        if (currentUserRole === "parent") {
+          const linkRepo = AppDataSource.getRepository(ParentStudentLink);
+          const links = await linkRepo.find({ where: { parentId: currentUserId } });
+          const childIds = links.map(l => l.studentId);
+          if (childIds.length > 0) {
+            const allGroupEnrollments = await enrollmentRepo.find({
+              where: { group: { id: group.id } },
+              relations: ["student"]
+            });
+            let childEnrollment = allGroupEnrollments.find(e => e.student && childIds.includes(e.student.id));
+            if (!childEnrollment && group.course) {
+              const allCourseEnrollments = await enrollmentRepo.find({
+                where: { course: { id: group.course.id } },
+                relations: ["student"]
+              });
+              childEnrollment = allCourseEnrollments.find(e => e.student && childIds.includes(e.student.id));
+            }
+            if (childEnrollment && childEnrollment.student) {
+              isParent = true;
+              enrollment = childEnrollment;
+              effectiveStudentId = childEnrollment.student.id;
+            }
+          }
+        } else {
           enrollment = await enrollmentRepo.findOne({
-            where: { course: { id: group.course.id }, student: { id: currentUserId } }
+            where: { group: { id: group.id }, student: { id: currentUserId } }
           });
+          if (!enrollment && group.course) {
+            // Check if enrolled in course without group
+            enrollment = await enrollmentRepo.findOne({
+              where: { course: { id: group.course.id }, student: { id: currentUserId } }
+            });
+          }
         }
 
         if (!enrollment) {
@@ -1657,9 +1685,9 @@ export class CourseGroupController {
           if (isCompleted) completedSessionsCount++;
 
           let myAttendance: string | null = null;
-          if (currentUserId) {
+          if (effectiveStudentId && !isTeacher && !isAdmin) {
             const att = await attendanceRepo.findOne({
-              where: { session: { id: sess.id }, user: { id: currentUserId } }
+              where: { session: { id: sess.id }, user: { id: effectiveStudentId } }
             });
             if (att) {
               myAttendance = att.status;
@@ -1743,9 +1771,9 @@ export class CourseGroupController {
       const assignmentsWithSubmissions = await Promise.all(
         assignments.map(async (asgn) => {
           let mySubmission: any = null;
-          if (currentUserId && !isTeacher && !isAdmin) {
+          if (effectiveStudentId && !isTeacher && !isAdmin) {
             const sub = await submissionRepo.findOne({
-              where: { assignment: { id: asgn.id }, student: { id: currentUserId } }
+              where: { assignment: { id: asgn.id }, student: { id: effectiveStudentId } }
             });
             if (sub) {
               const isDraft = sub.status === 'draft_graded';
@@ -1801,7 +1829,7 @@ export class CourseGroupController {
         order: { createdAt: "ASC" }
       });
 
-      const activeStudents = allEnrollments
+      let activeStudents = allEnrollments
         .filter(e => (!e.status || e.status === "active") && e.student)
         .map(e => ({
           id: e.student.id,
@@ -1812,6 +1840,11 @@ export class CourseGroupController {
           progress: e.progress || 0,
           enrolledAt: e.createdAt
         }));
+
+      if (isParent) {
+        // Privacy: only show the parent's child in roster
+        activeStudents = activeStudents.filter(s => s.id === effectiveStudentId);
+      }
 
       const teacherData = group.teacher || group.course?.teacher;
 
@@ -1875,7 +1908,9 @@ export class CourseGroupController {
         students: (isTeacher || isAdmin) ? activeStudents : activeStudents.map(s => ({ id: s.id, name: s.name, avatar: s.avatar })),
         isTeacher,
         isAdmin,
-        isStudent: !isTeacher && !isAdmin
+        isParent,
+        isStudent: !isTeacher && !isAdmin && !isParent,
+        childStudentId: isParent ? effectiveStudentId : undefined
       });
     } catch (err: any) {
       console.error("Error fetching group hub data:", err);

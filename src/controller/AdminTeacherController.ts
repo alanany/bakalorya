@@ -33,7 +33,7 @@ export class AdminTeacherController {
       teacher.country = country;
       teacher.language = language;
       teacher.education = bio;
-      teacher.avatar = avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fullName)}`;
+      teacher.avatar = avatar || "assets/logo.png";
       teacher.role = "teacher";
       teacher.status = "PENDING";
       teacher.teacherCapabilities = Array.isArray(capabilities) && capabilities.length > 0 ? capabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"];

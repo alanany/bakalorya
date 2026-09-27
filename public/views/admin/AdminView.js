@@ -441,6 +441,11 @@ export default class AdminView {
               <i data-lucide="shield"></i>
               جميع الأعضاء
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "parents" ? "active" : ""}" data-tab="parents">
+              <i data-lucide="users-2"></i>
+              👨‍👩‍👧 أولياء الأمور
+              <span class="admin-nav-badge" id="admin-badge-parents" style="background:#8b5cf6;color:#fff;">0</span>
+            </button>
 
             <div class="admin-nav-section">إعدادات النظام</div>
             <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
@@ -455,7 +460,7 @@ export default class AdminView {
 
           <div class="admin-sidebar-footer">
             <div class="admin-sidebar-user">
-              <img src="${state.user?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Admin'}" alt="Admin">
+              <img src="${(state.user?.avatar && !state.user.avatar.includes('dicebear.com')) ? state.user.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" alt="Admin">
               <div class="user-info">
                 <p class="user-name">${state.user?.name || 'Admin'}</p>
                 <p class="user-role">System Administrator</p>
@@ -532,12 +537,13 @@ export default class AdminView {
     el("admin-badge-plans", (this.allPlans || []).length);
     const pendingBlogs = (this.allBlogs || []).filter(b => b.status === "PENDING");
     el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
+    el("admin-badge-parents", (this.allParents || []).length);
   }
 
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs, parents] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -552,7 +558,8 @@ export default class AdminView {
         apiFetch("/admin/settings").catch(() => ({})),
         apiFetch("/admin/groups/pending-approval").catch(() => []),
         apiFetch("/admin/all-groups").catch(() => []),
-        apiFetch("/admin/blogs").catch(() => [])
+        apiFetch("/admin/blogs").catch(() => []),
+        apiFetch("/admin/parents").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -568,6 +575,7 @@ export default class AdminView {
       this.pendingCourseGroups = pendingGroups || [];
       this.allCourseGroups = allGroups || [];
       this.allBlogs = blogs || [];
+      this.allParents = parents || [];
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -640,6 +648,7 @@ export default class AdminView {
     students: { heading: "🎓 إدارة الطلاب", sub: "إضافة وتعديل وإدارة حسابات الطلاب" },
     teacherApplications: { heading: "📝 طلبات انضمام المعلمين", sub: "مراجعة السير الذاتية والقبول/الرفض لمعلمي المنصة الجدد" },
     members: { heading: "🛡️ جميع الأعضاء", sub: "عرض وإدارة جميع مستخدمي المنصة" },
+    parents: { heading: "👨‍👩‍👧 أولياء الأمور", sub: "إضافة وإدارة حسابات أولياء الأمور وربط أبنائهم من الطلاب" },
     subscriptions: { heading: "📅 إدارة الاشتراكات", sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
     plans: { heading: "✨ خطط وباقات الاشتراكات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، وتخصيص الباقات لكل كورس" },
@@ -691,6 +700,10 @@ export default class AdminView {
     else if (tab === "settings") {
       content.innerHTML = this.renderSettingsTab();
       this.bindSettingsEvents?.();
+    }
+    else if (tab === "parents") {
+      content.innerHTML = this.renderParentsTab();
+      this.bindParentsEvents?.();
     }
 
     // Always keep sidebar badges fresh
@@ -1709,6 +1722,501 @@ export default class AdminView {
   }
 
   // ── Render Category Modal (Create / Edit) ──────────────────────────────────
+
+  // ─── Parents Tab ──────────────────────────────────────────────────────────────
+  renderParentsTab() {
+    const parents = this.allParents || [];
+    return `
+      <div class="admin-section" style="padding:0;">
+        <!-- Header row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+          <div>
+            <h2 style="margin:0 0 4px;font-size:1.2rem;color:var(--text-primary,#fff);">👨‍👩‍👧 أولياء الأمور (${parents.length})</h2>
+            <p style="margin:0;font-size:0.85rem;color:var(--text-muted,#888);">الإدارة هي الجهة الوحيدة المخولة بإضافة وإدارة حسابات أولياء الأمور وربط أبنائهم.</p>
+          </div>
+          <button id="admin-add-parent-btn" class="btn-primary" style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;">
+            <i data-lucide="user-plus" style="width:16px;height:16px;"></i> إضافة ولي أمر جديد
+          </button>
+        </div>
+
+        ${parents.length === 0 ? `
+          <div style="text-align:center;padding:60px 24px;background:rgba(255,255,255,0.03);border-radius:16px;border:1px dashed rgba(255,255,255,0.08);">
+            <div style="font-size:3rem;margin-bottom:12px;">👨‍👩‍👧</div>
+            <p style="color:var(--text-muted,#888);margin:0;">لم يتم إضافة أي ولي أمر بعد. استخدم الزر أعلاه لإضافة أول حساب.</p>
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            ${parents.map(p => `
+              <div class="parent-admin-card" data-parent-id="${p.id}" style="background:rgba(255,255,255,0.04);border-radius:14px;border:1px solid rgba(255,255,255,0.07);padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;transition:background .2s;" onmouseover="this.style.background='rgba(139,92,246,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">👨‍👩‍👧</div>
+                <div style="flex:1;min-width:150px;">
+                  <div style="font-weight:600;color:var(--text-primary,#fff);margin-bottom:3px;">${p.name}</div>
+                  <div style="font-size:0.82rem;color:var(--text-muted,#888);">${p.email}${p.phone ? ' · 📞 ' + p.phone : ''}${p.location ? ' · 📍 ' + p.location : ''}</div>
+                  <div style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:0.75rem;padding:2px 10px;border-radius:20px;background:${p.isBlocked ? 'rgba(239,68,68,0.15)' : p.status === 'PENDING' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'};color:${p.isBlocked ? '#ef4444' : p.status === 'PENDING' ? '#f59e0b' : '#10b981'};">${p.isBlocked ? 'محظور' : p.status === 'PENDING' ? 'قيد المراجعة' : 'نشط'}</span>
+                    <span style="font-size:0.75rem;color:var(--text-muted,#888);">${p.childrenCount || 0} ابن/ابنة مربوط</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <button class="parent-contact-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;border-color:rgba(16,185,129,0.35);color:#10b981;background:rgba(16,185,129,0.08);font-weight:700;" title="خيارات ونماذج التواصل">
+                    <i data-lucide="message-circle" style="width:13px;height:13px;"></i> تواصل
+                  </button>
+                  ${p.phone ? `
+                    <a href="https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`السلام عليكم ولي أمر الطالب المحترم (${p.name})، نتواصل معكم من إدارة منصة انطلق.`)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding:8px 10px;border-radius:9px;font-size:0.82rem;display:inline-flex;align-items:center;justify-content:center;color:#25D366;border-color:rgba(37,211,102,0.3);background:rgba(37,211,102,0.08);" title="محادثة واتساب فورية">
+                      <i data-lucide="phone-call" style="width:13px;height:13px;"></i>
+                    </a>
+                  ` : ''}
+                  <button class="parent-edit-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" data-parent-location="${p.location || ''}" data-parent-status="${p.status || 'ACTIVE'}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="edit-3" style="width:13px;height:13px;"></i> تعديل
+                  </button>
+                  <button class="parent-link-child-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="link" style="width:13px;height:13px;"></i> ربط طالب
+                  </button>
+                  <button class="parent-view-children-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
+                    <i data-lucide="users" style="width:13px;height:13px;"></i> الأبناء
+                  </button>
+                  ${p.status === 'PENDING' ? `<button class="parent-approve-btn btn-primary" data-parent-id="${p.id}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;">✅ تفعيل</button>` : ''}
+                  <button class="parent-block-btn" data-parent-id="${p.id}" data-blocked="${p.isBlocked}" style="padding:8px 14px;border-radius:9px;border:1px solid ${p.isBlocked ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};background:${p.isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};color:${p.isBlocked ? '#10b981' : '#ef4444'};cursor:pointer;font-size:0.82rem;">${p.isBlocked ? '🔓 رفع الحظر' : '🚫 حظر'}</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
+
+        <!-- Add Parent Modal (styled like Add Student with kinship & student-picker instead of grade) -->
+        <div id="add-parent-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:var(--bg-card,#1a1d2e);border-radius:20px;padding:32px;max-width:620px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid var(--border-color,rgba(255,255,255,0.1));position:relative;max-height:90vh;overflow-y:auto;">
+            <button type="button" id="close-add-parent-x-btn" style="position:absolute;top:20px;left:20px;background:none;border:none;color:var(--text-muted,#888);font-size:1.5rem;cursor:pointer;line-height:1;">&times;</button>
+
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(139,92,246,0.15);color:var(--primary,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                <i data-lucide="user-plus" style="width:22px;height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-primary,#fff);">👨‍👩‍👧 إضافة ولي أمر جديد</h3>
+                <p style="margin:2px 0 0;font-size:0.82rem;color:var(--text-muted,#888);">تسجيل حساب ولي أمر وربطه بالطالب مباشرة للمتابعة</p>
+              </div>
+            </div>
+
+            <form id="add-parent-form">
+              <!-- Row 1: Name & Email -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">الاسم الكامل لولي الأمر <span style="color:var(--error,#ef4444);">*</span></label>
+                  <input type="text" id="new-parent-name" class="form-input" placeholder="مثال: يوسف عبد الله" required style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">البريد الإلكتروني <span style="color:var(--error,#ef4444);">*</span></label>
+                  <input type="email" id="new-parent-email" class="form-input" placeholder="parent@example.com" required style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+              </div>
+
+              <!-- Row 2: Password & Phone -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">كلمة المرور (اختياري)</label>
+                  <input type="password" id="new-parent-password" class="form-input" placeholder="افتراضي: parent123" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">رقم هاتف ولي الأمر والواتساب</label>
+                  ${renderPhoneInputGroup({ selectId: "new-parent-phone-code", inputId: "new-parent-phone-num", defaultCode: "+20", placeholder: "01012345678", required: false })}
+                </div>
+              </div>
+
+              <!-- Row 3: Location & Relationship -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">الولاية / المدينة</label>
+                  <input type="text" id="new-parent-location" class="form-input" placeholder="مثال: القاهرة / الجزائر" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">صفة القرابة / صلة العلاقة <span style="color:var(--error,#ef4444);">*</span></label>
+                  <select id="new-parent-relationship" class="form-input" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                    <option value="أب" selected>أب</option>
+                    <option value="أم">أم</option>
+                    <option value="ولي أمر">ولي أمر</option>
+                    <option value="جد">جد</option>
+                    <option value="أخ">أخ</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Row 4: Student Selection & Status (Instead of Grade/Course) -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">ربط الطالب (الابن/الابنة)</label>
+                  <select id="new-parent-student-id" class="form-input" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                    <option value="">-- بدون ربط حالياً (اختياري) --</option>
+                    ${((this.allMembers || []).filter(u => u.role === "student")).map(s => `<option value="${s.id}">${s.name} (${s.email}${s.education ? ' · ' + s.education : ''})</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">حالة الحساب</label>
+                  <select id="new-parent-status" class="form-input" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                    <option value="ACTIVE" selected>نشط ومفعّل مباشرة ✅</option>
+                    <option value="PENDING">قيد المراجعة ⏳</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid var(--border-color,rgba(255,255,255,0.1));padding-top:16px;">
+                <button type="button" id="cancel-add-parent-btn" class="btn-secondary" style="padding:10px 20px;border-radius:30px;font-size:0.88rem;">إلغاء</button>
+                <button type="submit" id="submit-add-parent-btn" class="btn-primary" style="padding:10px 24px;border-radius:30px;font-size:0.88rem;font-weight:800;display:flex;align-items:center;gap:6px;">
+                  <i data-lucide="check" style="width:16px;height:16px;"></i> حفظ وإنشاء الحساب
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Edit Parent Modal -->
+        <div id="edit-parent-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:var(--bg-card,#1a1d2e);border-radius:20px;padding:32px;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid var(--border-color,rgba(255,255,255,0.1));position:relative;max-height:90vh;overflow-y:auto;">
+            <button type="button" id="close-edit-parent-x-btn" style="position:absolute;top:20px;left:20px;background:none;border:none;color:var(--text-muted,#888);font-size:1.5rem;cursor:pointer;line-height:1;">&times;</button>
+
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(139,92,246,0.15);color:var(--primary,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                <i data-lucide="edit-3" style="width:22px;height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-primary,#fff);">✏️ تعديل بيانات ولي الأمر</h3>
+                <p id="edit-parent-subtitle" style="margin:2px 0 0;font-size:0.82rem;color:var(--text-muted,#888);">تحديث معلومات الحساب الشخصية</p>
+              </div>
+            </div>
+
+            <form id="edit-parent-form">
+              <input type="hidden" id="edit-parent-id" />
+              <!-- Row 1: Name & Email -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">الاسم الكامل <span style="color:var(--error,#ef4444);">*</span></label>
+                  <input type="text" id="edit-parent-name" class="form-input" required style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">البريد الإلكتروني <span style="color:var(--error,#ef4444);">*</span></label>
+                  <input type="email" id="edit-parent-email" class="form-input" required style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+              </div>
+
+              <!-- Row 2: Password & Phone -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">تغيير كلمة المرور (اختياري)</label>
+                  <input type="password" id="edit-parent-password" class="form-input" placeholder="اتركه فارغاً للإبقاء على الحالية" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">رقم الهاتف والواتساب</label>
+                  <input type="text" id="edit-parent-phone" class="form-input" placeholder="+20..." style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+              </div>
+
+              <!-- Row 3: Location & Status -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">الولاية / المدينة</label>
+                  <input type="text" id="edit-parent-location" class="form-input" placeholder="مثال: القاهرة / وهران" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-weight:700;font-size:0.85rem;margin-bottom:4px;display:block;color:var(--text-primary,#fff);">حالة الحساب</label>
+                  <select id="edit-parent-status" class="form-input" style="padding:10px 14px;font-size:0.88rem;border-radius:12px;width:100%;box-sizing:border-box;">
+                    <option value="ACTIVE">نشط ومفعّل ✅</option>
+                    <option value="PENDING">قيد المراجعة ⏳</option>
+                    <option value="SUSPENDED">معلق ⏸️</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid var(--border-color,rgba(255,255,255,0.1));padding-top:16px;">
+                <button type="button" id="cancel-edit-parent-btn" class="btn-secondary" style="padding:10px 20px;border-radius:30px;font-size:0.88rem;">إلغاء</button>
+                <button type="submit" id="submit-edit-parent-btn" class="btn-primary" style="padding:10px 24px;border-radius:30px;font-size:0.88rem;font-weight:800;display:flex;align-items:center;gap:6px;">
+                  <i data-lucide="check" style="width:16px;height:16px;"></i> حفظ التعديلات
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Link Child Modal -->
+        <div id="link-child-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:var(--bg-card,#1a1d2e);border-radius:20px;padding:32px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <h3 id="link-child-modal-title" style="margin:0 0 20px;color:var(--text-primary,#fff);font-size:1.1rem;">🔗 ربط طالب بولي الأمر</h3>
+            <div><label style="display:block;margin-bottom:8px;font-size:0.85rem;color:var(--text-muted,#888);">ابحث عن الطالب بالاسم أو البريد:</label>
+              <div style="display:flex;gap:8px;">
+                <input id="student-search-input" class="form-input" placeholder="ابحث عن الطالب..." style="flex:1;padding:10px 14px;border-radius:10px;" />
+                <button id="student-search-btn" class="btn-primary" style="padding:10px 16px;border-radius:10px;">بحث</button>
+              </div>
+              <div id="student-search-results" style="margin-top:12px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+              <div style="margin-top:14px;"><label style="display:block;margin-bottom:6px;font-size:0.85rem;color:var(--text-muted,#888);">صفة العلاقة:</label>
+                <select id="parent-relationship-select" class="form-select" style="padding:10px 14px;border-radius:10px;width:100%;">
+                  <option value="أب">أب</option><option value="أم">أم</option><option value="ولي أمر">ولي أمر</option><option value="جد">جد</option><option value="أخ">أخ</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+              <button id="cancel-link-child-btn" class="btn-secondary" style="padding:10px 20px;border-radius:10px;">إغلاق</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- View Children Modal -->
+        <div id="view-children-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:var(--bg-card,#1a1d2e);border-radius:20px;padding:32px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <h3 id="view-children-title" style="margin:0 0 20px;color:var(--text-primary,#fff);font-size:1.1rem;">👧 أبناء ولي الأمر</h3>
+            <div id="view-children-list" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+              <button id="close-view-children-btn" class="btn-secondary" style="padding:10px 20px;border-radius:10px;">إغلاق</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  bindParentsEvents() {
+    const closeModal = (id) => { const m = document.getElementById(id); if (m) m.style.display = "none"; };
+    const openModal = (id) => { const m = document.getElementById(id); if (m) m.style.display = "flex"; };
+    let _linkParentId = null;
+    let _linkStudentId = null;
+
+    // Add parent modal handlers
+    document.getElementById("admin-add-parent-btn")?.addEventListener("click", () => openModal("add-parent-modal"));
+    document.getElementById("cancel-add-parent-btn")?.addEventListener("click", () => closeModal("add-parent-modal"));
+    document.getElementById("close-add-parent-x-btn")?.addEventListener("click", () => closeModal("add-parent-modal"));
+
+    document.getElementById("add-parent-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-add-parent-btn");
+      const name = document.getElementById("new-parent-name")?.value.trim();
+      const email = document.getElementById("new-parent-email")?.value.trim();
+      const password = document.getElementById("new-parent-password")?.value.trim() || "parent123";
+      const phoneCode = document.getElementById("new-parent-phone-code")?.value || "";
+      const phoneNum = document.getElementById("new-parent-phone-num")?.value.trim() || "";
+      const phone = phoneNum ? `${phoneCode}${phoneNum}` : "";
+      const location = document.getElementById("new-parent-location")?.value.trim() || "";
+      const relationship = document.getElementById("new-parent-relationship")?.value || "ولي أمر";
+      const studentId = document.getElementById("new-parent-student-id")?.value || null;
+      const status = document.getElementById("new-parent-status")?.value || "ACTIVE";
+
+      if (!name || !email) { showToast("يرجى إدخال اسم ولي الأمر وبريده الإلكتروني.", "warning"); return; }
+
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i data-lucide="loader-2" class="spinner"></i> جارٍ الحفظ...'; }
+      try {
+        await apiFetch("/admin/parents", {
+          method: "POST",
+          body: JSON.stringify({ name, email, password, phone, location, relationship, studentId, status })
+        });
+        showToast("تم إنشاء حساب ولي الأمر بنجاح ✅", "success");
+        closeModal("add-parent-modal");
+        this.allParents = await apiFetch("/admin/parents").catch(() => []);
+        this.updateBadges();
+        const content = document.getElementById("admin-tab-content");
+        if (content) { content.innerHTML = this.renderParentsTab(); this.bindParentsEvents(); if (window.lucide) window.lucide.createIcons(); }
+      } catch (err) {
+        showToast(err.message || "فشل إنشاء الحساب.", "error");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;"></i> حفظ وإنشاء الحساب'; }
+      }
+    });
+
+    // Edit parent modal handlers
+    document.querySelectorAll(".parent-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.parentId;
+        const name = btn.dataset.parentName || "";
+        const email = btn.dataset.parentEmail || "";
+        const phone = btn.dataset.parentPhone || "";
+        const location = btn.dataset.parentLocation || "";
+        const status = btn.dataset.parentStatus || "ACTIVE";
+
+        const idInput = document.getElementById("edit-parent-id");
+        const nameInput = document.getElementById("edit-parent-name");
+        const emailInput = document.getElementById("edit-parent-email");
+        const phoneInput = document.getElementById("edit-parent-phone");
+        const locationInput = document.getElementById("edit-parent-location");
+        const statusSelect = document.getElementById("edit-parent-status");
+        const passwordInput = document.getElementById("edit-parent-password");
+
+        if (idInput) idInput.value = id;
+        if (nameInput) nameInput.value = name;
+        if (emailInput) emailInput.value = email;
+        if (phoneInput) phoneInput.value = phone;
+        if (locationInput) locationInput.value = location;
+        if (statusSelect) statusSelect.value = status;
+        if (passwordInput) passwordInput.value = "";
+
+        openModal("edit-parent-modal");
+      });
+    });
+    document.getElementById("cancel-edit-parent-btn")?.addEventListener("click", () => closeModal("edit-parent-modal"));
+    document.getElementById("close-edit-parent-x-btn")?.addEventListener("click", () => closeModal("edit-parent-modal"));
+
+    document.getElementById("edit-parent-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("edit-parent-id")?.value;
+      const name = document.getElementById("edit-parent-name")?.value.trim();
+      const email = document.getElementById("edit-parent-email")?.value.trim();
+      const password = document.getElementById("edit-parent-password")?.value.trim();
+      const phone = document.getElementById("edit-parent-phone")?.value.trim();
+      const location = document.getElementById("edit-parent-location")?.value.trim();
+      const status = document.getElementById("edit-parent-status")?.value;
+      const submitBtn = document.getElementById("submit-edit-parent-btn");
+
+      if (!id || !name || !email) { showToast("يرجى إدخال البيانات المطلوبة.", "warning"); return; }
+
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i data-lucide="loader-2" class="spinner"></i> جارٍ الحفظ...'; }
+      try {
+        const body = { name, email, phone, location, status };
+        if (password && password.length >= 4) body.password = password;
+        await apiFetch(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(body) });
+        showToast("تم تحديث بيانات ولي الأمر بنجاح ✅", "success");
+        closeModal("edit-parent-modal");
+        this.allParents = await apiFetch("/admin/parents").catch(() => []);
+        this.updateBadges();
+        const content = document.getElementById("admin-tab-content");
+        if (content) { content.innerHTML = this.renderParentsTab(); this.bindParentsEvents(); if (window.lucide) window.lucide.createIcons(); }
+      } catch (err) {
+        showToast(err.message || "فشل تحديث البيانات.", "error");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;"></i> حفظ التعديلات'; }
+      }
+    });
+
+    // Contact Parent (WhatsApp / Email Modal)
+    document.querySelectorAll(".parent-contact-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.parentId;
+        const name = btn.dataset.parentName || "";
+        const email = btn.dataset.parentEmail || "";
+        const phone = btn.dataset.parentPhone || "";
+        if (typeof this.renderCommunicateModal === "function") {
+          this.renderCommunicateModal({
+            id,
+            name,
+            email,
+            phone,
+            role: "parent"
+          });
+        }
+      });
+    });
+
+    // Block/unblock
+    document.querySelectorAll(".parent-block-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const pid = btn.dataset.parentId;
+        const isBlocked = btn.dataset.blocked === "true";
+        const reason = isBlocked ? "" : (prompt("سبب الحظر (اختياري):") || "");
+        try {
+          await apiFetch(`/admin/parents/${pid}/block`, { method: "PATCH", body: JSON.stringify({ isBlocked: !isBlocked, reason }) });
+          showToast(isBlocked ? "تم رفع الحظر ✅" : "تم حظر ولي الأمر 🚫", "success");
+          this.allParents = await apiFetch("/admin/parents").catch(() => []);
+          this.updateBadges();
+          const content = document.getElementById("admin-tab-content");
+          if (content) { content.innerHTML = this.renderParentsTab(); this.bindParentsEvents(); if (window.lucide) window.lucide.createIcons(); }
+        } catch (e) { showToast("فشل تحديث الحالة.", "error"); }
+      });
+    });
+
+    // Approve pending
+    document.querySelectorAll(".parent-approve-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const pid = btn.dataset.parentId;
+        try {
+          await apiFetch(`/admin/parents/${pid}/approve`, { method: "PATCH" });
+          showToast("تم تفعيل الحساب ✅", "success");
+          this.allParents = await apiFetch("/admin/parents").catch(() => []);
+          this.updateBadges();
+          const content = document.getElementById("admin-tab-content");
+          if (content) { content.innerHTML = this.renderParentsTab(); this.bindParentsEvents(); if (window.lucide) window.lucide.createIcons(); }
+        } catch (e) { showToast("فشل التفعيل.", "error"); }
+      });
+    });
+
+    // Link child modal
+    document.querySelectorAll(".parent-link-child-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        _linkParentId = btn.dataset.parentId;
+        _linkStudentId = null;
+        document.getElementById("link-child-modal-title").textContent = `🔗 ربط طالب بـ ${btn.dataset.parentName}`;
+        document.getElementById("student-search-results").innerHTML = "";
+        document.getElementById("student-search-input").value = "";
+        openModal("link-child-modal");
+      });
+    });
+    document.getElementById("cancel-link-child-btn")?.addEventListener("click", () => closeModal("link-child-modal"));
+
+    // Student search
+    const doSearch = async () => {
+      const q = document.getElementById("student-search-input")?.value.trim();
+      const results = document.getElementById("student-search-results");
+      if (!results) return;
+      results.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted,#888);">جارٍ البحث...</div>`;
+      try {
+        const students = await apiFetch(`/admin/students/search?q=${encodeURIComponent(q || "")}`);
+        if (!students.length) { results.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted,#888);">لا توجد نتائج.</div>`; return; }
+        results.innerHTML = students.map(s => `
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+            <img src="${(s.avatar && !s.avatar.includes('dicebear.com')) ? s.avatar : 'assets/logo.png'}" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;object-fit:cover;" onerror="this.src='assets/logo.png'" />
+            <div style="flex:1;min-width:0;"><div style="font-weight:600;color:var(--text-primary,#fff);">${s.name}</div><div style="font-size:0.8rem;color:var(--text-muted,#888);">${s.email}${s.education ? ' · ' + s.education : ''}</div></div>
+            <button class="link-this-student-btn btn-primary" data-student-id="${s.id}" data-student-name="${s.name}" style="padding:7px 14px;border-radius:8px;font-size:0.8rem;flex-shrink:0;">ربط</button>
+          </div>
+        `).join('');
+        results.querySelectorAll(".link-this-student-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const studentId = btn.dataset.studentId;
+            const relationship = document.getElementById("parent-relationship-select")?.value || "ولي أمر";
+            try {
+              await apiFetch(`/admin/parents/${_linkParentId}/children`, { method: "POST", body: JSON.stringify({ studentId, relationship }) });
+              showToast(`تم ربط ${btn.dataset.studentName} بنجاح ✅`, "success");
+              this.allParents = await apiFetch("/admin/parents").catch(() => []);
+              this.updateBadges();
+              closeModal("link-child-modal");
+              const content = document.getElementById("admin-tab-content");
+              if (content) { content.innerHTML = this.renderParentsTab(); this.bindParentsEvents(); if (window.lucide) window.lucide.createIcons(); }
+            } catch (e) { showToast(e.message || "فشل الربط.", "error"); }
+          });
+        });
+      } catch (e) { results.innerHTML = `<div style="color:var(--error,#ef4444);padding:12px;">فشل البحث.</div>`; }
+    };
+    document.getElementById("student-search-btn")?.addEventListener("click", doSearch);
+    document.getElementById("student-search-input")?.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+
+    // View children modal
+    document.querySelectorAll(".parent-view-children-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const pid = btn.dataset.parentId;
+        document.getElementById("view-children-title").textContent = `👧 أبناء ${btn.dataset.parentName}`;
+        document.getElementById("view-children-list").innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted,#888);"><div class="spinner" style="width:32px;height:32px;margin:0 auto 8px;"></div>جارٍ التحميل...</div>`;
+        openModal("view-children-modal");
+        try {
+          const children = await apiFetch(`/admin/parents/${pid}/children`);
+          const list = document.getElementById("view-children-list");
+          if (!list) return;
+          if (!children.length) { list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted,#888);">لم يتم ربط أي طالب بعد.</div>`; return; }
+          list.innerHTML = children.map(c => `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+              <img src="${(c.student.avatar && !c.student.avatar.includes('dicebear.com')) ? c.student.avatar : 'assets/logo.png'}" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;object-fit:cover;" onerror="this.src='assets/logo.png'" />
+              <div style="flex:1;min-width:0;"><div style="font-weight:600;color:var(--text-primary,#fff);">${c.student.name}</div><div style="font-size:0.8rem;color:var(--text-muted,#888);">${c.student.email} · ${c.relationship}</div></div>
+              <button class="unlink-child-btn" data-link-id="${c.linkId}" data-name="${c.student.name}" style="padding:7px 14px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444;font-size:0.8rem;cursor:pointer;flex-shrink:0;">إلغاء الربط</button>
+            </div>
+          `).join('');
+          list.querySelectorAll(".unlink-child-btn").forEach(unlinkBtn => {
+            unlinkBtn.addEventListener("click", async () => {
+              if (!confirm(`هل أنت متأكد من إلغاء ربط ${unlinkBtn.dataset.name}؟`)) return;
+              try {
+                await apiFetch(`/admin/parent-links/${unlinkBtn.dataset.linkId}`, { method: "DELETE" });
+                showToast("تم إلغاء الربط ✅", "success");
+                unlinkBtn.closest("div[style*='display:flex']").remove();
+                this.allParents = await apiFetch("/admin/parents").catch(() => []);
+                this.updateBadges();
+              } catch (e) { showToast("فشل إلغاء الربط.", "error"); }
+            });
+          });
+        } catch (e) { document.getElementById("view-children-list").innerHTML = `<div style="color:var(--error,#ef4444);">فشل تحميل البيانات.</div>`; }
+      });
+    });
+    document.getElementById("close-view-children-btn")?.addEventListener("click", () => closeModal("view-children-modal"));
+  }
+
 
   onDestroy() {
     if (this.adminChartInstance) {

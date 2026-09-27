@@ -195,7 +195,7 @@ export default class CoursePlayerView {
                       ${this.currentLesson ? this.currentLesson.title : (this.course?.title || 'تفاصيل الدورة')}
                     </h2>
                     <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem; color:var(--text-muted);">
-                      <img src="${this.course?.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" alt="Teacher" style="width:28px; height:28px; border-radius:50%; border:1.5px solid var(--primary); object-fit:cover;">
+                      <img src="${(this.course?.teacher?.avatar && !this.course.teacher.avatar.includes('dicebear.com')) ? this.course.teacher.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" alt="Teacher" style="width:28px; height:28px; border-radius:50%; border:1.5px solid var(--primary); object-fit:cover;">
                       <span>المعلم: <strong style="color:var(--text-main);">${this.course?.teacher?.name || 'الأستاذ'}</strong></span>
                     </div>
                   </div>

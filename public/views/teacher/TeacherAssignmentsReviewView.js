@@ -426,7 +426,7 @@ export default class TeacherAssignmentsReviewView {
                       return `
                         <div style="background:var(--bg-card); padding:12px 14px; border-radius:14px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; gap:10px;">
                           <div style="display:flex; align-items:center; gap:10px;">
-                            <img src="${sub.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(sub.student?.name || 'طالب')}`}" style="width:36px; height:36px; border-radius:10px; background:var(--bg-app);" />
+                            <img src="${(sub.student?.avatar && !sub.student.avatar.includes('dicebear.com')) ? sub.student.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:36px; height:36px; border-radius:10px; background:var(--bg-app);" />
                             <div>
                               <div style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${sub.student?.name || 'طالب'}</div>
                               <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">سُلّم: ${subTime}</div>
@@ -480,7 +480,7 @@ export default class TeacherAssignmentsReviewView {
                       return `
                         <div style="background:var(--bg-card); padding:12px 14px; border-radius:14px; border:1px solid rgba(239,68,68,0.2); display:flex; justify-content:space-between; align-items:center; gap:10px;">
                           <div style="display:flex; align-items:center; gap:10px;">
-                            <img src="${st.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || 'طالب')}`}" style="width:36px; height:36px; border-radius:10px; background:var(--bg-app);" />
+                            <img src="${(st.avatar && !st.avatar.includes('dicebear.com')) ? st.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:36px; height:36px; border-radius:10px; background:var(--bg-app);" />
                             <div>
                               <div style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${st.name}</div>
                               <div style="font-size:0.72rem; color:var(--text-muted);">${st.phone || st.email || 'طالب مسجل بالمجموعة'}</div>

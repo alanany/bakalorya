@@ -655,7 +655,7 @@ export default class CourseManageView {
                   <!-- Student Info & Progress Header -->
                   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
                     <div style="display:flex; align-items:center; gap:14px;">
-                      <img src="${student.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(student.name || 'Student')}" style="width:52px; height:52px; border-radius:50%; border:2px solid var(--primary-glow); object-fit:cover;">
+                      <img src="${(student.avatar && !student.avatar.includes('dicebear.com')) ? student.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:52px; height:52px; border-radius:50%; border:2px solid var(--primary-glow); object-fit:cover;">
                       <div>
                         <h4 style="font-size:1.05rem; font-weight:800; margin:0 0 2px 0; color:var(--text-main);">${student.name || 'طالب'}</h4>
                         <div style="font-size:0.8rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap;">
@@ -2570,7 +2570,7 @@ export default class CourseManageView {
                       لا يوجد طلاب مسجلون في هذه المجموعة حتى الآن.
                     </div>
                   ` : students.map((st, idx) => {
-                    const avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || `student_${idx}`)}`;
+                    const avatar = (st.avatar && !st.avatar.includes('dicebear.com')) ? st.avatar : 'assets/logo.png';
                     const isPending = st.status && st.status.toLowerCase() === "pending";
                     return `
                       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color);">
@@ -2578,7 +2578,7 @@ export default class CourseManageView {
                           <div style="width:28px; height:28px; border-radius:8px; background:rgba(99,102,241,0.1); color:var(--primary); font-weight:800; font-size:0.75rem; display:flex; align-items:center; justify-content:center;">
                             ${idx + 1}
                           </div>
-                          <img src="${avatar}" alt="${st.name}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color); background:var(--bg-card);">
+                          <img src="${avatar}" onerror="this.src='assets/logo.png'" alt="${st.name}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color); background:var(--bg-card);">
                           <div>
                             <div style="font-size:0.92rem; font-weight:800; color:var(--text-main);">${st.name}</div>
                             <div style="font-size:0.75rem; color:var(--text-muted);">طالب مقيد بالمجموعة 🎓</div>

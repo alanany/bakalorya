@@ -390,7 +390,7 @@ export default class StudentGroupsView {
 
   renderGroupCard(group, now) {
     const isExpanded = this.expandedGroupKeys.has(group.key);
-    const teacherAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(group.teacher?.name || 'teacher')}`;
+    const teacherAvatar = (group.teacher?.avatar && !group.teacher.avatar.includes('dicebear.com')) ? group.teacher.avatar : 'assets/logo.png';
     const meetLink = group.meetingLink || group.teacher?.meetingLink || null;
     const nextFmt = group.nextSession ? formatSessionDateTime(group.nextSession.scheduledAt, null, {}) : null;
     const nextRel = group.nextSession ? this.getRelativeDateLabel(group.nextSession.scheduledAt) : null;
@@ -440,7 +440,7 @@ export default class StudentGroupsView {
 
           <!-- Teacher Row -->
           <div style="display:flex; align-items:center; gap:10px;">
-            <img src="${teacherAvatar}" alt="${group.teacher?.name || ''}"
+            <img src="${teacherAvatar}" onerror="this.src='assets/logo.png'" alt="${group.teacher?.name || ''}"
               style="width:36px; height:36px; border-radius:12px; object-fit:cover; border:1.5px solid rgba(99,102,241,0.25);">
             <div>
               <div style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${group.teacher?.name || 'الأستاذ'}</div>

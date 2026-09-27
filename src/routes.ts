@@ -23,6 +23,7 @@ import { TeacherEarningController } from "./controller/TeacherEarningController"
 import { PlatformSettingController } from "./controller/PlatformSettingController";
 import { CurriculumController } from "./controller/CurriculumController";
 import { CourseGroupController } from "./controller/CourseGroupController";
+import { ParentController } from "./controller/ParentController";
 import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability } from "./middleware/auth";
 import { authRateLimiter, sensitiveActionLimiter } from "./middleware/rateLimiter";
 import { concurrencyLock } from "./middleware/concurrencyLock";
@@ -93,6 +94,8 @@ router.post("/auth/student/login", authRateLimiter, AuthController.studentLogin)
 router.post("/auth/student-login", authRateLimiter, AuthController.studentLogin);
 router.post("/auth/staff/login", authRateLimiter, AuthController.staffLogin);
 router.post("/auth/staff-login", authRateLimiter, AuthController.staffLogin);
+router.post("/auth/parent/login", authRateLimiter, AuthController.parentLogin);
+router.post("/auth/parent-login", authRateLimiter, AuthController.parentLogin);
 router.get("/auth/me", authMiddleware, AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvitation);
 
@@ -279,6 +282,7 @@ router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
 router.get("/teachers/:id/groups", optionalAuthMiddleware, CourseGroupController.getTeacherGroups);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
+router.post("/users/request-phone-change", authMiddleware, UserController.requestPhoneChange);
 router.post("/users/avatar", authMiddleware, uploadSingleAvatar, UserController.uploadAvatar);
 router.post("/users/change-password", authMiddleware, UserController.changePassword);
 router.post("/auth/change-password", authMiddleware, UserController.changePassword);
@@ -346,5 +350,22 @@ router.get("/admin/reports", authMiddleware, requireRole(["admin"]), AdminContro
 router.get("/admin/teacher-applications", authMiddleware, requireRole(["admin"]), TeacherApplicationController.getApplications);
 router.put("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);
 router.patch("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);
+
+// ─── Parent Portal Routes ─────────────────────────────────────────────────────
+// Admin: manage parent accounts
+router.get("/admin/parents", authMiddleware, requireRole(["admin"]), ParentController.adminListParents);
+router.post("/admin/parents", authMiddleware, requireRole(["admin"]), ParentController.adminCreateParent);
+router.patch("/admin/parents/:id/approve", authMiddleware, requireRole(["admin"]), ParentController.adminApproveParent);
+router.patch("/admin/parents/:id/block", authMiddleware, requireRole(["admin"]), ParentController.adminToggleBlockParent);
+router.get("/admin/parents/:parentId/children", authMiddleware, requireRole(["admin"]), ParentController.adminGetChildren);
+router.post("/admin/parents/:parentId/children", authMiddleware, requireRole(["admin"]), ParentController.adminAddChild);
+router.delete("/admin/parent-links/:linkId", authMiddleware, requireRole(["admin"]), ParentController.adminRemoveChild);
+router.get("/admin/students/search", authMiddleware, requireRole(["admin"]), ParentController.adminSearchStudents);
+// Parent: read-only portal
+router.get("/parent/children", authMiddleware, requireRole(["parent"]), ParentController.myChildren);
+router.get("/parent/children/:studentId/groups", authMiddleware, requireRole(["parent"]), ParentController.childGroups);
+router.get("/parent/children/:studentId/sessions", authMiddleware, requireRole(["parent"]), ParentController.childSessions);
+router.get("/parent/children/:studentId/grades", authMiddleware, requireRole(["parent"]), ParentController.childGrades);
+router.get("/parent/children/:studentId/billing", authMiddleware, requireRole(["parent"]), ParentController.childBilling);
 
 export default router;

@@ -165,7 +165,7 @@ export const AdminEarningsPage = {
       const shortId = p.id ? `#${p.id.substring(0, 8)}` : '-';
       const studentName = p.student?.name || 'طالب غير محدد';
       const studentEmail = p.student?.email || '';
-      const studentAvatar = p.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${studentName}`;
+      const studentAvatar = (p.student?.avatar && !p.student.avatar.includes('dicebear.com')) ? p.student.avatar : 'assets/logo.png';
 
       let itemTitle = 'مدفوعات منصة';
       let itemBadge = '';
@@ -199,7 +199,7 @@ export const AdminEarningsPage = {
           <td style="padding:12px; font-weight:700; font-family:monospace; color:var(--text-muted); font-size:0.78rem;">${shortId}</td>
           <td style="padding:12px;">
             <div style="display:flex; align-items:center; gap:10px;">
-              <img src="${studentAvatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
+              <img src="${studentAvatar}" onerror="this.src='assets/logo.png'" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
               <div>
                 <div style="font-weight:700; color:var(--text-main);">${studentName}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted);">${studentEmail}</div>
@@ -252,7 +252,7 @@ export const AdminEarningsPage = {
 
     const studentName = p.student?.name || 'غير معروف';
     const studentEmail = p.student?.email || 'غير معروف';
-    const studentAvatar = p.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${studentName}`;
+    const studentAvatar = (p.student?.avatar && !p.student.avatar.includes('dicebear.com')) ? p.student.avatar : 'assets/logo.png';
 
     let itemDetails = '';
     if (p.type === 'COURSE_ENROLLMENT' && p.courseEnrollment?.course) {
@@ -294,7 +294,7 @@ export const AdminEarningsPage = {
           <div class="modal-body" style="padding:20px;">
             <!-- Student Header -->
             <div style="display:flex; align-items:center; gap:14px; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid var(--border-color);">
-              <img src="${studentAvatar}" style="width:48px; height:48px; border-radius:50%; border:2px solid var(--primary);">
+              <img src="${studentAvatar}" onerror="this.src='assets/logo.png'" style="width:48px; height:48px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
               <div>
                 <div style="font-weight:800; font-size:1rem; color:var(--text-main);">${studentName}</div>
                 <div style="font-size:0.85rem; color:var(--text-muted);">${studentEmail}</div>

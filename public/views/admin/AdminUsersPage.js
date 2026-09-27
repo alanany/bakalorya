@@ -82,7 +82,7 @@ export const AdminUsersPage = {
                       <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
+                            <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <span>${u.name}</span>
@@ -187,8 +187,8 @@ export const AdminUsersPage = {
       <div class="glass-card" style="border-radius:16px; padding:20px; border:1px solid var(--border-color); border-right: 4px solid ${app.status === 'pending' ? '#f59e0b' : app.status === 'approved' ? '#22c55e' : '#ef4444'};">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
           <div style="display:flex; align-items:center; gap:14px;">
-            <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(app.name)}" 
-              alt="${app.name}" style="width:52px; height:52px; border-radius:50%; border:2px solid var(--border-color);">
+            <img src="${(app.avatar && !app.avatar.includes('dicebear.com')) ? app.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" 
+              alt="${app.name}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--border-color);">
             <div>
               <h4 style="font-size:1rem; font-weight:800; margin:0 0 4px 0;">${app.name}</h4>
               <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">${app.email}</p>
@@ -357,7 +357,7 @@ export const AdminUsersPage = {
                       <tr style="border-bottom:1px solid var(--border-color);${isPending ? 'background:rgba(245,158,11,0.04);' : (isBlocked ? 'background:rgba(239,68,68,0.03);' : '')}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
+                            <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <span>${u.name}</span>
@@ -499,7 +499,7 @@ export const AdminUsersPage = {
       <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
         <td style="padding:14px 20px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <img src="${user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + user.name}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
+            <img src="${(user.avatar && !user.avatar.includes('dicebear.com')) ? user.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
             <div>
               <div style="font-weight:600;font-size:0.9rem;">${user.name}</div>
               ${isBlocked ? `<span style="padding:1px 6px;border-radius:6px;font-size:0.68rem;font-weight:800;background:rgba(239,68,68,0.15);color:var(--error,#ef4444);display:inline-block;margin-top:2px;">🚫 محظور من الدخول</span>` : ''}
@@ -559,9 +559,9 @@ export const AdminUsersPage = {
 
     const isEdit = !!user;
     const initialRole = isEdit ? user.role : defaultRole;
-    const currentAvatar = (user && user.avatar)
+    const currentAvatar = (user && user.avatar && !user.avatar.includes('dicebear.com'))
       ? user.avatar
-      : `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user?.name || (initialRole === "teacher" ? "Teacher" : "Student"))}`;
+      : 'assets/logo.png';
 
     container.innerHTML = `
       <div class="modal-overlay" id="member-modal" style="display:flex; padding:16px;">
@@ -591,8 +591,8 @@ export const AdminUsersPage = {
                       <span>رفع صورة</span>
                     </label>
                     <button type="button" id="member-random-avatar-btn" class="btn-secondary" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="sparkles" style="width:14px; height:14px;"></i>
-                      <span>شخصية كرتونية</span>
+                      <i data-lucide="shield" style="width:14px; height:14px;"></i>
+                      <span>شعار المنصة الافتراضي</span>
                     </button>
                     <span id="member-avatar-status" style="font-size:0.78rem; font-weight:600; color:var(--text-muted);"></span>
                   </div>
@@ -782,18 +782,17 @@ export const AdminUsersPage = {
       }
     });
 
-    // Random cartoon avatar generator button
+    // Reset to platform default logo
     document.getElementById("member-random-avatar-btn")?.addEventListener("click", () => {
       const preview = document.getElementById("member-avatar-preview");
       const urlInput = document.getElementById("member-avatar-url");
       const status = document.getElementById("member-avatar-status");
-      const randomSeed = "User_" + Math.random().toString(36).substring(2, 9);
-      const newAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(randomSeed)}`;
+      const newAvatar = "assets/logo.png";
       if (preview) preview.src = newAvatar;
       if (urlInput) urlInput.value = newAvatar;
       if (status) {
         status.style.color = "#10b981";
-        status.textContent = "✨ تم إنشاء شخصية كرتونية";
+        status.textContent = "✨ تم تعيين شعار المنصة الافتراضي";
       }
     });
 
@@ -932,6 +931,7 @@ export const AdminUsersPage = {
     if (!container) return;
 
     const isTeacher = user.role === "teacher";
+    const isParent = user.role === "parent";
     const cleanUserPhone = user.phone ? getCleanWhatsAppNumber(user.phone) : "";
     const cleanParentPhone = user.parentPhone ? getCleanWhatsAppNumber(user.parentPhone) : "";
 
@@ -958,6 +958,27 @@ export const AdminUsersPage = {
         id: "t4",
         label: "✍️ رسالة مخصصة",
         text: `مرحباً الأستاذ ${user.name}، `
+      }
+    ] : isParent ? [
+      {
+        id: "p1",
+        label: "👨‍👩‍👧 تقرير ومتابعة دراسية",
+        text: `السلام عليكم ولي أمر الطالب المحترم (${user.name})، نتواصل معكم من إدارة منصة انطلق لنحيطكم علماً بالتقرير الأكاديمي والتقدم الدراسي ومستوى التفاعل لأبنائكم على المنصة. نسعد دائماً بتواصلكم معنا.`
+      },
+      {
+        id: "p2",
+        label: "⏰ تذكير بمواعيد الحصص",
+        text: `السلام عليكم ولي أمر الطالب المحترم (${user.name})، نود تذكيركم بموعد الحصة التفاعلية المباشرة القادمة لابنكم، يرجى التكرم بتشجيعه على الحضور في الموعد المحدد.`
+      },
+      {
+        id: "p3",
+        label: "📝 إشعار الواجبات والامتحانات",
+        text: `السلام عليكم ولي أمر الطالب المحترم (${user.name})، نلفت عنايتكم الكريمة إلى إضافة واجبات وتدريبات جديدة لأبنائكم على المنصة، يرجى متابعة تسليمها في الموعد.`
+      },
+      {
+        id: "p4",
+        label: "✍️ رسالة مخصصة",
+        text: `السلام عليكم ولي أمر الطالب المحترم (${user.name})، `
       }
     ] : [
       {
@@ -994,7 +1015,7 @@ export const AdminUsersPage = {
                 <i data-lucide="message-circle" style="width:22px; height:22px;"></i>
               </div>
               <div>
-                <h3 class="modal-title" style="font-size:1.1rem; margin:0 0 2px 0;">تواصل مع ${isTeacher ? 'المعلم' : 'الطالب'}: ${user.name}</h3>
+                <h3 class="modal-title" style="font-size:1.1rem; margin:0 0 2px 0;">تواصل مع ${isTeacher ? 'المعلم' : isParent ? 'ولي الأمر' : 'الطالب'}: ${user.name}</h3>
                 <span style="font-size:0.75rem; color:var(--text-muted);">${user.email}</span>
               </div>
             </div>
@@ -1004,7 +1025,7 @@ export const AdminUsersPage = {
           <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:16px;">
             
             <!-- Target Selector if Student has both phones -->
-            ${!isTeacher && user.parentPhone && user.phone ? `
+            ${!isTeacher && !isParent && user.parentPhone && user.phone ? `
               <div>
                 <label style="font-size:0.83rem; font-weight:700; margin-bottom:6px; display:block; color:var(--text-muted);">إرسال إلى:</label>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">

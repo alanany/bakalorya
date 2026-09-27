@@ -1108,7 +1108,7 @@ export default class TeacherGroupsView {
                 لا يوجد طلاب مسجلون في هذه المجموعة حتى الآن.
               </div>
             ` : students.map((st, idx) => {
-              const avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || `student_${idx}`)}`;
+              const avatar = (st.avatar && !st.avatar.includes('dicebear.com')) ? st.avatar : 'assets/logo.png';
               const isPending = st.status && st.status.toLowerCase() === "pending";
               return `
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:var(--bg-app); border:1px solid var(--border-color);">

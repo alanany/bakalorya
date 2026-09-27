@@ -239,10 +239,10 @@ renderSessionGridCard(session, isTeacher) {
 
     const isTeacherRole = isTeacher || state.user?.role === 'teacher' || state.user?.role === 'admin';
     const teacherName = session.teacher?.name || session.course?.teacher?.name || "معلم المادة";
-    const teacherAvatar = session.teacher?.avatar || (teacherName ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}` : null);
+    const teacherAvatar = (session.teacher?.avatar && !session.teacher.avatar.includes('dicebear.com')) ? session.teacher.avatar : 'assets/logo.png';
 
     const studentName = session.student?.name || session.subscription?.student?.name || (isTeacherRole ? 'طلاب المجموعة' : (state.user?.name || 'طالب'));
-    const studentAvatar = session.student?.avatar || (session.student?.name ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(session.student.name)}` : null);
+    const studentAvatar = (session.student?.avatar && !session.student.avatar.includes('dicebear.com')) ? session.student.avatar : 'assets/logo.png';
 
     const personLabel = isTeacherRole ? 'الطالب' : 'المعلم';
     const personName = isTeacherRole ? studentName : teacherName;

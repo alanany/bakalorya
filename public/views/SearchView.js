@@ -219,12 +219,12 @@ export default class SearchView {
 
   renderTeacherCard(teacher) {
     const name = teacher.name || "الأستاذ المعلم";
-    const avatar = teacher.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`;
+    const avatar = (teacher.avatar && !teacher.avatar.includes('dicebear.com')) ? teacher.avatar : 'assets/logo.png';
     const specialty = teacher.subject || teacher.specialty || "معلم معتمد بالمنصة";
 
     return `
       <div class="glass-card" style="padding:20px; border-radius:18px; border:1px solid var(--border-color); display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; transition:transform 0.2s ease;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
-        <img src="${avatar}" alt="${name}" style="width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid var(--primary-glow); background:var(--bg-app);">
+        <img src="${avatar}" onerror="this.src='assets/logo.png'" alt="${name}" style="width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid var(--primary-glow); background:var(--bg-app);">
         <div>
           <h4 style="font-size:1.05rem; font-weight:800; margin:0 0 4px 0; color:var(--text-main);">${name}</h4>
           <span style="font-size:0.78rem; font-weight:700; color:var(--primary); background:rgba(0,86,210,0.08); padding:2px 10px; border-radius:12px; display:inline-block;">

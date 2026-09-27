@@ -105,7 +105,7 @@ export const AdminReportsPage = {
             ${(audit.recentUsers || []).map(u => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:0.8rem;">
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <img src="${u.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.name}" style="width:24px;height:24px;border-radius:50%;">
+                  <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
                   <strong>${u.name}</strong> (${u.role})
                 </div>
                 <span style="color:var(--text-muted);">${new Date(u.createdAt).toLocaleDateString()}</span>

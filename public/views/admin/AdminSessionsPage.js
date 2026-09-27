@@ -481,7 +481,8 @@ export const AdminSessionsPage = {
                     <!-- Center 1: Teacher & Schedule -->
                     <div style="display:flex; align-items:center; gap:14px; flex:1.2; min-width:220px; flex-wrap:wrap;">
                       <div style="display:flex; align-items:center; gap:8px;">
-                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(grp.teacherName || 'Teacher')}" 
+                        <img src="${(grp.teacherAvatar && !grp.teacherAvatar.includes('dicebear.com')) ? grp.teacherAvatar : 'assets/logo.png'}" 
+                             onerror="this.src='assets/logo.png'"
                              alt="${grp.teacherName}" 
                              style="width:32px; height:32px; border-radius:50%; object-fit:cover; background:var(--bg-app); border:1.5px solid var(--border-color); flex-shrink:0;">
                         <span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${grp.teacherName}</span>
@@ -2903,7 +2904,8 @@ export const AdminSessionsPage = {
                       
                       <!-- Left: Student Info -->
                       <div style="display:flex; align-items:center; gap:12px; min-width:220px;">
-                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(st.name || 'Student')}" 
+                        <img src="${(st.avatar && !st.avatar.includes('dicebear.com')) ? st.avatar : 'assets/logo.png'}" 
+                             onerror="this.src='assets/logo.png'"
                              alt="${st.name}" 
                              style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-card); flex-shrink:0;">
                         <div>

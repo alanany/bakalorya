@@ -631,8 +631,13 @@ export default class LandingView {
               </div>
 
               <div>
-                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">للمعلمين والمدارس</h4>
+                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">المعلمين وأولياء الأمور</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
+                  <li>
+                    <a href="#parent-login" style="color:#8b5cf6; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="users" style="width:16px; height:16px;"></i> بوابة أولياء الأمور 👨‍👩‍👧
+                    </a>
+                  </li>
                   <li>
                     <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                       <i data-lucide="shield-check" style="width:16px; height:16px;"></i> بوابة المعلمين والإدارة 🛡️
@@ -685,6 +690,9 @@ export default class LandingView {
               <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية</div>
               
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <a href="#parent-login" style="color:#8b5cf6; font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(139,92,246,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(139,92,246,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(139,92,246,0.18)';" onmouseleave="this.style.background='rgba(139,92,246,0.08)';">
+                  <i data-lucide="users" style="width:14px; height:14px; color:#8b5cf6;"></i> بوابة أولياء الأمور
+                </a>
                 <a href="#staff-login" style="color:var(--primary); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(99,102,241,0.18)';" onmouseleave="this.style.background='rgba(99,102,241,0.08)';">
                   <i data-lucide="shield-check" style="width:14px; height:14px; color:var(--primary);"></i> بوابة المعلمين والإدارة
                 </a>
@@ -1404,7 +1412,7 @@ export default class LandingView {
           <div class="glass-card stat-card-hover" style="flex:0 0 190px; min-width:190px; max-width:200px; padding:16px 12px; border-radius:18px; border:1px solid var(--border-color); text-align:center; transition:transform 0.2s, box-shadow 0.2s; cursor:pointer; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; justify-content:space-between; height:240px; box-sizing:border-box;" onclick="window.location.hash='#teacher/${teacher.id}'">
             <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
               <div style="position:relative; margin-bottom:8px;">
-                <img src="${teacher.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${teacher.id}`}" alt="${teacher.name}" style="width:58px; height:58px; border-radius:50%; border:2px solid var(--primary); background:var(--bg-app); object-fit:cover; display:block;">
+                <img src="${(teacher.avatar && !teacher.avatar.includes('dicebear.com')) ? teacher.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" alt="${teacher.name}" style="width:58px; height:58px; border-radius:50%; border:2px solid var(--primary); background:var(--bg-app); object-fit:cover; display:block;">
                 <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#ffffff; font-size:0.6rem; font-weight:800; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg-card);" title="معلم موثق">✓</span>
               </div>
               <h3 style="font-size:0.92rem; font-weight:800; margin:0 0 3px 0; color:var(--text-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${teacher.name}</h3>

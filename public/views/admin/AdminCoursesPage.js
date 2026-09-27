@@ -147,7 +147,7 @@ export const AdminCoursesPage = {
           const isPublished = course.status === "PUBLISHED" || !course.status;
           const gradeInfo = this.getCourseGradeInfo(course);
           const teacherName = course.teacher?.name || null;
-          const teacherAvatar = course.teacher?.avatar || (teacherName ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}` : null);
+          const teacherAvatar = (course.teacher?.avatar && !course.teacher.avatar.includes('dicebear.com')) ? course.teacher.avatar : 'assets/logo.png';
 
           return `
             <div class="glass-card admin-course-card-item" style="
@@ -270,7 +270,7 @@ export const AdminCoursesPage = {
                     <span style="font-weight:800; color:var(--text-muted);">المعلم المسؤول:</span>
                     <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:3px 10px; border-radius:12px; border:1px solid var(--border-color);">
                       ${teacherName ? `
-                        <img src="${teacherAvatar}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
+                        <img src="${teacherAvatar}" onerror="this.src='assets/logo.png'" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
                         <span style="font-weight:800; color:var(--text-main);">${teacherName}</span>
                       ` : `
                         <span style="color:#d97706; font-weight:800; font-size:0.8rem;">⚠️ منصة انطلق (لم يُعين معلم بعد)</span>

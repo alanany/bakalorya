@@ -86,8 +86,9 @@ export default class GroupHubView {
       }
     }
 
-    const backUrl = isTeacher ? '#teacher-groups' : '#student-groups';
-    const backTitle = isTeacher ? 'لوحة مجموعات المعلم' : 'مجموعاتي الدراسية';
+    const isParent = this.hubData.isParent || state.user?.role === 'parent';
+    const backUrl = isTeacher ? '#teacher-groups' : (isParent ? '#parent-dashboard' : '#student-groups');
+    const backTitle = isTeacher ? 'لوحة مجموعات المعلم' : (isParent ? 'لوحة تحكم ولي الأمر 👨‍👩‍👧' : 'مجموعاتي الدراسية');
     const courseCoverImg = course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200';
 
     const maxSeats = group.maxStudents || 25;
@@ -1121,6 +1122,10 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
                             <span>التصحيح ورصد الدرجات 🎯</span>
                           </button>
                         </div>
+                      </div>
+                    ` : isParent ? `
+                      <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700; text-align:center; padding:8px; background:var(--bg-app); border-radius:10px; border:1px dashed var(--border-color);">
+                        لم يقم الطالب بتسليم هذا الواجب بعد ⏳
                       </div>
                     ` : `
                       <button class="btn-primary submit-assignment-btn" data-id="${asgn.id}" data-title="${asgn.title}"

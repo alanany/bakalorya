@@ -854,7 +854,7 @@ export default class SubjectGroupsView {
       const endDateText = group.endDate ? formatArabicDate(group.endDate) : "حسب جدول الحصص";
       const teacherName = group.teacher?.name || group.teacherName || "معلم معتمد";
       const teacherInitial = teacherName.trim().charAt(0);
-      const teacherAvatar = group.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+      const teacherAvatar = (group.teacher?.avatar && !group.teacher.avatar.includes('dicebear.com')) ? group.teacher.avatar : 'assets/logo.png';
       
       return `
         <div class="nagwa-teacher-group-card">
@@ -894,6 +894,7 @@ export default class SubjectGroupsView {
               <div style="display:flex; align-items:center; gap:10px; min-width:0;">
                 <div style="position:relative; flex-shrink:0;">
                   <img src="${teacherAvatar}" 
+                       onerror="this.src='assets/logo.png'"
                        alt="${teacherName}" 
                        style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-card);">
                   <span style="position:absolute; bottom:0px; right:0px; width:10px; height:10px; background:#10b981; border:1.5px solid var(--bg-card); border-radius:50%;" title="متواجد"></span>

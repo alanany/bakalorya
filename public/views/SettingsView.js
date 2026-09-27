@@ -22,7 +22,7 @@ export default class SettingsView {
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid var(--border-color);">
               <div style="display:flex; align-items:center; gap:20px;">
                 <div style="position:relative; width:84px; height:84px; flex-shrink:0;">
-                  <img id="settings-avatar-img" src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(state.user.name || 'Entlq')}" style="width:84px; height:84px; border-radius:50%; border:3px solid var(--primary); object-fit:cover; background:var(--bg-app); box-shadow:0 8px 24px rgba(79,70,229,0.25);">
+                  <img id="settings-avatar-img" src="${(state.user.avatar && !state.user.avatar.includes('dicebear.com')) ? state.user.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:84px; height:84px; border-radius:50%; border:3px solid var(--primary); object-fit:cover; background:var(--bg-app); box-shadow:0 8px 24px rgba(79,70,229,0.25);">
                   <label for="settings-avatar-file-input" style="position:absolute; bottom:0; right:0; width:28px; height:28px; background:var(--primary); color:#ffffff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:2px solid var(--bg-card); transition:transform 0.15s;" title="رفع صورة جديدة">
                     <i data-lucide="camera" style="width:14px;height:14px;"></i>
                   </label>
@@ -40,8 +40,8 @@ export default class SettingsView {
                 <label for="settings-avatar-file-input" class="btn-primary" style="padding:9px 18px; font-size:0.85rem; font-weight:800; border-radius:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
                   <i data-lucide="upload" style="width:15px;height:15px;"></i> تغيير الصورة الشخصية 📸
                 </label>
-                <button type="button" id="settings-random-avatar-btn" class="btn-secondary" style="padding:9px 16px; font-size:0.85rem; font-weight:700; border-radius:12px; display:inline-flex; align-items:center; gap:6px;">
-                  <i data-lucide="shuffle" style="width:14px;height:14px;"></i> شخصية كرتونية 🎨
+                <button type="button" id="settings-reset-avatar-btn" class="btn-secondary" style="padding:9px 16px; font-size:0.85rem; font-weight:700; border-radius:12px; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> استعادة شعار المنصة الافتراضي 🛡️
                 </button>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default class SettingsView {
                 <!-- Phone Numbers Notice -->
                 <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); color:#d97706; padding:12px 16px; border-radius:14px; font-size:0.84rem; font-weight:700; display:flex; align-items:center; gap:10px;">
                   <i data-lucide="lock" style="width:18px;height:18px;flex-shrink:0;"></i>
-                  <span>أرقام الهواتف معتمدة ومقفلة — لتعديل رقم هاتف الطالب أو ولي الأمر، يرجى التواصل مع إدارة المنصة.</span>
+                  <span>أرقام الهواتف معتمدة ومقفلة — لتعديل أي رقم هاتف، يتم إرسال طلب رسمي للإدارة لمراجعته واعتماده.</span>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
@@ -107,11 +107,16 @@ export default class SettingsView {
                         <i data-lucide="smartphone" style="width:14px;height:14px;color:#10b981;"></i>
                         رقم هاتف الطالب (واتساب)
                       </span>
-                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:3px;">
-                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل
+                      <span style="font-size:0.72rem; color:#10b981; font-weight:700; display:flex; align-items:center; gap:3px;">
+                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل ومعتمد
                       </span>
                     </label>
-                    <input type="text" class="form-input" value="${state.user.phone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left;">
+                    <div style="display:flex; gap:8px;">
+                      <input type="text" class="form-input" value="${state.user.phone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left; flex:1; font-weight:700;">
+                      <button type="button" class="btn-secondary request-phone-modal-trigger" data-phone-type="student" style="padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:4px; color:#10b981; border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.06); cursor:pointer;" title="طلب تعديل رقم هاتف الطالب من الإدارة">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i> تعديل
+                      </button>
+                    </div>
                   </div>
 
                   <!-- Parent Phone (Locked) -->
@@ -121,11 +126,16 @@ export default class SettingsView {
                         <i data-lucide="phone-call" style="width:14px;height:14px;color:#f59e0b;"></i>
                         رقم هاتف ولي الأمر (للمتابعة والغياب)
                       </span>
-                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:3px;">
-                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل
+                      <span style="font-size:0.72rem; color:#f59e0b; font-weight:700; display:flex; align-items:center; gap:3px;">
+                        <i data-lucide="lock" style="width:11px;height:11px;"></i> مقفل ومعتمد
                       </span>
                     </label>
-                    <input type="text" class="form-input" value="${state.user.parentPhone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left;">
+                    <div style="display:flex; gap:8px;">
+                      <input type="text" class="form-input" value="${state.user.parentPhone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed; direction:ltr; text-align:left; flex:1; font-weight:700;">
+                      <button type="button" class="btn-secondary request-phone-modal-trigger" data-phone-type="parent" style="padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:4px; color:#f59e0b; border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.06); cursor:pointer;" title="طلب تعديل رقم ولي الأمر من الإدارة">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i> تعديل
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -135,46 +145,52 @@ export default class SettingsView {
               </form>
             ` : `
             <form id="settings-profile-form">
-              <div class="form-group">
-                <label style="font-weight:700;">الاسم الكامل (Full Name)</label>
-                <input type="text" id="settings-name" class="form-input" value="${state.user.name}" required>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+                <!-- Full Name -->
+                <div class="form-group">
+                  <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="user" style="width:15px;height:15px;color:var(--primary);"></i>
+                    الاسم الكامل (Full Name) *
+                  </label>
+                  <input type="text" id="settings-name" class="form-input" value="${state.user.name}" required style="font-weight:700;">
+                </div>
+
+                <!-- Email (Read-Only) -->
+                <div class="form-group">
+                  <label style="font-weight:700; font-size:0.88rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="mail" style="width:15px;height:15px;color:var(--primary);"></i>
+                    البريد الإلكتروني (Email Address)
+                  </label>
+                  <input type="email" class="form-input" value="${state.user.email || ''}" disabled style="background:var(--bg-app); opacity:0.85; cursor:not-allowed;">
+                </div>
               </div>
 
-              <div class="form-group" style="margin-top:16px;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
-                  <i data-lucide="book-open" style="width:16px;height:16px;color:var(--primary);"></i>
-                  التخصص والمؤهل الأكاديمي (Education / Specialization)
-                </label>
-                <input type="text" id="settings-education" class="form-input" value="${state.user.education || ''}" placeholder="مثال: أستاذ تعليم ثانوي مادة الفيزياء - خبرة 10 سنوات">
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">يظهر هذا الحقل في صفحتك الشخصية للطلاب.</small>
+              <!-- Phone Number (Locked - Editable only via Admin Request) -->
+              <div class="form-group" style="margin-top:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                  <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin:0; font-size:0.88rem;">
+                    <i data-lucide="phone" style="width:16px;height:16px;color:#10b981;"></i>
+                    رقم الهاتف المعتمد (Phone Number)
+                  </label>
+                  <span style="font-size:0.75rem; color:#10b981; font-weight:800; background:rgba(16,185,129,0.1); padding:2px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.25); display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="lock" style="width:12px;height:12px;"></i> معتمد ومقفل
+                  </span>
+                </div>
+                
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <input type="text" class="form-input" value="${state.user.phone || 'غير مسجل'}" disabled style="background:var(--bg-app); opacity:0.9; cursor:not-allowed; direction:ltr; text-align:left; flex:1; min-width:200px; font-weight:700;">
+                  <button type="button" class="btn-secondary request-phone-modal-trigger" data-phone-type="self" style="padding:10px 18px; border-radius:12px; font-size:0.84rem; font-weight:800; display:inline-flex; align-items:center; gap:6px; color:#10b981; border-color:rgba(16,185,129,0.35); background:rgba(16,185,129,0.06); cursor:pointer;">
+                    <i data-lucide="send" style="width:15px;height:15px;"></i>
+                    <span>طلب تعديل رقم الهاتف من الإدارة 📞</span>
+                  </button>
+                </div>
+                <small style="color:var(--text-muted); display:block; margin-top:6px;">لحماية حسابك وتوثيق العمليات، لا يمكن تعديل رقم الهاتف مباشرة إلا بعد إرسال طلب لاعتماده من إدارة المنصة.</small>
               </div>
 
-              <div class="form-group" style="margin-top:16px;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700; margin-bottom:8px;">
-                  <i data-lucide="phone" style="width:16px;height:16px;color:var(--primary);"></i>
-                  رقم الهاتف والرمز الدولي (Phone Number &amp; Country Key)
-                </label>
-                ${renderPhoneInputGroup({
-        selectId: "settings-phone-code",
-        inputId: "settings-phone-number",
-        defaultCode: "+213",
-        value: state.user.phone || "",
-        placeholder: "0555123456",
-        required: false
-      })}
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">اختر مفتاح الدولة واكتب رقم هاتفك لاستلام الإشعارات.</small>
-              </div>
-
-              <div class="form-group" style="margin-top:16px;">
-                <label style="display:flex; align-items:center; gap:6px; font-weight:700;">
-                  <i data-lucide="video" style="width:16px;height:16px;color:var(--primary);"></i> 
-                  رابط البث المباشر (Global Meeting Link)
-                </label>
-                <input type="url" id="settings-meeting-link" class="form-input" value="${state.user.meetingLink || ''}" placeholder="https://zoom.us/j/...">
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">هذا الرابط سيستخدم تلقائياً لجميع الحصص التي ليس لها رابط مخصص في المقرر.</small>
-              </div>
-
-              <button type="submit" class="btn-primary" style="margin-top:24px;">حفظ التغييرات / Save Changes</button>
+              <button type="submit" class="btn-primary" style="margin-top:24px; padding:12px 28px; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; gap:8px;">
+                <i data-lucide="check" style="width:16px;height:16px;"></i>
+                <span>حفظ التغييرات / Save Changes</span>
+              </button>
             </form>
             `}
           </div>
@@ -344,35 +360,34 @@ export default class SettingsView {
       }
     });
 
-    // 2. Random Cartoon Avatar Generator
-    document.getElementById("settings-random-avatar-btn")?.addEventListener("click", async () => {
-      const randomSeed = Math.random().toString(36).substring(2, 9);
-      const newAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${randomSeed}`;
+    // 2. Reset to Platform Logo Avatar
+    document.getElementById("settings-reset-avatar-btn")?.addEventListener("click", async () => {
+      const defaultLogoUrl = "assets/logo.png";
 
       try {
-        showToast("جاري تغيير الشخصية الكرتونية...", "info");
+        showToast("جاري استعادة الشعار الافتراضي للمنصة...", "info");
         const updatedUser = await apiFetch("/users/me", {
           method: "PATCH",
-          body: JSON.stringify({ avatar: newAvatarUrl })
+          body: JSON.stringify({ avatar: defaultLogoUrl })
         });
 
         if (updatedUser) {
           if (state.user) {
-            state.user.avatar = newAvatarUrl;
+            state.user.avatar = defaultLogoUrl;
             localStorage.setItem("user", JSON.stringify(state.user));
           }
           const img = document.getElementById("settings-avatar-img");
-          if (img) img.src = newAvatarUrl;
+          if (img) img.src = defaultLogoUrl;
 
-          document.querySelectorAll(".navbar-avatar, #user-menu-avatar, .user-avatar-img").forEach(el => {
-            el.src = newAvatarUrl;
+          document.querySelectorAll(".navbar-avatar, #user-menu-avatar, .user-avatar-img, .user-avatar, .sidebar-avatar-img").forEach(el => {
+            el.src = defaultLogoUrl;
           });
 
-          showToast("تم اختيار شخصية جديدة وتحديث صورتك بنجاح! 🎨", "success");
+          showToast("تم اعتماد شعار المنصة كصورتك الشخصية بنجاح! 🛡️", "success");
         }
       } catch (err) {
-        console.error("Random avatar error:", err);
-        showToast("فشل تحديث الشخصية الكرتونية", "error");
+        console.error("Reset avatar error:", err);
+        showToast("فشل استعادة الشعار الافتراضي", "error");
       }
     });
 
@@ -423,42 +438,40 @@ export default class SettingsView {
     if (state.user?.role !== "student") {
       document.getElementById("settings-profile-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const newName = document.getElementById("settings-name").value;
-        const meetingLinkInput = document.getElementById("settings-meeting-link");
-        const phoneCode = document.getElementById("settings-phone-code")?.value || "+20";
-        const phoneNum = document.getElementById("settings-phone-number")?.value.trim() || "";
-
-        const fullPhone = phoneNum ? `${phoneCode} ${phoneNum}`.trim() : "";
-
-        const payload = {
-          name: newName,
-          phone: fullPhone
-        };
-
-        const educationInput = document.getElementById("settings-education");
-        if (educationInput !== null) {
-          payload.education = educationInput.value.trim();
-        }
-
-        if (meetingLinkInput) {
-          payload.meetingLink = meetingLinkInput.value;
+        const newName = document.getElementById("settings-name")?.value.trim();
+        if (!newName) {
+          showToast("الاسم الكامل مطلوب.", "error");
+          return;
         }
 
         try {
           const updatedUser = await apiFetch(`/users/me`, {
             method: "PATCH",
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ name: newName })
           });
 
           if (updatedUser && updatedUser.id) {
-            state.user = updatedUser;
+            state.user = { ...state.user, ...updatedUser };
+            try {
+              localStorage.setItem("user", JSON.stringify(state.user));
+            } catch (_) {}
             showToast("تم حفظ إعدادات الملف الشخصي بنجاح! ✅", "success");
+            this.render();
           }
         } catch (err) {
           console.error(err);
+          showToast(err.message || "حدث خطأ أثناء حفظ التغييرات.", "error");
         }
       });
     }
+
+    // 4b. Phone change request modal trigger (all roles: student, parent, teacher, admin)
+    this.container.querySelectorAll(".request-phone-modal-trigger").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const phoneType = btn.getAttribute("data-phone-type") || "self";
+        this.openPhoneChangeModal(phoneType);
+      });
+    });
 
     document.getElementById("settings-language")?.addEventListener("change", (e) => {
       switchLanguage(e.target.value);
@@ -537,6 +550,139 @@ export default class SettingsView {
           submitBtn.innerHTML = `<i data-lucide="lock" style="width:16px;height:16px;"></i> <span>تحديث كلمة المرور</span>`;
           if (window.lucide) window.lucide.createIcons();
         }
+      }
+    });
+  }
+
+  openPhoneChangeModal(phoneType = "self") {
+    const isParentPhone = phoneType === "parent";
+    const currentPhone = isParentPhone ? (state.user.parentPhone || "غير مسجل") : (state.user.phone || "غير مسجل");
+    const label = isParentPhone ? "رقم هاتف ولي الأمر" : "رقم هاتفك المعتمد";
+    const waBase = state.platformSettings?.whatsappUrl || "https://wa.me/213555123456";
+
+    const modalId = "settings-phone-change-modal";
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const modalHtml = `
+      <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div class="glass-card" style="width:100%;max-width:480px;background:var(--bg-card);border-radius:24px;border:1.5px solid rgba(99,102,241,0.3);box-shadow:0 20px 50px rgba(0,0,0,0.4);padding:26px;box-sizing:border-box;">
+          
+          <!-- Modal Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:44px;height:44px;border-radius:14px;background:rgba(16,185,129,0.12);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                📱
+              </div>
+              <div>
+                <h3 style="margin:0 0 3px 0;font-size:1.15rem;font-weight:900;color:var(--text-main);">طلب تعديل رقم الهاتف</h3>
+                <p style="margin:0;font-size:0.8rem;color:var(--text-muted);">إرسال طلب رسمي للإدارة لمراجعة وتحديث ${label}</p>
+              </div>
+            </div>
+            <button type="button" id="close-phone-modal-btn" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;padding:4px;line-height:1;">&times;</button>
+          </div>
+
+          <!-- Current Phone Info -->
+          <div style="background:var(--bg-app);border:1px solid var(--border-color);border-radius:14px;padding:12px 16px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.82rem;font-weight:700;color:var(--text-muted);">الرقم الحالي المسجل:</span>
+            <span style="font-size:0.88rem;font-weight:900;color:var(--text-main);direction:ltr;">${currentPhone}</span>
+          </div>
+
+          <!-- Request Form -->
+          <form id="phone-change-request-form" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-group">
+              <label style="font-weight:800;font-size:0.85rem;margin-bottom:6px;display:flex;align-items:center;gap:6px;color:var(--text-main);">
+                <i data-lucide="smartphone" style="width:15px;height:15px;color:#10b981;"></i>
+                رقم الهاتف الجديد المطلوب اعتماده *
+              </label>
+              <input type="tel" id="request-new-phone-input" class="form-input" required placeholder="مثال: +213 555 123 456 أو 0555123456" style="direction:ltr;text-align:left;font-weight:700;padding:12px 14px;border-radius:12px;">
+              <small style="color:var(--text-muted);display:block;margin-top:4px;">يرجى كتابة رقم الهاتف مع رمز الدولة للتأكد من ربط الواتساب بدقة.</small>
+            </div>
+
+            <div class="form-group">
+              <label style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:flex;align-items:center;gap:6px;color:var(--text-main);">
+                <i data-lucide="message-square" style="width:15px;height:15px;color:var(--primary);"></i>
+                سبب التعديل أو ملاحظات للإدارة (اختياري)
+              </label>
+              <textarea id="request-phone-reason-input" class="form-input" rows="2" placeholder="مثال: قمت بتغيير شريحة الهاتف / الرقم القديم لم يعد يعمل..." style="font-size:0.85rem;border-radius:12px;resize:none;"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
+              <button type="submit" id="submit-phone-request-btn" class="btn-primary" style="flex:1;min-width:160px;padding:12px 18px;border-radius:14px;font-size:0.88rem;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#10b981,#059669);border:none;color:#fff;cursor:pointer;">
+                <i data-lucide="send" style="width:15px;height:15px;"></i>
+                <span>إرسال الطلب للإدارة 🚀</span>
+              </button>
+
+              <a id="phone-change-wa-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding:12px 16px;border-radius:14px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:#10b981;border-color:rgba(16,185,129,0.3);text-decoration:none;" title="محادثة الإدارة مباشرة على واتساب">
+                <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
+                <span>واتساب الإدارة</span>
+              </a>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    if (window.lucide) window.lucide.createIcons();
+
+    const modalEl = document.getElementById(modalId);
+    const closeBtn = document.getElementById("close-phone-modal-btn");
+    const form = document.getElementById("phone-change-request-form");
+    const waLink = document.getElementById("phone-change-wa-link");
+    const newPhoneInput = document.getElementById("request-new-phone-input");
+
+    const closeModal = () => modalEl?.remove();
+    closeBtn?.addEventListener("click", closeModal);
+    modalEl?.addEventListener("click", (e) => {
+      if (e.target === modalEl) closeModal();
+    });
+
+    // Update WhatsApp link live as user types
+    const updateWaLink = () => {
+      const p = newPhoneInput?.value.trim() || "";
+      const defaultMsg = `السلام عليكم إدارة منصة انطلق، أنا المستخدم (${state.user.name} - الدور: ${state.user.role}). أرجو اعتماد تعديل ${label} إلى الرقم الجديد: ${p || '[الرقم الجديد]'}. شكراً لكم.`;
+      if (waLink) {
+        waLink.href = `${waBase}?text=${encodeURIComponent(defaultMsg)}`;
+      }
+    };
+    newPhoneInput?.addEventListener("input", updateWaLink);
+    updateWaLink();
+
+    // Form submit
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newPhone = newPhoneInput?.value.trim();
+      const reason = document.getElementById("request-phone-reason-input")?.value.trim() || "";
+      const submitBtn = document.getElementById("submit-phone-request-btn");
+
+      if (!newPhone) {
+        showToast("يرجى إدخال رقم الهاتف الجديد.", "error");
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i data-lucide="loader" class="spinner" style="width:16px;height:16px;"></i> جاري الإرسال...`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      try {
+        const res = await apiFetch("/users/request-phone-change", {
+          method: "POST",
+          body: JSON.stringify({ newPhone, phoneType, reason })
+        });
+
+        closeModal();
+        showToast(res.message || "تم إرسال طلب تعديل رقم الهاتف إلى إدارة المنصة بنجاح! ✅", "success");
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="send" style="width:15px;height:15px;"></i> إرسال الطلب للإدارة 🚀`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+        showToast(err.message || "فشل إرسال الطلب، يرجى المحاولة لاحقاً.", "error");
       }
     });
   }

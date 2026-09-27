@@ -234,7 +234,7 @@ export default class RequestsView {
         <!-- Student Info -->
         <td style="padding:14px 20px; vertical-align:middle;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <img src="${req.student?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(req.student?.name || 'S')}`}" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
+            <img src="${(req.student?.avatar && !req.student.avatar.includes('dicebear.com')) ? req.student.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
             <div>
               <div style="font-weight:800; color:var(--text-main); font-size:0.95rem;">${req.student?.name || "طالب"}</div>
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">

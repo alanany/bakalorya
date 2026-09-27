@@ -12,6 +12,7 @@ import {
   buildEnrollmentAcceptedMessage, 
   buildRegistrationSuccessMessage 
 } from "../utils/whatsapp";
+import { NotificationController } from "./NotificationController";
 
 export class UserController {
   static async getTeachers(req: Request, res: Response) {
@@ -234,11 +235,12 @@ export class UserController {
       }
 
       if (name) user.name = name;
-      if (phone !== undefined) user.phone = phone;
-      if (req.body.parentPhone !== undefined) user.parentPhone = req.body.parentPhone;
-      if (education !== undefined) user.education = education;
+      // Phone numbers are locked and can only be directly updated by admin; others use requestPhoneChange
+      if (req.user?.role === "admin") {
+        if (phone !== undefined) user.phone = phone;
+        if (req.body.parentPhone !== undefined) user.parentPhone = req.body.parentPhone;
+      }
       if (location !== undefined) user.location = location;
-      if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (customCategories !== undefined) user.customCategories = customCategories;
       if (avatar !== undefined) user.avatar = avatar;
 
@@ -250,6 +252,49 @@ export class UserController {
     } catch (error) {
       console.error("Error updating profile:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // Request phone number change (sent to admin for review and approval)
+  static async requestPhoneChange(req: AuthRequest, res: Response) {
+    try {
+      const { newPhone, phoneType, reason } = req.body;
+      if (!newPhone || !newPhone.trim()) {
+        return res.status(400).json({ error: "رقم الهاتف الجديد مطلوب." });
+      }
+
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOneBy({ id: req.user!.id });
+      if (!user) {
+        return res.status(404).json({ error: "المستخدم غير موجود." });
+      }
+
+      const currentPhone = phoneType === "parent" ? (user.parentPhone || "غير مسجل") : (user.phone || "غير مسجل");
+      const targetLabel = phoneType === "parent" ? "هاتف ولي الأمر" : "هاتف الحساب";
+
+      // Find all admins
+      const admins = await userRepo.find({ where: { role: "admin" } });
+      const roleLabel = user.role === "student" ? "طالب" : user.role === "parent" ? "ولي أمر" : user.role === "teacher" ? "معلم" : user.role;
+      const title = `طلب تعديل ${targetLabel} 📱`;
+      const message = `قام (${user.name} - ${roleLabel}) بطلب تعديل ${targetLabel} من [${currentPhone}] إلى [${newPhone.trim()}]. ${reason ? 'السبب: ' + reason.trim() : ''}`;
+
+      for (const admin of admins) {
+        await NotificationController.createNotification(
+          admin.id,
+          title,
+          message,
+          "warning",
+          `#admin-dashboard`
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: "تم إرسال طلب تعديل رقم الهاتف إلى إدارة المنصة بنجاح. سيتم مراجعته واعتماده قريباً."
+      });
+    } catch (error) {
+      console.error("Error in requestPhoneChange:", error);
+      return res.status(500).json({ error: "فشل إرسال طلب تعديل رقم الهاتف." });
     }
   }
 
@@ -370,7 +415,7 @@ export class UserController {
           parentPhone: parentPhone || null,
           location: location || null,
           education: education || null,
-          avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
+          avatar: "assets/logo.png"
         });
         await userRepo.save(student);
       } else {

@@ -125,8 +125,8 @@ export class AdminController {
       return res.status(400).json({ error: "Missing required fields (name, email, password, role)." });
     }
 
-    if (!["student", "teacher", "admin"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role. Must be student, teacher, or admin." });
+    if (!["student", "teacher", "admin", "parent"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role. Must be student, teacher, admin, or parent." });
     }
 
     if (role === "student" && !parentPhone) {
@@ -154,7 +154,7 @@ export class AdminController {
         teacherCapabilities: role === "teacher"
           ? (Array.isArray(req.body.teacherCapabilities) ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
           : undefined,
-        avatar: req.body.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`
+        avatar: req.body.avatar || "assets/logo.png"
       });
 
       await userRepo.save(user);
@@ -178,7 +178,7 @@ export class AdminController {
   // PUT /admin/users/:id — Edit any user's profile, role, status or password
   static async updateUser(req: AuthRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, status, isBlocked, blockReason } = req.body;
+    const { name, email, role, password, phone, parentPhone, location, education, hourlyRate, meetingLink, status, isBlocked, blockReason } = req.body;
 
     try {
       const userRepo = AppDataSource.getRepository(User);
@@ -188,6 +188,7 @@ export class AdminController {
       if (name) user.name = name;
       if (phone !== undefined) user.phone = phone;
       if (parentPhone !== undefined) user.parentPhone = parentPhone;
+      if (location !== undefined) user.location = location;
       if (education !== undefined) user.education = education;
       if (meetingLink !== undefined) user.meetingLink = meetingLink;
       if (hourlyRate !== undefined) user.hourlyRate = parseFloat(hourlyRate) || 0;
@@ -200,7 +201,7 @@ export class AdminController {
         user.email = email;
       }
       if (role) {
-        if (!["student", "teacher", "admin"].includes(role)) {
+        if (!["student", "teacher", "admin", "parent"].includes(role)) {
           return res.status(400).json({ error: "Invalid role." });
         }
         if (req.user?.id === id && role !== "admin") {

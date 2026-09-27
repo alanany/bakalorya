@@ -383,7 +383,7 @@ export default class CourseLandingView {
               <div class="glass-card" style="padding: 24px; border-radius:20px;">
                 <h2 style="font-size:1.2rem; font-weight:800; color:var(--text-main); margin-bottom:16px;">المعلم المشرف 👨‍🏫</h2>
                 <div style="display:flex; gap:14px; align-items:center; margin-bottom:14px;">
-                  <img src="${activeTeacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(activeTeacher?.name || 'Teacher')}" style="width:54px; height:54px; border-radius:50%; border: 2px solid var(--primary); object-fit:cover;">
+                  <img src="${(activeTeacher?.avatar && !activeTeacher.avatar.includes('dicebear.com')) ? activeTeacher.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:54px; height:54px; border-radius:50%; border: 2px solid var(--primary); object-fit:cover;">
                   <div>
                     <div style="font-weight:900; font-size:1.05rem; color:var(--text-main);">${activeTeacher?.name || "معلم المادة"}</div>
                     <div style="font-size:0.82rem; color:var(--text-muted);">${activeTeacher?.headline || activeTeacher?.bio || this.course?.category || "معلم معتمد ومسؤول عن المجموعة"}</div>
@@ -543,7 +543,7 @@ export default class CourseLandingView {
             <div style="background:var(--bg-app); padding:16px; border-radius:16px; border:1px solid var(--border-color); margin-bottom:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <img src="${sub.teacher?.avatar || this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:44px; height:44px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
+                  <img src="${((sub.teacher?.avatar && !sub.teacher.avatar.includes('dicebear.com')) ? sub.teacher.avatar : ((this.course.teacher?.avatar && !this.course.teacher.avatar.includes('dicebear.com')) ? this.course.teacher.avatar : 'assets/logo.png'))}" onerror="this.src='assets/logo.png'" style="width:44px; height:44px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
                   <div>
                     <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">أ. ${teacherName}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">كورس: ${this.course.title}</div>
@@ -715,7 +715,7 @@ export default class CourseLandingView {
 
           <div style="padding:24px;">
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; background:var(--bg-app); padding:12px 14px; border-radius:14px; border:1px solid var(--border-color);">
-              <img src="${this.course.teacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:46px; height:46px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
+              <img src="${(this.course.teacher?.avatar && !this.course.teacher.avatar.includes('dicebear.com')) ? this.course.teacher.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:46px; height:46px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
               <div>
                 <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">${teacherName}</div>
                 <div style="font-size:0.78rem; color:var(--text-muted);">أستاذ ومحاضر المقرر</div>

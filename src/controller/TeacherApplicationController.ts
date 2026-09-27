@@ -116,7 +116,7 @@ export class TeacherApplicationController {
             phone: application.phone,
             education: application.education,
             location: application.location,
-            avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(application.name)}`
+            avatar: "assets/logo.png"
           });
           await userRepo.save(teacher);
         }

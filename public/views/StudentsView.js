@@ -246,7 +246,7 @@ export default class StudentsView {
         <!-- Student Info -->
         <td style="padding:14px 20px; vertical-align:middle;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <img src="${student.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(student.name)}`}" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
+            <img src="${(student.avatar && !student.avatar.includes('dicebear.com')) ? student.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:42px; height:42px; border-radius:50%; border:2px solid var(--primary); object-fit:cover; flex-shrink:0;">
             <div>
               <div style="font-weight:800; color:var(--text-main); font-size:0.95rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                 <span>${student.name}</span>

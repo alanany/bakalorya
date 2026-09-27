@@ -46,6 +46,7 @@ import ClassroomView from "./views/shared/ClassroomView.js";
 import GroupHubView from "./views/shared/GroupHubView.js";
 import { applyPageSEO } from "./seo.js";
 import { initGoogleAnalytics } from "./analytics.js";
+import ParentView from "./views/parent/ParentView.js";
 
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
@@ -488,7 +489,7 @@ export function showStudentSessionReportModal(session) {
   overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;';
 
   const teacherName = session.teacher?.name || 'المعلم';
-  const teacherAvatar = session.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+  const teacherAvatar = getUserAvatar(session.teacher?.avatar);
 
   const perfMap = {
     'Excellent': 'ممتاز 🌟',
@@ -655,7 +656,7 @@ export function renderCourseCard(course, { enrollmentStatus = null, isBanned = f
   const categoryTitle = course.category || "عام";
   const degreeText = course.degree || "عام / لجميع المراحل";
   const teacherName = course.teacher?.name || "المعلم الفاضل";
-  const teacherAvatar = course.teacher?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacherName)}`;
+  const teacherAvatar = getUserAvatar(course.teacher?.avatar);
   const isPaid = !course.isFree && course.price > 0;
   const priceLabel = isPaid ? `${course.price} ${course.currency || 'ج.م'}` : "مجاني 🎁";
   let actionButtonHTML = `<a href="#course-preview/${course.id}" class="course-price-pill" style="${isPaid ? 'background:linear-gradient(135deg,#a855f7,#6366f1);' : 'background:#10b981;'}">${priceLabel}</a>`;
@@ -980,11 +981,22 @@ function applyTheme(theme) {
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
+export function getUserAvatar(avatar) {
+  if (!avatar || typeof avatar !== 'string' || avatar.includes('dicebear.com')) {
+    return 'assets/logo.png';
+  }
+  return avatar;
+}
+window.getUserAvatar = getUserAvatar;
+
 async function checkAuth() {
   if (!state.token) return;
   try {
     const data = await apiFetch("/auth/me");
     if (data && data.user) {
+      if (!data.user.avatar || data.user.avatar.includes("dicebear.com")) {
+        data.user.avatar = "assets/logo.png";
+      }
       state.user = data.user;
     } else {
       clearAuth(true);
@@ -996,6 +1008,9 @@ async function checkAuth() {
 }
 
 export function setAuth(token, user) {
+  if (user && (!user.avatar || user.avatar.includes("dicebear.com"))) {
+    user.avatar = "assets/logo.png";
+  }
   state.token = token;
   state.user = user;
   localStorage.setItem("token", token);
@@ -1005,6 +1020,8 @@ export function setAuth(token, user) {
     window.location.hash = "#admin-dashboard";
   } else if (user.role === "teacher") {
     window.location.hash = "#teacher-portal";
+  } else if (user.role === "parent") {
+    window.location.hash = "#parent-dashboard";
   } else {
     window.location.hash = "#student-dashboard";
   }
@@ -1067,6 +1084,15 @@ export function updateHeader() {
           <i data-lucide="users"></i> ${t("nav.teacher.students") || "إدارة الطلاب"}
         </a>
       `;
+    } else if (state.user.role === "parent") {
+      navMenu.innerHTML = `
+        <a href="#parent-dashboard" class="nav-link active" style="color:var(--primary); font-weight:800; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="users"></i> متابعة الأبناء 👨‍👩‍👧
+        </a>
+        <a href="#courses" class="nav-link">
+          <i data-lucide="book-open"></i> استعراض المقررات
+        </a>
+      `;
     } else if (state.user.role === "admin") {
       navMenu.innerHTML = `
         <a href="#admin-dashboard" class="nav-link active" style="color:var(--primary); font-weight:800; display:flex; align-items:center; gap:6px;">
@@ -1083,7 +1109,7 @@ export function updateHeader() {
         </a>
 
         <div class="user-profile-trigger" style="display:flex; align-items:center; gap:6px;">
-          <img src="${state.user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=Entlq"}" alt="Avatar" class="user-avatar" style="width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0;">
+          <img src="${getUserAvatar(state.user.avatar)}" alt="Avatar" class="user-avatar" style="width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--bg-app); border:1px solid rgba(99,102,241,0.25);" onerror="this.src='assets/logo.png'">
           <span class="user-profile-name" style="font-weight:700; font-size:0.88rem;">${state.user.name}</span>
           <button class="logout-btn" id="logout-button" title="${t("nav.logout") || 'تسجيل الخروج'}">
             <i data-lucide="log-out" style="width:15px; height:15px;"></i>
@@ -1198,6 +1224,13 @@ export function updateHeader() {
           ${createNavItem("#teacher-financial", "wallet", "المحفظة والأرباح")}
           ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
         `;
+      } else if (state.user.role === "parent") {
+        links += `
+          ${createNavSection("بوابة ولي الأمر 👨‍👩‍👧")}
+          ${createNavItem("#parent-dashboard", "users", "لوحة تحكم الأبناء")}
+          ${createNavItem("#courses", "book-open", "المقررات والمناهج")}
+          ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
+        `;
       } else {
         // Student role
         links += `
@@ -1223,13 +1256,15 @@ export function updateHeader() {
         ? "🛡️ مشرف الإدارة"
         : state.user.role === "teacher"
           ? "👨‍🏫 أستاذ معتمد"
-          : "👨‍🎓 طالب متميز";
+          : state.user.role === "parent"
+            ? "👨‍👩‍👧 ولي أمر"
+            : "👨‍🎓 طالب متميز";
 
       links += `
         <div class="sidebar-user-card">
           <div class="sidebar-user-header">
             <div class="sidebar-avatar-container">
-              <img src="${state.user.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + encodeURIComponent(state.user.name)}" alt="${state.user.name}" class="sidebar-avatar-img">
+              <img src="${getUserAvatar(state.user.avatar)}" alt="${state.user.name}" class="sidebar-avatar-img" onerror="this.src='assets/logo.png'">
               <span class="sidebar-avatar-status" title="متصل الآن"></span>
             </div>
             <div class="sidebar-user-meta">
@@ -1259,6 +1294,9 @@ export function updateHeader() {
           </a>
           <a href="#login" class="sidebar-nav-item" style="justify-content:center; text-decoration:none; display:flex; align-items:center; gap:8px; background:rgba(99,102,241,0.08); color:var(--primary); border:1px solid rgba(99,102,241,0.2); border-radius:12px; font-weight:800; padding:11px 16px;">
             <i data-lucide="log-in" style="width:17px; height:17px;"></i> ${t("nav.login") || "تسجيل دخول الطلاب"}
+          </a>
+          <a href="#parent-login" class="sidebar-nav-item" style="justify-content:center; color:#8b5cf6; font-size:0.85rem; font-weight:800; text-decoration:none; display:flex; align-items:center; gap:6px; padding:9px 12px; border-radius:10px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.22); margin-top:2px;">
+            <i data-lucide="users" style="width:15px;height:15px;color:#8b5cf6;"></i> بوابة أولياء الأمور 👨‍👩‍👧
           </a>
           <a href="#staff-login" class="sidebar-nav-item" style="justify-content:center; color:var(--text-muted); font-size:0.83rem; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px; background:var(--bg-app); border:1px dashed var(--border-color); margin-top:2px;">
             <i data-lucide="shield-check" style="width:15px;height:15px;color:var(--primary);"></i> بوابة المعلمين والإدارة
@@ -1961,6 +1999,15 @@ export async function router() {
     return router();
   }
 
+  if (routeBase === "#student-dashboard" && state.user && state.user.role === "parent") {
+    window.location.hash = "#parent-dashboard";
+    return router();
+  }
+  if (routeBase === "#parent-dashboard" && (!state.user || state.user.role !== "parent")) {
+    showToast(t("error.accessRestricted") || "الوصول مقيد لأولياء الأمور فقط.", "error");
+    window.location.hash = "#landing";
+    return router();
+  }
   if ((routeBase === "#student-dashboard" || routeBase === "#group" || routeBase === "#group-hub") && !state.user) {
     showToast(t("error.loginRequired") || "الرجاء تسجيل الدخول أولاً.", "error");
     window.location.hash = "#landing";
@@ -1979,7 +2026,7 @@ export async function router() {
 
   // Handle in-page anchor navigation (e.g. #teacher-groups-section) without resetting active view
   const definedRoutes = new Set([
-    "", "#", "#landing", "#login", "#signup", "#staff-login", "#teacher-login", "#admin-login",
+    "", "#", "#landing", "#login", "#signup", "#parent-login", "#staff-login", "#teacher-login", "#admin-login",
     "#auth", "#student-dashboard", "#student-subscriptions", "#student-groups",
     "#student-private-sessions", "#subscription-sessions", "#course", "#teacher-portal",
     "#teacher-financial", "#teacher-private-sessions", "#teacher-groups", "#teacher-assignments",
@@ -1988,7 +2035,7 @@ export async function router() {
     "#courses", "#manage-course", "#course-preview", "#course-details", "#schedule",
     "#assignments", "#resources", "#tests", "#students", "#settings", "#notifications",
     "#search", "#about", "#contact", "#faq", "#subscription-plans", "#subject-groups",
-    "#course-groups", "#subject"
+    "#course-groups", "#subject", "#parent-dashboard"
   ]);
 
   if (routeBase && routeBase.startsWith("#") && !definedRoutes.has(routeBase)) {
@@ -2012,6 +2059,7 @@ export async function router() {
     case "#landing": ViewClass = LandingView; break;
     case "#login":
     case "#signup":
+    case "#parent-login":
     case "#staff-login":
     case "#teacher-login":
     case "#admin-login":
@@ -2054,6 +2102,7 @@ export async function router() {
     case "#group":
     case "#group-hub": ViewClass = GroupHubView; break;
     case "#admin-dashboard": ViewClass = AdminView; break;
+    case "#parent-dashboard": ViewClass = ParentView; break;
     case "#courses": ViewClass = CoursesView; break;
     case "#manage-course": ViewClass = CourseManageView; break;
     case "#course-preview":

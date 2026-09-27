@@ -78,7 +78,7 @@ export default class SubscriptionPlansView {
         ${matchedCourse ? `
           <div class="glass-card" style="margin-bottom:28px; padding:20px 24px; border-radius:18px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.08)); border:1.5px solid rgba(16,185,129,0.3); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
             <div style="display:flex; align-items:center; gap:14px;">
-              <img src="${matchedTeacher?.avatar || 'https://api.dicebear.com/7.x/adventurer/svg?seed=Teacher'}" style="width:52px; height:52px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
+              <img src="${(matchedTeacher?.avatar && !matchedTeacher.avatar.includes('dicebear.com')) ? matchedTeacher.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:52px; height:52px; border-radius:50%; border:2px solid #10b981; object-fit:cover;">
               <div>
                 <div style="font-size:0.78rem; font-weight:800; color:#10b981; text-transform:uppercase;">🎯 باقات الحصص الخاصة لكورس</div>
                 <div style="font-weight:900; font-size:1.15rem; color:var(--text-main); margin-top:2px;">${matchedCourse.title}</div>
