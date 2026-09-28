@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { AppDataSource } from "../data-source";
 import { TeacherEarning } from "../entity/TeacherEarning";
 import { Payment } from "../entity/Payment";
+import { AuditLog } from "../entity/AuditLog";
+import { User } from "../entity/User";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 
@@ -124,6 +128,127 @@ export class TeacherEarningController {
       });
     } catch (err: any) {
       console.error("markAsPaid error:", err);
+      return res.status(500).json({ error: err.message || "Internal server error." });
+    }
+  }
+
+  // Admin: revert teacher payout status & remove receipt
+  static async revertPayout(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const earningRepository = AppDataSource.getRepository(TeacherEarning);
+      const earning = await earningRepository.findOne({
+        where: { id },
+        relations: ["teacher"]
+      });
+
+      if (!earning) {
+        return res.status(404).json({ error: "سجل المستحقات غير موجود." });
+      }
+
+      // Delete physical receipt file from disk if present
+      if (earning.receiptUrl && earning.receiptUrl.includes("/uploads/")) {
+        try {
+          const filename = path.basename(earning.receiptUrl);
+          const filepath = path.join(process.cwd(), "public", "uploads", filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+          }
+        } catch (fErr) {
+          console.error("Failed to delete receipt file from disk:", fErr);
+        }
+      }
+
+      const prevAmount = earning.amount;
+      const teacherName = earning.teacher?.name || "معلم";
+
+      // Revert status to pending and clear receipt info
+      earning.status = "pending";
+      earning.receiptUrl = (null as any);
+      earning.paidAt = (null as any);
+      earning.transactionRef = (null as any);
+      earning.notes = (null as any);
+      earning.paymentMethod = "manual";
+
+      await earningRepository.save(earning);
+
+      // Log audit
+      try {
+        const auditRepo = AppDataSource.getRepository(AuditLog);
+        const audit = new AuditLog();
+        audit.actor = { id: req.user!.id } as User;
+        audit.action = "TEACHER_PAYOUT_REVERTED";
+        audit.entityType = "TeacherEarning";
+        audit.entityId = id;
+        audit.metadata = JSON.stringify({
+          teacherName,
+          amount: prevAmount
+        });
+        await auditRepo.save(audit);
+      } catch (aErr) {}
+
+      return res.status(200).json({
+        message: "تم حذف الإيصال والتراجع عن السداد بنجاح! أصبحت المستحقات معلقة مجدداً ويمكنك إعادة تسديدها.",
+        earning
+      });
+    } catch (err: any) {
+      console.error("revertPayout error:", err);
+      return res.status(500).json({ error: err.message || "Internal server error." });
+    }
+  }
+
+  // Admin: delete teacher earning record
+  static async deleteEarning(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const earningRepository = AppDataSource.getRepository(TeacherEarning);
+      const earning = await earningRepository.findOne({
+        where: { id },
+        relations: ["teacher"]
+      });
+
+      if (!earning) {
+        return res.status(404).json({ error: "سجل المستحقات غير موجود." });
+      }
+
+      // Delete physical receipt file from disk if present
+      if (earning.receiptUrl && earning.receiptUrl.includes("/uploads/")) {
+        try {
+          const filename = path.basename(earning.receiptUrl);
+          const filepath = path.join(process.cwd(), "public", "uploads", filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+          }
+        } catch (fErr) {
+          console.error("Failed to delete receipt file from disk:", fErr);
+        }
+      }
+
+      const prevAmount = earning.amount;
+      const teacherName = earning.teacher?.name || "معلم";
+
+      await earningRepository.remove(earning);
+
+      // Log audit
+      try {
+        const auditRepo = AppDataSource.getRepository(AuditLog);
+        const audit = new AuditLog();
+        audit.actor = { id: req.user!.id } as User;
+        audit.action = "TEACHER_EARNING_DELETED";
+        audit.entityType = "TeacherEarning";
+        audit.entityId = id;
+        audit.metadata = JSON.stringify({
+          teacherName,
+          amount: prevAmount
+        });
+        await auditRepo.save(audit);
+      } catch (aErr) {}
+
+      return res.status(200).json({
+        message: "تم حذف سجل المستحقات بنجاح."
+      });
+    } catch (err: any) {
+      console.error("deleteEarning error:", err);
       return res.status(500).json({ error: err.message || "Internal server error." });
     }
   }

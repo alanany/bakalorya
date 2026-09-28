@@ -135,7 +135,7 @@ export const AdminSubscriptionsPage = {
         ${nextSessionBadgeHtml}
       </td>
       <td style="padding:12px;">
-        <div style="font-weight:700; font-size:0.88rem;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</div>
+        <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">${(typeof s.teacher === 'string' ? s.teacher : s.teacher?.name) || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</div>
         ${s.isGroup && s.group?.name ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">المجموعة: ${s.group.name}</div>` : ''}
       </td>
       <td style="padding:12px;">
@@ -293,8 +293,21 @@ export const AdminSubscriptionsPage = {
       const nextSession = upcomingSessions[0] || null;
       const nextSessionTime = nextSession ? new Date(nextSession.scheduledAt).getTime() : null;
 
+      let subTeacher = s.teacher;
+      if (!subTeacher || !subTeacher.name) {
+        const tId = s.teacherId || subTeacher?.id;
+        if (tId) {
+          subTeacher = (this.allMembers || []).find(m => String(m.id) === String(tId)) || subTeacher;
+        }
+        if (!subTeacher || !subTeacher.name) {
+          const sessTeacher = subSessions.find(sess => sess.teacher && sess.teacher.name)?.teacher;
+          if (sessTeacher) subTeacher = sessTeacher;
+        }
+      }
+
       return {
         ...s,
+        teacher: subTeacher,
         isGroup: false,
         totalSessions,
         completedSessions,
@@ -345,14 +358,52 @@ export const AdminSubscriptionsPage = {
 
       const normStatus = e.status === 'active' ? 'ACTIVE' : (e.status === 'rejected' ? 'CANCELLED' : 'PENDING_PAYMENT');
 
+      const groupId = e.group?.id || e.groupId;
+      const fullGroup = (this.allCourseGroups || this.allGroups || []).find(g => 
+        String(g.id) === String(groupId)
+      ) || e.group || {};
+
+      const courseId = e.course?.id || fullGroup?.course?.id || e.courseId;
+      const fullCourse = (this.courses || []).find(c => 
+        String(c.id) === String(courseId)
+      ) || e.course || fullGroup?.course || {};
+
+      // 1. Direct teacher from group or course
+      let rawTeacher = e.group?.teacher 
+        || fullGroup?.teacher 
+        || e.course?.teacher 
+        || fullCourse?.teacher 
+        || fullGroup?.course?.teacher 
+        || null;
+
+      // 2. If group has sessions with teacher assigned
+      if (!rawTeacher || !rawTeacher.name) {
+        const sessWithTeacher = groupSessions.find(s => s.teacher && s.teacher.name);
+        if (sessWithTeacher) rawTeacher = sessWithTeacher.teacher;
+      }
+
+      // 3. Fallback: if teacher was an ID or found in allMembers
+      let assignedTeacher = null;
+      if (rawTeacher && typeof rawTeacher === 'object' && rawTeacher.name) {
+        assignedTeacher = rawTeacher;
+      } else {
+        const tId = (typeof rawTeacher === 'string' ? rawTeacher : null) 
+          || rawTeacher?.id 
+          || fullGroup?.teacherId 
+          || fullCourse?.teacherId;
+        if (tId) {
+          assignedTeacher = (this.allMembers || []).find(m => String(m.id) === String(tId)) || null;
+        }
+      }
+
       return {
         id: e.id,
         isGroup: true,
-        group: e.group,
-        course: e.course || e.group.course,
+        group: fullGroup || e.group,
+        course: e.course || fullGroup?.course || e.group?.course,
         student: e.student,
         studentId: e.student?.id,
-        teacher: e.group.teacher || e.course?.teacher,
+        teacher: assignedTeacher,
         plan: {
           name: `مجموعة: ${e.group.name}`,
           price: price,
@@ -464,7 +515,7 @@ export const AdminSubscriptionsPage = {
       const isLowBalanceAny = group.subs.some(item => item.isLowBalance);
       const pendingCountGroup = group.subs.filter(item => item.status === 'PENDING_PAYMENT').length;
       const activeCountGroup = group.subs.filter(item => item.status === 'ACTIVE').length;
-      const teachersList = [...new Set(group.subs.map(item => item.teacher?.name).filter(Boolean))].join('، ') || 'في الانتظار';
+      const teachersList = [...new Set(group.subs.map(item => (typeof item.teacher === 'string' ? item.teacher : item.teacher?.name)).filter(Boolean))].join('، ') || 'في الانتظار';
       const isExpanded = this.expandedStudents ? this.expandedStudents.has(group.studentId) : false;
 
       // Group nearest upcoming session badge

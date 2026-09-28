@@ -575,6 +575,7 @@ export default class AdminView {
       this.enrollments = enrollments || [];
       this.pendingCourseGroups = pendingGroups || [];
       this.allCourseGroups = allGroups || [];
+      this.allGroups = allGroups || [];
       this.allBlogs = blogs || [];
       this.allParents = parents || [];
       if (settings) {
@@ -1148,6 +1149,22 @@ export default class AdminView {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
         this.renderPayTeacherEarningModal(id);
+      });
+    });
+
+    // Admin Delete Teacher Payout Receipt / Revert
+    this.container.querySelectorAll(".admin-delete-earning-receipt-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.handleRevertTeacherPayout(id);
+      });
+    });
+
+    // Admin Delete Teacher Earning
+    this.container.querySelectorAll(".admin-delete-earning-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.handleDeleteTeacherEarning(id);
       });
     });
 

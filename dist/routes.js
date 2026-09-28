@@ -193,6 +193,8 @@ router.patch("/admin/subscriptions/:id/renew", auth_1.authMiddleware, (0, auth_1
 router.patch("/subscriptions/:id/cancel", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.cancelSubscription);
 router.delete("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.markAsPaid);
+router.delete("/admin/teacher-earnings/:id/receipt", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.revertPayout);
+router.delete("/admin/teacher-earnings/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.deleteEarning);
 // Teacher Availability (Session Teacher capability enforced)
 router.get("/teachers/:id/availability", TeacherAvailabilityController_1.TeacherAvailabilityController.getByTeacher);
 router.post("/teacher/availability", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), TeacherAvailabilityController_1.TeacherAvailabilityController.setAvailability);

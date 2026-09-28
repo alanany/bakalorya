@@ -205,6 +205,8 @@ router.patch("/admin/subscriptions/:id/renew", authMiddleware, requireRole(["adm
 router.patch("/subscriptions/:id/cancel", authMiddleware, SubscriptionController.cancelSubscription);
 router.delete("/subscription-plans/:id", authMiddleware, requireRole(["admin"]), SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", authMiddleware, requireRole(["admin"]), TeacherEarningController.markAsPaid);
+router.delete("/admin/teacher-earnings/:id/receipt", authMiddleware, requireRole(["admin"]), TeacherEarningController.revertPayout);
+router.delete("/admin/teacher-earnings/:id", authMiddleware, requireRole(["admin"]), TeacherEarningController.deleteEarning);
 
 // Teacher Availability (Session Teacher capability enforced)
 router.get("/teachers/:id/availability", TeacherAvailabilityController.getByTeacher);

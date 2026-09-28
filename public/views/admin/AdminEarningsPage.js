@@ -176,19 +176,33 @@ export const AdminEarningsPage = {
                   </td>
                   <td style="padding:12px; text-align:center;">
                     ${ear.status === 'pending' ? `
-                      <button class="btn-primary admin-pay-earning-btn" data-id="${ear.id}" style="padding:6px 14px; font-size:0.78rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
-                        <i data-lucide="send" style="width:14px; height:14px;"></i>
-                        تسديد المبلغ
-                      </button>
+                      <div style="display:inline-flex; align-items:center; gap:6px;">
+                        <button class="btn-primary admin-pay-earning-btn" data-id="${ear.id}" style="padding:6px 14px; font-size:0.78rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                          <i data-lucide="send" style="width:14px; height:14px;"></i>
+                          تسديد المبلغ
+                        </button>
+                        <button class="btn-secondary admin-delete-earning-btn" data-id="${ear.id}" style="padding:6px 8px; font-size:0.78rem; font-weight:700; color:#ef4444; border-color:rgba(239,68,68,0.3); border-radius:8px; display:inline-flex; align-items:center;" title="حذف سجل المستحق نهائياً">
+                          <i data-lucide="trash-2" style="width:13px; height:13px;"></i>
+                        </button>
+                      </div>
                     ` : `
                       <div style="display:inline-flex; flex-direction:column; align-items:center; gap:4px;">
                         <span style="color:#10b981; font-weight:700; font-size:0.8rem;">تم السداد ✅</span>
-                        ${ear.receiptUrl ? `
-                          <a href="${ear.receiptUrl}" target="_blank" class="btn-secondary" style="padding:3px 8px; font-size:0.72rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary); border-radius:6px;" title="عرض إيصال التحويل المرفوع">
-                            <i data-lucide="receipt" style="width:12px; height:12px;"></i>
-                            عرض الإيصال 📄
-                          </a>
-                        ` : ''}
+                        <div style="display:inline-flex; gap:4px; align-items:center;">
+                          ${ear.receiptUrl ? `
+                            <a href="${ear.receiptUrl}" target="_blank" class="btn-secondary" style="padding:4px 8px; font-size:0.72rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px; color:var(--primary); border-color:var(--primary); border-radius:6px;" title="عرض إيصال التحويل المرفوع">
+                              <i data-lucide="receipt" style="width:12px; height:12px;"></i>
+                              الإيصال 📄
+                            </a>
+                            <button class="btn-secondary admin-delete-earning-receipt-btn" data-id="${ear.id}" style="padding:4px 8px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:rgba(239,68,68,0.3); border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="حذف إيصال التحويل والتراجع عن السداد لإعادة رفعه">
+                              <i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i>
+                              حذف الإيصال 🗑️
+                            </button>
+                          ` : ''}
+                          <button class="btn-secondary admin-delete-earning-btn" data-id="${ear.id}" style="padding:4px 6px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:rgba(239,68,68,0.3); border-radius:6px; display:inline-flex; align-items:center;" title="حذف سجل المستحق نهائياً">
+                            <i data-lucide="trash-2" style="width:12px; height:12px;"></i>
+                          </button>
+                        </div>
                       </div>
                     `}
                   </td>
@@ -458,6 +472,60 @@ export const AdminEarningsPage = {
       }
     } catch (err) {
       showToast(err.message || "فشل حذف الفاتورة", "error");
+    }
+  },
+
+  async handleRevertTeacherPayout(earningId) {
+    if (!earningId) return;
+    const confirmed = await confirmDialog({
+      title: "تأكيد حذف الإيصال والتراجع عن السداد ⚠️",
+      message: "هل أنت متأكد من حذف إيصال التحويل والتراجع عن تسديد هذا المستحق؟ سيعود المستحق لحالة 'معلقة ⏳' لتتمكن من إعادة التسديد ورفع الإيصال الصحيح.",
+      danger: true,
+      confirmText: "نعم، احذف الإيصال وتراجع",
+      cancelText: "إلغاء"
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await apiFetch(`/admin/teacher-earnings/${earningId}/receipt`, {
+        method: "DELETE"
+      });
+      showToast(res.message || "تم حذف الإيصال والتراجع عن السداد بنجاح", "success");
+      if (typeof this.loadAllData === "function") {
+        await this.loadAllData();
+      }
+      if (typeof this.renderTab === "function") {
+        this.renderTab("earnings");
+      }
+    } catch (err) {
+      showToast(err.message || "تعذر حذف الإيصال والتراجع عن السداد", "error");
+    }
+  },
+
+  async handleDeleteTeacherEarning(earningId) {
+    if (!earningId) return;
+    const confirmed = await confirmDialog({
+      title: "تأكيد حذف سجل المستحقات ⚠️",
+      message: "هل أنت متأكد من حذف هذا السجل المالي نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
+      danger: true,
+      confirmText: "نعم، حذف السجل",
+      cancelText: "إلغاء"
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await apiFetch(`/admin/teacher-earnings/${earningId}`, {
+        method: "DELETE"
+      });
+      showToast(res.message || "تم حذف سجل المستحقات بنجاح", "success");
+      if (typeof this.loadAllData === "function") {
+        await this.loadAllData();
+      }
+      if (typeof this.renderTab === "function") {
+        this.renderTab("earnings");
+      }
+    } catch (err) {
+      showToast(err.message || "تعذر حذف سجل المستحقات", "error");
     }
   },
 
