@@ -533,7 +533,8 @@ export default class AdminView {
     el("admin-badge-groups", (this.allSessions || []).filter(isGroupCheck).length);
     el("admin-badge-categories", (this.categories || []).length);
     el("admin-badge-applications", pendingApps.length);
-    el("admin-badge-subscriptions", (this.subscriptions || []).length);
+    const groupSubsCount = (this.enrollments || []).filter(e => e.group).length;
+    el("admin-badge-subscriptions", (this.subscriptions || []).length + groupSubsCount);
     el("admin-badge-plans", (this.allPlans || []).length);
     const pendingBlogs = (this.allBlogs || []).filter(b => b.status === "PENDING");
     el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
@@ -996,9 +997,65 @@ export default class AdminView {
       });
     });
 
-    // Admin Open Manual Subscription Modal
+    // Admin Open Manual Subscription Modal (Private 1-on-1)
     this.container.querySelector("#admin-open-manual-sub-modal-btn")?.addEventListener("click", () => {
       this.renderManualSubscriptionModal();
+    });
+
+    // Admin Open Quick Group Enroll Modal
+    this.container.querySelector("#admin-open-group-enroll-modal-btn")?.addEventListener("click", () => {
+      this.renderQuickGroupEnrollModal();
+    });
+
+    // Search inside Subscriptions Tab
+    this.container.querySelector("#admin-sub-search-input")?.addEventListener("input", (e) => {
+      this.subSearchQuery = e.target.value;
+      const q = (this.subSearchQuery || "").toLowerCase().trim();
+      this.container.querySelectorAll(".table tbody tr").forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = (!q || text.includes(q)) ? "" : "none";
+      });
+    });
+
+    // Group Subscriptions Actions in Subscriptions Tab
+    this.container.querySelectorAll(".admin-view-group-students-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const groupId = btn.getAttribute("data-group-id");
+        if (groupId) this.renderGroupStudentsModal(groupId);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-approve-group-enrollment-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id) this.renderApproveEnrollmentModal(id);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-remove-group-student-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const groupId = btn.getAttribute("data-group-id");
+        const studentId = btn.getAttribute("data-student-id");
+        if (!groupId || !studentId) return;
+
+        const confirmed = await confirmDialog({
+          title: "إلغاء اشتراك وإزالة الطالب من المجموعة",
+          message: "هل أنت متأكد من إزالة هذا الطالب من المجموعة الدراسية؟ سيتم حذف التسجيل وإيصال الدفع المرتبط به."
+        });
+        if (!confirmed) return;
+
+        try {
+          const res = await apiFetch(`/admin/groups/${groupId}/remove-student`, {
+            method: "POST",
+            body: JSON.stringify({ studentId })
+          });
+          showToast(res.message || "تمت إزالة الطالب وإلغاء الاشتراك بنجاح", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل إزالة الطالب من المجموعة", "error");
+        }
+      });
     });
 
     // Admin Renew Subscription
@@ -1131,6 +1188,14 @@ export default class AdminView {
       btn.addEventListener("click", () => {
         const paymentId = btn.getAttribute("data-id");
         this.renderPaymentDetailsModal(paymentId);
+      });
+    });
+
+    // Admin Delete Payment
+    this.container.querySelectorAll(".admin-delete-payment-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const paymentId = btn.getAttribute("data-id");
+        this.handleDeletePayment(paymentId);
       });
     });
 

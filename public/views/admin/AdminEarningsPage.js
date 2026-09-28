@@ -284,6 +284,9 @@ export const AdminEarningsPage = {
                   <i data-lucide="file-text" style="width:14px; height:14px;"></i> الإيصال
                 </a>
               ` : ''}
+              <button class="btn-secondary admin-delete-payment-btn" data-id="${p.id}" style="padding:5px 10px; font-size:0.75rem; font-weight:600; color:#ef4444; border-color:rgba(239,68,68,0.3); display:inline-flex; align-items:center; gap:4px;" title="حذف الفاتورة">
+                <i data-lucide="trash-2" style="width:14px; height:14px;"></i> حذف
+              </button>
             </div>
           </td>
         </tr>
@@ -409,8 +412,11 @@ export const AdminEarningsPage = {
               </div>
             ` : ''}
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="close-payment-details-btn" style="width:100%;">إغلاق النافذة</button>
+          <div class="modal-footer" style="display:flex; gap:10px; justify-content:space-between; align-items:center;">
+            <button type="button" class="btn-secondary admin-delete-payment-modal-btn" data-id="${p.id}" style="color:#ef4444; border-color:rgba(239,68,68,0.3); display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+              <i data-lucide="trash-2" style="width:15px; height:15px;"></i> حذف هذه الفاتورة
+            </button>
+            <button type="button" class="btn-secondary" id="close-payment-details-btn" style="flex:1;">إغلاق النافذة</button>
           </div>
         </div>
       </div>
@@ -421,6 +427,38 @@ export const AdminEarningsPage = {
     const closeModal = () => { container.innerHTML = ""; };
     document.getElementById("close-payment-details-modal")?.addEventListener("click", closeModal);
     document.getElementById("close-payment-details-btn")?.addEventListener("click", closeModal);
+    container.querySelector(".admin-delete-payment-modal-btn")?.addEventListener("click", () => {
+      this.handleDeletePayment(paymentId);
+    });
+  },
+
+  async handleDeletePayment(paymentId) {
+    if (!paymentId) return;
+    const confirmed = await confirmDialog({
+      title: "تأكيد حذف الفاتورة ⚠️",
+      message: "هل أنت متأكد من حذف هذه الفاتورة وسجل الدفع نهائياً؟ سيتم إلغاء ربط الفاتورة وحذف إيصال السداد إن وجد. لا يمكن التراجع عن هذا الإجراء.",
+      danger: true,
+      confirmText: "نعم، حذف الفاتورة",
+      cancelText: "إلغاء"
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await apiFetch(`/admin/payments/${paymentId}`, {
+        method: "DELETE"
+      });
+      showToast(res.message || "تم حذف الفاتورة بنجاح", "success");
+      const container = document.getElementById("admin-modal-container");
+      if (container) container.innerHTML = "";
+      if (typeof this.loadAllData === "function") {
+        await this.loadAllData();
+      }
+      if (typeof this.renderTab === "function") {
+        this.renderTab("earnings");
+      }
+    } catch (err) {
+      showToast(err.message || "فشل حذف الفاتورة", "error");
+    }
   },
 
   renderPayTeacherEarningModal(earningId) {

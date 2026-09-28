@@ -10,26 +10,42 @@ export const AdminSubscriptionsPage = {
     let statusBadgeColor = '#10b981';
     let statusText = s.status;
 
-    if (s.status === 'PENDING_PAYMENT') {
-      statusBadgeBg = 'rgba(245,158,11,0.15)';
-      statusBadgeColor = '#f59e0b';
-      statusText = '1️⃣ في انتظار تأكيد الدفع ورفع الإيصال ⏳';
-    } else if (s.status === 'TEACHER_ASSIGNMENT_PENDING') {
-      statusBadgeBg = 'rgba(59,130,246,0.15)';
-      statusBadgeColor = '#3b82f6';
-      statusText = '2️⃣ تم الدفع - في انتظار تعيين المعلم ⏳';
-    } else if (s.status === 'SCHEDULE_PENDING') {
-      statusBadgeBg = 'rgba(139,92,246,0.15)';
-      statusBadgeColor = '#8b5cf6';
-      statusText = '3️⃣ تم تعيين المعلم - في انتظار جدولة الباقة 🗓️';
-    } else if (s.status === 'ACTIVE') {
-      statusBadgeBg = 'rgba(16,185,129,0.15)';
-      statusBadgeColor = '#10b981';
-      statusText = 'نشط ✅';
-    } else if (s.status === 'CANCELLED') {
-      statusBadgeBg = 'rgba(239,68,68,0.15)';
-      statusBadgeColor = '#ef4444';
-      statusText = 'ملغى ❌';
+    if (s.isGroup) {
+      if (s.status === 'PENDING_PAYMENT') {
+        statusBadgeBg = 'rgba(245,158,11,0.15)';
+        statusBadgeColor = '#f59e0b';
+        statusText = 'في انتظار اعتماد الدفع ⏳';
+      } else if (s.status === 'ACTIVE') {
+        statusBadgeBg = 'rgba(16,185,129,0.15)';
+        statusBadgeColor = '#10b981';
+        statusText = 'نشط بالمجموعة ✅';
+      } else if (s.status === 'CANCELLED') {
+        statusBadgeBg = 'rgba(239,68,68,0.15)';
+        statusBadgeColor = '#ef4444';
+        statusText = 'ملغى من المجموعة ❌';
+      }
+    } else {
+      if (s.status === 'PENDING_PAYMENT') {
+        statusBadgeBg = 'rgba(245,158,11,0.15)';
+        statusBadgeColor = '#f59e0b';
+        statusText = '1️⃣ في انتظار تأكيد الدفع ورفع الإيصال ⏳';
+      } else if (s.status === 'TEACHER_ASSIGNMENT_PENDING') {
+        statusBadgeBg = 'rgba(59,130,246,0.15)';
+        statusBadgeColor = '#3b82f6';
+        statusText = '2️⃣ تم الدفع - في انتظار تعيين المعلم ⏳';
+      } else if (s.status === 'SCHEDULE_PENDING') {
+        statusBadgeBg = 'rgba(139,92,246,0.15)';
+        statusBadgeColor = '#8b5cf6';
+        statusText = '3️⃣ تم تعيين المعلم - في انتظار جدولة الباقة 🗓️';
+      } else if (s.status === 'ACTIVE') {
+        statusBadgeBg = 'rgba(16,185,129,0.15)';
+        statusBadgeColor = '#10b981';
+        statusText = 'نشط ✅';
+      } else if (s.status === 'CANCELLED') {
+        statusBadgeBg = 'rgba(239,68,68,0.15)';
+        statusBadgeColor = '#ef4444';
+        statusText = 'ملغى ❌';
+      }
     }
 
     const rowBg = s.isLowBalance
@@ -87,29 +103,55 @@ export const AdminSubscriptionsPage = {
       }
     }
 
+    const studentPhone = s.student?.phone || '';
+    const cleanWa = studentPhone ? getCleanWhatsAppNumber(studentPhone) : '';
+
     return `
     <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
         ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0, 8)}
+        <div style="margin-top:4px;">
+          ${s.isGroup ? `
+            <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.7rem; padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+              <i data-lucide="users" style="width:11px;height:11px;"></i> مجموعة جماعية
+            </span>
+          ` : `
+            <span class="badge" style="background:rgba(236,72,153,0.12); color:#ec4899; font-weight:800; font-size:0.7rem; padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+              <i data-lucide="sparkles" style="width:11px;height:11px;"></i> باقة خاصة
+            </span>
+          `}
+        </div>
       </td>
-      <td style="padding:12px;font-weight:600;">${s.student?.name || '-'}</td>
+      <td style="padding:12px;font-weight:600;">
+        <div style="font-size:0.92rem; color:var(--text-main); font-weight:700;">${s.student?.name || '-'}</div>
+        ${studentPhone ? `<div style="font-size:0.75rem; color:var(--text-muted); direction:ltr; text-align:right;">${studentPhone}</div>` : ''}
+      </td>
       <td style="padding:12px;">
-        ${s.plan?.name || '-'} 
-        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+        <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${s.plan?.name || '-'}</div> 
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
+          ${s.isGroup && s.course?.title ? `<span style="color:var(--primary); font-weight:700;">كورس: ${s.course.title}</span> • ` : ''}
           ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
         </div>
         ${nextSessionBadgeHtml}
       </td>
-      <td style="padding:12px;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</td>
+      <td style="padding:12px;">
+        <div style="font-weight:700; font-size:0.88rem;">${s.teacher?.name || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</div>
+        ${s.isGroup && s.group?.name ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">المجموعة: ${s.group.name}</div>` : ''}
+      </td>
       <td style="padding:12px;">
         <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
-          <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:600;">
+          <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:700; font-size:0.8rem; padding:4px 8px; border-radius:8px;">
             ${statusText}
           </span>
           ${s.isLowBalance ? `
             <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
               <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
             </span>
+          ` : ''}
+          ${s.receiptUrl ? `
+            <a href="${s.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; border-radius:6px; color:var(--primary); border-color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700;" title="عرض إيصال السداد المرفوع">
+              <i data-lucide="receipt" style="width:12px; height:12px;"></i> الإيصال المعتمد 📄
+            </a>
           ` : ''}
         </div>
       </td>
@@ -128,7 +170,28 @@ export const AdminSubscriptionsPage = {
         </div>
       </td>
       <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          ${s.isGroup ? `
+            ${s.status === 'PENDING_PAYMENT' ? `
+              <button class="btn-primary admin-approve-group-enrollment-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;font-weight:700;">
+                <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد الإيصال ✅
+              </button>
+            ` : ''}
+
+            <button class="btn-secondary admin-view-group-students-btn" data-group-id="${s.group?.id || ''}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:var(--text-main);" title="عرض تفاصيل المجموعة ومقاعد الطلاب">
+              <i data-lucide="users" style="width:13px;height:13px;"></i> المجموعة 👥
+            </button>
+
+            ${cleanWa ? `
+              <a href="https://wa.me/${cleanWa}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;" title="مراسلة الطالب عبر واتساب">
+                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+              </a>
+            ` : ''}
+
+            <button class="btn-secondary admin-remove-group-student-sub-btn" data-group-id="${s.group?.id || ''}" data-student-id="${s.student?.id || ''}" style="padding:5px 8px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;font-weight:700;" title="إلغاء الاشتراك وإزالة الطالب من المجموعة">
+              <i data-lucide="user-x" style="width:13px;height:13px;"></i> إزالة
+            </button>
+          ` : `
             ${s.status === 'PENDING_PAYMENT' ? `
             <button class="btn-primary admin-approve-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
               <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
@@ -170,13 +233,16 @@ export const AdminSubscriptionsPage = {
               <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
             </button>
             ` : ''}
+          `}
         </div>
+
         ${s.status === 'ACTIVE' ? `
         <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
             <span style="color:#10b981;font-weight:600;">مكتملة: ${s.completedSessions}</span>
             <span style="color:var(--primary);font-weight:600;">مجدولة: ${s.scheduledSessions}</span>
             <span style="color:#8b5cf6;font-weight:600;">غير مجدولة: ${s.remainingToBook}</span>
-            <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي بالباقة: ${s.remainingSessionsInPackage}</span>
+            <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي: ${s.remainingSessionsInPackage}</span>
+            ${s.isGroup && s.group ? `<span style="color:var(--primary);font-weight:700;">سعة المجموعة: ${s.group.maxStudents || 25} طالب</span>` : ''}
         </div>
         ` : ''}
       </td>
@@ -186,13 +252,15 @@ export const AdminSubscriptionsPage = {
 
   // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
 
+  // ── 9. Subscriptions Tab ─────────────────────────────────────────────────────────────
+
   renderSubscriptionsTab() {
     const allSubs = this.subscriptions || [];
     const allSessions = this.allSessions || [];
     const now = new Date();
 
-    // Map metrics and nearest upcoming session for all subscriptions
-    const subsWithMetrics = allSubs.map(s => {
+    // 1. Process 1-on-1 Private Package Subscriptions
+    const privateSubsWithMetrics = allSubs.map(s => {
       const totalSessions = s.totalSessions || s.plan?.sessionsCount || 0;
       const subSessions = allSessions.filter(sess => {
         if (sess.subscription && String(sess.subscription.id) === String(s.id)) return true;
@@ -215,7 +283,6 @@ export const AdminSubscriptionsPage = {
       const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
       const isLowBalance = (s.status === 'ACTIVE' || s.status === 'TEACHER_ASSIGNMENT_PENDING') && remainingSessionsInPackage < 3;
 
-      // Find nearest upcoming scheduled session (Today, Tomorrow, or nearest future date)
       const upcomingSessions = subSessions.filter(sess => {
         if (!sess.scheduledAt) return false;
         const time = new Date(sess.scheduledAt).getTime();
@@ -228,6 +295,7 @@ export const AdminSubscriptionsPage = {
 
       return {
         ...s,
+        isGroup: false,
         totalSessions,
         completedSessions,
         scheduledSessions,
@@ -240,8 +308,83 @@ export const AdminSubscriptionsPage = {
       };
     });
 
-    const lowBalanceCount = subsWithMetrics.filter(s => s.isLowBalance).length;
-    const pendingCount = subsWithMetrics.filter(s => s.status === 'PENDING_PAYMENT').length;
+    // 2. Process Group Subscriptions (Enrollments with a group assigned)
+    const groupEnrollments = (this.enrollments || []).filter(e => e.group);
+    const groupSubsWithMetrics = groupEnrollments.map(e => {
+      const groupSessions = allSessions.filter(sess => {
+        if (sess.group && String(sess.group.id) === String(e.group.id)) return true;
+        if (sess.groupId && String(sess.groupId) === String(e.group.id)) return true;
+        if (e.course?.id && sess.course && String(sess.course.id) === String(e.course.id)) return true;
+        return false;
+      });
+
+      const totalSessions = groupSessions.length > 0 ? groupSessions.length : (e.group.maxSessions || 8);
+      const completedSessions = groupSessions.filter(sess => (sess.status || '').toLowerCase() === 'completed').length;
+      const scheduledSessions = groupSessions.filter(sess => {
+        const st = (sess.status || '').toLowerCase();
+        return st === 'scheduled' || st === 'rescheduled' || st === 'live';
+      }).length;
+      const totalBooked = completedSessions + scheduledSessions;
+      const remainingToBook = Math.max(0, totalSessions - totalBooked);
+      const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
+      const isLowBalance = remainingSessionsInPackage < 3 && remainingSessionsInPackage > 0;
+
+      const upcomingSessions = groupSessions.filter(sess => {
+        if (!sess.scheduledAt) return false;
+        const time = new Date(sess.scheduledAt).getTime();
+        const st = (sess.status || '').toLowerCase();
+        return time >= (now.getTime() - 2 * 60 * 60 * 1000) && !st.includes('cancel') && st !== 'completed';
+      }).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+      const nextSession = upcomingSessions[0] || null;
+      const nextSessionTime = nextSession ? new Date(nextSession.scheduledAt).getTime() : null;
+
+      const price = (e.payment && e.payment.amount !== undefined) 
+        ? e.payment.amount 
+        : (e.group.monthlyPrice || (e.group.sessionPrice ? e.group.sessionPrice * 8 : (e.group.studentHourlyRate ? e.group.studentHourlyRate * 8 : 320)));
+
+      const normStatus = e.status === 'active' ? 'ACTIVE' : (e.status === 'rejected' ? 'CANCELLED' : 'PENDING_PAYMENT');
+
+      return {
+        id: e.id,
+        isGroup: true,
+        group: e.group,
+        course: e.course || e.group.course,
+        student: e.student,
+        studentId: e.student?.id,
+        teacher: e.group.teacher || e.course?.teacher,
+        plan: {
+          name: `مجموعة: ${e.group.name}`,
+          price: price,
+          sessionsCount: totalSessions
+        },
+        payment: e.payment,
+        receiptUrl: e.payment?.receiptUrl || null,
+        status: normStatus,
+        rawStatus: e.status,
+        totalSessions,
+        completedSessions,
+        scheduledSessions,
+        totalBooked,
+        remainingToBook,
+        remainingSessionsInPackage,
+        isLowBalance,
+        nextSession,
+        nextSessionTime,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt
+      };
+    });
+
+    // 3. Combine into unified subscriptions list
+    const allUnifiedSubs = [...privateSubsWithMetrics, ...groupSubsWithMetrics];
+
+    const lowBalanceCount = allUnifiedSubs.filter(s => s.isLowBalance).length;
+    const pendingCount = allUnifiedSubs.filter(s => s.status === 'PENDING_PAYMENT').length;
+    const activeCount = allUnifiedSubs.filter(s => s.status === 'ACTIVE').length;
+    const cancelledCount = allUnifiedSubs.filter(s => s.status === 'CANCELLED').length;
+    const groupsCount = groupSubsWithMetrics.length;
+    const privateCount = privateSubsWithMetrics.length;
 
     // Helper to calculate sorting priority (Nearest session date/time comes FIRST)
     const getSubSortScore = (s) => {
@@ -254,13 +397,29 @@ export const AdminSubscriptionsPage = {
 
     // Apply Filter
     const filter = this.subFilter || "all";
-    const filteredSubs = subsWithMetrics.filter(s => {
+    let filteredSubs = allUnifiedSubs.filter(s => {
+      if (filter === "groups") return s.isGroup;
+      if (filter === "private") return !s.isGroup;
       if (filter === "low_sessions") return s.isLowBalance;
       if (filter === "pending") return s.status === "PENDING_PAYMENT";
       if (filter === "active") return s.status === "ACTIVE";
       if (filter === "cancelled") return s.status === "CANCELLED";
       return true;
     });
+
+    // Apply Search Query if present
+    if (this.subSearchQuery) {
+      const q = this.subSearchQuery.toLowerCase().trim();
+      filteredSubs = filteredSubs.filter(s => {
+        const studentName = (s.student?.name || '').toLowerCase();
+        const teacherName = (s.teacher?.name || '').toLowerCase();
+        const planName = (s.plan?.name || '').toLowerCase();
+        const courseTitle = (s.course?.title || '').toLowerCase();
+        const groupName = (s.group?.name || '').toLowerCase();
+        const id = (s.id || '').toLowerCase();
+        return studentName.includes(q) || teacherName.includes(q) || planName.includes(q) || courseTitle.includes(q) || groupName.includes(q) || id.includes(q);
+      });
+    }
 
     // Group filtered subscriptions by student
     const studentGroups = {};
@@ -460,33 +619,49 @@ export const AdminSubscriptionsPage = {
       ` : ''}
 
       <div class="glass-card" style="padding:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-            <h3 style="font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px; margin:0;">
-              <i data-lucide="calendar-heart" style="color:var(--primary);width:20px;height:20px;"></i>
-              قائمة الاشتراكات
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <h3 style="font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px; margin:0; color:var(--text-main);">
+              <i data-lucide="calendar-heart" style="color:var(--primary);width:22px;height:22px;"></i>
+              إدارة كافة الاشتراكات (${allUnifiedSubs.length})
             </h3>
+            
+            <button class="btn-primary" id="admin-open-group-enroll-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-color:#6366f1; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(99,102,241,0.3); cursor:pointer;" title="تسكين واشتراك طالب في مجموعة دراسية مع رفع إيصال الدفع">
+              <i data-lucide="users" style="width:15px;height:15px;"></i> ➕ تسكين طالب بمجموعة 👥
+            </button>
+
             <button class="btn-primary" id="admin-open-manual-sub-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
-              <i data-lucide="user-plus" style="width:15px;height:15px;"></i> ➕ إضافة وتفعيل اشتراك يدوي لطالب
+              <i data-lucide="sparkles" style="width:15px;height:15px;"></i> ➕ باقة خاصة لطالب 💎
             </button>
           </div>
           
-          <!-- Filters -->
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.8rem; ${filter === 'all' ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}">
-              الكل (${subsWithMetrics.length})
+          <!-- Filters & Search -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <div style="position:relative; min-width:220px;">
+              <input type="text" id="admin-sub-search-input" placeholder="بحث بالطالب أو المعلم أو المجموعة..." value="${this.subSearchQuery || ''}" style="width:100%; padding:7px 12px 7px 32px; border-radius:20px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--bg-app); color:var(--text-main);">
+              <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);"></i>
+            </div>
+
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'all' ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}">
+              الكل (${allUnifiedSubs.length})
             </button>
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'low_sessions' ? 'active' : ''}" data-filter="low_sessions" style="padding:6px 12px; font-size:0.8rem; ${filter === 'low_sessions' ? 'background:#ef4444;color:#fff;border-color:#ef4444;' : ''}">
-              ⚠️ رصيد منخفض (${lowBalanceCount})
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'groups' ? 'active' : ''}" data-filter="groups" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'groups' ? 'background:#6366f1;color:#fff;border-color:#6366f1;' : ''}">
+              👥 مجموعات (${groupsCount})
             </button>
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'pending' ? 'active' : ''}" data-filter="pending" style="padding:6px 12px; font-size:0.8rem; ${filter === 'pending' ? 'background:#f59e0b;color:#fff;border-color:#f59e0b;' : ''}">
-              ⏳ في انتظار الدفع (${pendingCount})
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'private' ? 'active' : ''}" data-filter="private" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'private' ? 'background:#ec4899;color:#fff;border-color:#ec4899;' : ''}">
+              💎 باقات خاصة (${privateCount})
             </button>
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'active' ? 'active' : ''}" data-filter="active" style="padding:6px 12px; font-size:0.8rem; ${filter === 'active' ? 'background:#10b981;color:#fff;border-color:#10b981;' : ''}">
-              ✅ نشط
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'low_sessions' ? 'active' : ''}" data-filter="low_sessions" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'low_sessions' ? 'background:#ef4444;color:#fff;border-color:#ef4444;' : ''}">
+              ⚠️ منخفض (${lowBalanceCount})
             </button>
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'cancelled' ? 'active' : ''}" data-filter="cancelled" style="padding:6px 12px; font-size:0.8rem; ${filter === 'cancelled' ? 'background:var(--border-color);' : ''}">
-              ❌ ملغى
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'pending' ? 'active' : ''}" data-filter="pending" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'pending' ? 'background:#f59e0b;color:#fff;border-color:#f59e0b;' : ''}">
+              ⏳ معلق (${pendingCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'active' ? 'active' : ''}" data-filter="active" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'active' ? 'background:#10b981;color:#fff;border-color:#10b981;' : ''}">
+              ✅ نشط (${activeCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'cancelled' ? 'active' : ''}" data-filter="cancelled" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'cancelled' ? 'background:var(--border-color);' : ''}">
+              ❌ ملغى (${cancelledCount})
             </button>
           </div>
         </div>
@@ -494,23 +669,261 @@ export const AdminSubscriptionsPage = {
         <div style="overflow-x:auto;">
           <table class="table" style="width:100%;text-align:start;border-collapse:collapse;">
             <thead>
-              <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.8rem;">
-                <th style="padding:12px;font-weight:700;">المعرف</th>
+              <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.82rem; background:rgba(0,0,0,0.02);">
+                <th style="padding:12px;font-weight:700;">المعرف / النوع</th>
                 <th style="padding:12px;font-weight:700;">الطالب</th>
-                <th style="padding:12px;font-weight:700;">الخطة / الحصص</th>
+                <th style="padding:12px;font-weight:700;">الخطة / المجموعة والمقرر</th>
                 <th style="padding:12px;font-weight:700;">المعلم المعين</th>
                 <th style="padding:12px;font-weight:700;">الحالة والتنبيهات</th>
                 <th style="padding:12px;font-weight:700;">تاريخ الطلب / التحديث</th>
-                <th style="padding:12px;font-weight:700;">إجراءات</th>
+                <th style="padding:12px;font-weight:700;text-align:center;">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              ${renderedRowsHtml || `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد اشتراكات تنطبق عليها شروط البحث.</td></tr>`}
+              ${renderedRowsHtml || `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">لا توجد اشتراكات أو مجموعات دراسية مسجلة تنطبق عليها شروط البحث.</td></tr>`}
             </tbody>
           </table>
         </div>
       </div>
     `;
+  },
+
+  renderQuickGroupEnrollModal() {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const groups = this.allCourseGroups || [];
+    const students = (this.allMembers || []).filter(m => m.role === "student");
+
+    if (groups.length === 0) {
+      showToast("لا توجد مجموعات دراسية مسجلة حالياً.", "warning");
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="quick-group-enroll-modal" style="display:flex; z-index:99999;">
+        <div class="modal-content" style="max-width:540px; border-radius:18px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.25);">
+          <div class="modal-header" style="background:var(--bg-card); border-bottom:1px solid var(--border-color); padding:16px 20px;">
+            <h3 class="modal-title" style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.15rem; margin:0;">
+              <i data-lucide="user-plus" style="color:var(--primary); width:22px; height:22px;"></i>
+              تسكين طالب في مجموعة دراسية (اشتراك مجموعة)
+            </h3>
+            <span class="modal-close-btn" id="close-quick-group-enroll-modal" style="cursor:pointer; font-size:1.5rem; line-height:1;">&times;</span>
+          </div>
+
+          <form id="quick-group-enroll-form">
+            <div class="modal-body" style="padding:22px; max-height:80vh; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- Select Group -->
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  اختر المجموعة الدراسية <span style="color:var(--danger,#ef4444);">*</span>
+                </label>
+                <select id="quick-enroll-group-id" class="form-control" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-weight:600; font-size:0.9rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);" required>
+                  <option value="">-- اختر المجموعة الدراسية --</option>
+                  ${groups.map(g => {
+                    const price = g.monthlyPrice || (g.sessionPrice ? g.sessionPrice * 8 : (g.studentHourlyRate ? g.studentHourlyRate * 8 : 320));
+                    const teacherName = g.teacher?.name || g.course?.teacher?.name || 'بدون معلم';
+                    return `<option value="${g.id}" data-price="${price}">مجموعة: ${g.name} (${teacherName} • ${price} ج.م)</option>`;
+                  }).join('')}
+                </select>
+              </div>
+
+              <!-- Select Student -->
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  اختر الطالب المراد تسكينه <span style="color:var(--danger,#ef4444);">*</span>
+                </label>
+                <select id="quick-enroll-student-id" class="form-control" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-weight:600; font-size:0.9rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);" required>
+                  <option value="">-- اختر الطالب --</option>
+                  ${students.map(st => `
+                    <option value="${st.id}">${st.name || 'طالب'} (${st.phone || st.email || st.id.substring(0,8)})</option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- Amount & Payment Provider -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    المبلغ المدفوع (ج.م) <span style="color:var(--danger,#ef4444);">*</span>
+                  </label>
+                  <input type="number" id="quick-enroll-amount" class="form-control" value="320" min="1" step="0.5" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.9rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);" required>
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                    طريقة الدفع <span style="color:var(--danger,#ef4444);">*</span>
+                  </label>
+                  <select id="quick-enroll-provider" class="form-control" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.9rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);">
+                    <option value="vodafone_cash">📱 فودافون كاش</option>
+                    <option value="instapay">⚡ إنستاباي</option>
+                    <option value="bank_transfer">🏦 تحويل بنكي</option>
+                    <option value="orange_cash">🍊 أورنج كاش</option>
+                    <option value="etisalat_cash">🟢 اتصالات كاش</option>
+                    <option value="we_pay">🟣 وي باي</option>
+                    <option value="manual">💵 يدوي / كاش</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Transaction Reference ID -->
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  رقم عملية التحويل / كود الإشعار (اختياري)
+                </label>
+                <input type="text" id="quick-enroll-txid" class="form-control" placeholder="مثال: IPN123456 أو 010xxxxxxxx" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.9rem; font-family:monospace; background:var(--bg-input, var(--bg-card)); color:var(--text-main);">
+              </div>
+
+              <!-- Receipt Proof Upload (Mandatory) -->
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  صورة إيصال التحويل / السداد <span style="color:var(--danger,#ef4444);">* (إجباري)</span>
+                </label>
+                <div id="quick-enroll-dropzone" style="border:2px dashed var(--border-color); border-radius:14px; padding:18px; text-align:center; background:rgba(0,0,0,0.01); cursor:pointer;">
+                  <input type="file" id="quick-enroll-receipt-file" accept="image/*" style="display:none;" required>
+                  <div id="quick-enroll-upload-prompt">
+                    <i data-lucide="upload-cloud" style="width:32px; height:32px; color:var(--primary); margin-bottom:6px; opacity:0.8;"></i>
+                    <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">انقر لاختيار صورة الإيصال أو اسحبها هنا</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">PNG, JPG, WEBP</div>
+                  </div>
+                  <div id="quick-enroll-file-preview" style="display:none; flex-direction:column; align-items:center; gap:8px;">
+                    <img id="quick-enroll-preview-img" src="" style="max-height:130px; max-width:100%; border-radius:8px; object-fit:contain; border:1px solid var(--border-color);">
+                    <div id="quick-enroll-file-name" style="font-size:0.8rem; font-weight:700;"></div>
+                    <button type="button" id="quick-enroll-remove-file" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; color:var(--danger); border-color:var(--danger);">إزالة ✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  ملاحظات الإدارة
+                </label>
+                <input type="text" id="quick-enroll-notes" class="form-control" placeholder="مثال: تسكين رسمي مع إيصال معتمد من لوحة الاشتراكات" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-size:0.88rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);">
+              </div>
+
+              <div style="display:flex; gap:10px; margin-top:6px;">
+                <button type="submit" id="quick-enroll-submit-btn" class="btn-primary" style="flex:1; padding:12px; font-weight:800; font-size:0.95rem; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                  <i data-lucide="check-circle" style="width:18px; height:18px;"></i>
+                  تأكيد تسكين الطالب وتفعيل اشتراكه بالمجموعة ✅
+                </button>
+                <button type="button" id="cancel-quick-group-enroll-btn" class="btn-secondary" style="padding:12px 20px; font-weight:700; border-radius:10px;">إلغاء</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { container.innerHTML = ""; };
+    document.getElementById("close-quick-group-enroll-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-quick-group-enroll-btn")?.addEventListener("click", closeModal);
+
+    const groupSelect = document.getElementById("quick-enroll-group-id");
+    const amountInput = document.getElementById("quick-enroll-amount");
+    groupSelect?.addEventListener("change", () => {
+      const opt = groupSelect.options[groupSelect.selectedIndex];
+      const p = opt?.getAttribute("data-price");
+      if (p && amountInput) amountInput.value = p;
+    });
+
+    const dropzone = document.getElementById("quick-enroll-dropzone");
+    const fileInput = document.getElementById("quick-enroll-receipt-file");
+    const uploadPrompt = document.getElementById("quick-enroll-upload-prompt");
+    const filePreview = document.getElementById("quick-enroll-file-preview");
+    const previewImg = document.getElementById("quick-enroll-preview-img");
+    const fileNameSpan = document.getElementById("quick-enroll-file-name");
+    const removeBtn = document.getElementById("quick-enroll-remove-file");
+
+    dropzone?.addEventListener("click", (e) => {
+      if (e.target.id === "quick-enroll-remove-file") return;
+      fileInput?.click();
+    });
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      fileNameSpan.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        previewImg.src = ev.target.result;
+        uploadPrompt.style.display = "none";
+        filePreview.style.display = "flex";
+        if (window.lucide) window.lucide.createIcons();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    removeBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput.value = "";
+      previewImg.src = "";
+      fileNameSpan.textContent = "";
+      filePreview.style.display = "none";
+      uploadPrompt.style.display = "block";
+    });
+
+    const form = document.getElementById("quick-group-enroll-form");
+    const submitBtn = document.getElementById("quick-enroll-submit-btn");
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const groupId = groupSelect.value;
+      const studentId = document.getElementById("quick-enroll-student-id")?.value;
+      const amount = amountInput.value;
+      const provider = document.getElementById("quick-enroll-provider")?.value;
+      const providerTransactionId = document.getElementById("quick-enroll-txid")?.value.trim() || undefined;
+      const notes = document.getElementById("quick-enroll-notes")?.value.trim() || undefined;
+
+      if (!groupId) {
+        showToast("يرجى اختيار المجموعة الدراسية.", "error");
+        return;
+      }
+      if (!studentId) {
+        showToast("يرجى اختيار الطالب المراد تسكينه.", "error");
+        return;
+      }
+      if (!fileInput.files || !fileInput.files[0]) {
+        showToast("يرجى إرفاق صورة إيصال السداد.", "error");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader-2" class="animate-spin" style="width:18px;height:18px;"></i> جاري رفع الإيصال وتسكين الطالب...`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        const token = state.token || localStorage.getItem("token");
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error("فشل رفع صورة الإيصال.");
+        const uploadData = await uploadRes.json();
+        const receiptUrl = uploadData.url;
+
+        const res = await apiFetch(`/admin/groups/${groupId}/add-student`, {
+          method: "POST",
+          body: JSON.stringify({ studentId, amount, provider, providerTransactionId, receiptUrl, notes })
+        });
+
+        showToast(res.message || "تم تسكين الطالب في المجموعة واشتراكه بنجاح! 👥🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل تسكين الطالب بالمجموعة.", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="check-circle" style="width:18px; height:18px;"></i> تأكيد تسكين الطالب وتفعيل اشتراكه بالمجموعة ✅`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
   },
 
   // ── 10. Earnings & Billings Tab ─────────────────────────────────────────────────────────────

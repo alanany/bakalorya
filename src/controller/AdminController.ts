@@ -1519,4 +1519,77 @@ export class AdminController {
       return res.status(500).json({ error: "فشل رفض التسجيل." });
     }
   }
+
+  // DELETE /admin/payments/:id — Delete payment / billing record
+  static async deletePayment(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+
+    try {
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const auditRepo = AppDataSource.getRepository(AuditLog);
+
+      const payment = await paymentRepo.findOne({
+        where: { id },
+        relations: ["student", "courseEnrollment", "subscription"]
+      });
+
+      if (!payment) {
+        return res.status(404).json({ error: "سجل الفاتورة أو الدفع غير موجود." });
+      }
+
+      // 1. Delete physical receipt file if stored locally
+      if (payment.receiptUrl && typeof payment.receiptUrl === "string") {
+        try {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads");
+          const fileName = path.basename(payment.receiptUrl);
+          const fullPath = path.join(uploadsDir, fileName);
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+          }
+        } catch (fErr) {
+          console.warn("Could not delete physical receipt file:", fErr);
+        }
+      }
+
+      // 2. Clear enrollment reference if linked
+      const linkedEnrollments = await enrollmentRepo.find({
+        where: { payment: { id: payment.id } }
+      });
+      for (const enr of linkedEnrollments) {
+        enr.payment = null as any;
+        await enrollmentRepo.save(enr);
+      }
+
+      // 3. Remove payment record
+      const studentName = payment.student?.name || "غير محدد";
+      const paymentAmount = payment.amount;
+      const paymentType = payment.type;
+
+      await paymentRepo.remove(payment);
+
+      // 4. Audit Log
+      try {
+        const audit = new AuditLog();
+        audit.actor = { id: req.user!.id } as User;
+        audit.action = "PAYMENT_DELETED";
+        audit.entityType = "Payment";
+        audit.entityId = id;
+        audit.metadata = JSON.stringify({
+          studentName,
+          amount: paymentAmount,
+          type: paymentType
+        });
+        await auditRepo.save(audit);
+      } catch (aErr) {}
+
+      return res.status(200).json({
+        message: "تم حذف الفاتورة والسجل المالي بنجاح! 🗑️✅"
+      });
+    } catch (err: any) {
+      console.error("deletePayment error:", err);
+      return res.status(500).json({ error: err.message || "Failed to delete payment record." });
+    }
+  }
 }
+

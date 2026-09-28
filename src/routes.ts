@@ -346,6 +346,7 @@ router.delete("/admin/courses/:id", authMiddleware, requireRole(["admin"]), Admi
 router.get("/admin/enrollments", authMiddleware, requireRole(["admin"]), AdminController.getEnrollments);
 router.post("/admin/enrollments/:id/approve", authMiddleware, requireRole(["admin"]), AdminController.approveEnrollment);
 router.post("/admin/enrollments/:id/reject", authMiddleware, requireRole(["admin"]), AdminController.rejectEnrollment);
+router.delete("/admin/payments/:id", authMiddleware, requireRole(["admin"]), AdminController.deletePayment);
 router.get("/admin/reports", authMiddleware, requireRole(["admin"]), AdminController.getReports);
 router.get("/admin/teacher-applications", authMiddleware, requireRole(["admin"]), TeacherApplicationController.getApplications);
 router.put("/admin/teacher-applications/:id", authMiddleware, requireRole(["admin"]), TeacherApplicationController.reviewApplication);
