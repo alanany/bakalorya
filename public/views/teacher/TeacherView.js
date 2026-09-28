@@ -2560,9 +2560,16 @@ export default class TeacherView {
             </td>
             <td style="padding:14px 18px;">
               ${isPaid ? `
-                <span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-weight:800; font-size:0.8rem; padding:5px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
-                  <i data-lucide="check-circle" style="width:14px; height:14px;"></i> تم الصرف والمقاصة
-                </span>
+                <div style="display:inline-flex; flex-direction:column; gap:6px;">
+                  <span class="badge" style="background:rgba(16,185,129,0.15); color:#047857; font-weight:800; font-size:0.8rem; padding:5px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="check-circle" style="width:14px; height:14px;"></i> تم الصرف والمقاصة ✅
+                  </span>
+                  ${item.receiptUrl ? `
+                    <a href="${item.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.75rem; padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; text-decoration:none; color:var(--primary); border-color:var(--primary); font-weight:700;" title="عرض إيصال التحويل">
+                      <i data-lucide="receipt" style="width:12px; height:12px;"></i> إيصال التحويل 📄
+                    </a>
+                  ` : ''}
+                </div>
               ` : `
                 <span class="badge" style="background:rgba(245,158,11,0.15); color:#b45309; font-weight:800; font-size:0.8rem; padding:5px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
                   <i data-lucide="clock" style="width:14px; height:14px;"></i> معلق في انتظار الصرف

@@ -28,18 +28,18 @@ class AuthController {
             if (existingUser) {
                 return res.status(400).json({ error: "Email already registered." });
             }
-            if (phone) {
-                const existingPhone = await userRepository.findOneBy({ phone });
-                if (existingPhone) {
-                    return res.status(400).json({ error: "رقم الهاتف مسجل بالفعل بحساب آخر." });
-                }
-            }
             const hashedPassword = await bcryptjs_1.default.hash(password, 10);
             const user = new User_1.User();
             user.name = (0, sanitize_1.sanitizeString)(name).trim();
             user.email = (0, sanitize_1.sanitizeString)(email).trim().toLowerCase();
             user.password = hashedPassword;
             user.role = userRole;
+            if (userRole === "student") {
+                user.status = "PENDING";
+            }
+            else {
+                user.status = "ACTIVE";
+            }
             if (location)
                 user.location = (0, sanitize_1.sanitizeString)(location).trim();
             if (education)
@@ -48,12 +48,28 @@ class AuthController {
                 user.phone = (0, sanitize_1.sanitizeString)(phone).trim();
             if (parentPhone)
                 user.parentPhone = (0, sanitize_1.sanitizeString)(parentPhone).trim();
-            user.avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.name)}`;
+            user.avatar = "assets/logo.png";
             await userRepository.save(user);
             let whatsappNotification = null;
             if (user.phone) {
-                const msg = (0, whatsapp_1.buildRegistrationSuccessMessage)(user.name, user.role);
+                const msg = user.role === "student"
+                    ? `مرحباً ${user.name}! تم استلام طلب تسجيلك بنجاح في منصة انطلق. طلبك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية وسنقوم بإشعارك فور التفعيل لتتمكن من الدخول إلى لوحة التحكم.`
+                    : (0, whatsapp_1.buildRegistrationSuccessMessage)(user.name, user.role);
                 whatsappNotification = (0, whatsapp_1.createWhatsAppNotificationPayload)(user.phone, msg);
+            }
+            if (user.role === "student") {
+                return res.status(201).json({
+                    pendingApproval: true,
+                    message: "تم إنشاء حسابك بنجاح! حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية قبل السماح بالدخول إلى لوحة التحكم.",
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        status: user.status
+                    },
+                    whatsappNotification
+                });
             }
             const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, auth_1.JWT_SECRET, {
                 expiresIn: "7d",
@@ -86,6 +102,11 @@ class AuthController {
             if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
                 const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
                 return res.status(403).json({ error: `عفواً، تم حظر هذا الحساب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى التواصل مع الدعم الفني.` });
+            }
+            if (user.status === "PENDING") {
+                return res.status(403).json({
+                    error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية. سيتم تفعيل حسابك والتواصل معك قريباً لتتمكن من الدخول إلى لوحة التحكم."
+                });
             }
             if (expectedRole === "student" && user.role !== "student") {
                 return res.status(403).json({ error: "عفواً، هذا المسار مخصص للطلاب فقط. يرجى استخدام بوابة المعلمين والإدارة." });
@@ -132,6 +153,12 @@ class AuthController {
                 const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
                 return res.status(403).json({
                     error: `عفواً، تم حظر حساب الطالب ومنعه من تسجيل الدخول إلى الأكاديمية بواسطة الإدارة.${reason} يرجى مراجعة إدارة الأكاديمية.`
+                });
+            }
+            // Check if student account is pending approval
+            if (user.status === "PENDING") {
+                return res.status(403).json({
+                    error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية. سيتم تفعيل حسابك والتواصل معك قريباً لتتمكن من الدخول إلى لوحة التحكم."
                 });
             }
             // Restrict strictly to Students
@@ -228,6 +255,44 @@ class AuthController {
                     isBlocked: user.isBlocked,
                     status: user.status
                 },
+            });
+        }
+        catch (err) {
+            return res.status(500).json({ error: "حدث خطأ في السيرفر، يرجى المحاولة لاحقاً." });
+        }
+    }
+    // Dedicated Parent Login — for guardian accounts created by Admin
+    static async parentLogin(req, res) {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: "يرجى كتابة البريد الإلكتروني وكلمة المرور." });
+        }
+        const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+        try {
+            const user = await userRepository.findOneBy({ email });
+            if (!user || !user.password) {
+                return res.status(400).json({ error: "بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور." });
+            }
+            const isMatch = await bcryptjs_1.default.compare(password, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ error: "بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور." });
+            }
+            if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
+                const reason = user.blockReason ? ` (السبب: ${user.blockReason})` : "";
+                return res.status(403).json({ error: `عفواً، تم حظر هذا الحساب من قِبل الإدارة.${reason} يرجى التواصل مع إدارة الأكاديمية.` });
+            }
+            if (user.role !== "parent") {
+                return res.status(403).json({ error: "عفواً، هذه البوابة مخصصة لأولياء الأمور فقط. يرجى استخدام البوابة المناسبة لحسابك." });
+            }
+            const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, auth_1.JWT_SECRET, { expiresIn: "7d" });
+            try {
+                const ip = req.ip || req.headers["x-forwarded-for"] || "ip";
+                (0, rateLimiter_1.resetRateLimit)("auth_limiter", `${ip}:${email}`);
+            }
+            catch (e) { }
+            return res.status(200).json({
+                token,
+                user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, phone: user.phone, isBlocked: user.isBlocked, status: user.status },
             });
         }
         catch (err) {

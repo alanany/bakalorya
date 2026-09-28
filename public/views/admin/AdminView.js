@@ -1088,20 +1088,9 @@ export default class AdminView {
 
     // Admin Pay Earning
     this.container.querySelectorAll(".admin-pay-earning-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        const confirmed = await confirmDialog({ message: "هل أنت متأكد من دفع هذه المستحقات للمعلم؟ لا يمكن التراجع عن هذه الخطوة." });
-        if (!confirmed) return;
-        btn.disabled = true;
-        try {
-          const res = await apiFetch(`/admin/teacher-earnings/${id}/pay`, { method: "PATCH" });
-          showToast(res.message || "تم تسجيل دفع المستحقات بنجاح", "success");
-          await this.loadAllData();
-          this.renderTab("earnings");
-        } catch (err) {
-          showToast(err.message || "تعذر دفع المستحقات.", "error");
-          btn.disabled = false;
-        }
+        this.renderPayTeacherEarningModal(id);
       });
     });
 
@@ -1575,15 +1564,32 @@ export default class AdminView {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name");
+        const role = btn.getAttribute("data-role") || "";
+        const isTeacher = role === "teacher";
+        const isStudent = role === "student";
+
+        const title = isTeacher 
+          ? `حذف حساب المعلم "${name}" نهائياً ⚠️` 
+          : (isStudent ? `حذف حساب الطالب "${name}" نهائياً ⚠️` : `تأكيد حذف الحساب`);
+
+        const message = isTeacher 
+          ? `هل أنت متأكد من رغبتك في حذف حساب المعلم "${name}" نهائياً من كافة أقسام المنصة وحذف جميع المجموعات والكورسات التابعة له؟\n\n(ملاحظة أمان: سيتحقق النظام تلقائياً من عدم وجود أي مجموعات لديها حصص أو أيام قادمة قبل إتمام الحذف).`
+          : (isStudent
+            ? `هل أنت متأكد من رغبتك في حذف حساب الطالب "${name}" نهائياً من كافة أقسام المنصة وإلغاء قيده وحذف معاملاته المالية؟\n\n(ملاحظة أمان: سيتحقق النظام تلقائياً من عدم وجود أي مجموعات دراسية أو حصص قادمة مجدولة في الأيام القادمة قبل إتمام الحذف).`
+            : `${t("admin.confirmDelete")} "${name}"?`);
+
         const confirmed = await confirmDialog({
-          message: `${t("admin.confirmDelete")} "${name}"?`,
+          title,
+          message,
+          confirmText: (isTeacher || isStudent) ? "تأكيد الحذف النهائي" : "نعم، حذف",
+          cancelText: "إلغاء",
           danger: true
         });
         if (!confirmed) return;
         btn.disabled = true;
         try {
-          await apiFetch(`/admin/users/${id}`, { method: "DELETE" });
-          showToast(t("admin.toast.userDeleted"), "success");
+          const res = await apiFetch(`/admin/users/${id}`, { method: "DELETE" });
+          showToast(res.message || t("admin.toast.userDeleted") || "تم حذف الحساب بنجاح", "success");
           await this.loadAllData();
           this.renderTab(this.activeTab);
         } catch (err) {

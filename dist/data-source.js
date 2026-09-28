@@ -39,6 +39,7 @@ const PlatformSetting_1 = require("./entity/PlatformSetting");
 const Grade_1 = require("./entity/Grade");
 const Subject_1 = require("./entity/Subject");
 const CourseGroup_1 = require("./entity/CourseGroup");
+const ParentStudentLink_1 = require("./entity/ParentStudentLink");
 exports.allEntities = [
     User_1.User, Course_1.Course, Lesson_1.Lesson, Enrollment_1.Enrollment, Session_1.Session,
     Assignment_1.Assignment, AssignmentSubmission_1.AssignmentSubmission, Resource_1.Resource, Test_1.Test,
@@ -46,7 +47,7 @@ exports.allEntities = [
     QuestionAnswer_1.QuestionAnswer, Notification_1.Notification, Review_1.Review, SubscriptionPlan_1.SubscriptionPlan, Subscription_1.Subscription,
     SessionCreditLedger_1.SessionCreditLedger, TeacherAvailability_1.TeacherAvailability, SessionAttendance_1.SessionAttendance,
     TeacherEarning_1.TeacherEarning, Payment_1.Payment, AuditLog_1.AuditLog, PlatformSetting_1.PlatformSetting,
-    Grade_1.Grade, Subject_1.Subject, CourseGroup_1.CourseGroup
+    Grade_1.Grade, Subject_1.Subject, CourseGroup_1.CourseGroup, ParentStudentLink_1.ParentStudentLink
 ];
 function getDataSourceOptions() {
     dotenv_1.default.config();

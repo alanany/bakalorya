@@ -432,7 +432,7 @@ export const AdminUsersPage = {
                             <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
                             </button>
-                            <button class="btn-secondary delete-user-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+                            <button class="btn-secondary delete-user-btn" data-id="${u.id}" data-name="${u.name}" data-role="${u.role}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="trash-2" style="width:12px;height:12px;"></i> حذف
                             </button>
                           </div>
@@ -542,7 +542,7 @@ export const AdminUsersPage = {
               <i data-lucide="file-text" style="width:12px;height:12px;"></i> ${t("admin.viewTranscript")}
             </button>
             ${!isMe ? `
-              <button class="btn-secondary delete-user-btn" data-id="${user.id}" data-name="${user.name}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
+              <button class="btn-secondary delete-user-btn" data-id="${user.id}" data-name="${user.name}" data-role="${user.role}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--error,#ef4444);color:var(--error,#ef4444);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                 <i data-lucide="trash-2" style="width:12px;height:12px;"></i> ${t("common.delete")}
               </button>` : `<span style="font-size:0.75rem;color:var(--text-muted);">${t("admin.you")}</span>`}
           </div>

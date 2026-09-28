@@ -1,4 +1,6 @@
 import { Response } from "express";
+import fs from "fs";
+import path from "path";
 import { AppDataSource } from "../data-source";
 import { CourseGroup } from "../entity/CourseGroup";
 import { Course } from "../entity/Course";
@@ -1205,6 +1207,10 @@ export class CourseGroupController {
         enrollment.payment = savedPayment;
         await enrollmentRepo.save(enrollment);
 
+        // Also link courseEnrollment on payment to ensure bidirectional queryability
+        savedPayment.courseEnrollment = enrollment;
+        await paymentRepo.save(savedPayment);
+
         // Avoid in-memory circular reference when serializing
         delete (savedPayment as any).courseEnrollment;
       } else {
@@ -1294,18 +1300,28 @@ export class CourseGroupController {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
       const sessionRepo = AppDataSource.getRepository(Session);
       const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const attendanceRepo = AppDataSource.getRepository(SessionAttendance);
 
       let enrollment: Enrollment | null = null;
       if (enrollmentId) {
         enrollment = await enrollmentRepo.findOne({
           where: { id: enrollmentId },
-          relations: ["student", "group", "course", "group.course"]
+          relations: ["student", "group", "course", "group.course", "payment"]
         });
       } else if (studentId) {
         enrollment = await enrollmentRepo.findOne({
           where: { student: { id: studentId }, group: { id } },
-          relations: ["student", "group", "course", "group.course"]
+          relations: ["student", "group", "course", "group.course", "payment"]
         });
+      }
+
+      if (!enrollment && studentId) {
+        const potentialEnrollments = await enrollmentRepo.find({
+          where: { student: { id: studentId } },
+          relations: ["student", "group", "course", "group.course", "payment"]
+        });
+        enrollment = potentialEnrollments.find(e => e.group?.id === id) || null;
       }
 
       if (!enrollment) {
@@ -1316,7 +1332,91 @@ export class CourseGroupController {
       const group = enrollment.group;
       const course = enrollment.course || group?.course;
 
-      // Delete any student-specific 1-on-1 sessions created for this student in this course/group
+      // ── 1. REMOVE FROM FINANCIAL RECORDS AND RECEIPTS ──────────────────────────
+      const paymentsToDelete: Payment[] = [];
+
+      // A) Directly attached payment via enrollment.payment
+      if (enrollment.payment) {
+        paymentsToDelete.push(enrollment.payment);
+      }
+
+      // B) Any payment referencing this enrollment via courseEnrollment
+      const linkedPayments = await paymentRepo.find({
+        where: { courseEnrollment: { id: enrollment.id } },
+        relations: ["student"]
+      });
+      for (const lp of linkedPayments) {
+        if (!paymentsToDelete.some(p => p.id === lp.id)) {
+          paymentsToDelete.push(lp);
+        }
+      }
+
+      // C) Any group payment for this student referencing this group
+      if (student && group) {
+        const studentPayments = await paymentRepo.find({
+          where: {
+            student: { id: student.id },
+            type: "GROUP_ENROLLMENT"
+          },
+          relations: ["courseEnrollment"]
+        });
+        for (const sp of studentPayments) {
+          const isSameEnrollment = sp.courseEnrollment?.id === enrollment.id;
+          const mentionsGroup = sp.notes && (sp.notes.includes(group.name) || sp.notes.includes(group.id));
+          if ((isSameEnrollment || mentionsGroup) && !paymentsToDelete.some(p => p.id === sp.id)) {
+            paymentsToDelete.push(sp);
+          }
+        }
+      }
+
+      // Clean up physical receipt image files from uploads directory if present
+      const uploadDir = process.env.UPLOADS_DIR
+        ? path.resolve(process.env.UPLOADS_DIR)
+        : path.resolve(process.cwd(), "public/uploads");
+
+      for (const p of paymentsToDelete) {
+        if (p.receiptUrl && typeof p.receiptUrl === "string" && p.receiptUrl.includes("/uploads/")) {
+          try {
+            const filename = path.basename(p.receiptUrl);
+            const filePath = path.join(uploadDir, filename);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (fErr) {
+            console.warn("Could not delete physical receipt file:", fErr);
+          }
+        }
+      }
+
+      // Unlink payment from enrollment first to prevent foreign key issues
+      enrollment.payment = null as any;
+      await enrollmentRepo.save(enrollment);
+
+      // Permanently remove financial payments from database
+      if (paymentsToDelete.length > 0) {
+        await paymentRepo.remove(paymentsToDelete);
+      }
+
+      // ── 2. REMOVE ATTENDANCE RECORDS FOR GROUP SESSIONS ─────────────────────────
+      if (student) {
+        try {
+          const attendances = await attendanceRepo.find({
+            where: { user: { id: student.id } },
+            relations: ["session", "session.group", "session.course"]
+          });
+          const attendancesToRemove = attendances.filter(a => 
+            a.session?.group?.id === id || 
+            (course?.id && a.session?.course?.id === course.id)
+          );
+          if (attendancesToRemove.length > 0) {
+            await attendanceRepo.remove(attendancesToRemove);
+          }
+        } catch (attErr) {
+          console.warn("Could not remove attendance records:", attErr);
+        }
+      }
+
+      // ── 3. DELETE STUDENT-SPECIFIC SESSIONS ─────────────────────────────────────
       if (student && course) {
         const studentSpecificSessions = await sessionRepo.find({
           where: {
@@ -1329,16 +1429,16 @@ export class CourseGroupController {
         }
       }
 
-      // Remove enrollment (this instantly removes cohort group & all group sessions from student dashboard)
+      // ── 4. REMOVE ENROLLMENT RECORD ────────────────────────────────────────────
       await enrollmentRepo.remove(enrollment);
 
-      // Notify student
+      // ── 5. NOTIFY STUDENT ──────────────────────────────────────────────────────
       if (student) {
         try {
           await NotificationController.createNotification(
             student.id,
             "تم إلغاء قيدك من المجموعة الدراسية ⚠️",
-            `تم إلغاء قيدك من مجموعة "${group?.name || 'المجموعة'}" وحذف جميع الحصص والمواعيد التابعة لها من جدولك وحسابك.`,
+            `تم إلغاء قيدك من مجموعة "${group?.name || 'المجموعة'}" وحذف جميع الحصص والبيانات المالية وإيصالات السداد التابعة لها.`,
             "info",
             "#student/groups"
           );
@@ -1346,7 +1446,8 @@ export class CourseGroupController {
       }
 
       return res.status(200).json({
-        message: "تمت إزالة الطالب من المجموعة وحذف جميع الحصص التابعة لها من حسابه بنجاح! ✅"
+        message: "تمت إزالة الطالب من المجموعة وحذف جميع الحصص والمعاملات المالية والإيصالات التابعة لها بنجاح! ✅",
+        deletedPaymentsCount: paymentsToDelete.length
       });
     } catch (err: any) {
       console.error("Error removing student from group:", err);

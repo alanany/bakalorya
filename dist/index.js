@@ -93,6 +93,20 @@ async function startServer() {
             try {
                 await (0, data_source_1.initAppDataSource)();
                 console.log("Data Source has been initialized!");
+                // Auto-migrate cartoon avatars to platform logo as default
+                try {
+                    const { User } = await Promise.resolve().then(() => __importStar(require("./entity/User")));
+                    const userRepo = data_source_1.AppDataSource.getRepository(User);
+                    await userRepo.createQueryBuilder()
+                        .update(User)
+                        .set({ avatar: "assets/logo.png" })
+                        .where("avatar IS NULL OR avatar = '' OR avatar LIKE :dicebear", { dicebear: "%dicebear%" })
+                        .execute();
+                    console.log("✅ User avatars verified: default avatar set to platform logo.");
+                }
+                catch (migErr) {
+                    console.warn("Avatar migration notice:", migErr.message || migErr);
+                }
                 // Seed Egyptian curriculum (Grades and Subjects) if not present
                 const { CurriculumController } = await Promise.resolve().then(() => __importStar(require("./controller/CurriculumController")));
                 await CurriculumController.seedEgyptianCurriculum();

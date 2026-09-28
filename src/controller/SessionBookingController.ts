@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { AppDataSource } from "../data-source";
 import { Session } from "../entity/Session";
 import { Subscription } from "../entity/Subscription";
@@ -1732,9 +1734,12 @@ export class SessionBookingController {
 
     try {
       const sessionRepository = AppDataSource.getRepository(Session);
+      const paymentRepository = AppDataSource.getRepository(Payment);
+      const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+
       const sess = await sessionRepository.findOne({
         where: { id: sessionId },
-        relations: ["teacher"]
+        relations: ["teacher", "group", "course"]
       });
 
       if (!sess) {
@@ -1749,11 +1754,60 @@ export class SessionBookingController {
         }
       });
 
+      // 1. Remove attendance records for the sessions being removed
+      for (const s of toRemove) {
+        try {
+          const atts = await attendanceRepository.find({
+            where: { session: { id: s.id }, user: { id: studentId } }
+          });
+          if (atts.length > 0) {
+            await attendanceRepository.remove(atts);
+          }
+        } catch (e) {}
+      }
+
+      // 2. Remove session entities
       if (toRemove.length > 0) {
         await sessionRepository.remove(toRemove);
       }
 
-      return res.json({ message: `تم إزالة الطالب من المجموعة بنجاح. ✅ (${toRemove.length} حصص)` });
+      // 3. Remove financial records & receipts
+      const studentPayments = await paymentRepository.find({
+        where: { student: { id: studentId } }
+      });
+      const paymentsToDelete = studentPayments.filter(p => {
+        if (!p.notes) return false;
+        const matchesTitle = sess.title && p.notes.includes(sess.title);
+        const matchesGroup = sess.group?.name && p.notes.includes(sess.group.name);
+        return matchesTitle || matchesGroup;
+      });
+
+      const uploadDir = process.env.UPLOADS_DIR
+        ? path.resolve(process.env.UPLOADS_DIR)
+        : path.resolve(process.cwd(), "public/uploads");
+
+      for (const p of paymentsToDelete) {
+        if (p.receiptUrl && typeof p.receiptUrl === "string" && p.receiptUrl.includes("/uploads/")) {
+          try {
+            const filename = path.basename(p.receiptUrl);
+            const filePath = path.join(uploadDir, filename);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (fErr) {
+            console.warn("Could not delete physical receipt file:", fErr);
+          }
+        }
+      }
+
+      if (paymentsToDelete.length > 0) {
+        await paymentRepository.remove(paymentsToDelete);
+      }
+
+      return res.json({ 
+        message: `تمت إزالة الطالب من المجموعة وحذف جميع الحصص (${toRemove.length}) والمعاملات المالية والإيصالات التابعة لها بنجاح! ✅`,
+        deletedPaymentsCount: paymentsToDelete.length
+      });
     } catch (err) {
       console.error("removeStudentFromGroupSession error:", err);
       return res.status(500).json({ error: "فشل إزالة الطالب من المجموعة." });

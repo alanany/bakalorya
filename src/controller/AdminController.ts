@@ -1,4 +1,6 @@
 import { Response } from "express";
+import fs from "fs";
+import path from "path";
 import { IsNull } from "typeorm";
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../data-source";
@@ -12,6 +14,19 @@ import { Grade } from "../entity/Grade";
 import { Subject } from "../entity/Subject";
 import { SubscriptionPlan } from "../entity/SubscriptionPlan";
 import { AuditLog } from "../entity/AuditLog";
+import { CourseGroup } from "../entity/CourseGroup";
+import { SessionAttendance } from "../entity/SessionAttendance";
+import { Assignment } from "../entity/Assignment";
+import { AssignmentSubmission } from "../entity/AssignmentSubmission";
+import { Review } from "../entity/Review";
+import { QuestionAnswer } from "../entity/QuestionAnswer";
+import { TeacherAvailability } from "../entity/TeacherAvailability";
+import { TeacherEarning } from "../entity/TeacherEarning";
+import { TeacherApplication } from "../entity/TeacherApplication";
+import { Subscription } from "../entity/Subscription";
+import { TestAttempt } from "../entity/TestAttempt";
+import { ParentStudentLink } from "../entity/ParentStudentLink";
+import { SessionCreditLedger } from "../entity/SessionCreditLedger";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
 import { createWhatsAppNotificationPayload, buildRegistrationSuccessMessage } from "../utils/whatsapp";
@@ -361,12 +376,516 @@ export class AdminController {
     try {
       const userRepo = AppDataSource.getRepository(User);
       const user = await userRepo.findOneBy({ id });
-      if (!user) return res.status(404).json({ error: "User not found." });
+      if (!user) return res.status(404).json({ error: "المستخدم غير موجود بالنظام." });
 
+      // If user is a teacher, apply safety check for upcoming days in groups and remove all related data
+      if (user.role === "teacher") {
+        const groupRepo = AppDataSource.getRepository(CourseGroup);
+        const sessionRepo = AppDataSource.getRepository(Session);
+        const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+        const paymentRepo = AppDataSource.getRepository(Payment);
+        const attendanceRepo = AppDataSource.getRepository(SessionAttendance);
+        const courseRepo = AppDataSource.getRepository(Course);
+        const lessonRepo = AppDataSource.getRepository(Lesson);
+        const assignmentRepo = AppDataSource.getRepository(Assignment);
+        const submissionRepo = AppDataSource.getRepository(AssignmentSubmission);
+        const reviewRepo = AppDataSource.getRepository(Review);
+        const qaRepo = AppDataSource.getRepository(QuestionAnswer);
+        const availabilityRepo = AppDataSource.getRepository(TeacherAvailability);
+        const earningRepo = AppDataSource.getRepository(TeacherEarning);
+        const appRepo = AppDataSource.getRepository(TeacherApplication);
+        const subRepo = AppDataSource.getRepository(Subscription);
+
+        // 1. Find all groups related to this teacher (direct teacher or course teacher)
+        const allGroups = await groupRepo.find({
+          relations: ["teacher", "course", "course.teacher"]
+        });
+        const teacherGroups = allGroups.filter(g => 
+          (g.teacher && g.teacher.id === id) || 
+          (g.course?.teacher && g.course.teacher.id === id)
+        );
+
+        // 2. CHECK IF TEACHER HAS GROUPS WITH UPCOMING/OUTCOMING DAYS
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        const upcomingGroupsIssues: Array<{ groupName: string; reason: string; nextDate?: string }> = [];
+        const activeStatuses = ["SCHEDULED", "CONFIRMED", "scheduled", "live"];
+
+        for (const grp of teacherGroups) {
+          // Check upcoming scheduled sessions in this group
+          const grpSessions = await sessionRepo.find({
+            where: { group: { id: grp.id } }
+          });
+          const upcomingSessions = grpSessions.filter(s => {
+            const isFutureOrLive = s.scheduledAt && new Date(s.scheduledAt).getTime() >= twoHoursAgo.getTime();
+            const isActive = activeStatuses.includes(s.status) || (!["COMPLETED", "completed", "CANCELLED_BY_STUDENT", "CANCELLED_BY_TEACHER"].includes(s.status));
+            return isFutureOrLive && isActive;
+          });
+
+          if (upcomingSessions.length > 0) {
+            upcomingSessions.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+            const earliest = upcomingSessions[0];
+            const dateStr = earliest.scheduledAt ? new Date(earliest.scheduledAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            upcomingGroupsIssues.push({
+              groupName: grp.name,
+              reason: `يوجد (${upcomingSessions.length}) حصة مجدولة قادمة، أقربها يوم ${dateStr}`,
+              nextDate: earliest.scheduledAt ? new Date(earliest.scheduledAt).toISOString() : undefined
+            });
+            continue;
+          }
+
+          // Check if group is active and has an endDate in the future
+          if (grp.endDate && new Date(grp.endDate).getTime() >= now.getTime() && ["IN_PROGRESS", "OPEN", "FULL", "CLOSED"].includes(grp.status)) {
+            const endStr = new Date(grp.endDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+            upcomingGroupsIssues.push({
+              groupName: grp.name,
+              reason: `المجموعة لا تزال جارية ومحددة حتى تاريخ ${endStr}`
+            });
+            continue;
+          }
+
+          // Check if group has a startDate in the future
+          if (grp.startDate && new Date(grp.startDate).getTime() >= now.getTime() && ["OPEN", "FULL", "PENDING_APPROVAL", "CLOSED"].includes(grp.status)) {
+            const startStr = new Date(grp.startDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+            upcomingGroupsIssues.push({
+              groupName: grp.name,
+              reason: `المجموعة لم تبدأ بعد ومجدولة للبدء بتاريخ ${startStr}`
+            });
+            continue;
+          }
+        }
+
+        // Also check if teacher has any standalone upcoming sessions (e.g. 1-on-1 private sessions)
+        const teacherDirectSessions = await sessionRepo.find({
+          where: { teacher: { id } },
+          relations: ["group"]
+        });
+        const upcomingDirectSessions = teacherDirectSessions.filter(s => {
+          const isFutureOrLive = s.scheduledAt && new Date(s.scheduledAt).getTime() >= twoHoursAgo.getTime();
+          const isActive = activeStatuses.includes(s.status) || (!["COMPLETED", "completed", "CANCELLED_BY_STUDENT", "CANCELLED_BY_TEACHER"].includes(s.status));
+          return isFutureOrLive && isActive;
+        });
+
+        if (upcomingDirectSessions.length > 0 && upcomingGroupsIssues.length === 0) {
+          upcomingDirectSessions.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+          const earliest = upcomingDirectSessions[0];
+          const dateStr = earliest.scheduledAt ? new Date(earliest.scheduledAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          upcomingGroupsIssues.push({
+            groupName: earliest.group?.name || earliest.title || "جلسات المعلم",
+            reason: `يوجد (${upcomingDirectSessions.length}) حصة مجدولة قادمة، أقربها يوم ${dateStr}`
+          });
+        }
+
+        // IF THERE ARE UPCOMING GROUPS OR SESSIONS -> CANNOT DELETE TEACHER
+        if (upcomingGroupsIssues.length > 0) {
+          const detailsList = upcomingGroupsIssues.map(u => `• ${u.groupName}: ${u.reason}`).join("\n");
+          return res.status(400).json({
+            error: `لا يمكن حذف حساب المعلم لوجود مجموعات وحصص قادمة مجدولة في الأيام القادمة:\n${detailsList}\nيرجى إتمام هذه الحصص أو إلغاء جدولتها أولاً قبل حذف المعلم.`,
+            upcomingGroups: upcomingGroupsIssues
+          });
+        }
+
+        // 3. NO UPCOMING DAYS/SESSIONS: PROCEED TO DELETE TEACHER AND REMOVE ALL RELATED GROUPS & SITE DATA
+        const uploadDir = process.env.UPLOADS_DIR
+          ? path.resolve(process.env.UPLOADS_DIR)
+          : path.resolve(process.cwd(), "public/uploads");
+
+        // A) Remove all related groups and their dependencies
+        for (const grp of teacherGroups) {
+          // Delete group sessions and attendances
+          const grpSessions = await sessionRepo.find({
+            where: { group: { id: grp.id } }
+          });
+          for (const s of grpSessions) {
+            try {
+              const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
+              if (atts.length > 0) await attendanceRepo.remove(atts);
+            } catch (e) {}
+          }
+          if (grpSessions.length > 0) {
+            await sessionRepo.remove(grpSessions);
+          }
+
+          // Delete group assignments and submissions
+          const grpAssignments = await assignmentRepo.find({
+            where: { group: { id: grp.id } }
+          });
+          for (const a of grpAssignments) {
+            try {
+              const subs = await submissionRepo.find({ where: { assignment: { id: a.id } } });
+              if (subs.length > 0) await submissionRepo.remove(subs);
+            } catch (e) {}
+          }
+          if (grpAssignments.length > 0) {
+            await assignmentRepo.remove(grpAssignments);
+          }
+
+          // Delete group lessons
+          const grpLessons = await lessonRepo.find({
+            where: { group: { id: grp.id } }
+          });
+          if (grpLessons.length > 0) {
+            await lessonRepo.remove(grpLessons);
+          }
+
+          // Delete group enrollments and clean up physical receipts & payments
+          const grpEnrollments = await enrollmentRepo.find({
+            where: { group: { id: grp.id } },
+            relations: ["payment"]
+          });
+          for (const enr of grpEnrollments) {
+            if (enr.payment) {
+              const p = enr.payment;
+              if (p.receiptUrl && typeof p.receiptUrl === "string" && p.receiptUrl.includes("/uploads/")) {
+                try {
+                  const filename = path.basename(p.receiptUrl);
+                  const fPath = path.join(uploadDir, filename);
+                  if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
+                } catch (e) {}
+              }
+              enr.payment = null as any;
+              await enrollmentRepo.save(enr);
+              await paymentRepo.remove(p);
+            }
+          }
+          if (grpEnrollments.length > 0) {
+            await enrollmentRepo.remove(grpEnrollments);
+          }
+
+          // Remove the group itself
+          await groupRepo.remove(grp);
+        }
+
+        // B) Delete courses created by this teacher and their dependencies
+        const teacherCourses = await courseRepo.find({
+          where: { teacher: { id } },
+          relations: ["groups", "lessons", "enrollments"]
+        });
+        for (const c of teacherCourses) {
+          const cGroups = await groupRepo.find({ where: { course: { id: c.id } } });
+          if (cGroups.length > 0) {
+            await groupRepo.remove(cGroups);
+          }
+          const cSessions = await sessionRepo.find({ where: { course: { id: c.id } } });
+          if (cSessions.length > 0) {
+            await sessionRepo.remove(cSessions);
+          }
+          const cLessons = await lessonRepo.find({ where: { course: { id: c.id } } });
+          if (cLessons.length > 0) {
+            await lessonRepo.remove(cLessons);
+          }
+          const cEnrollments = await enrollmentRepo.find({ where: { course: { id: c.id } } });
+          if (cEnrollments.length > 0) {
+            await enrollmentRepo.remove(cEnrollments);
+          }
+          await courseRepo.remove(c);
+        }
+
+        // C) Delete any remaining sessions of this teacher
+        const remainingTeacherSessions = await sessionRepo.find({
+          where: { teacher: { id } }
+        });
+        for (const s of remainingTeacherSessions) {
+          try {
+            const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
+            if (atts.length > 0) await attendanceRepo.remove(atts);
+          } catch (e) {}
+        }
+        if (remainingTeacherSessions.length > 0) {
+          await sessionRepo.remove(remainingTeacherSessions);
+        }
+
+        // D) Delete teacher availabilities
+        const availabilities = await availabilityRepo.find({ where: { teacher: { id } } });
+        if (availabilities.length > 0) {
+          await availabilityRepo.remove(availabilities);
+        }
+
+        // E) Delete teacher earnings
+        const earnings = await earningRepo.find({ where: { teacher: { id } } });
+        if (earnings.length > 0) {
+          await earningRepo.remove(earnings);
+        }
+
+        // F) Delete reviews for teacher
+        const reviews = await reviewRepo.find({ where: { teacher: { id } } });
+        if (reviews.length > 0) {
+          await reviewRepo.remove(reviews);
+        }
+
+        // G) Delete teacher Q&As
+        const qas = await qaRepo.find({ where: { teacher: { id } } });
+        if (qas.length > 0) {
+          await qaRepo.remove(qas);
+        }
+
+        // H) Reassign or nullify teacher in subscriptions
+        const subs = await subRepo.find({ where: { teacher: { id } } });
+        for (const s of subs) {
+          s.teacher = null as any;
+          if (s.status === "ACTIVE") s.status = "TEACHER_ASSIGNMENT_PENDING";
+          await subRepo.save(s);
+        }
+
+        // I) Delete teacher applications with this email if any
+        if (user.email) {
+          const apps = await appRepo.find({ where: { email: user.email } });
+          if (apps.length > 0) {
+            await appRepo.remove(apps);
+          }
+        }
+      }
+
+      // If user is a student, apply safety check for upcoming days in groups/sessions and remove all student records
+      if (user.role === "student") {
+        const groupRepo = AppDataSource.getRepository(CourseGroup);
+        const sessionRepo = AppDataSource.getRepository(Session);
+        const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+        const paymentRepo = AppDataSource.getRepository(Payment);
+        const attendanceRepo = AppDataSource.getRepository(SessionAttendance);
+        const submissionRepo = AppDataSource.getRepository(AssignmentSubmission);
+        const testAttemptRepo = AppDataSource.getRepository(TestAttempt);
+        const parentLinkRepo = AppDataSource.getRepository(ParentStudentLink);
+        const subRepo = AppDataSource.getRepository(Subscription);
+        const ledgerRepo = AppDataSource.getRepository(SessionCreditLedger);
+        const reviewRepo = AppDataSource.getRepository(Review);
+        const qaRepo = AppDataSource.getRepository(QuestionAnswer);
+
+        // 1. Fetch student's enrollments
+        const studentEnrollments = await enrollmentRepo.find({
+          where: { student: { id } },
+          relations: ["group", "course", "payment"]
+        });
+
+        // 2. CHECK IF STUDENT HAS GROUPS OR SESSIONS WITH UPCOMING/OUTCOMING DAYS
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        const upcomingStudentIssues: Array<{ groupName: string; reason: string; nextDate?: string }> = [];
+        const activeStatuses = ["SCHEDULED", "CONFIRMED", "scheduled", "live"];
+
+        // Check each enrolled group where student is active or pending
+        const activeGroupEnrollments = studentEnrollments.filter(e => e.group && (e.status === "active" || e.status === "pending"));
+
+        for (const enr of activeGroupEnrollments) {
+          const grp = enr.group!;
+          // Find upcoming sessions in this group
+          const grpSessions = await sessionRepo.find({
+            where: { group: { id: grp.id } }
+          });
+          const upcomingSessions = grpSessions.filter(s => {
+            const isFutureOrLive = s.scheduledAt && new Date(s.scheduledAt).getTime() >= twoHoursAgo.getTime();
+            const isActive = activeStatuses.includes(s.status) || (!["COMPLETED", "completed", "CANCELLED_BY_STUDENT", "CANCELLED_BY_TEACHER"].includes(s.status));
+            return isFutureOrLive && isActive;
+          });
+
+          if (upcomingSessions.length > 0) {
+            upcomingSessions.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+            const earliest = upcomingSessions[0];
+            const dateStr = earliest.scheduledAt ? new Date(earliest.scheduledAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            upcomingStudentIssues.push({
+              groupName: grp.name,
+              reason: `المجموعة لديها (${upcomingSessions.length}) حصة قادمة مجدولة، أقربها يوم ${dateStr}`,
+              nextDate: earliest.scheduledAt ? new Date(earliest.scheduledAt).toISOString() : undefined
+            });
+            continue;
+          }
+
+          // Check if group is active and has an endDate in the future
+          if (grp.endDate && new Date(grp.endDate).getTime() >= now.getTime() && ["IN_PROGRESS", "OPEN", "FULL", "CLOSED"].includes(grp.status)) {
+            const endStr = new Date(grp.endDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+            upcomingStudentIssues.push({
+              groupName: grp.name,
+              reason: `المجموعة الدراسية لا تزال جارية ومحددة حتى تاريخ ${endStr}`
+            });
+            continue;
+          }
+
+          // Check if group has a startDate in the future
+          if (grp.startDate && new Date(grp.startDate).getTime() >= now.getTime() && ["OPEN", "FULL", "PENDING_APPROVAL", "CLOSED"].includes(grp.status)) {
+            const startStr = new Date(grp.startDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+            upcomingStudentIssues.push({
+              groupName: grp.name,
+              reason: `المجموعة مجدولة للبدء في الأيام القادمة بتاريخ ${startStr}`
+            });
+            continue;
+          }
+        }
+
+        // Also check if student has any upcoming 1-on-1 private sessions
+        const studentPrivateSessions = await sessionRepo.find({
+          where: { student: { id } }
+        });
+        const upcomingPrivateSessions = studentPrivateSessions.filter(s => {
+          const isFutureOrLive = s.scheduledAt && new Date(s.scheduledAt).getTime() >= twoHoursAgo.getTime();
+          const isActive = activeStatuses.includes(s.status) || (!["COMPLETED", "completed", "CANCELLED_BY_STUDENT", "CANCELLED_BY_TEACHER"].includes(s.status));
+          return isFutureOrLive && isActive;
+        });
+
+        if (upcomingPrivateSessions.length > 0) {
+          upcomingPrivateSessions.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+          const earliest = upcomingPrivateSessions[0];
+          const dateStr = earliest.scheduledAt ? new Date(earliest.scheduledAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          upcomingStudentIssues.push({
+            groupName: earliest.title || "حصة خاصة 1-on-1",
+            reason: `يوجد (${upcomingPrivateSessions.length}) حصة خاصة قادمة مجدولة، أقربها يوم ${dateStr}`
+          });
+        }
+
+        // IF THERE ARE UPCOMING GROUPS OR SESSIONS -> CANNOT DELETE STUDENT
+        if (upcomingStudentIssues.length > 0) {
+          const detailsList = upcomingStudentIssues.map(u => `• ${u.groupName}: ${u.reason}`).join("\n");
+          return res.status(400).json({
+            error: `لا يمكن حذف حساب الطالب لوجود مجموعات دراسية أو حصص قادمة مجدولة في الأيام القادمة:\n${detailsList}\nيرجى إلغاء قيد الطالب من المجموعة أو إتمام الحصص القادمة أولاً قبل حذف الحساب.`,
+            upcomingGroups: upcomingStudentIssues
+          });
+        }
+
+        // 3. NO UPCOMING DAYS/SESSIONS: PROCEED TO DELETE STUDENT AND CLEAN UP ALL SITE DATA
+        const uploadDir = process.env.UPLOADS_DIR
+          ? path.resolve(process.env.UPLOADS_DIR)
+          : path.resolve(process.cwd(), "public/uploads");
+
+        // A) Delete physical receipts and payment records
+        const studentPayments = await paymentRepo.find({
+          where: { student: { id } }
+        });
+        for (const p of studentPayments) {
+          if (p.receiptUrl && typeof p.receiptUrl === "string" && p.receiptUrl.includes("/uploads/")) {
+            try {
+              const filename = path.basename(p.receiptUrl);
+              const fPath = path.join(uploadDir, filename);
+              if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
+            } catch (e) {}
+          }
+        }
+
+        // Also check payments attached to enrollments
+        for (const enr of studentEnrollments) {
+          if (enr.payment) {
+            const p = enr.payment;
+            if (p.receiptUrl && typeof p.receiptUrl === "string" && p.receiptUrl.includes("/uploads/")) {
+              try {
+                const filename = path.basename(p.receiptUrl);
+                const fPath = path.join(uploadDir, filename);
+                if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
+              } catch (e) {}
+            }
+            enr.payment = null as any;
+            await enrollmentRepo.save(enr);
+            if (!studentPayments.some(sp => sp.id === p.id)) {
+              studentPayments.push(p);
+            }
+          }
+        }
+        if (studentPayments.length > 0) {
+          await paymentRepo.remove(studentPayments);
+        }
+
+        // B) Delete all student enrollments
+        if (studentEnrollments.length > 0) {
+          await enrollmentRepo.remove(studentEnrollments);
+        }
+
+        // C) Delete student-specific private sessions and their attendances
+        for (const s of studentPrivateSessions) {
+          try {
+            const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
+            if (atts.length > 0) await attendanceRepo.remove(atts);
+          } catch (e) {}
+        }
+        if (studentPrivateSessions.length > 0) {
+          await sessionRepo.remove(studentPrivateSessions);
+        }
+
+        // D) Delete student attendance records across all sessions
+        const allStudentAttendances = await attendanceRepo.find({
+          where: { user: { id } }
+        });
+        if (allStudentAttendances.length > 0) {
+          await attendanceRepo.remove(allStudentAttendances);
+        }
+
+        // E) Delete assignment submissions and uploaded files
+        const submissions = await submissionRepo.find({
+          where: { student: { id } }
+        });
+        for (const sub of submissions) {
+          if (sub.answers && Array.isArray(sub.answers)) {
+            for (const ans of sub.answers) {
+              if (ans.fileUrl && ans.fileUrl.includes("/uploads/")) {
+                try {
+                  const filename = path.basename(ans.fileUrl);
+                  const fPath = path.join(uploadDir, filename);
+                  if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
+                } catch (e) {}
+              }
+            }
+          }
+          if (sub.feedbackFileUrl && sub.feedbackFileUrl.includes("/uploads/")) {
+            try {
+              const filename = path.basename(sub.feedbackFileUrl);
+              const fPath = path.join(uploadDir, filename);
+              if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
+            } catch (e) {}
+          }
+        }
+        if (submissions.length > 0) {
+          await submissionRepo.remove(submissions);
+        }
+
+        // F) Delete test attempts
+        const attempts = await testAttemptRepo.find({
+          where: { student: { id } }
+        });
+        if (attempts.length > 0) {
+          await testAttemptRepo.remove(attempts);
+        }
+
+        // G) Delete parent-student links
+        const parentLinks = await parentLinkRepo.find({
+          where: { student: { id } }
+        });
+        if (parentLinks.length > 0) {
+          await parentLinkRepo.remove(parentLinks);
+        }
+
+        // H) Delete student subscriptions and ledger entries
+        const studentSubs = await subRepo.find({
+          where: { student: { id } }
+        });
+        for (const sub of studentSubs) {
+          const ledgers = await ledgerRepo.find({ where: { subscription: { id: sub.id } } });
+          if (ledgers.length > 0) await ledgerRepo.remove(ledgers);
+        }
+        if (studentSubs.length > 0) {
+          await subRepo.remove(studentSubs);
+        }
+
+        // I) Delete student reviews
+        const reviews = await reviewRepo.find({ where: { student: { id } } });
+        if (reviews.length > 0) {
+          await reviewRepo.remove(reviews);
+        }
+
+        // J) Delete student Q&As
+        const qas = await qaRepo.find({ where: { student: { id } } });
+        if (qas.length > 0) {
+          await qaRepo.remove(qas);
+        }
+      }
+
+      // Finally delete the user record
       await userRepo.remove(user);
-      return res.json({ message: "User deleted successfully." });
-    } catch (err) {
-      return res.status(500).json({ error: "Failed to delete user." });
+      return res.json({ 
+        message: user.role === "teacher" 
+          ? `تم حذف حساب المعلم "${user.name}" وإزالة جميع المجموعات والكورسات والبيانات المرتبطة به بنجاح من كافة أقسام المنصة! ✅`
+          : (user.role === "student"
+            ? `تم حذف حساب الطالب "${user.name}" وإلغاء قيده وحذف كافة بياناته المالية والإيصالات والواجبات المرتبطة به بنجاح! ✅`
+            : "تم حذف المستخدم بنجاح.") 
+      });
+    } catch (err: any) {
+      console.error("Admin deleteUser error:", err);
+      return res.status(500).json({ error: err.message || "Failed to delete user." });
     }
   }
 

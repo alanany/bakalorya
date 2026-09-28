@@ -24,6 +24,21 @@ export class TeacherEarning {
   @Column({ default: "pending" })
   status: "pending" | "paid";
 
+  @Column({ nullable: true })
+  receiptUrl: string;
+
+  @Column({ default: "manual", nullable: true })
+  paymentMethod: string;
+
+  @Column({ nullable: true })
+  transactionRef: string;
+
+  @Column({ type: "text", nullable: true })
+  notes: string;
+
+  @Column({ nullable: true })
+  paidAt: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

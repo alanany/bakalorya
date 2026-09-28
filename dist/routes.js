@@ -27,6 +27,7 @@ const TeacherEarningController_1 = require("./controller/TeacherEarningControlle
 const PlatformSettingController_1 = require("./controller/PlatformSettingController");
 const CurriculumController_1 = require("./controller/CurriculumController");
 const CourseGroupController_1 = require("./controller/CourseGroupController");
+const ParentController_1 = require("./controller/ParentController");
 const auth_1 = require("./middleware/auth");
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const concurrencyLock_1 = require("./middleware/concurrencyLock");
@@ -91,6 +92,8 @@ router.post("/auth/student/login", rateLimiter_1.authRateLimiter, AuthController
 router.post("/auth/student-login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.studentLogin);
 router.post("/auth/staff/login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.staffLogin);
 router.post("/auth/staff-login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.staffLogin);
+router.post("/auth/parent/login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.parentLogin);
+router.post("/auth/parent-login", rateLimiter_1.authRateLimiter, AuthController_1.AuthController.parentLogin);
 router.get("/auth/me", auth_1.authMiddleware, AuthController_1.AuthController.me);
 router.post("/auth/accept-teacher-invitation", AdminTeacherController_1.AdminTeacherController.acceptInvitation);
 // Public Platform Stats & Settings
@@ -256,6 +259,7 @@ router.get("/teachers", UserController_1.UserController.getTeachers);
 router.get("/teachers/:id", UserController_1.UserController.getTeacherById);
 router.get("/teachers/:id/groups", auth_1.optionalAuthMiddleware, CourseGroupController_1.CourseGroupController.getTeacherGroups);
 router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController.updateProfile);
+router.post("/users/request-phone-change", auth_1.authMiddleware, UserController_1.UserController.requestPhoneChange);
 router.post("/users/avatar", auth_1.authMiddleware, uploadSingleAvatar, UserController_1.UserController.uploadAvatar);
 router.post("/users/change-password", auth_1.authMiddleware, UserController_1.UserController.changePassword);
 router.post("/auth/change-password", auth_1.authMiddleware, UserController_1.UserController.changePassword);
@@ -275,11 +279,13 @@ router.get("/categories", CategoryController_1.CategoryController.getAll);
 router.post("/categories", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CategoryController_1.CategoryController.create);
 router.put("/categories/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CategoryController_1.CategoryController.update);
 router.delete("/categories/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CategoryController_1.CategoryController.delete);
-router.get("/blogs", BlogController_1.BlogController.getAll);
-router.get("/blogs/:id", BlogController_1.BlogController.getOne);
-router.post("/blogs", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.create);
-router.put("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.update);
-router.delete("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), BlogController_1.BlogController.delete);
+router.get("/blogs", auth_1.optionalAuthMiddleware, BlogController_1.BlogController.getAll);
+router.get("/blogs/:id", auth_1.optionalAuthMiddleware, BlogController_1.BlogController.getOne);
+router.post("/blogs", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), BlogController_1.BlogController.create);
+router.put("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), BlogController_1.BlogController.update);
+router.delete("/blogs/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), BlogController_1.BlogController.delete);
+router.get("/admin/blogs", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), BlogController_1.BlogController.getAdminBlogs);
+router.patch("/admin/blogs/:id/status", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), BlogController_1.BlogController.updateStatus);
 // Assignments & Submissions
 router.get("/assignments/teacher-review", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin"]), AssignmentController_1.AssignmentController.getTeacherAssignmentsReview);
 router.get("/assignments", auth_1.authMiddleware, AssignmentController_1.AssignmentController.getAssignments);
@@ -316,4 +322,20 @@ router.get("/admin/reports", auth_1.authMiddleware, (0, auth_1.requireRole)(["ad
 router.get("/admin/teacher-applications", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherApplicationController_1.TeacherApplicationController.getApplications);
 router.put("/admin/teacher-applications/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherApplicationController_1.TeacherApplicationController.reviewApplication);
 router.patch("/admin/teacher-applications/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherApplicationController_1.TeacherApplicationController.reviewApplication);
+// ─── Parent Portal Routes ─────────────────────────────────────────────────────
+// Admin: manage parent accounts
+router.get("/admin/parents", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminListParents);
+router.post("/admin/parents", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminCreateParent);
+router.patch("/admin/parents/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminApproveParent);
+router.patch("/admin/parents/:id/block", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminToggleBlockParent);
+router.get("/admin/parents/:parentId/children", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminGetChildren);
+router.post("/admin/parents/:parentId/children", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminAddChild);
+router.delete("/admin/parent-links/:linkId", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminRemoveChild);
+router.get("/admin/students/search", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), ParentController_1.ParentController.adminSearchStudents);
+// Parent: read-only portal
+router.get("/parent/children", auth_1.authMiddleware, (0, auth_1.requireRole)(["parent"]), ParentController_1.ParentController.myChildren);
+router.get("/parent/children/:studentId/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["parent"]), ParentController_1.ParentController.childGroups);
+router.get("/parent/children/:studentId/sessions", auth_1.authMiddleware, (0, auth_1.requireRole)(["parent"]), ParentController_1.ParentController.childSessions);
+router.get("/parent/children/:studentId/grades", auth_1.authMiddleware, (0, auth_1.requireRole)(["parent"]), ParentController_1.ParentController.childGrades);
+router.get("/parent/children/:studentId/billing", auth_1.authMiddleware, (0, auth_1.requireRole)(["parent"]), ParentController_1.ParentController.childBilling);
 exports.default = router;

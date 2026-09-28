@@ -35,6 +35,9 @@ async function authMiddleware(req, res, next) {
         if (user.isBlocked || user.status === "BLOCKED" || user.status === "SUSPENDED") {
             return res.status(403).json({ error: "تم حظر هذا الحساب من دخول الأكاديمية من قبل الإدارة." });
         }
+        if (user.status === "PENDING") {
+            return res.status(403).json({ error: "عفواً، حسابك قيد المراجعة والاعتماد من قبل إدارة الأكاديمية قبل السماح بالدخول." });
+        }
         next();
     }
     catch (err) {

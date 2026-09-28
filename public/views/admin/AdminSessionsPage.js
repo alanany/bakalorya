@@ -3133,7 +3133,10 @@ export const AdminSessionsPage = {
       btn.addEventListener("click", async () => {
         const stId = btn.getAttribute("data-student-id");
         const enrId = btn.getAttribute("data-enrollment-id");
-        const confirmed = await confirmDialog({ message: "هل أنت متأكد من إزالة هذا الطالب من المجموعة الدراسية؟", danger: true });
+        const confirmed = await confirmDialog({ 
+          message: "هل أنت متأكد من إزالة هذا الطالب من المجموعة الدراسية؟ سيتم إلغاء قيده وحذف المعاملة المالية وإيصال السداد التابع له تلقائياً من الإيرادات والسجلات.", 
+          danger: true 
+        });
         if (!confirmed) return;
         btn.disabled = true;
         try {
@@ -3142,13 +3145,13 @@ export const AdminSessionsPage = {
               method: "POST",
               body: JSON.stringify({ studentId: stId, enrollmentId: enrId })
             });
-            showToast(res.message || "تمت إزالة الطالب من المجموعة بنجاح", "info");
+            showToast(res.message || "تمت إزالة الطالب من المجموعة وحذف المعاملات المالية والإيصالات بنجاح! ✅", "info");
           } else {
             const res = await apiFetch("/admin/group-sessions/remove-student", {
               method: "POST",
               body: JSON.stringify({ sessionId: dbGroupId, studentId: stId })
             });
-            showToast(res.message || "تمت إزالة الطالب من المجموعة بنجاح", "info");
+            showToast(res.message || "تمت إزالة الطالب من المجموعة وحذف المعاملات المالية والإيصالات بنجاح! ✅", "info");
           }
 
           await this.loadAllData();
