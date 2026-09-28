@@ -723,16 +723,7 @@ export default class ParentView {
             <!-- ── 1. Right Column: Children Selector & Academy Sidebar ── -->
             <aside class="parent-children-sidebar">
               
-              <!-- 1. Academy Brand Header -->
-              <div class="sidebar-brand-card">
-                <a href="#landing" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
-                  <img src="assets/logo.png" style="width:38px;height:38px;object-fit:contain;background:#fff;border-radius:10px;padding:2px;border:1px solid var(--border-color);" alt="انطلق Academy" onerror="this.src='assets/logo.png'">
-                  <div>
-                    <h3 style="margin:0;font-size:1.02rem;font-weight:900;color:var(--text-main);line-height:1.2;">انطلق Academy</h3>
-                    <span style="font-size:0.75rem;color:var(--primary);font-weight:800;">بوابة أولياء الأمور 🎓</span>
-                  </div>
-                </a>
-              </div>
+            
 
               <!-- 2. Section "أبنائي" -->
               <div class="sidebar-children-card">
@@ -802,22 +793,12 @@ export default class ParentView {
                   <i data-lucide="book-open" style="width:16px;height:16px;"></i>
                   <span>📚   المجموعات الدراسية</span>
                 </button>
-                <button class="sidebar-nav-item ${this._activeTab === 'grades' ? 'active' : ''}" data-sidebar-tab="grades">
-                  <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
-                  <span>📊 التقدم الدراسي</span>
-                </button>
-                <button class="sidebar-nav-item ${this._activeTab === 'teachers' ? 'active' : ''}" data-sidebar-tab="teachers">
-                  <i data-lucide="users" style="width:16px;height:16px;"></i>
-                  <span>👨‍🏫 كادر الأساتذة</span>
-                </button>
+                
                 <button class="sidebar-nav-item ${this._activeTab === 'billing' ? 'active' : ''}" data-sidebar-tab="billing">
                   <i data-lucide="credit-card" style="width:16px;height:16px;"></i>
                   <span>💳 المدفوعات والفواتير</span>
                 </button>
-                <button class="sidebar-nav-item ${this._activeTab === 'messages' ? 'active' : ''}" data-sidebar-tab="messages">
-                  <i data-lucide="message-square" style="width:16px;height:16px;"></i>
-                  <span>💬 الرسائل الأكاديمية</span>
-                </button>
+                
                 <a href="#settings" class="sidebar-nav-item">
                   <i data-lucide="settings" style="width:16px;height:16px;"></i>
                   <span>⚙️ الإعدادات</span>
