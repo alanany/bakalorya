@@ -1144,6 +1144,77 @@ export default class AdminView {
       });
     });
 
+    // Admin Pay Teacher Total/Partial
+    this.container.querySelectorAll(".admin-pay-teacher-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const teacherId = btn.getAttribute("data-teacher-id");
+        this.renderPayTeacherModal(teacherId);
+      });
+    });
+
+    // Admin Toggle Teacher Payout Accordion
+    this.container.querySelectorAll(".admin-teacher-accordion-header").forEach(hdr => {
+      hdr.addEventListener("click", () => {
+        const targetId = hdr.getAttribute("data-target");
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+        const isExpanded = targetEl.style.display !== "none";
+        targetEl.style.display = isExpanded ? "none" : "block";
+        const card = hdr.closest(".admin-teacher-payout-card");
+        const chevron = card?.querySelector(".accordion-chevron");
+        if (chevron) {
+          chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(180deg)";
+        }
+        const label = card?.querySelector(".accordion-label");
+        if (label) {
+          const count = card.querySelector(".admin-toggle-teacher-accordion-btn")?.getAttribute("data-count") || "";
+          label.textContent = isExpanded ? `التفاصيل (${count})` : `إخفاء التفاصيل (${count})`;
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".admin-toggle-teacher-accordion-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute("data-target");
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+        const isExpanded = targetEl.style.display !== "none";
+        targetEl.style.display = isExpanded ? "none" : "block";
+        const chevron = btn.querySelector(".accordion-chevron");
+        if (chevron) {
+          chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(180deg)";
+        }
+        const label = btn.querySelector(".accordion-label");
+        if (label) {
+          const count = btn.getAttribute("data-count") || "";
+          label.textContent = isExpanded ? `التفاصيل (${count})` : `إخفاء التفاصيل (${count})`;
+        }
+      });
+    });
+
+    // Admin Teacher Payout Filter & Search
+    const filterTeacherPayouts = () => {
+      const q = (document.getElementById("admin-teacher-payout-search")?.value || "").toLowerCase().trim();
+      const filter = document.getElementById("admin-teacher-payout-filter")?.value || "ALL";
+
+      this.container.querySelectorAll(".admin-teacher-payout-card").forEach(card => {
+        const searchData = (card.getAttribute("data-search") || "").toLowerCase();
+        const status = card.getAttribute("data-status") || "";
+
+        const matchesSearch = !q || searchData.includes(q);
+        const matchesFilter = filter === "ALL" ||
+          (filter === "PENDING" && status === "PENDING") ||
+          (filter === "PAID" && status === "PAID");
+
+        card.style.display = (matchesSearch && matchesFilter) ? "" : "none";
+      });
+    };
+
+    document.getElementById("admin-teacher-payout-search")?.addEventListener("input", filterTeacherPayouts);
+    document.getElementById("admin-teacher-payout-filter")?.addEventListener("change", filterTeacherPayouts);
+
     // Admin Pay Earning
     this.container.querySelectorAll(".admin-pay-earning-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1177,28 +1248,67 @@ export default class AdminView {
       document.getElementById("admin-payouts-section")?.scrollIntoView({ behavior: "smooth" });
     });
 
-    // Admin Billings Table Filter & Search
-    const filterBillings = () => {
-      const q = (document.getElementById("admin-billing-search")?.value || "").toLowerCase().trim();
-      const type = document.getElementById("admin-billing-type-filter")?.value || "ALL";
-      const status = document.getElementById("admin-billing-status-filter")?.value || "ALL";
+    // Admin Student Billings Accordion Toggles
+    this.container.querySelectorAll(".admin-student-accordion-header").forEach(header => {
+      header.addEventListener("click", () => {
+        const targetId = header.getAttribute("data-target");
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+        const isExpanded = targetEl.style.display !== "none";
+        targetEl.style.display = isExpanded ? "none" : "block";
+        const chevron = header.querySelector(".accordion-chevron");
+        if (chevron) {
+          chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(180deg)";
+        }
+        const label = header.querySelector(".accordion-label");
+        if (label) {
+          const btn = header.querySelector(".admin-toggle-student-accordion-btn");
+          const count = btn?.getAttribute("data-count") || "";
+          label.textContent = isExpanded ? `الفواتير (${count})` : `إخفاء الفواتير (${count})`;
+        }
+      });
+    });
 
-      this.container.querySelectorAll(".admin-billing-row").forEach(row => {
-        const searchData = row.getAttribute("data-search") || "";
-        const rowType = row.getAttribute("data-type") || "";
-        const rowStatus = row.getAttribute("data-status") || "";
+    this.container.querySelectorAll(".admin-toggle-student-accordion-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute("data-target");
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+        const isExpanded = targetEl.style.display !== "none";
+        targetEl.style.display = isExpanded ? "none" : "block";
+        const chevron = btn.querySelector(".accordion-chevron");
+        if (chevron) {
+          chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(180deg)";
+        }
+        const label = btn.querySelector(".accordion-label");
+        if (label) {
+          const count = btn.getAttribute("data-count") || "";
+          label.textContent = isExpanded ? `الفواتير (${count})` : `إخفاء الفواتير (${count})`;
+        }
+      });
+    });
+
+    // Admin Student Billings Filter & Search
+    const filterStudentBillings = () => {
+      const q = (document.getElementById("admin-student-billing-search")?.value || "").toLowerCase().trim();
+      const filter = document.getElementById("admin-student-billing-filter")?.value || "ALL";
+
+      this.container.querySelectorAll(".admin-student-billing-card").forEach(card => {
+        const searchData = (card.getAttribute("data-search") || "").toLowerCase();
+        const status = card.getAttribute("data-status") || "";
 
         const matchesSearch = !q || searchData.includes(q);
-        const matchesType = type === "ALL" || rowType === type;
-        const matchesStatus = status === "ALL" || rowStatus === status;
+        const matchesFilter = filter === "ALL" ||
+          (filter === "PENDING" && status === "PENDING") ||
+          (filter === "SUCCESS" && status === "SUCCESS");
 
-        row.style.display = (matchesSearch && matchesType && matchesStatus) ? "" : "none";
+        card.style.display = (matchesSearch && matchesFilter) ? "" : "none";
       });
     };
 
-    document.getElementById("admin-billing-search")?.addEventListener("input", filterBillings);
-    document.getElementById("admin-billing-type-filter")?.addEventListener("change", filterBillings);
-    document.getElementById("admin-billing-status-filter")?.addEventListener("change", filterBillings);
+    document.getElementById("admin-student-billing-search")?.addEventListener("input", filterStudentBillings);
+    document.getElementById("admin-student-billing-filter")?.addEventListener("change", filterStudentBillings);
 
     // Admin View Payment Details Modal
     this.container.querySelectorAll(".admin-view-payment-details-btn").forEach(btn => {
