@@ -123,8 +123,11 @@ export default class TestsView {
 
   async loadContent() {
     try {
-      this.tests = await apiFetch("/tests");
+      const res = await apiFetch("/tests").catch(() => []);
+      this.tests = Array.isArray(res) ? res : (res?.tests && Array.isArray(res.tests) ? res.tests : []);
       const contentArea = this.container.querySelector("#tests-content-area");
+
+      if (!contentArea) return;
 
       if (this.tests.length === 0) {
         contentArea.innerHTML = `<div class="glass-card" style="text-align:center; padding: 40px; color:var(--text-muted); grid-column: 1 / -1;">No tests found.</div>`;
@@ -132,8 +135,10 @@ export default class TestsView {
         contentArea.innerHTML = this.tests.map(t => this.renderTestCard(t)).join("");
       }
 
-      if (state.user.role === 'teacher' || state.user.role === 'admin') {
-        const courses = await apiFetch("/courses").then(res => res.filter(c => c.teacher?.id === state.user.id || state.user.role === 'admin'));
+      if (state.user?.role === 'teacher' || state.user?.role === 'admin') {
+        const courses = await apiFetch("/courses")
+          .then(res => Array.isArray(res) ? res.filter(c => c.teacher?.id === state.user?.id || state.user?.role === 'admin') : [])
+          .catch(() => []);
         const select = document.getElementById("test-course");
         if (select) {
           select.innerHTML = `<option value="">Select Course</option>` + courses.map(c => `<option value="${c.id}">${c.title}</option>`).join("");
@@ -276,9 +281,11 @@ export default class TestsView {
         takeModal.style.display = "flex";
 
         try {
-          const questions = await apiFetch(`/tests/${id}/questions`);
+          const questionsRes = await apiFetch(`/tests/${id}/questions`).catch(() => []);
+          const questions = Array.isArray(questionsRes) ? questionsRes : [];
           const area = document.getElementById("take-test-questions-area");
-          if(questions.length === 0) {
+          if (!area) return;
+          if (questions.length === 0) {
             area.innerHTML = "<p>No questions found for this test.</p>";
             return;
           }

@@ -1077,9 +1077,6 @@ export function updateHeader() {
         <a href="#teacher-portal" class="nav-link active">
           <i data-lucide="graduation-cap"></i> ${t("nav.teacherPortal")}
         </a>
-        <a href="#courses" class="nav-link">
-          <i data-lucide="book-open"></i> ${t("nav.teacher.courses")}
-        </a>
         <a href="#students" class="nav-link">
           <i data-lucide="users"></i> ${t("nav.teacher.students") || "إدارة الطلاب"}
         </a>
@@ -1207,16 +1204,13 @@ export function updateHeader() {
         `;
       } else if (state.user.role === "teacher") {
         links += `
-          ${createNavSection("بوابة الأستاذ والمقررات")}
+          ${createNavSection("بوابة الأستاذ")}
           ${createNavItem("#teacher-portal", "layout-dashboard", t("nav.teacherPortal") || "لوحة المعلم الرئيسية")}
-          ${createNavItem("#courses", "book-open", t("nav.teacher.courses") || "دوراتي ومقرراتي")}
           ${createNavItem("#students", "users", t("nav.teacher.students") || "الطلاب المسجلين")}
           ${createNavItem("#schedule", "calendar", t("nav.schedule") || "جدول الحصص والبث")}
           
-          ${createNavSection("الحصص والمجموعات")}
-          ${createNavItem("#teacher-private-sessions", "sparkles", "الحصص الخاصة والاستشارات", "1-on-1")}
+          ${createNavSection("المجموعات الدراسية")}
           ${createNavItem("#teacher-groups", "users", "المجموعات والحصص الجماعية")}
-          ${createNavItem("#teacher-availability", "clock", "إدارة المواعيد والأوقات")}
           
           ${createNavSection("الأكاديميا والأنشطة")}
           ${createNavItem("#tests", "check-square", "الاختبارات والتقييمات")}
@@ -2072,10 +2066,12 @@ export async function router() {
     case "#course": ViewClass = CoursePlayerView; break;
     case "#teacher-portal": ViewClass = TeacherView; break;
     case "#teacher-financial": ViewClass = TeacherView; break;
-    case "#teacher-private-sessions": ViewClass = TeacherPrivateSessionsView; break;
+    case "#teacher-private-sessions":
+    case "#teacher-availability":
+      window.location.hash = "#teacher-groups";
+      return;
     case "#teacher-groups": ViewClass = TeacherGroupsView; break;
     case "#teacher-assignments": ViewClass = TeacherAssignmentsReviewView; break;
-    case "#teacher-availability": ViewClass = TeacherAvailabilityView; break;
     case "#teacher": ViewClass = TeacherDetailsView; break;
     case "#teacher-apply": ViewClass = TeacherApplyView; break;
     case "#enrollment-requests":

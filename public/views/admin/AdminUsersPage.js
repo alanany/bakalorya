@@ -44,10 +44,7 @@ export const AdminUsersPage = {
 
       <!-- Salary Summary Strip -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
-        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid var(--primary);">
-          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">إجمالي الرواتب المستحقة</div>
-          <div style="font-size:1.5rem; font-weight:800; color:var(--primary); margin-top:4px;">${grandTotalSalary.toLocaleString()} ج.م</div>
-        </div>
+
         <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid var(--success);">
           <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">إجمالي ساعات الحصص المكتملة</div>
           <div style="font-size:1.5rem; font-weight:800; color:var(--success); margin-top:4px;">${grandTotalHours} ساعة</div>
@@ -69,7 +66,6 @@ export const AdminUsersPage = {
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">سعر الساعة</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الحصص المنفذة</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الراتب المستحق</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
                   </tr>
                 </thead>
@@ -86,10 +82,10 @@ export const AdminUsersPage = {
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <span>${u.name}</span>
-                                ${isBlocked 
-                                  ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
-                                  : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">✅ نشط</span>`
-                                }
+                                ${isBlocked
+              ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
+              : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">✅ نشط</span>`
+            }
                               </div>
                               ${u.education ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">🎓 ${u.education}</div>` : ''}
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
@@ -124,11 +120,7 @@ export const AdminUsersPage = {
                           <div style="font-weight:700;">${item.completedCount} حصص</div>
                           <div style="font-size:0.75rem;color:var(--text-muted);">${item.completedHours} ساعة عمل</div>
                         </td>
-                        <td style="padding:14px 20px;">
-                          <span style="background:rgba(16,185,129,0.15); color:var(--success); font-weight:900; padding:6px 14px; border-radius:14px; font-size:0.9rem; display:inline-flex; align-items:center; gap:4px;">
-                            💰 ${item.totalSalary.toLocaleString()} ج.م
-                          </span>
-                        </td>
+                      
                         <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                             ${u.phone ? `
@@ -344,16 +336,16 @@ export const AdminUsersPage = {
                 </thead>
                 <tbody>
                   ${students.map(u => {
-                    const joinDate = new Date(u.createdAt).toLocaleDateString();
-                    const cleanPhone = u.phone ? getCleanWhatsAppNumber(u.phone) : "";
-                    const cleanParentPhone = u.parentPhone ? getCleanWhatsAppNumber(u.parentPhone) : "";
-                    const studentWaText = encodeURIComponent(`مرحباً ${u.name}، نتواصل معك من إدارة منصة انطلق.`);
-                    const parentWaText = encodeURIComponent(`مرحباً ولي أمر الطالب ${u.name}، نتواصل معكم من إدارة منصة انطلق.`);
+          const joinDate = new Date(u.createdAt).toLocaleDateString();
+          const cleanPhone = u.phone ? getCleanWhatsAppNumber(u.phone) : "";
+          const cleanParentPhone = u.parentPhone ? getCleanWhatsAppNumber(u.parentPhone) : "";
+          const studentWaText = encodeURIComponent(`مرحباً ${u.name}، نتواصل معك من إدارة منصة انطلق.`);
+          const parentWaText = encodeURIComponent(`مرحباً ولي أمر الطالب ${u.name}، نتواصل معكم من إدارة منصة انطلق.`);
 
-                    const isPending = u.status === 'PENDING';
-                    const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
+          const isPending = u.status === 'PENDING';
+          const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
 
-                    return `
+          return `
                       <tr style="border-bottom:1px solid var(--border-color);${isPending ? 'background:rgba(245,158,11,0.04);' : (isBlocked ? 'background:rgba(239,68,68,0.03);' : '')}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
@@ -361,12 +353,12 @@ export const AdminUsersPage = {
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                 <span>${u.name}</span>
-                                ${isPending 
-                                  ? `<span class="badge" style="background:rgba(245,158,11,0.15);color:#d97706;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">⏳ بانتظار الموافقة والاعتماد</span>`
-                                  : isBlocked 
-                                    ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
-                                    : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">✅ نشط</span>`
-                                }
+                                ${isPending
+              ? `<span class="badge" style="background:rgba(245,158,11,0.15);color:#d97706;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">⏳ بانتظار الموافقة والاعتماد</span>`
+              : isBlocked
+                ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
+                : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 6px;border-radius:6px;font-weight:800;">✅ نشط</span>`
+            }
                               </div>
                               <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
                             </div>
@@ -439,7 +431,7 @@ export const AdminUsersPage = {
                         </td>
                       </tr>
                     `;
-                  }).join("")}
+        }).join("")}
                 </tbody>
               </table>
             </div>

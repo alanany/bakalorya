@@ -332,6 +332,12 @@ router.get("/resources", authMiddleware, ResourceController.getResources);
 router.post("/resources", authMiddleware, requireRole(["teacher", "admin"]), ResourceController.createResource);
 router.delete("/resources/:id", authMiddleware, requireRole(["teacher", "admin"]), ResourceController.deleteResource);
 
+// Tests & Quizzes
+router.get("/tests", authMiddleware, TestController.getTests);
+router.get("/tests/:id/questions", authMiddleware, TestController.getTestQuestions);
+router.post("/tests", authMiddleware, requireRole(["teacher", "admin"]), TestController.createTest);
+router.post("/tests/:id/submit", authMiddleware, requireRole(["student"]), TestController.submitTest);
+
 // Admin Routes
 router.get("/admin/stats", authMiddleware, requireRole(["admin"]), AdminController.getStats);
 router.get("/admin/users", authMiddleware, requireRole(["admin"]), AdminController.getUsers);

@@ -195,7 +195,7 @@ export default class TeacherView {
                   </div>
 
                   <p style="color:var(--text-muted); font-size:0.92rem; margin:0; line-height:1.5;">
-                    تابع دوراتك التعليمية، جدول حصص البث المباشر، وحصص الطلاب الخاصة واستحقاقاتك المالية.
+                    تابع جدول حصص البث المباشر لمجموعاتك التعليمية واستحقاقاتك المالية.
                   </p>
                 </div>
               </div>
@@ -321,7 +321,7 @@ export default class TeacherView {
                     <span>حصص اليوم المباشرة (${allTodaySessions.length})</span>
                     ${allTodaySessions.length > 0 ? `<span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:8px;">اليوم 🟢</span>` : ''}
                   </h2>
-                  <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">جميع الحصص الجماعية والخاصة المجدولة لليوم بتنسيق جدول الحصص (Timetable)</p>
+                  <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">جميع حصص المجموعات المجدولة لليوم بتنسيق جدول الحصص (Timetable)</p>
                 </div>
 
                 <div style="display:flex; align-items:center; gap:8px;">
@@ -366,89 +366,6 @@ export default class TeacherView {
               </div>
             </div>
 
-            <!-- SECTION 2: دوراتي التعليمية والمقررات الدراسية (My Courses) 📚 -->
-            <div id="teacher-courses-section">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                <div>
-                  <h2 style="font-size:1.28rem; font-weight:900; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="book-open" style="width:22px; height:22px; color:var(--primary);"></i>
-                    <span>دوراتي ومقرراتي الدراسية (${this.courses.length})</span>
-                  </h2>
-                  <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">إدارة وتعديل المقررات الدراسية والمناهج المعتمدة والدروس المرتبطة بها</p>
-                </div>
-
-                <div style="display:flex; align-items:center; gap:8px;">
-                  ${state.user?.role === 'admin' ? `
-                    <button type="button" class="btn-primary" id="open-course-modal-btn-2" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة ➕
-                    </button>
-                  ` : `
-                    <a href="#teacher-groups" class="btn-primary" style="font-size:0.85rem; padding:8px 18px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:#fff;">
-                      <i data-lucide="users" style="width:16px;height:16px;"></i> المجموعات الدراسية 👥
-                    </a>
-                  `}
-                  <a href="#courses" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                    مستكشف الكورسات ➔
-                  </a>
-                </div>
-              </div>
-
-              ${this.courses.length === 0 ? `
-                <div class="glass-card" style="padding:32px 24px; text-align:center; border-radius:20px; border:1px dashed var(--border-color);">
-                  <i data-lucide="book-open" style="width:40px; height:40px; color:var(--primary); opacity:0.4; margin-bottom:12px;"></i>
-                  <h4 style="font-weight:800; font-size:1.05rem; color:var(--text-main); margin:0 0 6px 0;">
-                    ${state.user?.role === 'admin' ? 'لم تقم بإنشاء أي دورات تعليمية بعد' : 'الدورات والمناهج التعليمية تدار مركزياً بواسطة إدارة المنصة'}
-                  </h4>
-                  <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px 0;">
-                    ${state.user?.role === 'admin'
-                      ? 'ابدأ الآن بإضافة أول مقرر دراسي وحدد المرحلة والصف والمادة وفق المنهج المصري.'
-                      : 'يمكنك البدء فوراً بفتح مجموعات دراسية للطلاب لأي مقرر دراسي معتمد واختيار الصف والمادة والجدول المناسب لك!'}
-                  </p>
-                  ${state.user?.role === 'admin' ? `
-                    <button type="button" class="btn-primary" id="open-course-modal-btn-empty" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> إضافة دورة جديدة الآن
-                    </button>
-                  ` : `
-                    <a href="#teacher-groups" class="btn-primary" style="padding:9px 22px; border-radius:20px; font-weight:800; font-size:0.85rem; text-decoration:none; color:#fff; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="users" style="width:16px;height:16px;"></i> فتح مجموعة دراسية جديدة الآن 👥
-                    </a>
-                  `}
-                </div>
-              ` : `
-                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:20px;">
-                  ${this.courses.map(c => `
-                    <div class="glass-card" style="border-radius:20px; overflow:hidden; border:1px solid var(--border-color); display:flex; flex-direction:column; transition:transform 0.2s, box-shadow 0.2s;">
-                      <div style="position:relative; height:150px; overflow:hidden; background:var(--bg-app);">
-                        <img src="${c.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60'}" alt="${c.title}" style="width:100%; height:100%; object-fit:cover;">
-                        <span style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); color:#fff; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px;">
-                          ${c.category || 'عام'}
-                        </span>
-                        <span style="position:absolute; top:10px; left:10px; background:${c.status === 'PUBLISHED' ? '#10b981' : '#f59e0b'}; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:10px;">
-                          ${c.status === 'PUBLISHED' ? 'منشور 🟢' : 'قيد المراجعة ⏳'}
-                        </span>
-                      </div>
-                      <div style="padding:16px; display:flex; flex-direction:column; flex:1;">
-                        <div style="font-size:0.75rem; font-weight:800; color:var(--primary); margin-bottom:4px; display:flex; align-items:center; gap:4px;">
-                          <i data-lucide="graduation-cap" style="width:14px;height:14px;"></i> ${c.grade?.name || c.degree || 'مستوى عام'}
-                        </div>
-                        <h4 style="font-size:1rem; font-weight:800; margin:0 0 6px 0; color:var(--text-main); line-height:1.4;">${c.title}</h4>
-                        <p style="font-size:0.82rem; color:var(--text-muted); margin:0 0 14px 0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
-                          ${c.description || 'لا يوجد وصف متاح.'}
-                        </p>
-                        <div style="margin-top:auto; display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--border-color);">
-                          <a href="#manage-course/${c.id}" class="btn-primary" style="flex:1; justify-content:center; padding:8px 12px; font-size:0.82rem; font-weight:800; text-decoration:none; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
-                            <i data-lucide="settings" style="width:14px;height:14px;"></i> إدارة المحتوى
-                          </a>
-                          <button type="button" class="btn-secondary edit-course-btn" data-id="${c.id}" style="padding:8px 12px; font-size:0.82rem; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; gap:4px;" title="تعديل تفاصيل الدورة">
-                            <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              `}
-            </div>
           </div>
         </div>
 
@@ -818,25 +735,6 @@ export default class TeacherView {
                 ✅ تأكيد إكمال الحصة
               </button>
             </div>
-          </div>
-        </div>
-
-        <!-- All Private Sessions Modal -->
-        <div class="modal-overlay" id="all-private-modal" style="display:none; backdrop-filter:blur(8px); background:rgba(0,0,0,0.6);">
-          <div class="modal-content" style="max-width:700px; width:95%; border-radius:20px; padding:0; border:1px solid var(--border-color); max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
-            <div class="modal-header" style="padding:20px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <h3 style="margin:0; font-size:1.1rem; font-weight:800;">📋 جميع حصصي الخاصة</h3>
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                  <button class="private-filter-btn active" data-status="all" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--primary); color:#fff; cursor:pointer;">الكل</button>
-                  <button class="private-filter-btn" data-status="SCHEDULED" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">مجدولة</button>
-                  <button class="private-filter-btn" data-status="COMPLETED" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">مكتملة</button>
-                  <button class="private-filter-btn" data-status="CANCELLED_BY_STUDENT" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; border:1px solid var(--border-color); background:none; cursor:pointer;">ملغاة</button>
-                </div>
-              </div>
-              <span id="close-all-private-modal" style="cursor:pointer; font-size:1.4rem; color:var(--text-muted);">&times;</span>
-            </div>
-            <div id="all-private-sessions-list" style="padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; overflow-y:auto; flex:1;"></div>
           </div>
         </div>
       `;
@@ -2091,41 +1989,6 @@ export default class TeacherView {
       });
     });
 
-    // ─── View All Private Sessions Modal ───
-    const allModal = document.getElementById('all-private-modal');
-    const allList = document.getElementById('all-private-sessions-list');
-
-    const renderAllSessions = (filter = 'all') => {
-      const filtered = filter === 'all'
-        ? this.privateSessions
-        : this.privateSessions.filter(s => s.status === filter || (filter === 'CANCELLED_BY_STUDENT' && s.status.startsWith('CANCELLED')));
-      allList.innerHTML = filtered.length === 0
-        ? `<div style="text-align:center; padding:40px; color:var(--text-muted); grid-column:1/-1;">لا توجد حصص في هذا التصنيف.</div>`
-        : filtered.map(s => this.renderPrivateSessionCard(s)).join('');
-      if (window.lucide) window.lucide.createIcons();
-    };
-
-    document.getElementById('view-all-private-btn')?.addEventListener('click', () => {
-      renderAllSessions('all');
-      allModal.style.display = 'flex';
-    });
-    document.getElementById('close-all-private-modal')?.addEventListener('click', () => {
-      allModal.style.display = 'none';
-    });
-
-    document.querySelectorAll('.private-filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.private-filter-btn').forEach(b => {
-          b.style.background = 'none';
-          b.style.color = '';
-          b.classList.remove('active');
-        });
-        btn.style.background = 'var(--primary)';
-        btn.style.color = '#fff';
-        btn.classList.add('active');
-        renderAllSessions(btn.getAttribute('data-status'));
-      });
-    });
   }
 
   bindSessionActionButtons() {
@@ -2639,11 +2502,6 @@ export default class TeacherView {
               <span>✅ المستحقات المدفوعة</span>
             </button>
 
-            <button class="fin-sidebar-tab-btn" data-tab="courses" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
-              <i data-lucide="book-open" style="width:18px; height:18px; color:var(--primary);"></i>
-              <span>📖 مبيعات الكورسات</span>
-            </button>
-
             <button class="fin-sidebar-tab-btn" data-tab="sessions" style="width:100%; text-align:start; padding:12px 16px; border-radius:14px; border:1px solid transparent; font-weight:800; font-size:0.88rem; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s ease; background:transparent; color:var(--text-main);">
               <i data-lucide="video" style="width:18px; height:18px; color:#ec4899;"></i>
               <span>🎥 أرباح الحصص المباشرة</span>
@@ -2674,11 +2532,6 @@ export default class TeacherView {
               <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(16,185,129,0.3); background:rgba(16,185,129,0.04);">
                 <div style="font-size:0.78rem; font-weight:800; color:#047857; margin-bottom:6px;">✅ مدفوع ومحول للبطاقة</div>
                 <div style="font-size:1.4rem; font-weight:900; color:#10b981;">${(stats.paidAmount || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
-              </div>
-
-              <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(99,102,241,0.3); background:rgba(99,102,241,0.04);">
-                <div style="font-size:0.78rem; font-weight:800; color:var(--primary); margin-bottom:6px;">📖 أرباح مبيعات الدورات</div>
-                <div style="font-size:1.4rem; font-weight:900; color:var(--primary);">${(stats.courseSalesEarnings || 0).toLocaleString()} <span style="font-size:0.8rem;">ج.م</span></div>
               </div>
 
               <div class="glass-card" style="padding:18px; border-radius:18px; border:1px solid rgba(236,72,153,0.3); background:rgba(236,72,153,0.04);">
@@ -2759,14 +2612,10 @@ export default class TeacherView {
           filteredList = earningsList.filter(e => e.status === "paid");
           if (titleEl) titleEl.textContent = "✅ المعاملات والمستحقات المدفوعة والمحولة";
           if (subTitleEl) subTitleEl.textContent = "سجل المبالغ والمستحقات التي تم تسويتها وصرفها لك بنجاح";
-        } else if (tab === "courses") {
-          filteredList = earningsList.filter(e => e.sourceType === "COURSE_SALE");
-          if (titleEl) titleEl.textContent = "📖 أرباح ومبيعات الدورات المسجلة";
-          if (subTitleEl) subTitleEl.textContent = "تفاصيل الأرباح الناتجة عن مبيعات كورساتك المسجلة عبر المنصة";
         } else if (tab === "sessions") {
           filteredList = earningsList.filter(e => e.sourceType === "SESSION_COMPLETED");
           if (titleEl) titleEl.textContent = "🎥 أرباح الحصص المباشرة والاشتراكات";
-          if (subTitleEl) subTitleEl.textContent = "تفاصيل المستحقات المستحقة لإكمال الحصص الخاصة والبث المباشر";
+          if (subTitleEl) subTitleEl.textContent = "تفاصيل المستحقات المستحقة لإكمال حصص المجموعات والبث المباشر";
         } else {
           if (titleEl) titleEl.textContent = "📊 نظرة عامة وكافة المعاملات المالية";
           if (subTitleEl) subTitleEl.textContent = "عرض كافة سجلات الأرباح والتسويات المسجلة باسمك";
