@@ -66,6 +66,7 @@ export const AdminUsersPage = {
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">سعر الساعة</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الحصص المنفذة</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">ملاحظات</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
                   </tr>
                 </thead>
@@ -120,6 +121,13 @@ export const AdminUsersPage = {
                           <div style="font-weight:700;">${item.completedCount} حصص</div>
                           <div style="font-size:0.75rem;color:var(--text-muted);">${item.completedHours} ساعة عمل</div>
                         </td>
+                        <td style="padding:14px 20px;">
+                          ${u.notes ? `
+                            <div style="font-size:0.8rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:200px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
+                              ${u.notes}
+                            </div>
+                          ` : `<span style="font-size:0.75rem;color:var(--text-muted);">-</span>`}
+                        </td>
                       
                         <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -140,6 +148,9 @@ export const AdminUsersPage = {
                             </button>
                             <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
+                            </button>
+                            <button class="btn-secondary reset-user-pwd-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:6px 11px;border-color:#f59e0b;color:#d97706;display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:rgba(245,158,11,0.08);font-weight:700;" title="إعادة تعيين كلمة المرور إلى 123456">
+                              <i data-lucide="key" style="width:12px;height:12px;"></i> كلمة المرور (123456)
                             </button>
                             <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
@@ -331,6 +342,7 @@ export const AdminUsersPage = {
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">المستوى / الولاية</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">التواصل السريع</th>
+                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">ملاحظات</th>
                     <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
                   </tr>
                 </thead>
@@ -408,6 +420,13 @@ export const AdminUsersPage = {
                           </div>
                         </td>
                         <td style="padding:14px 20px;">
+                          ${u.notes ? `
+                            <div style="font-size:0.8rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:200px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
+                              ${u.notes}
+                            </div>
+                          ` : `<span style="font-size:0.75rem;color:var(--text-muted);">-</span>`}
+                        </td>
+                        <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                             ${isPending ? `
                               <button class="btn-primary approve-student-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg, #10b981, #059669);border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,0.3);" title="الموافقة على تسجيل الطالب وتفعيل حسابه">
@@ -420,6 +439,9 @@ export const AdminUsersPage = {
                             `}
                             <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
+                            </button>
+                            <button class="btn-secondary reset-user-pwd-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 10px;border-color:#f59e0b;color:#d97706;display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:rgba(245,158,11,0.08);font-weight:700;" title="إعادة تعيين كلمة المرور إلى 123456">
+                              <i data-lucide="key" style="width:12px;height:12px;"></i> كلمة المرور (123456)
                             </button>
                             <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 10px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
                               <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
@@ -461,6 +483,7 @@ export const AdminUsersPage = {
                   <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.email")}</th>
                   <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("form.accountType")}</th>
                   <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.joined")}</th>
+                  <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">ملاحظات</th>
                   <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
                 </tr>
               </thead>
@@ -513,6 +536,13 @@ export const AdminUsersPage = {
         </td>
         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">${joinDate}</td>
         <td style="padding:14px 20px;">
+          ${user.notes ? `
+            <div style="font-size:0.8rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:180px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
+              ${user.notes}
+            </div>
+          ` : `<span style="font-size:0.75rem;color:var(--text-muted);">-</span>`}
+        </td>
+        <td style="padding:14px 20px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
             ${cleanPhone ? `
               <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(`مرحباً ${user.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 10px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب">
@@ -529,6 +559,9 @@ export const AdminUsersPage = {
             ` : ''}
             <button class="btn-secondary edit-member-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
               <i data-lucide="edit" style="width:12px;height:12px;"></i> ${t("admin.editMember")}
+            </button>
+            <button class="btn-secondary reset-user-pwd-btn" data-id="${user.id}" data-name="${user.name}" style="font-size:0.75rem;padding:6px 10px;border-color:#f59e0b;color:#d97706;display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:rgba(245,158,11,0.08);font-weight:700;" title="إعادة تعيين كلمة المرور إلى 123456">
+              <i data-lucide="key" style="width:12px;height:12px;"></i> كلمة المرور (123456)
             </button>
             <button class="btn-secondary view-transcript-btn" data-id="${user.id}" style="font-size:0.75rem;padding:6px 10px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
               <i data-lucide="file-text" style="width:12px;height:12px;"></i> ${t("admin.viewTranscript")}
@@ -701,6 +734,14 @@ export const AdminUsersPage = {
                 </div>
               </div>
 
+              <!-- Admin Notes -->
+              <div class="form-group" style="margin:0;">
+                <label for="member-notes" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">
+                  📝 ملاحظات الإدارة (Admin Notes)
+                </label>
+                <textarea id="member-notes" class="form-input" rows="2" placeholder="أدخل أي ملاحظات خاصة بالطالب أو المعلم (مرئية للإدارة فقط)..." style="padding:8px 12px; font-size:0.88rem; width:100%; resize:vertical;">${isEdit ? (user.notes || '') : ''}</textarea>
+              </div>
+
             </div>
             <div class="modal-footer" style="padding:12px 20px;">
               <button type="button" class="btn-secondary" id="cancel-member-modal" style="padding:8px 18px; font-size:0.88rem;">${t("common.cancel")}</button>
@@ -832,6 +873,7 @@ export const AdminUsersPage = {
       const isBlocked = document.getElementById("member-status-select")?.value === "BLOCKED";
       const blockReason = isBlocked ? (document.getElementById("member-block-reason")?.value.trim() || undefined) : undefined;
       const status = isBlocked ? "BLOCKED" : "ACTIVE";
+      const notes = document.getElementById("member-notes")?.value?.trim() || "";
 
       const teacherCapabilities = [];
       if (role === "teacher") {
@@ -843,13 +885,13 @@ export const AdminUsersPage = {
         if (isEdit) {
           await apiFetch(`/admin/users/${user.id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status, notes })
           });
           showToast(t("admin.toast.userUpdated") || "تم تحديث بيانات العضو بنجاح! ✅", "success");
         } else {
           const res = await apiFetch("/admin/users", {
             method: "POST",
-            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status })
+            body: JSON.stringify({ name, email, role, password, phone, parentPhone, education, hourlyRate, meetingLink, teacherCapabilities, avatar, isBlocked, blockReason, status, notes })
           });
           showToast(t("admin.toast.userCreated") || "تم إنشاء حساب العضو بنجاح! 🎉", "success");
           handleWhatsAppResponse(res);

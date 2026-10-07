@@ -192,6 +192,7 @@ export default class StudentsView {
             <th style="padding:14px 16px; font-weight:800;">المستوى والمنطقة</th>
             <th style="padding:14px 16px; font-weight:800;">الدورات وحالة الاشتراك</th>
             <th style="padding:14px 16px; font-weight:800; text-align:center;">التواصل السريع</th>
+            ${state.user?.role === 'admin' ? '<th style="padding:14px 16px; font-weight:800;">ملاحظات</th>' : ''}
             ${state.user?.role === 'admin' ? '<th style="padding:14px 20px; font-weight:800; text-align:end;">الإجراءات</th>' : ''}
           </tr>
         </thead>
@@ -315,10 +316,27 @@ export default class StudentsView {
           `}
         </td>
 
+        <!-- Notes (Admin Only) -->
+        ${state.user?.role === 'admin' ? `
+          <td style="padding:14px 16px; vertical-align:middle;">
+            ${student.notes ? `
+              <div style="font-size:0.78rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:200px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
+                ${student.notes}
+              </div>
+            ` : '<span style="color:var(--text-muted); font-size:0.78rem;">-</span>'}
+          </td>
+        ` : ''}
+
         <!-- Actions (Admin Only) -->
         ${state.user?.role === 'admin' ? `
           <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
             <div style="display:inline-flex; gap:6px; align-items:center;">
+              <button class="btn-secondary edit-student-notes-btn" data-student-id="${student.id}" data-student-name="${student.name}" data-notes="${(student.notes || '').replace(/"/g, '&quot;')}" style="padding:6px 12px; font-size:0.78rem; border-color:var(--primary); color:var(--primary); border-radius:20px; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:rgba(99,102,241,0.08);" title="تعديل ملاحظة الطالب">
+                <i data-lucide="file-text" style="width:13px; height:13px;"></i> ملاحظة
+              </button>
+              <button class="btn-secondary reset-student-pwd-btn" data-student-id="${student.id}" data-student-name="${student.name}" style="padding:6px 12px; font-size:0.78rem; border-color:#f59e0b; color:#d97706; border-radius:20px; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:rgba(245,158,11,0.08);" title="إعادة تعيين كلمة المرور إلى 123456">
+                <i data-lucide="key" style="width:13px; height:13px;"></i> إعادة كلمة المرور (123456)
+              </button>
               <button class="btn-secondary toggle-block-student-btn" data-student-id="${student.id}" data-student-name="${student.name}" data-blocked="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'true' : 'false'}" style="padding:6px 12px; font-size:0.78rem; border-color:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? '#10b981' : 'var(--error)'}; color:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? '#10b981' : 'var(--error)'}; border-radius:20px; display:inline-flex; align-items:center; gap:4px; font-weight:700; background:${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};" title="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'إلغاء الحظر' : 'حظر الطالب من تسجيل الدخول'}">
                 <i data-lucide="${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'check-circle' : 'shield-alert'}" style="width:13px; height:13px;"></i>
                 ${(student.isBlocked || student.status === 'BLOCKED' || student.status === 'SUSPENDED') ? 'إلغاء الحظر' : 'حظر الطالب'}
@@ -336,6 +354,49 @@ export default class StudentsView {
   bindTableEvents() {
     const wrapper = this.container.querySelector("#students-table-wrapper");
     if (!wrapper) return;
+
+    // Edit Student Notes - Admin Only
+    wrapper.querySelectorAll(".edit-student-notes-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (state.user?.role !== "admin") return;
+        const studentId = btn.getAttribute("data-student-id");
+        const studentName = btn.getAttribute("data-student-name") || "الطالب";
+        const currentNotes = btn.getAttribute("data-notes") || "";
+
+        this.renderEditNotesModal(studentId, studentName, currentNotes);
+      });
+    });
+
+    // Reset Student Password (to 123456) - Admin Only
+    wrapper.querySelectorAll(".reset-student-pwd-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return;
+        const studentId = btn.getAttribute("data-student-id");
+        const studentName = btn.getAttribute("data-student-name") || "الطالب";
+
+        const confirmed = await confirmDialog({
+          title: "إعادة تعيين كلمة المرور 🔑",
+          message: `هل أنت متأكد من رغبتك في إعادة تعيين كلمة مرور الطالب "${studentName}" لتصبح: 123456 ؟`,
+          confirmText: "نعم، إعادة التعيين إلى 123456",
+          cancelText: "إلغاء",
+          danger: false
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/users/${studentId}/reset-password`, {
+            method: "POST",
+            body: JSON.stringify({ password: "123456" })
+          });
+          showToast(res.message || "تم إعادة تعيين كلمة المرور بنجاح إلى 123456", "success");
+        } catch (err) {
+          showToast(err.message || "فشل إعادة تعيين كلمة المرور", "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
 
     // Toggle Student Login Block (Academy Access) - Admin Only
     wrapper.querySelectorAll(".toggle-block-student-btn").forEach(btn => {
@@ -512,6 +573,12 @@ export default class StudentsView {
               </div>
             </div>
 
+            <!-- Notes Field -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">📝 ملاحظات الإدارة (اختياري)</label>
+              <textarea id="new-student-notes" class="form-input" rows="2" placeholder="أدخل أي ملاحظات خاصة بالطالب (مرئية للإدارة فقط)..." style="padding:10px 14px; font-size:0.88rem; border-radius:12px; width:100%; resize:vertical;"></textarea>
+            </div>
+
             <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-color); padding-top:16px;">
               <button type="button" id="cancel-add-student-modal-btn" class="btn-secondary" style="padding:10px 20px; border-radius:30px; font-size:0.88rem;">إلغاء</button>
               <button type="submit" id="submit-add-student-btn" class="btn-primary" style="padding:10px 24px; border-radius:30px; font-size:0.88rem; font-weight:800;">
@@ -549,11 +616,12 @@ export default class StudentsView {
       const location = modalWrapper.querySelector("#new-student-location").value.trim();
       const education = modalWrapper.querySelector("#new-student-education").value.trim();
       const courseId = modalWrapper.querySelector("#new-student-course").value;
+      const notes = modalWrapper.querySelector("#new-student-notes")?.value?.trim() || "";
 
       try {
         const res = await apiFetch("/teacher/students", {
           method: "POST",
-          body: JSON.stringify({ name, email, password, phone, parentPhone, location, education, courseId })
+          body: JSON.stringify({ name, email, password, phone, parentPhone, location, education, courseId, notes })
         });
         showToast(res.message || "تمت إضافة الطالب بنجاح!", "success");
         handleWhatsAppResponse(res);
@@ -561,6 +629,66 @@ export default class StudentsView {
         await this.loadStudents();
       } catch (err) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i data-lucide="check"></i> حفظ وتسجيل الطالب'; }
+      }
+    });
+  }
+
+  renderEditNotesModal(studentId, studentName, currentNotes) {
+    let modalEl = document.getElementById("edit-notes-modal-wrapper");
+    if (!modalEl) {
+      modalEl = document.createElement("div");
+      modalEl.id = "edit-notes-modal-wrapper";
+      document.body.appendChild(modalEl);
+    }
+
+    modalEl.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div class="glass-card" style="width:100%; max-width:500px; border-radius:20px; padding:24px 28px; border:1px solid var(--border-color); box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+            <h3 style="font-size:1.15rem; font-weight:800; margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="file-text" style="color:var(--primary); width:20px; height:20px;"></i> ملاحظات الطالب: ${studentName}
+            </h3>
+            <button id="close-notes-modal-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.4rem; line-height:1;">&times;</button>
+          </div>
+          <form id="edit-notes-form">
+            <div class="form-group" style="margin-bottom:16px;">
+              <label style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:block;">نص الملاحظة (مرئي للإدارة فقط):</label>
+              <textarea id="student-edit-notes-input" class="form-input" rows="4" placeholder="اكتب أي ملاحظات خاصة بالطالب..." style="width:100%; padding:10px 14px; font-size:0.88rem; border-radius:12px; resize:vertical;">${currentNotes}</textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" id="cancel-notes-modal-btn" class="btn-secondary" style="padding:8px 18px; border-radius:20px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" id="save-notes-modal-btn" class="btn-primary" style="padding:8px 22px; border-radius:20px; font-size:0.85rem; font-weight:800;">
+                <i data-lucide="check"></i> حفظ الملاحظة
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { modalEl.innerHTML = ""; };
+    modalEl.querySelector("#close-notes-modal-btn")?.addEventListener("click", closeModal);
+    modalEl.querySelector("#cancel-notes-modal-btn")?.addEventListener("click", closeModal);
+
+    modalEl.querySelector("#edit-notes-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newNotes = modalEl.querySelector("#student-edit-notes-input")?.value?.trim() || "";
+      const saveBtn = modalEl.querySelector("#save-notes-modal-btn");
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = "جارٍ الحفظ..."; }
+
+      try {
+        const res = await apiFetch(`/admin/users/${studentId}`, {
+          method: "PUT",
+          body: JSON.stringify({ notes: newNotes })
+        });
+        showToast(res.message || "تم حفظ ملاحظات الطالب بنجاح! ✅", "success");
+        closeModal();
+        await this.loadStudents();
+      } catch (err) {
+        showToast(err.message || "فشل حفظ الملاحظة", "error");
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i data-lucide="check"></i> حفظ الملاحظة'; }
       }
     });
   }

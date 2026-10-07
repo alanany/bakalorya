@@ -123,7 +123,7 @@ export class AdminController {
       const users = await userRepo.find({
         where,
         order: { createdAt: "DESC" },
-        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "meetingLink", "teacherCapabilities", "status", "isBlocked", "blockReason", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "phone", "parentPhone", "location", "education", "hourlyRate", "meetingLink", "teacherCapabilities", "status", "isBlocked", "blockReason", "notes", "createdAt"]
       });
 
       return res.json(users);
@@ -166,6 +166,7 @@ export class AdminController {
         education: education || null,
         meetingLink: req.body.meetingLink || null,
         hourlyRate: hourlyRate !== undefined ? parseFloat(hourlyRate) : 150,
+        notes: req.body.notes || null,
         teacherCapabilities: role === "teacher"
           ? (Array.isArray(req.body.teacherCapabilities) ? req.body.teacherCapabilities : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"])
           : undefined,
@@ -182,7 +183,7 @@ export class AdminController {
 
       return res.status(201).json({
         message: "User created successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, isBlocked: user.isBlocked, status: user.status, createdAt: user.createdAt },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, parentPhone: user.parentPhone, education: user.education, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, isBlocked: user.isBlocked, status: user.status, notes: user.notes, createdAt: user.createdAt },
         whatsappNotification
       });
     } catch (err) {
@@ -248,6 +249,7 @@ export class AdminController {
       if (blockReason !== undefined && user.isBlocked) {
         user.blockReason = blockReason;
       }
+      if (req.body.notes !== undefined) user.notes = req.body.notes;
       if (req.body.teacherCapabilities && Array.isArray(req.body.teacherCapabilities)) {
         user.teacherCapabilities = req.body.teacherCapabilities;
       }
@@ -258,7 +260,7 @@ export class AdminController {
       await userRepo.save(user);
       return res.json({
         message: "User updated successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, status: user.status, isBlocked: user.isBlocked, blockReason: user.blockReason }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, status: user.status, isBlocked: user.isBlocked, blockReason: user.blockReason, notes: user.notes }
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to update user." });
@@ -336,6 +338,60 @@ export class AdminController {
     } catch (err) {
       console.error("Toggle block error:", err);
       return res.status(500).json({ error: "فشل تغيير حالة حظر المستخدم." });
+    }
+  }
+
+  // POST /admin/users/:id/reset-password — Reset user password (default 123456)
+  static async resetPassword(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { password = "123456" } = req.body || {};
+
+    if (!password || typeof password !== "string" || password.trim().length < 4) {
+      return res.status(400).json({ error: "كلمة المرور يجب أن لا تقل عن 4 أحرف." });
+    }
+
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const auditRepo = AppDataSource.getRepository(AuditLog);
+
+      const user = await userRepo.findOneBy({ id });
+      if (!user) return res.status(404).json({ error: "المستخدم غير موجود." });
+
+      const newPwd = password.trim();
+      user.password = await bcrypt.hash(newPwd, 10);
+      await userRepo.save(user);
+
+      // Audit Log
+      try {
+        if (req.user?.id) {
+          const actor = await userRepo.findOneBy({ id: req.user.id });
+          if (actor) {
+            const audit = new AuditLog();
+            audit.actor = actor;
+            audit.action = "USER_PASSWORD_RESET";
+            audit.entityType = "User";
+            audit.entityId = user.id;
+            audit.metadata = JSON.stringify({
+              targetEmail: user.email,
+              targetRole: user.role,
+              targetName: user.name,
+              newPassword: newPwd
+            });
+            await auditRepo.save(audit);
+          }
+        }
+      } catch (auditErr) {
+        console.error("Audit log error on resetPassword:", auditErr);
+      }
+
+      const roleLabel = user.role === "student" ? "الطالب" : (user.role === "teacher" ? "المعلم" : "المستخدم");
+      return res.json({
+        message: `تم إعادة تعيين كلمة مرور ${roleLabel} (${user.name}) بنجاح إلى: ${newPwd} 🔑`,
+        success: true
+      });
+    } catch (err) {
+      console.error("Reset password error:", err);
+      return res.status(500).json({ error: "فشل إعادة تعيين كلمة المرور." });
     }
   }
 

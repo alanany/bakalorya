@@ -76,7 +76,7 @@ export class UserController {
       // Fetch all students registered in platform
       const allStudents = await userRepo.find({
         where: { role: "student" },
-        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "status", "isBlocked", "createdAt"],
+        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "parentPhone", "notes", "status", "isBlocked", "createdAt"],
         order: { createdAt: "DESC" }
       });
 
@@ -144,8 +144,10 @@ export class UserController {
           role: s.role || "student",
           avatar: s.avatar,
           phone: s.phone,
+          parentPhone: s.parentPhone,
           location: s.location,
           education: s.education,
+          notes: s.notes || null,
           status: s.status,
           isBlocked: s.isBlocked,
           createdAt: s.createdAt,
@@ -389,7 +391,7 @@ export class UserController {
         return res.status(403).json({ error: "Unauthorized. Admin only." });
       }
 
-      const { name, email, password, phone, parentPhone, location, education, courseId } = req.body;
+      const { name, email, password, phone, parentPhone, location, education, courseId, notes } = req.body;
 
       if (!name || !email || !education || !parentPhone) {
         return res.status(400).json({ error: "الرجاء اختيار المستوى الدراسي وتعبئة الاسم والبريد الإلكتروني ورقم هاتف ولي الأمر." });
@@ -415,6 +417,7 @@ export class UserController {
           parentPhone: parentPhone || null,
           location: location || null,
           education: education || null,
+          notes: notes || null,
           avatar: "assets/logo.png"
         });
         await userRepo.save(student);
@@ -425,6 +428,7 @@ export class UserController {
         if (parentPhone) student.parentPhone = parentPhone;
         if (location) student.location = location;
         if (education) student.education = education;
+        if (notes !== undefined) student.notes = notes;
         await userRepo.save(student);
       }
 

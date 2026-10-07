@@ -1751,6 +1751,36 @@ export default class AdminView {
       });
     });
 
+    // Reset User Password (e.g. to 123456)
+    this.container.querySelectorAll(".reset-user-pwd-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "المستخدم";
+
+        const confirmed = await confirmDialog({
+          title: "إعادة تعيين كلمة المرور 🔑",
+          message: `هل أنت متأكد من رغبتك في إعادة تعيين كلمة مرور "${name}" لتصبح: 123456 ؟`,
+          confirmText: "نعم، إعادة التعيين إلى 123456",
+          cancelText: "إلغاء",
+          danger: false
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/users/${id}/reset-password`, {
+            method: "POST",
+            body: JSON.stringify({ password: "123456" })
+          });
+          showToast(res.message || "تم إعادة تعيين كلمة المرور بنجاح إلى 123456", "success");
+        } catch (err) {
+          showToast(err.message || "فشل إعادة تعيين كلمة المرور", "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
     // Delete Member
     this.container.querySelectorAll(".delete-user-btn").forEach(btn => {
       btn.addEventListener("click", async () => {

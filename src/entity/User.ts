@@ -71,6 +71,9 @@ export class User {
   @Column({ nullable: true, default: "Africa/Cairo" })
   timezone: string;
 
+  @Column({ type: "text", nullable: true })
+  notes: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
