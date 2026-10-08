@@ -121,8 +121,8 @@ export class AuthController {
         return res.status(403).json({ error: "عفواً، هذا المسار مخصص للطلاب فقط. يرجى استخدام بوابة المعلمين والإدارة." });
       }
 
-      if (expectedRole === "staff" && user.role !== "teacher" && user.role !== "admin") {
-        return res.status(403).json({ error: "عفواً، هذه البوابة مخصصة للمعلمين وإدارة المنصة فقط." });
+      if (expectedRole === "staff" && user.role !== "teacher" && user.role !== "admin" && user.role !== "supervisor") {
+        return res.status(403).json({ error: "عفواً، هذه البوابة مخصصة للمعلمين والمشرفين وإدارة المنصة فقط." });
       }
 
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
@@ -182,7 +182,7 @@ export class AuthController {
 
       // Restrict strictly to Students
       if (user.role !== "student") {
-        const roleName = user.role === "teacher" ? "معلم" : "مشرف / إدارة";
+        const roleName = user.role === "teacher" ? "معلم" : (user.role === "supervisor" ? "مشرف" : "إدارة");
         return res.status(403).json({ 
           error: `عفواً، هذا المسار والتطبيق مخصص لحسابات الطلاب فقط. حسابك مسجل كـ (${roleName})، يرجى استخدام بوابة المعلمين والإدارة على الويب.` 
         });
@@ -250,10 +250,10 @@ export class AuthController {
         });
       }
 
-      // Restrict strictly to Teacher or Admin
-      if (user.role !== "teacher" && user.role !== "admin") {
+      // Restrict strictly to Teacher, Admin, or Supervisor
+      if (user.role !== "teacher" && user.role !== "admin" && user.role !== "supervisor") {
         return res.status(403).json({ 
-          error: "عفواً، هذه البوابة مخصصة للمعلمين وإدارة المنصة فقط. يرجى تسجيل الدخول عبر بوابة الطلاب." 
+          error: "عفواً، هذه البوابة مخصصة للكادر التعليمي والإداري والمشرفين فقط. يرجى تسجيل الدخول عبر بوابة الطلاب أو أولياء الأمور." 
         });
       }
 

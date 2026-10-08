@@ -1016,7 +1016,7 @@ export function setAuth(token, user) {
   localStorage.setItem("token", token);
   showToast(t("toast.welcome").replace("{name}", user.name) || `مرحباً، ${user.name}!`, "success");
   updateHeader();
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "supervisor") {
     window.location.hash = "#admin-dashboard";
   } else if (user.role === "teacher") {
     window.location.hash = "#teacher-portal";
@@ -1202,6 +1202,17 @@ export function updateHeader() {
           ${createNavItem("#admin-dashboard/reports", "flag", "البلاغات والشكاوى")}
           ${createNavItem("#admin-dashboard/settings", "settings", "إعدادات المنصة والواتساب")}
         `;
+      } else if (state.user.role === "supervisor") {
+        links += `
+          ${createNavSection("بوابة المشرف 🛡️")}
+          ${createNavItem("#admin-dashboard", "shield-check", "لوحة الإشراف الرئيسية")}
+          ${createNavItem("#admin-dashboard/stats", "pie-chart", "الإحصائيات والتحليلات")}
+          ${createNavItem("#admin-dashboard/teachers", "graduation-cap", "إدارة المعلمين")}
+          ${createNavItem("#admin-dashboard/students", "users", "متابعة الطلاب")}
+          ${createNavItem("#admin-dashboard/sessions", "video", "الحصص والجلسات")}
+          ${createNavItem("#admin-dashboard/groups", "users-2", "المجموعات الدراسية")}
+          ${createNavItem("#settings", "settings", t("nav.settings") || "إعدادات الحساب")}
+        `;
       } else if (state.user.role === "teacher") {
         links += `
           ${createNavSection("بوابة الأستاذ")}
@@ -1248,11 +1259,13 @@ export function updateHeader() {
 
       const roleBadge = state.user.role === "admin"
         ? "🛡️ مشرف الإدارة"
-        : state.user.role === "teacher"
-          ? "👨‍🏫 أستاذ معتمد"
-          : state.user.role === "parent"
-            ? "👨‍👩‍👧 ولي أمر"
-            : "👨‍🎓 طالب متميز";
+        : state.user.role === "supervisor"
+          ? "🛡️ مشرف المنصة"
+          : state.user.role === "teacher"
+            ? "👨‍🏫 أستاذ معتمد"
+            : state.user.role === "parent"
+              ? "👨‍👩‍👧 ولي أمر"
+              : "👨‍🎓 طالب متميز";
 
       links += `
         <div class="sidebar-user-card">
@@ -2012,7 +2025,7 @@ export async function router() {
     window.location.hash = "#landing";
     return router();
   }
-  if (routeBase === "#admin-dashboard" && state.user && state.user.role !== "admin") {
+  if (routeBase === "#admin-dashboard" && state.user && state.user.role !== "admin" && state.user.role !== "supervisor") {
     showToast(t("error.adminOnly") || "الوصول مقيد للمشرفين فقط.", "error");
     window.location.hash = "#landing";
     return router();

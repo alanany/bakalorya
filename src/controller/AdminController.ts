@@ -94,16 +94,18 @@ export class AdminController {
       const sessionRepo = AppDataSource.getRepository(Session);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
 
-      const [totalStudents, totalTeachers, totalAdmins, totalCourses, totalSessions, totalEnrollments] = await Promise.all([
+      const [totalStudents, totalTeachers, totalAdmins, totalSupervisors, totalParents, totalCourses, totalSessions, totalEnrollments] = await Promise.all([
         userRepo.countBy({ role: "student" }),
         userRepo.countBy({ role: "teacher" }),
         userRepo.countBy({ role: "admin" }),
+        userRepo.countBy({ role: "supervisor" as any }),
+        userRepo.countBy({ role: "parent" as any }),
         courseRepo.count(),
         sessionRepo.count(),
         enrollmentRepo.count()
       ]);
 
-      return res.json({ totalStudents, totalTeachers, totalAdmins, totalCourses, totalSessions, totalEnrollments });
+      return res.json({ totalStudents, totalTeachers, totalAdmins, totalSupervisors, totalParents, totalCourses, totalSessions, totalEnrollments });
     } catch (err) {
       return res.status(500).json({ error: "Failed to fetch stats." });
     }
@@ -116,7 +118,7 @@ export class AdminController {
       const { role } = req.query;
 
       const where: any = {};
-      if (role && ["teacher", "student", "admin"].includes(role as string)) {
+      if (role && ["teacher", "student", "admin", "supervisor"].includes(role as string)) {
         where.role = role;
       }
 
@@ -140,8 +142,8 @@ export class AdminController {
       return res.status(400).json({ error: "Missing required fields (name, email, password, role)." });
     }
 
-    if (!["student", "teacher", "admin", "parent"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role. Must be student, teacher, admin, or parent." });
+    if (!["student", "teacher", "admin", "parent", "supervisor"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role. Must be student, teacher, admin, parent, or supervisor." });
     }
 
     if (role === "student" && !parentPhone) {
@@ -217,7 +219,7 @@ export class AdminController {
         user.email = email;
       }
       if (role) {
-        if (!["student", "teacher", "admin", "parent"].includes(role)) {
+        if (!["student", "teacher", "admin", "parent", "supervisor"].includes(role)) {
           return res.status(400).json({ error: "Invalid role." });
         }
         if (req.user?.id === id && role !== "admin") {
@@ -318,7 +320,7 @@ export class AdminController {
         console.error("Audit log error on toggleBlockUser:", auditErr);
       }
 
-      const roleName = user.role === "teacher" ? "المعلم" : (user.role === "student" ? "الطالب" : "المستخدم");
+      const roleName = user.role === "teacher" ? "المعلم" : (user.role === "student" ? "الطالب" : (user.role === "supervisor" ? "المشرف" : "المستخدم"));
       const actionMsg = newBlockedState 
         ? `تم حظر ${roleName} (${user.name}) ومنعه من تسجيل الدخول إلى الأكاديمية بنجاح. 🚫` 
         : `تم إلغاء حظر ${roleName} (${user.name}) والسماح له بتسجيل الدخول بنجاح! ✅`;
@@ -384,7 +386,7 @@ export class AdminController {
         console.error("Audit log error on resetPassword:", auditErr);
       }
 
-      const roleLabel = user.role === "student" ? "الطالب" : (user.role === "teacher" ? "المعلم" : "المستخدم");
+      const roleLabel = user.role === "student" ? "الطالب" : (user.role === "teacher" ? "المعلم" : (user.role === "supervisor" ? "المشرف" : "المستخدم"));
       return res.json({
         message: `تم إعادة تعيين كلمة مرور ${roleLabel} (${user.name}) بنجاح إلى: ${newPwd} 🔑`,
         success: true
@@ -400,7 +402,7 @@ export class AdminController {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!["student", "teacher", "admin"].includes(role)) {
+    if (!["student", "teacher", "admin", "supervisor", "parent"].includes(role)) {
       return res.status(400).json({ error: "Invalid role." });
     }
 
@@ -937,7 +939,9 @@ export class AdminController {
           ? `تم حذف حساب المعلم "${user.name}" وإزالة جميع المجموعات والكورسات والبيانات المرتبطة به بنجاح من كافة أقسام المنصة! ✅`
           : (user.role === "student"
             ? `تم حذف حساب الطالب "${user.name}" وإلغاء قيده وحذف كافة بياناته المالية والإيصالات والواجبات المرتبطة به بنجاح! ✅`
-            : "تم حذف المستخدم بنجاح.") 
+            : (user.role === "supervisor"
+              ? `تم حذف حساب المشرف "${user.name}" بنجاح! ✅`
+              : "تم حذف المستخدم بنجاح.")) 
       });
     } catch (err: any) {
       console.error("Admin deleteUser error:", err);

@@ -43,6 +43,9 @@ export default class AdminView {
     this.platformSettings = null;
     this.subFilter = "all";
     this.expandedStudents = new Set();
+    this.studentStatusFilter = "all";
+    this.studentGradeFilter = "all";
+    this.studentSearchQuery = "";
     this.adminGroupFilterStatus = "all";
     this.adminGroupSearchQuery = "";
     this.adminGroupCourseFilter = "all";
@@ -52,7 +55,7 @@ export default class AdminView {
 
 
   async render() {
-    if (!state.user || state.user.role !== "admin") {
+    if (!state.user || (state.user.role !== "admin" && state.user.role !== "supervisor")) {
       this.container.innerHTML = `
         <div style="max-width:480px; margin:80px auto; padding:40px 32px; text-align:center;" class="glass-card">
           <div style="width:72px; height:72px; border-radius:24px; background:rgba(99,102,241,0.12); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
@@ -84,14 +87,14 @@ export default class AdminView {
         const email = this.container.querySelector("#admin-login-email").value.trim();
         const password = this.container.querySelector("#admin-login-password").value;
         try {
-          const res = await apiFetch("/auth/login", {
+          const res = await apiFetch("/auth/staff/login", {
             method: "POST",
             body: JSON.stringify({ email, password })
           });
           setAuth(res.token, res.user);
           await this.render();
         } catch (err) {
-          showToast(err.message || "فشل تسجيل الدخول كأدمن", "error");
+          showToast(err.message || "فشل تسجيل الدخول", "error");
         }
       });
       return;
@@ -186,9 +189,14 @@ export default class AdminView {
           font-weight: 700;
           color: var(--text-muted);
           text-align: start;
+          text-decoration: none;
+          box-sizing: border-box;
           transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
           margin-bottom: 4px;
           position: relative;
+        }
+        .admin-nav-btn:visited {
+          color: var(--text-muted);
         }
         .admin-nav-btn:hover {
           background: linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(16, 185, 129, 0.05) 100%);
@@ -446,6 +454,12 @@ export default class AdminView {
               👨‍👩‍👧 أولياء الأمور
               <span class="admin-nav-badge" id="admin-badge-parents" style="background:#8b5cf6;color:#fff;">0</span>
             </button>
+            ${state.user?.role === "admin" ? `
+            <button class="admin-nav-btn ${this.activeTab === "supervisors" ? "active" : ""}" data-tab="supervisors">
+              <i data-lucide="shield-check"></i>
+              🛡️ المشرفون
+              <span class="admin-nav-badge" id="admin-badge-supervisors" style="background:#0ea5e9;color:#fff;">0</span>
+            </button>
 
             <div class="admin-nav-section">إعدادات النظام</div>
             <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
@@ -456,16 +470,24 @@ export default class AdminView {
               <i data-lucide="settings-2"></i>
               ⚙️ إعدادات المنصة
             </button>
+            ` : ""}
+
+            <div class="admin-nav-section">الحساب والإعدادات</div>
+            <a href="#settings" class="admin-nav-btn">
+              <i data-lucide="settings"></i>
+              إعدادات الحساب
+            </a>
           </nav>
 
           <div class="admin-sidebar-footer">
-            <div class="admin-sidebar-user">
+            <a href="#settings" class="admin-sidebar-user" style="text-decoration:none; color:inherit; display:flex; align-items:center; width:100%; cursor:pointer;" title="إعدادات الحساب">
               <img src="${(state.user?.avatar && !state.user.avatar.includes('dicebear.com')) ? state.user.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" alt="Admin">
-              <div class="user-info">
+              <div class="user-info" style="flex:1;">
                 <p class="user-name">${state.user?.name || 'Admin'}</p>
-                <p class="user-role">System Administrator</p>
+                <p class="user-role">${state.user?.role === "supervisor" ? "مشرف المنصة (Supervisor)" : "System Administrator"}</p>
               </div>
-            </div>
+              <i data-lucide="settings" style="width:16px; height:16px; opacity:0.6; margin-inline-start:auto;"></i>
+            </a>
           </div>
         </aside>
 
@@ -539,12 +561,13 @@ export default class AdminView {
     const pendingBlogs = (this.allBlogs || []).filter(b => b.status === "PENDING");
     el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
     el("admin-badge-parents", (this.allParents || []).length);
+    el("admin-badge-supervisors", (this.allSupervisors || []).length);
   }
 
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs, parents] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs, parents, supervisors] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -560,7 +583,8 @@ export default class AdminView {
         apiFetch("/admin/groups/pending-approval").catch(() => []),
         apiFetch("/admin/all-groups").catch(() => []),
         apiFetch("/admin/blogs").catch(() => []),
-        apiFetch("/admin/parents").catch(() => [])
+        apiFetch("/admin/parents").catch(() => []),
+        apiFetch("/admin/supervisors").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -578,6 +602,7 @@ export default class AdminView {
       this.allGroups = allGroups || [];
       this.allBlogs = blogs || [];
       this.allParents = parents || [];
+      this.allSupervisors = supervisors || [];
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -606,10 +631,13 @@ export default class AdminView {
 
     this.container.querySelectorAll(".admin-nav-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
+        const tab = btn.getAttribute("data-tab");
+        if (!tab) {
+          closeSidebar();
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
-        const tab = btn.getAttribute("data-tab");
-        if (!tab) return;
         this.activeTab = tab;
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
@@ -651,6 +679,7 @@ export default class AdminView {
     teacherApplications: { heading: "📝 طلبات انضمام المعلمين", sub: "مراجعة السير الذاتية والقبول/الرفض لمعلمي المنصة الجدد" },
     members: { heading: "🛡️ جميع الأعضاء", sub: "عرض وإدارة جميع مستخدمي المنصة" },
     parents: { heading: "👨‍👩‍👧 أولياء الأمور", sub: "إضافة وإدارة حسابات أولياء الأمور وربط أبنائهم من الطلاب" },
+    supervisors: { heading: "🛡️ المشرفون", sub: "إضافة وتعديل وإدارة حسابات المشرفين على المنصة" },
     subscriptions: { heading: "📅 إدارة الاشتراكات", sub: "متابعة وتعيين المعلمين لاشتراكات الحصص الخاصة" },
     earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
     plans: { heading: "✨ خطط وباقات الاشتراكات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، وتخصيص الباقات لكل كورس" },
@@ -706,6 +735,10 @@ export default class AdminView {
     else if (tab === "parents") {
       content.innerHTML = this.renderParentsTab();
       this.bindParentsEvents?.();
+    }
+    else if (tab === "supervisors") {
+      content.innerHTML = this.renderSupervisorsTab();
+      this.bindSupervisorsEvents?.();
     }
 
     // Always keep sidebar badges fresh
@@ -1627,22 +1660,26 @@ export default class AdminView {
 
     // Create Member Button (All Members)
     document.getElementById("open-create-member-btn")?.addEventListener("click", () => {
+      if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
       this.renderMemberModal(null, "student");
     });
 
     // Create Teacher Button (Teachers tab)
     document.getElementById("open-create-teacher-btn")?.addEventListener("click", () => {
+      if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
       this.renderMemberModal(null, "teacher");
     });
 
     // Create Student Button (Students tab)
     document.getElementById("open-create-student-btn")?.addEventListener("click", () => {
+      if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
       this.renderMemberModal(null, "student");
     });
 
     // Edit Member Button
     this.container.querySelectorAll(".edit-member-btn").forEach(btn => {
       btn.addEventListener("click", () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
         const id = btn.getAttribute("data-id");
         const user = this.allMembers.find(u => u.id === id);
         if (user) this.renderMemberModal(user);
@@ -1672,6 +1709,7 @@ export default class AdminView {
     // Approve Pending Student
     this.container.querySelectorAll(".approve-student-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name") || "الطالب";
         const confirmed = await confirmDialog({
@@ -1697,7 +1735,7 @@ export default class AdminView {
       });
     });
 
-    // Student Filter Tabs
+    // Student Filter Tabs (Quick Status Pills)
     this.container.querySelectorAll(".student-filter-tab-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const filter = e.currentTarget.getAttribute("data-filter");
@@ -1706,14 +1744,61 @@ export default class AdminView {
       });
     });
 
+    // Student Grade Filter Dropdown
+    const studentGradeSelect = this.container.querySelector("#student-grade-filter");
+    if (studentGradeSelect) {
+      studentGradeSelect.addEventListener("change", (e) => {
+        this.studentGradeFilter = e.target.value;
+        this.renderTab("students");
+      });
+    }
+
+    // Student Status Filter Dropdown
+    const studentStatusSelect = this.container.querySelector("#student-status-filter");
+    if (studentStatusSelect) {
+      studentStatusSelect.addEventListener("change", (e) => {
+        this.studentStatusFilter = e.target.value;
+        this.renderTab("students");
+      });
+    }
+
+    // Student Search Input (Debounced with cursor preservation)
+    const studentSearchInput = this.container.querySelector("#students-search-input");
+    if (studentSearchInput) {
+      studentSearchInput.addEventListener("input", (e) => {
+        this.studentSearchQuery = e.target.value;
+        clearTimeout(this._studentSearchTimer);
+        this._studentSearchTimer = setTimeout(() => {
+          this.renderTab("students");
+          const inputEl = this.container.querySelector("#students-search-input");
+          if (inputEl) {
+            inputEl.focus();
+            const len = inputEl.value.length;
+            inputEl.setSelectionRange(len, len);
+          }
+        }, 250);
+      });
+    }
+
+    // Reset Student Filters Buttons
+    this.container.querySelectorAll("#reset-student-filters-btn, #empty-reset-filters-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.studentStatusFilter = "all";
+        this.studentGradeFilter = "all";
+        this.studentSearchQuery = "";
+        this.renderTab("students");
+      });
+    });
+
     // Toggle Block User (Teacher or Student)
     this.container.querySelectorAll(".toggle-block-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name") || "المستخدم";
         const isCurrentlyBlocked = btn.getAttribute("data-blocked") === "true";
         const role = btn.getAttribute("data-role") || "user";
-        const roleLabel = role === "teacher" ? "المعلم" : (role === "student" ? "الطالب" : "المستخدم");
+        const roleLabel = role === "teacher" ? "المعلم" : (role === "student" ? "الطالب" : (role === "supervisor" ? "المشرف" : (role === "parent" ? "ولي الأمر" : "المستخدم")));
 
         if (!isCurrentlyBlocked) {
           const confirmed = await confirmDialog({
@@ -1754,6 +1839,7 @@ export default class AdminView {
     // Reset User Password (e.g. to 123456)
     this.container.querySelectorAll(".reset-user-pwd-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name") || "المستخدم";
 
@@ -1784,6 +1870,7 @@ export default class AdminView {
     // Delete Member
     this.container.querySelectorAll(".delete-user-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name");
         const role = btn.getAttribute("data-role") || "";

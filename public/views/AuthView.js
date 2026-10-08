@@ -18,7 +18,7 @@ export default class AuthView {
     }
 
     if (state.user) {
-      const targetHash = state.user.role === "admin" ? "#admin-dashboard" : state.user.role === "teacher" ? "#teacher-portal" : state.user.role === "parent" ? "#parent-dashboard" : "#student-dashboard";
+      const targetHash = state.user.role === "admin" ? "#admin-dashboard" : state.user.role === "supervisor" ? "#admin-dashboard" : state.user.role === "teacher" ? "#teacher-portal" : state.user.role === "parent" ? "#parent-dashboard" : "#student-dashboard";
       if (window.location.hash !== targetHash) {
         window.location.hash = targetHash;
       }
