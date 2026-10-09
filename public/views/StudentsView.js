@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse } from "../app.js";
+import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, generateEntlqEmail } from "../app.js";
 
 export default class StudentsView {
   constructor(container) {
@@ -530,8 +530,13 @@ export default class StudentsView {
                 <input type="text" id="new-student-name" class="form-input" placeholder="مثال: يوسف أحمد" required style="padding:10px 14px; font-size:0.88rem; border-radius:12px;">
               </div>
               <div class="form-group" style="margin:0;">
-                <label style="font-weight:700; font-size:0.85rem; margin-bottom:4px; display:block;">البريد الإلكتروني <span style="color:var(--error);">*</span></label>
-                <input type="email" id="new-student-email" class="form-input" placeholder="student@example.com" required style="padding:10px 14px; font-size:0.88rem; border-radius:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <label style="font-weight:700; font-size:0.85rem; margin:0;">البريد الإلكتروني <span style="color:var(--error);">*</span></label>
+                  <button type="button" id="new-student-auto-email-btn" title="توليد بريد إلكتروني تلقائي باللغة الإنجليزية (@entlq.com)" style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); color:var(--primary); font-size:0.75rem; font-weight:700; border-radius:6px; padding:2px 8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                    <span>✨ توليد تلقائي (@entlq.com)</span>
+                  </button>
+                </div>
+                <input type="email" id="new-student-email" class="form-input" placeholder="student@entlq.com" required style="padding:10px 14px; font-size:0.88rem; border-radius:12px;" dir="ltr">
               </div>
             </div>
 
@@ -595,6 +600,37 @@ export default class StudentsView {
     const closeModal = () => { modalWrapper.innerHTML = ""; };
     modalWrapper.querySelector("#close-add-student-modal-btn")?.addEventListener("click", closeModal);
     modalWrapper.querySelector("#cancel-add-student-modal-btn")?.addEventListener("click", closeModal);
+
+    // Auto-generate English email ending with @entlq.com based on student's name
+    const studentNameInput = modalWrapper.querySelector("#new-student-name");
+    const studentEmailInput = modalWrapper.querySelector("#new-student-email");
+    const studentAutoEmailBtn = modalWrapper.querySelector("#new-student-auto-email-btn");
+    let isStudentEmailManuallyEdited = false;
+
+    studentEmailInput?.addEventListener("input", () => {
+      isStudentEmailManuallyEdited = studentEmailInput.value.trim().length > 0;
+    });
+
+    studentNameInput?.addEventListener("input", () => {
+      if (!isStudentEmailManuallyEdited) {
+        const generated = generateEntlqEmail(studentNameInput.value);
+        if (generated && studentEmailInput) {
+          studentEmailInput.value = generated;
+        }
+      }
+    });
+
+    studentAutoEmailBtn?.addEventListener("click", () => {
+      const generated = generateEntlqEmail(studentNameInput?.value || "");
+      if (generated && studentEmailInput) {
+        studentEmailInput.value = generated;
+        isStudentEmailManuallyEdited = false;
+        showToast("✨ تم توليد البريد الإلكتروني بنجاح (@entlq.com)", "info");
+      } else {
+        showToast("يرجى إدخال اسم الطالب أولاً لتوليد البريد الإلكتروني", "warning");
+        studentNameInput?.focus();
+      }
+    });
 
     const form = modalWrapper.querySelector("#add-student-form");
     form?.addEventListener("submit", async (e) => {

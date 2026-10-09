@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from '../../app.js';
+import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML, generateEntlqEmail } from '../../app.js';
 
 // ── AdminUsersPage ─────────────────────────────────────────────────────────────
 // Methods extracted from AdminView.js — assigned to AdminView.prototype
@@ -883,8 +883,13 @@ export const AdminUsersPage = {
                   <input type="text" id="member-name" class="form-input" value="${isEdit ? user.name : ''}" placeholder="${t("form.fullNamePlaceholder")}" required style="padding:8px 12px; font-size:0.88rem;">
                 </div>
                 <div class="form-group" style="margin:0;">
-                  <label for="member-email" style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">${t("form.email")}</label>
-                  <input type="email" id="member-email" class="form-input" value="${isEdit ? user.email : ''}" placeholder="email@example.com" required style="padding:8px 12px; font-size:0.88rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label for="member-email" style="font-size:0.85rem; font-weight:700; margin:0;">${t("form.email")}</label>
+                    <button type="button" id="member-auto-email-btn" title="توليد بريد إلكتروني تلقائي باللغة الإنجليزية (@entlq.com)" style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); color:var(--primary); font-size:0.75rem; font-weight:700; border-radius:6px; padding:2px 8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                      <span>✨ توليد تلقائي (@entlq.com)</span>
+                    </button>
+                  </div>
+                  <input type="email" id="member-email" class="form-input" value="${isEdit ? user.email : ''}" placeholder="username@entlq.com" required style="padding:8px 12px; font-size:0.88rem;" dir="ltr">
                 </div>
               </div>
 
@@ -1079,6 +1084,37 @@ export const AdminUsersPage = {
       if (status) {
         status.style.color = "#10b981";
         status.textContent = "✨ تم تعيين شعار المنصة الافتراضي";
+      }
+    });
+
+    // Auto-generate English email ending with @entlq.com based on user's name
+    const memberNameInput = document.getElementById("member-name");
+    const memberEmailInput = document.getElementById("member-email");
+    const memberAutoEmailBtn = document.getElementById("member-auto-email-btn");
+    let isEmailManuallyEdited = isEdit && Boolean(user?.email);
+
+    memberEmailInput?.addEventListener("input", () => {
+      isEmailManuallyEdited = memberEmailInput.value.trim().length > 0;
+    });
+
+    memberNameInput?.addEventListener("input", () => {
+      if (!isEmailManuallyEdited) {
+        const generated = generateEntlqEmail(memberNameInput.value);
+        if (generated && memberEmailInput) {
+          memberEmailInput.value = generated;
+        }
+      }
+    });
+
+    memberAutoEmailBtn?.addEventListener("click", () => {
+      const generated = generateEntlqEmail(memberNameInput?.value || "");
+      if (generated && memberEmailInput) {
+        memberEmailInput.value = generated;
+        isEmailManuallyEdited = false;
+        showToast("✨ تم توليد البريد الإلكتروني بنجاح (@entlq.com)", "info");
+      } else {
+        showToast("يرجى إدخال اسم العضو أولاً لتوليد البريد الإلكتروني", "warning");
+        memberNameInput?.focus();
       }
     });
 

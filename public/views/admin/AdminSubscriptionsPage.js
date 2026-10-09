@@ -324,14 +324,31 @@ export const AdminSubscriptionsPage = {
     // 2. Process Group Subscriptions (Enrollments with a group assigned)
     const groupEnrollments = (this.enrollments || []).filter(e => e.group);
     const groupSubsWithMetrics = groupEnrollments.map(e => {
+      const groupId = e.group?.id || e.groupId;
+      const fullGroup = (this.allCourseGroups || this.allGroups || []).find(g => 
+        String(g.id) === String(groupId)
+      ) || e.group || {};
+
+      const courseId = e.course?.id || fullGroup?.course?.id || e.courseId;
+      const fullCourse = (this.courses || []).find(c => 
+        String(c.id) === String(courseId)
+      ) || e.course || fullGroup?.course || {};
+
       const groupSessions = allSessions.filter(sess => {
-        if (sess.group && String(sess.group.id) === String(e.group.id)) return true;
-        if (sess.groupId && String(sess.groupId) === String(e.group.id)) return true;
-        if (e.course?.id && sess.course && String(sess.course.id) === String(e.course.id)) return true;
+        if (sess.group && String(sess.group.id) === String(groupId)) return true;
+        if (sess.groupId && String(sess.groupId) === String(groupId)) return true;
+        if (courseId && sess.course && String(sess.course.id) === String(courseId)) return true;
         return false;
       });
 
-      const totalSessions = groupSessions.length > 0 ? groupSessions.length : (e.group.maxSessions || 8);
+      // Match the group's exact total sessions (like in #admin-dashboard/groups: cg.totalSessions || 24)
+      const groupDefinedTotal = (fullGroup.totalSessions !== undefined && fullGroup.totalSessions !== null && Number(fullGroup.totalSessions) > 0)
+        ? Number(fullGroup.totalSessions)
+        : ((e.group?.totalSessions !== undefined && e.group?.totalSessions !== null && Number(e.group.totalSessions) > 0)
+          ? Number(e.group.totalSessions)
+          : null);
+
+      const totalSessions = groupDefinedTotal || (groupSessions.length > 0 ? groupSessions.length : 24);
       const completedSessions = groupSessions.filter(sess => (sess.status || '').toLowerCase() === 'completed').length;
       const scheduledSessions = groupSessions.filter(sess => {
         const st = (sess.status || '').toLowerCase();
@@ -352,21 +369,11 @@ export const AdminSubscriptionsPage = {
       const nextSession = upcomingSessions[0] || null;
       const nextSessionTime = nextSession ? new Date(nextSession.scheduledAt).getTime() : null;
 
-      const price = (e.payment && e.payment.amount !== undefined) 
+      const price = (e.payment && e.payment.amount !== undefined && e.payment.amount !== null && e.payment.amount > 0) 
         ? e.payment.amount 
-        : (e.group.monthlyPrice || (e.group.sessionPrice ? e.group.sessionPrice * 8 : (e.group.studentHourlyRate ? e.group.studentHourlyRate * 8 : 320)));
+        : (fullGroup.monthlyPrice || e.group?.monthlyPrice || (fullGroup.sessionPrice ? fullGroup.sessionPrice * totalSessions : (fullGroup.studentHourlyRate ? fullGroup.studentHourlyRate * totalSessions : 320)));
 
       const normStatus = e.status === 'active' ? 'ACTIVE' : (e.status === 'rejected' ? 'CANCELLED' : 'PENDING_PAYMENT');
-
-      const groupId = e.group?.id || e.groupId;
-      const fullGroup = (this.allCourseGroups || this.allGroups || []).find(g => 
-        String(g.id) === String(groupId)
-      ) || e.group || {};
-
-      const courseId = e.course?.id || fullGroup?.course?.id || e.courseId;
-      const fullCourse = (this.courses || []).find(c => 
-        String(c.id) === String(courseId)
-      ) || e.course || fullGroup?.course || {};
 
       // 1. Direct teacher from group or course
       let rawTeacher = e.group?.teacher 
@@ -405,7 +412,7 @@ export const AdminSubscriptionsPage = {
         studentId: e.student?.id,
         teacher: assignedTeacher,
         plan: {
-          name: `مجموعة: ${e.group.name}`,
+          name: `مجموعة: ${fullGroup.name || e.group.name}`,
           price: price,
           sessionsCount: totalSessions
         },
@@ -775,20 +782,25 @@ export const AdminSubscriptionsPage = {
                   ${groups.map(g => {
                     const price = g.monthlyPrice || (g.sessionPrice ? g.sessionPrice * 8 : (g.studentHourlyRate ? g.studentHourlyRate * 8 : 320));
                     const teacherName = g.teacher?.name || g.course?.teacher?.name || 'بدون معلم';
-                    return `<option value="${g.id}" data-price="${price}">مجموعة: ${g.name} (${teacherName} • ${price} ج.م)</option>`;
+                    const groupGrade = g.course?.grade?.name || g.course?.degree || g.degree || '';
+                    const gradeKey = this.detectGradeKey(g.course?.grade) || this.detectGradeKey(g.course?.degree) || this.detectGradeKey(g.name) || '';
+                    return `<option value="${g.id}" data-price="${price}" data-grade-key="${gradeKey}" data-grade-name="${groupGrade}">مجموعة: ${g.name} ${groupGrade ? '· ' + groupGrade : ''} (${teacherName} • ${price} ج.م)</option>`;
                   }).join('')}
                 </select>
               </div>
 
               <!-- Select Student -->
               <div>
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                  اختر الطالب المراد تسكينه <span style="color:var(--danger,#ef4444);">*</span>
-                </label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                    اختر الطالب المراد تسكينه <span style="color:var(--danger,#ef4444);">*</span>
+                  </label>
+                  <span id="quick-enroll-grade-badge" style="font-size:0.75rem; color:var(--primary); font-weight:700;"></span>
+                </div>
                 <select id="quick-enroll-student-id" class="form-control" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); font-weight:600; font-size:0.9rem; background:var(--bg-input, var(--bg-card)); color:var(--text-main);" required>
-                  <option value="">-- اختر الطالب --</option>
+                  <option value="">-- اختر الطالب (${students.length} متاح) --</option>
                   ${students.map(st => `
-                    <option value="${st.id}">${st.name || 'طالب'} (${st.phone || st.email || st.id.substring(0,8)})</option>
+                    <option value="${st.id}">${st.name || 'طالب'} ${st.education ? '— 🎓 ' + st.education : ''} (${st.phone || st.email || st.id.substring(0,8)})</option>
                   `).join('')}
                 </select>
               </div>
@@ -874,10 +886,43 @@ export const AdminSubscriptionsPage = {
 
     const groupSelect = document.getElementById("quick-enroll-group-id");
     const amountInput = document.getElementById("quick-enroll-amount");
+    const gradeBadge = document.getElementById("quick-enroll-grade-badge");
+    const studentSelect = document.getElementById("quick-enroll-student-id");
+
     groupSelect?.addEventListener("change", () => {
       const opt = groupSelect.options[groupSelect.selectedIndex];
       const p = opt?.getAttribute("data-price");
       if (p && amountInput) amountInput.value = p;
+
+      const targetGradeKey = opt?.getAttribute("data-grade-key");
+      const targetGradeName = opt?.getAttribute("data-grade-name");
+
+      if (studentSelect) {
+        if (targetGradeKey) {
+          const matchingStudents = students.filter(st => this.detectGradeKey(st.education) === targetGradeKey);
+          if (matchingStudents.length > 0) {
+            if (gradeBadge) gradeBadge.textContent = `🎯 طلاب ${targetGradeName} فقط (${matchingStudents.length} متاح)`;
+            studentSelect.innerHTML = `
+              <option value="">-- اختر طالباً من طلاب ${targetGradeName} (${matchingStudents.length} متاح) --</option>
+              ${matchingStudents.map(st => `
+                <option value="${st.id}">
+                  ${st.name || 'طالب'} ${st.education ? '— 🎓 ' + st.education : ''} (${st.phone || st.email || st.id.substring(0,8)})
+                </option>
+              `).join('')}
+            `;
+            return;
+          }
+        }
+        if (gradeBadge) gradeBadge.textContent = "";
+        studentSelect.innerHTML = `
+          <option value="">-- اختر الطالب (${students.length} متاح) --</option>
+          ${students.map(st => `
+            <option value="${st.id}">
+              ${st.name || 'طالب'} ${st.education ? '— 🎓 ' + st.education : ''} (${st.phone || st.email || st.id.substring(0,8)})
+            </option>
+          `).join('')}
+        `;
+      }
     });
 
     const dropzone = document.getElementById("quick-enroll-dropzone");
@@ -1621,7 +1666,8 @@ export const AdminSubscriptionsPage = {
       return;
     }
 
-    const { subscription, availability = [], completedCount = 0, scheduledCount = 0, totalSessions = 8 } = scheduleDetails;
+    const { subscription, availability = [], completedCount = 0, scheduledCount = 0 } = scheduleDetails;
+    const totalSessions = scheduleDetails.totalSessions || subscription?.totalSessions || subscription?.plan?.sessionsCount || 8;
     const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
     const activeTeacherId = defaultTeacherId || subscription.teacher?.id || (teachers[0]?.id || "");
 
@@ -2136,6 +2182,77 @@ export const AdminSubscriptionsPage = {
         confirmBtn.disabled = false;
       }
     });
+  },
+
+  detectGradeKey(textOrGrade) {
+    if (!textOrGrade) return null;
+    if (typeof textOrGrade === "object") {
+      if (textOrGrade.code) {
+        const c = String(textOrGrade.code).toUpperCase().trim();
+        if (c === "PRI_1") return "GRADE_1";
+        if (c === "PRI_2") return "GRADE_2";
+        if (c === "PRI_3") return "GRADE_3";
+        if (c === "PRI_4") return "GRADE_4";
+        if (c === "PRI_5") return "GRADE_5";
+        if (c === "PRI_6") return "GRADE_6";
+        if (c === "PREP_1") return "GRADE_7";
+        if (c === "PREP_2") return "GRADE_8";
+        if (c === "PREP_3") return "GRADE_9";
+        if (c === "SEC_1") return "GRADE_10";
+        if (c === "SEC_2") return "GRADE_11";
+        if (c === "SEC_3") return "GRADE_12";
+      }
+      if (textOrGrade.order !== undefined && textOrGrade.order !== null) {
+        const ord = Number(textOrGrade.order);
+        if (ord >= 1 && ord <= 12) return `GRADE_${ord}`;
+      }
+      textOrGrade = `${textOrGrade.name || ""} ${textOrGrade.nameEn || ""} ${textOrGrade.degree || ""}`;
+    }
+
+    const s = String(textOrGrade || "").toLowerCase()
+      .replace(/[إأآا]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
+      .trim();
+    if (!s) return null;
+
+    // Primary 1 - 6
+    if (/grade\s*1\b|pri[_-]?1\b|1\s*ابتدائي|اول\s*ابتدائي|الاول\s*الابتدائي/.test(s)) return "GRADE_1";
+    if (/grade\s*2\b|pri[_-]?2\b|2\s*ابتدائي|ثاني\s*ابتدائي|الثاني\s*الابتدائي/.test(s)) return "GRADE_2";
+    if (/grade\s*3\b|pri[_-]?3\b|3\s*ابتدائي|ثالث\s*ابتدائي|الثالث\s*الابتدائي/.test(s)) return "GRADE_3";
+    if (/grade\s*4\b|pri[_-]?4\b|4\s*ابتدائي|رابع\s*ابتدائي|الرابع\s*الابتدائي/.test(s)) return "GRADE_4";
+    if (/grade\s*5\b|pri[_-]?5\b|5\s*ابتدائي|خامس\s*ابتدائي|الخامس\s*الابتدائي/.test(s)) return "GRADE_5";
+    if (/grade\s*6\b|pri[_-]?6\b|6\s*ابتدائي|سادس\s*ابتدائي|السادس\s*الابتدائي/.test(s)) return "GRADE_6";
+
+    // Prep 1 - 3 (Grades 7 - 9)
+    if (/grade\s*7\b|prep[_-]?1\b|1\s*اعدادي|اول\s*اعدادي|الاول\s*الاعدادي|7\s*متوسط/.test(s)) return "GRADE_7";
+    if (/grade\s*8\b|prep[_-]?2\b|2\s*اعدادي|ثاني\s*اعدادي|الثاني\s*الاعدادي|8\s*متوسط/.test(s)) return "GRADE_8";
+    if (/grade\s*9\b|prep[_-]?3\b|3\s*اعدادي|ثالث\s*اعدادي|الثالث\s*الاعدادي|9\s*متوسط|\bbem\b/.test(s)) return "GRADE_9";
+
+    // Secondary 1 - 3 (Grades 10 - 12)
+    if (/grade\s*10\b|sec[_-]?1\b|entlq\s*1\b|1ث|اول\s*ثانوي|اولي\s*ثانوي|الاول\s*الثانوي/.test(s)) return "GRADE_10";
+    if (/grade\s*11\b|sec[_-]?2\b|entlq\s*2\b|2ث|ثاني\s*ثانوي|ثانيه\s*ثانوي|الثاني\s*الثانوي/.test(s)) return "GRADE_11";
+    if (/grade\s*12\b|sec[_-]?3\b|entlq\s*3\b|3ث|ثالث\s*ثانوي|ثالثه\s*ثانوي|الثالث\s*الثانوي|\bbac\b|بكالوريا/.test(s)) return "GRADE_12";
+
+    return null;
+  },
+
+  getGradeDisplayName(gradeKey) {
+    const map = {
+      GRADE_1: "الصف الأول الابتدائي (Grade 1)",
+      GRADE_2: "الصف الثاني الابتدائي (Grade 2)",
+      GRADE_3: "الصف الثالث الابتدائي (Grade 3)",
+      GRADE_4: "الصف الرابع الابتدائي (Grade 4)",
+      GRADE_5: "الصف الخامس الابتدائي (Grade 5)",
+      GRADE_6: "الصف السادس الابتدائي (Grade 6)",
+      GRADE_7: "الصف الأول الإعدادي (Grade 7 / Prep 1)",
+      GRADE_8: "الصف الثاني الإعدادي (Grade 8 / Prep 2)",
+      GRADE_9: "الصف الثالث الإعدادي (Grade 9 / Prep 3)",
+      GRADE_10: "الصف الأول الثانوي (Sec 1 / Entlq 1)",
+      GRADE_11: "الصف الثاني الثانوي (Sec 2 / Entlq 2)",
+      GRADE_12: "الصف الثالث الثانوي (Sec 3 / Entlq 3 / BAC)",
+    };
+    return map[gradeKey] || "المرحلة والصف الدراسي";
   }
 
 };

@@ -74,13 +74,71 @@ export const AdminSessionsPage = {
   renderGroupsTab() {
     const allCourseGroups = this.allCourseGroups || [];
     const allSessions = this.allSessions || [];
+    const allCourses = this.courses || [];
+    const allTeachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
 
-    // Map all CourseGroups from DB
+    // 1. Available Curriculum Grades
+    const defaultGrades = [
+      { id: "grade-1", name: "الصف الأول الابتدائي", nameEn: "Grade 1 (Primary)", stage: "PRIMARY", order: 1, code: "PRI_1" },
+      { id: "grade-2", name: "الصف الثاني الابتدائي", nameEn: "Grade 2 (Primary)", stage: "PRIMARY", order: 2, code: "PRI_2" },
+      { id: "grade-3", name: "الصف الثالث الابتدائي", nameEn: "Grade 3 (Primary)", stage: "PRIMARY", order: 3, code: "PRI_3" },
+      { id: "grade-4", name: "الصف الرابع الابتدائي", nameEn: "Grade 4 (Primary)", stage: "PRIMARY", order: 4, code: "PRI_4" },
+      { id: "grade-5", name: "الصف الخامس الابتدائي", nameEn: "Grade 5 (Primary)", stage: "PRIMARY", order: 5, code: "PRI_5" },
+      { id: "grade-6", name: "الصف السادس الابتدائي", nameEn: "Grade 6 (Primary)", stage: "PRIMARY", order: 6, code: "PRI_6" },
+      { id: "grade-7", name: "الصف الأول الإعدادي", nameEn: "Grade 7 (1st Prep)", stage: "PREPARATORY", order: 7, code: "PREP_1" },
+      { id: "grade-8", name: "الصف الثاني الإعدادي", nameEn: "Grade 8 (2nd Prep)", stage: "PREPARATORY", order: 8, code: "PREP_2" },
+      { id: "grade-9", name: "الصف الثالث الإعدادي", nameEn: "Grade 9 (3rd Prep / BEM)", stage: "PREPARATORY", order: 9, code: "PREP_3" },
+      { id: "grade-10", name: "الصف الأول الثانوي", nameEn: "Grade 10 (1st Sec)", stage: "SECONDARY", order: 10, code: "SEC_1" },
+      { id: "grade-11", name: "الصف الثاني الثانوي", nameEn: "Grade 11 (2nd Sec)", stage: "SECONDARY", order: 11, code: "SEC_2" },
+      { id: "grade-12", name: "الصف الثالث الثانوي", nameEn: "Grade 12 (3rd Sec / BAC)", stage: "SECONDARY", order: 12, code: "SEC_3" }
+    ];
+
+    let availableGrades = (this.allGrades && this.allGrades.length > 0) ? [...this.allGrades] : [];
+    if (availableGrades.length === 0) {
+      const courseGrades = [];
+      const seenIds = new Set();
+      allCourses.forEach(c => {
+        if (c.grade && !seenIds.has(c.grade.id || c.grade.name)) {
+          seenIds.add(c.grade.id || c.grade.name);
+          courseGrades.push(c.grade);
+        }
+      });
+      availableGrades = courseGrades.length > 0 ? courseGrades : defaultGrades;
+    }
+    availableGrades.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // Map all CourseGroups from DB with comprehensive Grade & Subject mapping
     const groupsList = allCourseGroups.map(cg => {
       const teacherName = cg.teacher?.name || cg.course?.teacher?.name || "معلم المنصة";
-      const courseTitle = cg.course?.title || "كورس تعليمي";
-      const gradeName = cg.course?.grade?.name || "";
-      const subjectName = cg.course?.subject?.name || "";
+      const teacherAvatar = cg.teacher?.avatar || cg.course?.teacher?.avatar || "";
+      const courseObj = cg.course || (allCourses.find(c => String(c.id) === String(cg.courseId || cg.course?.id))) || {};
+      const courseTitle = courseObj.title || cg.course?.title || "كورس تعليمي";
+
+      // Robust Grade Resolution (relation or text matching)
+      const directGrade = courseObj.grade || cg.grade || null;
+      let matchedGrade = directGrade;
+      if (!matchedGrade) {
+        const textToSearch = `${courseObj.degree || ''} ${courseTitle} ${cg.name || ''}`.toLowerCase();
+        matchedGrade = availableGrades.find(g => 
+          (g.name && textToSearch.includes(g.name.toLowerCase())) ||
+          (g.nameEn && textToSearch.includes(g.nameEn.toLowerCase())) ||
+          (g.code && textToSearch.includes(g.code.toLowerCase()))
+        ) || null;
+      }
+
+      const gradeName = matchedGrade?.name || courseObj.grade?.name || courseObj.degree || "";
+      const gradeNameEn = matchedGrade?.nameEn || courseObj.grade?.nameEn || "";
+      const gradeId = matchedGrade?.id || courseObj.grade?.id || null;
+      const gradeOrder = (matchedGrade?.order !== undefined && matchedGrade?.order !== null)
+        ? matchedGrade.order
+        : (courseObj.grade?.order !== undefined ? courseObj.grade.order : null);
+      const gradeCode = matchedGrade?.code || courseObj.grade?.code || "";
+      const gradeStage = matchedGrade?.stage || courseObj.grade?.stage || "";
+
+      // Resolve Subject
+      const subjectObj = courseObj.subject || cg.subject || null;
+      const subjectName = subjectObj?.name || courseObj.subject?.name || "";
+      const subjectId = subjectObj?.id || courseObj.subject?.id || null;
 
       const enrolledCount = cg.enrolledCount !== undefined ? cg.enrolledCount : 0;
       const maxSeats = cg.maxStudents || 25;
@@ -92,12 +150,21 @@ export const AdminSessionsPage = {
         isDbGroup: true,
         rawGroup: cg,
         title: cg.name || `مجموعة ${cg.scheduleDays || ''}`,
-        course: cg.course,
+        course: courseObj,
         courseTitle,
+        grade: matchedGrade,
+        gradeId,
         gradeName,
+        gradeNameEn,
+        gradeOrder,
+        gradeCode,
+        gradeStage,
+        subject: subjectObj,
+        subjectId,
         subjectName,
-        teacher: cg.teacher || cg.course?.teacher,
+        teacher: cg.teacher || courseObj.teacher,
         teacherName,
+        teacherAvatar,
         scheduleText: cg.scheduleText || `${cg.scheduleDays || "الأحد والثلاثاء"} ${cg.scheduleTime || "6:00م"}`,
         scheduleDays: cg.scheduleDays || "الأحد، الثلاثاء",
         scheduleTime: cg.scheduleTime || "6:00م",
@@ -115,12 +182,9 @@ export const AdminSessionsPage = {
         isFull,
         status: cg.status || "OPEN",
         meetingLink: cg.meetingLink || null,
-        sessions: allSessions.filter(s => String(s.groupId) === String(cg.id) || (s.course && String(s.course.id) === String(cg.course?.id)))
+        sessions: allSessions.filter(s => String(s.groupId) === String(cg.id) || (s.course && String(s.course.id) === String(courseObj.id)))
       };
     });
-
-    const allCourses = this.courses || [];
-    const allTeachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
 
     const totalStudentsInGroups = groupsList.reduce((acc, g) => acc + g.enrolledCount, 0);
     const totalGroupsCount = groupsList.length;
@@ -152,13 +216,90 @@ export const AdminSessionsPage = {
         if (!grp.isFull) return false;
       }
 
-      // 3. Course Filter
+      // 3. Grade Filter (Filters by grade showing all groups of that grade across all subjects)
+      const gradeFilter = this.adminGroupGradeFilter || 'all';
+      if (gradeFilter !== 'all') {
+        const selectedGradeObj = availableGrades.find(g => 
+          String(g.id) === String(gradeFilter) || 
+          String(g.code) === String(gradeFilter) ||
+          String(g.name) === String(gradeFilter) ||
+          String(g.order) === String(gradeFilter)
+        );
+
+        let matchGrade = false;
+
+        if (gradeFilter === 'STAGE_PRIMARY') {
+          matchGrade = (grp.gradeStage === 'PRIMARY') || 
+                       (grp.gradeOrder >= 1 && grp.gradeOrder <= 6) ||
+                       (grp.gradeName && grp.gradeName.includes('الابتدائي'));
+        } else if (gradeFilter === 'STAGE_PREPARATORY') {
+          matchGrade = (grp.gradeStage === 'PREPARATORY') || 
+                       (grp.gradeOrder >= 7 && grp.gradeOrder <= 9) ||
+                       (grp.gradeName && grp.gradeName.includes('الإعدادي'));
+        } else if (gradeFilter === 'STAGE_SECONDARY') {
+          matchGrade = (grp.gradeStage === 'SECONDARY') || 
+                       (grp.gradeOrder >= 10 && grp.gradeOrder <= 12) ||
+                       (grp.gradeName && grp.gradeName.includes('الثانوي'));
+        } else if (grp.gradeId && String(grp.gradeId) === String(gradeFilter)) {
+          matchGrade = true;
+        } else if (selectedGradeObj) {
+          if (grp.gradeId && String(grp.gradeId) === String(selectedGradeObj.id)) {
+            matchGrade = true;
+          } else if (grp.gradeOrder !== null && grp.gradeOrder !== undefined && grp.gradeOrder === selectedGradeObj.order) {
+            matchGrade = true;
+          } else if (grp.gradeCode && selectedGradeObj.code && grp.gradeCode.toLowerCase() === selectedGradeObj.code.toLowerCase()) {
+            matchGrade = true;
+          } else if (grp.gradeName && grp.gradeName.trim().toLowerCase() === selectedGradeObj.name.trim().toLowerCase()) {
+            matchGrade = true;
+          } else {
+            // Intelligent keyword checks for Grade 4 and other grades
+            const grpText = `${grp.gradeName} ${grp.gradeNameEn} ${grp.courseTitle} ${grp.title}`.toLowerCase();
+            if (selectedGradeObj.order === 4 || selectedGradeObj.code === 'PRI_4' || selectedGradeObj.name.includes('الرابع')) {
+              if (grpText.includes('الرابع') || grpText.includes('رابع') || grpText.includes('رابعة') || grpText.includes('grade 4') || grpText.includes('pri_4') || grpText.includes('grade4')) {
+                matchGrade = true;
+              }
+            } else if (selectedGradeObj.order === 1 && (grpText.includes('الأول الابتدائي') || grpText.includes('أولى ابتدائي') || grpText.includes('grade 1'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 2 && (grpText.includes('الثاني الابتدائي') || grpText.includes('تانية ابتدائي') || grpText.includes('grade 2'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 3 && (grpText.includes('الثالث الابتدائي') || grpText.includes('تالتة ابتدائي') || grpText.includes('grade 3'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 5 && (grpText.includes('الخامس') || grpText.includes('خامسة') || grpText.includes('grade 5'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 6 && (grpText.includes('السادس') || grpText.includes('سادسة') || grpText.includes('grade 6'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 7 && (grpText.includes('الأول الإعدادي') || grpText.includes('أولى إعدادي') || grpText.includes('grade 7'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 8 && (grpText.includes('الثاني الإعدادي') || grpText.includes('تانية إعدادي') || grpText.includes('grade 8'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 9 && (grpText.includes('الثالث الإعدادي') || grpText.includes('تالتة إعدادي') || grpText.includes('grade 9') || grpText.includes('bem'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 10 && (grpText.includes('الأول الثانوي') || grpText.includes('أولى ثانوي') || grpText.includes('grade 10') || grpText.includes('sec 1'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 11 && (grpText.includes('الثاني الثانوي') || grpText.includes('تانية ثانوي') || grpText.includes('grade 11') || grpText.includes('sec 2'))) {
+              matchGrade = true;
+            } else if (selectedGradeObj.order === 12 && (grpText.includes('الثالث الثانوي') || grpText.includes('تالتة ثانوي') || grpText.includes('grade 12') || grpText.includes('sec 3') || grpText.includes('بكالوريا'))) {
+              matchGrade = true;
+            }
+          }
+        } else {
+          const filterLower = String(gradeFilter).toLowerCase();
+          const grpText = `${grp.gradeName} ${grp.gradeNameEn} ${grp.gradeCode} ${grp.courseTitle} ${grp.title}`.toLowerCase();
+          if (grpText.includes(filterLower)) {
+            matchGrade = true;
+          }
+        }
+
+        if (!matchGrade) return false;
+      }
+
+      // 4. Course Filter
       const courseFilter = this.adminGroupCourseFilter || 'all';
       if (courseFilter !== 'all') {
         if (String(grp.course?.id) !== String(courseFilter)) return false;
       }
 
-      // 4. Teacher Filter
+      // 5. Teacher Filter
       const teacherFilter = this.adminGroupTeacherFilter || 'all';
       if (teacherFilter !== 'all') {
         if (String(grp.teacher?.id) !== String(teacherFilter)) return false;
@@ -185,10 +326,43 @@ export const AdminSessionsPage = {
     const hasActiveFilters = Boolean(
       (this.adminGroupSearchQuery && this.adminGroupSearchQuery.trim()) ||
       (this.adminGroupFilterStatus && this.adminGroupFilterStatus !== 'all') ||
+      (this.adminGroupGradeFilter && this.adminGroupGradeFilter !== 'all') ||
       (this.adminGroupCourseFilter && this.adminGroupCourseFilter !== 'all') ||
       (this.adminGroupTeacherFilter && this.adminGroupTeacherFilter !== 'all') ||
       (this.adminGroupSort && this.adminGroupSort !== 'newest')
     );
+
+    const primaryGrades = availableGrades.filter(g => g.stage === 'PRIMARY' || (g.order >= 1 && g.order <= 6));
+    const prepGrades = availableGrades.filter(g => g.stage === 'PREPARATORY' || (g.order >= 7 && g.order <= 9));
+    const secondaryGrades = availableGrades.filter(g => g.stage === 'SECONDARY' || (g.order >= 10 && g.order <= 12));
+
+    const selectedGrade = availableGrades.find(g => 
+      String(g.id) === String(this.adminGroupGradeFilter) || 
+      String(g.code) === String(this.adminGroupGradeFilter) ||
+      String(g.order) === String(this.adminGroupGradeFilter)
+    );
+    const selectedGradeLabel = selectedGrade 
+      ? `${selectedGrade.name} (${selectedGrade.nameEn || ('Grade ' + selectedGrade.order)})` 
+      : (this.adminGroupGradeFilter === 'STAGE_PRIMARY' ? 'المرحلة الابتدائية' : 
+         this.adminGroupGradeFilter === 'STAGE_PREPARATORY' ? 'المرحلة الإعدادية' : 
+         this.adminGroupGradeFilter === 'STAGE_SECONDARY' ? 'المرحلة الثانوية' : this.adminGroupGradeFilter);
+
+    const isGradeSelected = Boolean(this.adminGroupGradeFilter && this.adminGroupGradeFilter !== 'all');
+
+    // Filter courses for dropdown when grade filter is active
+    const coursesForDropdown = isGradeSelected
+      ? allCourses.filter(c => {
+          if (!selectedGrade) return true;
+          if (c.grade?.id && String(c.grade.id) === String(selectedGrade.id)) return true;
+          if (c.grade?.order !== undefined && c.grade.order === selectedGrade.order) return true;
+          if (c.grade?.code && selectedGrade.code && c.grade.code.toLowerCase() === selectedGrade.code.toLowerCase()) return true;
+          const cText = `${c.title} ${c.degree || ''} ${c.grade?.name || ''}`.toLowerCase();
+          return cText.includes(selectedGrade.name.toLowerCase()) || 
+                 (selectedGrade.order === 4 && (cText.includes('رابع') || cText.includes('grade 4')));
+        })
+      : allCourses;
+
+    const dropdownCourseList = coursesForDropdown.length > 0 ? coursesForDropdown : allCourses;
 
     const formatArabicDate = (dateStr) => {
       if (!dateStr) return "غير محدد";
@@ -349,11 +523,32 @@ export const AdminSessionsPage = {
             ` : ''}
           </div>
 
-          <!-- Secondary Filters: Search, Course, Teacher, Sort -->
+          <!-- Quick Grade Filter Chips Bar (Direct one-click filtering for Grade 4 & other grades) -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-bottom:6px; border-bottom:1px dashed var(--border-color);">
+            <span style="font-size:0.78rem; font-weight:800; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px; margin-inline-end:4px;">
+              <i data-lucide="graduation-cap" style="width:14px; height:14px; color:var(--primary);"></i> تصفية سريعة بالصف:
+            </span>
+            <button class="filter-tab-btn admin-group-grade-chip-btn ${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? 'active' : ''}" data-grade="all"
+              style="padding:4px 12px; border-radius:14px; font-size:0.76rem; font-weight:800; border:1px solid var(--border-color); background:${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? 'var(--primary)' : 'var(--bg-app)'}; color:${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
+              جميع الصفوف
+            </button>
+            ${availableGrades.slice(0, 10).map(g => {
+              const isSelected = selectedGrade && (String(selectedGrade.id) === String(g.id) || selectedGrade.order === g.order);
+              const isGrade4 = g.order === 4 || (g.code === 'PRI_4') || (g.name && g.name.includes('الرابع'));
+              return `
+                <button class="filter-tab-btn admin-group-grade-chip-btn ${isSelected ? 'active' : ''}" data-grade="${g.id}"
+                  style="padding:4px 12px; border-radius:14px; font-size:0.76rem; font-weight:800; border:1.5px solid ${isSelected ? 'var(--primary)' : isGrade4 ? '#6366f1' : 'var(--border-color)'}; background:${isSelected ? 'var(--primary)' : isGrade4 ? 'rgba(99,102,241,0.1)' : 'var(--bg-app)'}; color:${isSelected ? '#fff' : isGrade4 ? 'var(--primary)' : 'var(--text-main)'}; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                  ${isGrade4 ? '🌟 ' : ''}${g.name} ${isGrade4 ? '<b>(Grade 4)</b>' : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Secondary Filters: Search, Grade, Course, Teacher, Sort -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             
             <!-- Search Box -->
-            <div style="position:relative; flex:1; min-width:240px; max-width:360px;">
+            <div style="position:relative; flex:1; min-width:220px; max-width:320px;">
               <input type="text" id="admin-groups-search-input" value="${this.adminGroupSearchQuery || ''}" placeholder="ابحث باسم المجموعة، المادة، أو المعلم..."
                 style="width:100%; padding:9px 14px 9px 36px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; outline:none; box-sizing:border-box;">
               <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
@@ -362,11 +557,55 @@ export const AdminSessionsPage = {
             <!-- Select Dropdowns -->
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               
-              <!-- Course Filter -->
+              <!-- 🎓 Grade Filter Dropdown -->
+              <select id="admin-groups-grade-filter"
+                style="padding:8px 12px; border-radius:12px; border:1.5px solid ${isGradeSelected ? 'var(--primary)' : 'var(--border-color)'}; background:${isGradeSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-app)'}; color:var(--text-main); font-size:0.82rem; font-weight:800; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
+                <option value="all" ${!isGradeSelected ? 'selected' : ''}>🎒 جميع الصفوف والمراحل (${totalGroupsCount})</option>
+                
+                <optgroup label="── المراحل التعليمية الكاملة ──">
+                  <option value="STAGE_PRIMARY" ${this.adminGroupGradeFilter === 'STAGE_PRIMARY' ? 'selected' : ''}>🌱 المرحلة الابتدائية (الصفوف 1 - 6)</option>
+                  <option value="STAGE_PREPARATORY" ${this.adminGroupGradeFilter === 'STAGE_PREPARATORY' ? 'selected' : ''}>📘 المرحلة الإعدادية (الصفوف 7 - 9)</option>
+                  <option value="STAGE_SECONDARY" ${this.adminGroupGradeFilter === 'STAGE_SECONDARY' ? 'selected' : ''}>🎓 المرحلة الثانوية (الصفوف 10 - 12)</option>
+                </optgroup>
+
+                ${primaryGrades.length > 0 ? `
+                  <optgroup label="── المرحلة الابتدائية (Primary) ──">
+                    ${primaryGrades.map(g => {
+                      const isG4 = g.order === 4 || g.code === 'PRI_4';
+                      const isSel = selectedGrade && String(selectedGrade.id) === String(g.id);
+                      return `<option value="${g.id}" ${isSel ? 'selected' : ''}>${isG4 ? '⭐ ' : ''}${g.name} (${g.nameEn || ('Grade ' + g.order)})${isG4 ? ' - Grade 4' : ''}</option>`;
+                    }).join('')}
+                  </optgroup>
+                ` : ''}
+
+                ${prepGrades.length > 0 ? `
+                  <optgroup label="── المرحلة الإعدادية (Preparatory) ──">
+                    ${prepGrades.map(g => `
+                      <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
+                        ${g.name} (${g.nameEn || ('Grade ' + g.order)})
+                      </option>
+                    `).join('')}
+                  </optgroup>
+                ` : ''}
+
+                ${secondaryGrades.length > 0 ? `
+                  <optgroup label="── المرحلة الثانوية والبكالوريا ──">
+                    ${secondaryGrades.map(g => `
+                      <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
+                        ${g.name} (${g.nameEn || ('Grade ' + g.order)})
+                      </option>
+                    `).join('')}
+                  </optgroup>
+                ` : ''}
+              </select>
+
+              <!-- 📚 Course Filter (Shows all subjects of the grade if grade is selected) -->
               <select id="admin-groups-course-filter"
                 style="padding:8px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
-                <option value="all" ${(this.adminGroupCourseFilter || 'all') === 'all' ? 'selected' : ''}>📚 جميع الكورسات والمواد (${allCourses.length})</option>
-                ${allCourses.map(c => `
+                <option value="all" ${(this.adminGroupCourseFilter || 'all') === 'all' ? 'selected' : ''}>
+                  ${isGradeSelected ? `📚 جميع مواد وكورسات ${selectedGrade?.name || 'الصف'} (${dropdownCourseList.length})` : `📚 جميع الكورسات والمواد (${allCourses.length})`}
+                </option>
+                ${dropdownCourseList.map(c => `
                   <option value="${c.id}" ${String(this.adminGroupCourseFilter) === String(c.id) ? 'selected' : ''}>
                     ${c.title} ${c.grade ? `(${c.grade.name})` : ''}
                   </option>
@@ -397,6 +636,24 @@ export const AdminSessionsPage = {
             </div>
 
           </div>
+
+          <!-- Active Grade Filter Info Banner -->
+          ${isGradeSelected ? `
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:9px 16px; border-radius:14px; background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08)); border:1.5px solid rgba(99,102,241,0.25);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; background:var(--primary); color:#fff; font-size:0.75rem;">
+                  <i data-lucide="check" style="width:14px; height:14px;"></i>
+                </span>
+                <span style="font-size:0.84rem; font-weight:800; color:var(--text-main);">
+                  تصفية نشطة: عرض جميع مجموعات <strong style="color:var(--primary); font-size:0.9rem;">${selectedGradeLabel}</strong> بكافة المواد الدراسية (${filteredGroups.length} مجموعة)
+                </span>
+              </div>
+              <button onclick="if(window.adminViewInstance) window.adminViewInstance.setGroupGradeFilter('all')" 
+                style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#ef4444; border-radius:10px; padding:4px 10px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="x" style="width:13px; height:13px;"></i> إلغاء تصفية الصف
+              </button>
+            </div>
+          ` : ''}
 
         </div>
 
@@ -472,8 +729,18 @@ export const AdminSessionsPage = {
                           <span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px;">
                             ${grp.courseTitle}
                           </span>
-                          ${grp.gradeName ? `<span class="badge" style="background:rgba(16,185,129,0.1); color:#10b981; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:8px;">${grp.gradeName}</span>` : ''}
-                          ${grp.subjectName ? `<span class="badge" style="background:rgba(229,29,116,0.1); color:#e51d74; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:8px;">${grp.subjectName}</span>` : ''}
+                          ${grp.gradeName ? `
+                            <span class="badge" title="تصفية المجموعات حسب ${grp.gradeName}" 
+                              onclick="event.stopPropagation(); if (window.adminViewInstance) window.adminViewInstance.setGroupGradeFilter('${grp.gradeId || grp.gradeName}');"
+                              style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; cursor:pointer; border:1px solid rgba(16,185,129,0.25); display:inline-flex; align-items:center; gap:3px;">
+                              🎒 ${grp.gradeName}
+                            </span>
+                          ` : ''}
+                          ${grp.subjectName ? `
+                            <span class="badge" style="background:rgba(229,29,116,0.12); color:#e51d74; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; border:1px solid rgba(229,29,116,0.25); display:inline-flex; align-items:center; gap:3px;">
+                              📖 ${grp.subjectName}
+                            </span>
+                          ` : ''}
                         </div>
                       </div>
                     </div>
@@ -818,8 +1085,18 @@ export const AdminSessionsPage = {
             <!-- Schedule Time & Duration -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div>
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">توقيت الحصة:</label>
-                <input type="text" id="create-group-time" value="6:00م" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;" placeholder="مثال: 6:00م">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label for="create-group-time" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                    توقيت الحصة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <span style="font-size:0.73rem; color:#8b5cf6; font-weight:700;">اختيار بالنقرة 🕒</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="create-group-time" required class="form-input" style="flex:1; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; cursor:pointer;">
+                    ${this.renderTimeSelectOptions("06:00 م")}
+                  </select>
+                  <input type="time" id="create-group-time-picker" value="18:00" title="اختيار من الساعة 🕒" style="width:42px; height:42px; padding:4px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+                </div>
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">مدة الحصة (بالدقائق):</label>
@@ -958,6 +1235,29 @@ export const AdminSessionsPage = {
 
     // Run auto end date calculation initially
     updateAutoEndDate();
+
+    // Sync create-group-time select and time picker
+    const createTimeSelect = wrapper.querySelector("#create-group-time");
+    const createTimePicker = wrapper.querySelector("#create-group-time-picker");
+
+    createTimeSelect?.addEventListener("change", (e) => {
+      if (createTimePicker && e.target.value) {
+        createTimePicker.value = this.timeToArabicTo24(e.target.value);
+      }
+    });
+
+    createTimePicker?.addEventListener("change", (e) => {
+      if (e.target.value && createTimeSelect) {
+        const arabTime = this.normalizeTimeToArabic(e.target.value);
+        let matched = Array.from(createTimeSelect.options).find(opt => opt.value === arabTime);
+        if (!matched) {
+          const newOpt = new Option(`⏰ ${arabTime} (توقيت مخصص)`, arabTime, true, true);
+          createTimeSelect.add(newOpt, 0);
+        } else {
+          createTimeSelect.value = arabTime;
+        }
+      }
+    });
 
     teacherSelect?.addEventListener("change", () => {
       const selectedOpt = teacherSelect.options[teacherSelect.selectedIndex];
@@ -1204,8 +1504,18 @@ export const AdminSessionsPage = {
             <!-- Schedule Time & Duration -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div>
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">توقيت الحصة:</label>
-                <input type="text" id="edit-group-time" value="${group.scheduleTime || '6:00م'}" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label for="edit-group-time" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                    توقيت الحصة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <span style="font-size:0.73rem; color:#8b5cf6; font-weight:700;">اختيار بالنقرة 🕒</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="edit-group-time" required class="form-input" style="flex:1; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; cursor:pointer;">
+                    ${this.renderTimeSelectOptions(group.scheduleTime || "06:00 م")}
+                  </select>
+                  <input type="time" id="edit-group-time-picker" value="${this.timeToArabicTo24(group.scheduleTime || '06:00 م')}" title="اختيار من الساعة 🕒" style="width:42px; height:42px; padding:4px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+                </div>
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">مدة الحصة (بالدقائق):</label>
@@ -1313,6 +1623,29 @@ export const AdminSessionsPage = {
     if (!group.endDate) {
       updateEditAutoEndDate();
     }
+
+    // Sync edit-group-time select and time picker
+    const editTimeSelect = wrapper.querySelector("#edit-group-time");
+    const editTimePicker = wrapper.querySelector("#edit-group-time-picker");
+
+    editTimeSelect?.addEventListener("change", (e) => {
+      if (editTimePicker && e.target.value) {
+        editTimePicker.value = this.timeToArabicTo24(e.target.value);
+      }
+    });
+
+    editTimePicker?.addEventListener("change", (e) => {
+      if (e.target.value && editTimeSelect) {
+        const arabTime = this.normalizeTimeToArabic(e.target.value);
+        let matched = Array.from(editTimeSelect.options).find(opt => opt.value === arabTime);
+        if (!matched) {
+          const newOpt = new Option(`⏰ ${arabTime} (توقيت مخصص)`, arabTime, true, true);
+          editTimeSelect.add(newOpt, 0);
+        } else {
+          editTimeSelect.value = arabTime;
+        }
+      }
+    });
 
     wrapper.querySelector("#admin-edit-group-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -2091,8 +2424,18 @@ export const AdminSessionsPage = {
             <!-- Schedule Time & Session Duration -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div>
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">توقيت الحصة:</label>
-                <input type="text" id="approve-group-time" value="${initialTime}" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label for="approve-group-time" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                    توقيت الحصة: <span style="color:#ef4444;">*</span>
+                  </label>
+                  <span style="font-size:0.73rem; color:#8b5cf6; font-weight:700;">اختيار بالنقرة 🕒</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="approve-group-time" required class="form-input" style="flex:1; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; cursor:pointer;">
+                    ${this.renderTimeSelectOptions(initialTime || "06:00 م")}
+                  </select>
+                  <input type="time" id="approve-group-time-picker" value="${this.timeToArabicTo24(initialTime || '06:00 م')}" title="اختيار من الساعة 🕒" style="width:42px; height:42px; padding:4px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+                </div>
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">مدة الحصة (بالدقائق):</label>
@@ -2249,6 +2592,29 @@ export const AdminSessionsPage = {
     wrapper.querySelector("#approve-group-student-rate")?.addEventListener("input", updateCalculations);
     wrapper.querySelector("#approve-group-teacher-rate")?.addEventListener("input", updateCalculations);
     wrapper.querySelectorAll("input[name='approve-group-days']").forEach(cb => cb.addEventListener("change", updateCalculations));
+
+    // Sync approve-group-time select and time picker
+    const approveTimeSelect = wrapper.querySelector("#approve-group-time");
+    const approveTimePicker = wrapper.querySelector("#approve-group-time-picker");
+
+    approveTimeSelect?.addEventListener("change", (e) => {
+      if (approveTimePicker && e.target.value) {
+        approveTimePicker.value = this.timeToArabicTo24(e.target.value);
+      }
+    });
+
+    approveTimePicker?.addEventListener("change", (e) => {
+      if (e.target.value && approveTimeSelect) {
+        const arabTime = this.normalizeTimeToArabic(e.target.value);
+        let matched = Array.from(approveTimeSelect.options).find(opt => opt.value === arabTime);
+        if (!matched) {
+          const newOpt = new Option(`⏰ ${arabTime} (توقيت مخصص)`, arabTime, true, true);
+          approveTimeSelect.add(newOpt, 0);
+        } else {
+          approveTimeSelect.value = arabTime;
+        }
+      }
+    });
 
     // Form Submit
     const form = wrapper.querySelector("#admin-approve-group-form");
@@ -2643,6 +3009,8 @@ export const AdminSessionsPage = {
     let dbGroupId = groupIdOrSessionId;
     let groupStatus = "OPEN";
     let groupPrice = 320;
+    let groupEntity = null;
+    let courseEntity = null;
 
     try {
       // 1. Try to fetch official roster from backend endpoint
@@ -2650,6 +3018,8 @@ export const AdminSessionsPage = {
 
       if (rosterRes && rosterRes.students) {
         isDbCourseGroup = true;
+        groupEntity = rosterRes.group || null;
+        courseEntity = rosterRes.group?.course || (this.courses || []).find(c => String(c.id) === String(rosterRes.group?.courseId || rosterRes.group?.course?.id)) || null;
         targetTitle = rosterRes.group?.name || "المجموعة الدراسية";
         teacherName = rosterRes.group?.teacher?.name || "معلم المنصة";
         maxSeats = rosterRes.group?.maxStudents || 25;
@@ -2661,6 +3031,8 @@ export const AdminSessionsPage = {
         const matchedGroup = (this.allCourseGroups || []).find(g => String(g.id) === String(groupIdOrSessionId));
         if (matchedGroup) {
           isDbCourseGroup = true;
+          groupEntity = matchedGroup;
+          courseEntity = matchedGroup.course || (this.courses || []).find(c => String(c.id) === String(matchedGroup.courseId || matchedGroup.course?.id)) || null;
           targetTitle = matchedGroup.name || "المجموعة الدراسية";
           teacherName = matchedGroup.teacher?.name || matchedGroup.course?.teacher?.name || "معلم المنصة";
           maxSeats = matchedGroup.maxStudents || 25;
@@ -2688,6 +3060,7 @@ export const AdminSessionsPage = {
           if (sess) {
             targetTitle = sess.title || (sess.course ? sess.course.title : "مجموعة دراسية أونلاين");
             teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
+            courseEntity = sess.course || (this.courses || []).find(c => String(c.id) === String(sess.courseId || sess.course?.id)) || null;
 
             if (sess.course) {
               const courseId = sess.course.id || sess.courseId;
@@ -2711,10 +3084,39 @@ export const AdminSessionsPage = {
       console.error("Error loading group students modal:", err);
     }
 
-    const availableStudents = (this.allMembers || []).filter(u =>
+    // Resolve Grade / Degree of the group
+    if (!groupEntity) {
+      groupEntity = (this.allCourseGroups || []).find(g => String(g.id) === String(groupIdOrSessionId)) || null;
+    }
+    if (!courseEntity && groupEntity) {
+      courseEntity = groupEntity.course || (this.courses || []).find(c => String(c.id) === String(groupEntity.courseId || groupEntity.course?.id)) || null;
+    }
+
+    const targetGradeKey = this.detectGradeKey(groupEntity?.grade) 
+      || this.detectGradeKey(courseEntity?.grade) 
+      || this.detectGradeKey(courseEntity?.degree) 
+      || this.detectGradeKey(groupEntity?.name) 
+      || this.detectGradeKey(targetTitle) 
+      || this.detectGradeKey(courseEntity?.title);
+
+    const targetGradeName = courseEntity?.grade?.name 
+      || courseEntity?.degree 
+      || (targetGradeKey ? this.getGradeDisplayName(targetGradeKey) : "");
+
+    const allAvailableStudents = (this.allMembers || []).filter(u =>
       u.role === "student" && !students.some(st => String(st.studentId) === String(u.id))
     );
 
+    // Filter students by detected degree / grade
+    const matchingGradeStudents = targetGradeKey 
+      ? allAvailableStudents.filter(st => this.detectGradeKey(st.education) === targetGradeKey)
+      : allAvailableStudents;
+
+    // Filter by group degree by default if matching students exist
+    const isFilteredInitially = !!targetGradeKey && matchingGradeStudents.length > 0;
+    const initialStudentList = isFilteredInitially ? matchingGradeStudents : allAvailableStudents;
+
+    const availableStudents = allAvailableStudents;
     const activeCount = students.filter(s => s.status === 'active').length;
     const pendingCount = students.filter(s => s.status === 'pending' || s.status === 'PENDING').length;
     const availableSeats = Math.max(0, maxSeats - activeCount);
@@ -2794,14 +3196,40 @@ export const AdminSessionsPage = {
               ` : `
                 <div style="display:flex; flex-direction:column; gap:12px;">
                   
-                  <!-- Student Selection -->
+                  <!-- Student Selection with Grade Filter -->
                   <div>
-                    <label for="select-new-group-student" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:5px; color:var(--text-main);">
-                      اختر الطالب المطلوب تسكينه: <span style="color:#ef4444;">*</span>
-                    </label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+                      <label for="select-new-group-student" style="font-size:0.83rem; font-weight:800; color:var(--text-main); margin:0;">
+                        اختر الطالب المطلوب تسكينه: <span style="color:#ef4444;">*</span>
+                      </label>
+                      ${targetGradeKey ? `
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                          <span id="group-student-grade-badge" class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-size:0.75rem; font-weight:800; border:1px solid rgba(99,102,241,0.25); padding:3px 10px; border-radius:10px;">
+                            🎓 طلاب ${targetGradeName} فقط (${matchingGradeStudents.length} متاح)
+                          </span>
+                          <button type="button" id="toggle-student-grade-filter-btn" class="btn-secondary" 
+                            data-filtered="${isFilteredInitially ? 'true' : 'false'}"
+                            style="font-size:0.74rem; padding:4px 10px; border-radius:10px; cursor:pointer; font-weight:700;">
+                            ${isFilteredInitially ? `عرض جميع الطلاب (${allAvailableStudents.length})` : `إظهار طلاب ${targetGradeName} فقط (${matchingGradeStudents.length})`}
+                          </button>
+                        </div>
+                      ` : ''}
+                    </div>
+
+                    ${(targetGradeKey && matchingGradeStudents.length === 0) ? `
+                      <div style="padding:10px 14px; margin-bottom:8px; border-radius:12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); font-size:0.8rem; color:#d97706; display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="info" style="width:16px; height:16px; flex-shrink:0;"></i>
+                        <span>لا يوجد طلاب مسجلون بالمنصة في صف <strong>"${targetGradeName}"</strong> غير منضمين حالياً. تم عرض قائمة جميع الطلاب لتسكين طالب كاستثناء.</span>
+                      </div>
+                    ` : ''}
+
                     <select id="select-new-group-student" class="form-select" required style="width:100%; border-radius:12px; padding:10px 14px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
-                      <option value="">-- اختر طالباً من قائمة الطلاب المسجلين بالمنصة --</option>
-                      ${availableStudents.map(st => `<option value="${st.id}">${st.name} (${st.email || st.phone || 'طالب'})</option>`).join('')}
+                      <option value="">-- اختر طالباً (${initialStudentList.length} متاح) --</option>
+                      ${initialStudentList.map(st => `
+                        <option value="${st.id}">
+                          ${st.name} ${st.education ? `— 🎓 ${st.education}` : ''} (${st.email || st.phone || 'طالب'})
+                        </option>
+                      `).join('')}
                     </select>
                   </div>
 
@@ -3003,6 +3431,39 @@ export const AdminSessionsPage = {
     const closeModal = () => { container.innerHTML = ""; };
     document.getElementById("close-group-students-modal")?.addEventListener("click", closeModal);
     document.getElementById("cancel-group-students-btn")?.addEventListener("click", closeModal);
+
+    // Toggle showing only matching grade students vs all platform students
+    const toggleGradeFilterBtn = document.getElementById("toggle-student-grade-filter-btn");
+    const newStudentSelect = document.getElementById("select-new-group-student");
+    const gradeBadge = document.getElementById("group-student-grade-badge");
+
+    toggleGradeFilterBtn?.addEventListener("click", () => {
+      const isFiltered = toggleGradeFilterBtn.getAttribute("data-filtered") === "true";
+      const nextFiltered = !isFiltered;
+      toggleGradeFilterBtn.setAttribute("data-filtered", nextFiltered ? "true" : "false");
+
+      const listToRender = nextFiltered ? matchingGradeStudents : allAvailableStudents;
+
+      if (nextFiltered) {
+        toggleGradeFilterBtn.textContent = `عرض جميع الطلاب (${allAvailableStudents.length})`;
+        if (gradeBadge) gradeBadge.textContent = `🎓 طلاب ${targetGradeName} فقط (${matchingGradeStudents.length} متاح)`;
+      } else {
+        toggleGradeFilterBtn.textContent = `إظهار طلاب ${targetGradeName} فقط (${matchingGradeStudents.length})`;
+        if (gradeBadge) gradeBadge.textContent = `👥 عرض جميع طلاب المنصة (${allAvailableStudents.length})`;
+      }
+
+      const currentVal = newStudentSelect?.value || "";
+      if (newStudentSelect) {
+        newStudentSelect.innerHTML = `
+          <option value="">-- اختر طالباً (${listToRender.length} متاح) --</option>
+          ${listToRender.map(st => `
+            <option value="${st.id}" ${st.id === currentVal ? 'selected' : ''}>
+              ${st.name} ${st.education ? `— 🎓 ${st.education}` : ''} (${st.email || st.phone || 'طالب'})
+            </option>
+          `).join('')}
+        `;
+      }
+    });
 
     // Live preview for receipt file in closed group modal
     const fileInput = document.getElementById("add-student-receipt-file");
@@ -5061,6 +5522,189 @@ export const AdminSessionsPage = {
         });
       });
     }
+  },
+
+  setGroupGradeFilter(gradeVal) {
+    this.adminGroupGradeFilter = gradeVal || "all";
+    this.adminGroupCourseFilter = "all";
+    this.renderTab("groups");
+  },
+
+  detectGradeKey(textOrGrade) {
+    if (!textOrGrade) return null;
+    if (typeof textOrGrade === "object") {
+      if (textOrGrade.code) {
+        const c = String(textOrGrade.code).toUpperCase().trim();
+        if (c === "PRI_1") return "GRADE_1";
+        if (c === "PRI_2") return "GRADE_2";
+        if (c === "PRI_3") return "GRADE_3";
+        if (c === "PRI_4") return "GRADE_4";
+        if (c === "PRI_5") return "GRADE_5";
+        if (c === "PRI_6") return "GRADE_6";
+        if (c === "PREP_1") return "GRADE_7";
+        if (c === "PREP_2") return "GRADE_8";
+        if (c === "PREP_3") return "GRADE_9";
+        if (c === "SEC_1") return "GRADE_10";
+        if (c === "SEC_2") return "GRADE_11";
+        if (c === "SEC_3") return "GRADE_12";
+      }
+      if (textOrGrade.order !== undefined && textOrGrade.order !== null) {
+        const ord = Number(textOrGrade.order);
+        if (ord >= 1 && ord <= 12) return `GRADE_${ord}`;
+      }
+      textOrGrade = `${textOrGrade.name || ""} ${textOrGrade.nameEn || ""} ${textOrGrade.degree || ""}`;
+    }
+
+    const s = String(textOrGrade || "").toLowerCase()
+      .replace(/[إأآا]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
+      .trim();
+    if (!s) return null;
+
+    // Primary 1 - 6
+    if (/grade\s*1\b|pri[_-]?1\b|1\s*ابتدائي|اول\s*ابتدائي|الاول\s*الابتدائي/.test(s)) return "GRADE_1";
+    if (/grade\s*2\b|pri[_-]?2\b|2\s*ابتدائي|ثاني\s*ابتدائي|الثاني\s*الابتدائي/.test(s)) return "GRADE_2";
+    if (/grade\s*3\b|pri[_-]?3\b|3\s*ابتدائي|ثالث\s*ابتدائي|الثالث\s*الابتدائي/.test(s)) return "GRADE_3";
+    if (/grade\s*4\b|pri[_-]?4\b|4\s*ابتدائي|رابع\s*ابتدائي|الرابع\s*الابتدائي/.test(s)) return "GRADE_4";
+    if (/grade\s*5\b|pri[_-]?5\b|5\s*ابتدائي|خامس\s*ابتدائي|الخامس\s*الابتدائي/.test(s)) return "GRADE_5";
+    if (/grade\s*6\b|pri[_-]?6\b|6\s*ابتدائي|سادس\s*ابتدائي|السادس\s*الابتدائي/.test(s)) return "GRADE_6";
+
+    // Prep 1 - 3 (Grades 7 - 9)
+    if (/grade\s*7\b|prep[_-]?1\b|1\s*اعدادي|اول\s*اعدادي|الاول\s*الاعدادي|7\s*متوسط/.test(s)) return "GRADE_7";
+    if (/grade\s*8\b|prep[_-]?2\b|2\s*اعدادي|ثاني\s*اعدادي|الثاني\s*الاعدادي|8\s*متوسط/.test(s)) return "GRADE_8";
+    if (/grade\s*9\b|prep[_-]?3\b|3\s*اعدادي|ثالث\s*اعدادي|الثالث\s*الاعدادي|9\s*متوسط|\bbem\b/.test(s)) return "GRADE_9";
+
+    // Secondary 1 - 3 (Grades 10 - 12)
+    if (/grade\s*10\b|sec[_-]?1\b|entlq\s*1\b|1ث|اول\s*ثانوي|اولي\s*ثانوي|الاول\s*الثانوي/.test(s)) return "GRADE_10";
+    if (/grade\s*11\b|sec[_-]?2\b|entlq\s*2\b|2ث|ثاني\s*ثانوي|ثانيه\s*ثانوي|الثاني\s*الثانوي/.test(s)) return "GRADE_11";
+    if (/grade\s*12\b|sec[_-]?3\b|entlq\s*3\b|3ث|ثالث\s*ثانوي|ثالثه\s*ثانوي|الثالث\s*الثانوي|\bbac\b|بكالوريا/.test(s)) return "GRADE_12";
+
+    return null;
+  },
+
+  getGradeDisplayName(gradeKey) {
+    const map = {
+      GRADE_1: "الصف الأول الابتدائي (Grade 1)",
+      GRADE_2: "الصف الثاني الابتدائي (Grade 2)",
+      GRADE_3: "الصف الثالث الابتدائي (Grade 3)",
+      GRADE_4: "الصف الرابع الابتدائي (Grade 4)",
+      GRADE_5: "الصف الخامس الابتدائي (Grade 5)",
+      GRADE_6: "الصف السادس الابتدائي (Grade 6)",
+      GRADE_7: "الصف الأول الإعدادي (Grade 7 / Prep 1)",
+      GRADE_8: "الصف الثاني الإعدادي (Grade 8 / Prep 2)",
+      GRADE_9: "الصف الثالث الإعدادي (Grade 9 / Prep 3)",
+      GRADE_10: "الصف الأول الثانوي (Sec 1 / Entlq 1)",
+      GRADE_11: "الصف الثاني الثانوي (Sec 2 / Entlq 2)",
+      GRADE_12: "الصف الثالث الثانوي (Sec 3 / Entlq 3 / BAC)",
+    };
+    return map[gradeKey] || "المرحلة والصف الدراسي";
+  },
+
+  normalizeTimeToArabic(timeStr) {
+    if (!timeStr) return "06:00 م";
+    const s = String(timeStr).trim();
+    const isPM = s.includes("م") || s.toLowerCase().includes("pm");
+    const isAM = s.includes("ص") || s.toLowerCase().includes("am");
+    const nums = s.replace(/[^0-9:]/g, "").split(":");
+    let h = parseInt(nums[0], 10);
+    const m = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    if (isNaN(h)) return "06:00 م";
+
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+
+    const pm = h >= 12;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const mStr = String(isNaN(m) ? 0 : m).padStart(2, "0");
+    const hStr = String(h12).padStart(2, "0");
+    return `${hStr}:${mStr} ${pm ? "م" : "ص"}`;
+  },
+
+  timeToArabicTo24(timeStr) {
+    if (!timeStr) return "18:00";
+    const s = String(timeStr).trim();
+    const isPM = s.includes("م") || s.toLowerCase().includes("pm");
+    const isAM = s.includes("ص") || s.toLowerCase().includes("am");
+    const nums = s.replace(/[^0-9:]/g, "").split(":");
+    let h = parseInt(nums[0], 10);
+    const m = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    if (isNaN(h)) return "18:00";
+
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+
+    return `${String(h).padStart(2, "0")}:${String(isNaN(m) ? 0 : m).padStart(2, "0")}`;
+  },
+
+  renderTimeSelectOptions(selectedTimeStr = "06:00 م") {
+    const targetNorm = this.normalizeTimeToArabic(selectedTimeStr || "06:00 م");
+
+    const slots = [
+      // Evening slots (most common)
+      { val: "05:00 م", label: "05:00 م (5:00 مساءً)", group: "evening" },
+      { val: "05:30 م", label: "05:30 م (5:30 مساءً)", group: "evening" },
+      { val: "06:00 م", label: "06:00 م (6:00 مساءً) ⭐", group: "evening" },
+      { val: "06:30 م", label: "06:30 م (6:30 مساءً)", group: "evening" },
+      { val: "07:00 م", label: "07:00 م (7:00 مساءً)", group: "evening" },
+      { val: "07:30 م", label: "07:30 م (7:30 مساءً)", group: "evening" },
+      { val: "08:00 م", label: "08:00 م (8:00 مساءً)", group: "evening" },
+      { val: "08:30 م", label: "08:30 م (8:30 مساءً)", group: "evening" },
+      { val: "09:00 م", label: "09:00 م (9:00 مساءً)", group: "evening" },
+      { val: "09:30 م", label: "09:30 م (9:30 مساءً)", group: "evening" },
+      { val: "10:00 م", label: "10:00 م (10:00 مساءً)", group: "evening" },
+      { val: "10:30 م", label: "10:30 م (10:30 مساءً)", group: "evening" },
+      { val: "11:00 م", label: "11:00 م (11:00 مساءً)", group: "evening" },
+
+      // Noon & Afternoon slots
+      { val: "12:00 م", label: "12:00 م (12:00 ظهراً)", group: "noon" },
+      { val: "12:30 م", label: "12:30 م", group: "noon" },
+      { val: "01:00 م", label: "01:00 م (1:00 ظهراً)", group: "noon" },
+      { val: "01:30 م", label: "01:30 م", group: "noon" },
+      { val: "02:00 م", label: "02:00 م (2:00 ظهراً)", group: "noon" },
+      { val: "02:30 م", label: "02:30 م", group: "noon" },
+      { val: "03:00 م", label: "03:00 م (3:00 عصراً)", group: "noon" },
+      { val: "03:30 م", label: "03:30 م", group: "noon" },
+      { val: "04:00 م", label: "04:00 م (4:00 عصراً)", group: "noon" },
+      { val: "04:30 م", label: "04:30 م", group: "noon" },
+
+      // Morning slots
+      { val: "08:00 ص", label: "08:00 ص (8:00 صباحاً)", group: "morning" },
+      { val: "08:30 ص", label: "08:30 ص", group: "morning" },
+      { val: "09:00 ص", label: "09:00 ص (9:00 صباحاً)", group: "morning" },
+      { val: "09:30 ص", label: "09:30 ص", group: "morning" },
+      { val: "10:00 ص", label: "10:00 ص (10:00 صباحاً)", group: "morning" },
+      { val: "10:30 ص", label: "10:30 ص", group: "morning" },
+      { val: "11:00 ص", label: "11:00 ص (11:00 صباحاً)", group: "morning" },
+      { val: "11:30 ص", label: "11:30 ص", group: "morning" }
+    ];
+
+    const eveningSlots = slots.filter(s => s.group === "evening");
+    const noonSlots = slots.filter(s => s.group === "noon");
+    const morningSlots = slots.filter(s => s.group === "morning");
+
+    const renderOpts = (arr) => arr.map(s => {
+      const isSel = (s.val === targetNorm) ? "selected" : "";
+      return `<option value="${s.val}" ${isSel}>${s.label}</option>`;
+    }).join("");
+
+    let html = `
+      <optgroup label="🌙 الفترة المسائية (الأكثر شيوعاً)">
+        ${renderOpts(eveningSlots)}
+      </optgroup>
+      <optgroup label="☀️ فترة الظهيرة والعصر">
+        ${renderOpts(noonSlots)}
+      </optgroup>
+      <optgroup label="🌅 الفترة الصباحية">
+        ${renderOpts(morningSlots)}
+      </optgroup>
+    `;
+
+    if (targetNorm && !slots.some(s => s.val === targetNorm)) {
+      html = `<option value="${targetNorm}" selected>⏰ ${targetNorm} (توقيت مخصص)</option>` + html;
+    }
+
+    return html;
   }
 
 };

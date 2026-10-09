@@ -124,6 +124,134 @@ export function getCleanWhatsAppNumber(phone) {
   return clean;
 }
 
+const ARABIC_NAME_MAP = {
+  "محمد": "mohamed", "محمود": "mahmoud", "احمد": "ahmed", "أحمد": "ahmed", "علي": "ali", "على": "ali",
+  "حسن": "hassan", "حسين": "hussein", "عمر": "omar", "عمرو": "amr", "خالد": "khaled", "طارق": "tarek",
+  "يوسف": "youssef", "ابراهيم": "ibrahim", "إبراهيم": "ibrahim", "مصطفى": "moustafa", "مصطفي": "moustafa",
+  "كريم": "karim", "وليد": "walid", "هشام": "hesham", "سامي": "samy", "سامى": "samy", "وائل": "wael",
+  "ياسر": "yasser", "حازم": "hazem", "حمزة": "hamza", "حمزه": "hamza", "بلال": "belal", "زياد": "zyad",
+  "يحيى": "yehia", "يحيي": "yehia", "رامي": "ramy", "رامى": "ramy", "شادي": "shady", "شادى": "shady",
+  "فادي": "fady", "فادى": "fady", "ماجد": "maged", "مجدي": "magdy", "مجدى": "magdy", "مدحت": "medhat",
+  "عادل": "adel", "عصام": "essam", "عماد": "emad", "اشرف": "ashraf", "أشرف": "ashraf", "ايمن": "ayman",
+  "أيمن": "ayman", "امير": "amir", "أمير": "amir", "اسامة": "osama", "أسامة": "osama", "اسلام": "islam",
+  "إسلام": "islam", "ايهاب": "ehab", "إيهاب": "ehab", "هاني": "hany", "هانى": "hany", "شريف": "sherif",
+  "مروان": "marwan", "باسل": "basel", "تامر": "tamer", "هيثم": "haitham", "وسام": "wessam", "حسام": "hossam",
+  "جمال": "gamal", "جلال": "galal", "كمال": "kamal", "نبيل": "nabil", "ناجي": "nagy", "ناجى": "nagy",
+  "نادر": "nader", "ناصر": "nasser", "باهر": "baher", "ساهر": "saher", "سامر": "samer", "صابر": "saber",
+  "رضا": "reda", "سمير": "samir", "منير": "mounir", "فتحي": "fathy", "فتحى": "fathy", "فوزي": "fawzy",
+  "فوزى": "fawzy", "صبري": "sabry", "صبرى": "sabry", "شوقي": "shawky", "شوقى": "shawky", "لطفي": "lotfy",
+  "لطفى": "lotfy", "صدقي": "sedky", "صدقى": "sedky", "متولي": "metwally", "متولى": "metwally",
+  "عبدالله": "abdullah", "عبدالرحمن": "abdelrahman", "عبدالعزيز": "abdelaziz", "عبدالرحيم": "abdelrahim",
+  "عبدالكريم": "abdelkarim", "عبدالقادر": "abdelqader", "عبدالوهاب": "abdelwahab", "عبدالفتاح": "abdelfattah",
+  "عبدالحميد": "abdelhamid", "عبدالسلام": "abdelsalam", "عبداللطيف": "abdellatif", "عبدالستار": "abdelsattar",
+  "عبدالمجيد": "abdelmagid", "عبدالرازق": "abdelrazek", "عبدالباسط": "abdelbaset", "عبدالغفار": "abdelghaffar",
+  "سيفالدين": "seifeldin", "نورالدين": "noureldin", "حسامالدين": "hossameldin",
+  "صلاحالدين": "salaheldin", "علاءالدين": "alaaeldin", "ابوبكر": "abubakr",
+  "الشافعي": "elshafei", "الشافعى": "elshafei", "البدري": "elbadry", "البدرى": "elbadry",
+  "الديب": "eldeeb", "النجار": "elnaggar", "الحداد": "elhaddad", "الصياد": "elsayad",
+  "السيد": "elsayed", "الشريف": "elsherif", "المصري": "elmasry", "المصرى": "elmasry",
+  "سارة": "sara", "ساره": "sara", "مريم": "mariam", "فاطمة": "fatma", "فاطمه": "fatma",
+  "اية": "aya", "آية": "aya", "نور": "nour", "نورهان": "nourhan", "مي": "mai", "مى": "mai",
+  "منة": "menna", "منه": "menna", "منى": "mona", "مني": "mona", "هبة": "heba", "هبه": "heba",
+  "ريم": "reem", "رنا": "rana", "روان": "rawan", "سلمى": "salma", "سلمي": "salma",
+  "ياسمين": "yasmin", "دينا": "dina", "دنيا": "donia", "نادين": "nadine", "ملك": "malak",
+  "حبيبة": "habiba", "حبيبه": "habiba", "شهد": "shahd", "جنى": "jana", "جني": "jana",
+  "فريدة": "farida", "فريده": "farida", "هاجر": "hagar", "اسماء": "asmaa", "أسماء": "asmaa",
+  "شيماء": "shaimaa", "ايمان": "eman", "إيمان": "eman", "اماني": "amany", "أماني": "amany",
+  "رانيا": "rania", "دعاء": "doaa", "نادية": "nadia", "ناديه": "nadia", "علا": "ola",
+  "غادة": "ghada", "غاده": "ghada", "نهى": "noha", "نهي": "noha", "رشا": "rasha",
+  "نجلاء": "naglaa", "هالة": "hala", "هاله": "hala", "داليا": "dalia", "اسراء": "esraa", "إسراء": "esraa",
+  "بسنت": "basant", "رضوى": "radwa", "رضوي": "radwa", "اروى": "arwa", "أروى": "arwa",
+  "رحمة": "rahma", "رحمه": "rahma", "تقى": "toqa", "تقي": "toqa", "مروة": "marwa", "مروه": "marwa",
+  "هناء": "hanaa", "هنا": "hana", "هدير": "hadeer", "سهيلة": "sohaila", "سهيله": "sohaila",
+  "خديجة": "khadija", "خديجه": "khadija", "عائشة": "aisha", "عائشه": "aisha",
+  "شروق": "shorouk", "تسنيم": "tasneem", "جودي": "joudy", "حنين": "haneen", "زينة": "zeina", "زينه": "zeina",
+  "ليلى": "laila", "ليلي": "laila", "مازن": "mazen", "معاذ": "moaz", "انس": "anas", "أنس": "anas",
+  "مالك": "malek", "ادهم": "adham", "أدهم": "adham", "يامن": "yamen", "سعيد": "saeed",
+  "شمس": "shams", "توفيق": "tawfik", "بدوي": "badawy", "بدوى": "badawy", "رمضان": "ramadan",
+  "سليمان": "soliman", "عثمان": "othman", "زكريا": "zakaria", "يونس": "younes", "اسماعيل": "ismail",
+  "إسماعيل": "ismail", "صالح": "saleh", "فارس": "fares", "بدر": "badr", "فهد": "fahd"
+};
+
+function transliterateArabicNameWord(word) {
+  if (!word) return "";
+  const lower = word.toLowerCase().trim();
+  // Already english characters/numbers
+  if (/^[a-z0-9_-]+$/.test(lower)) return lower;
+
+  // Clean arabic diacritics / tashkeel
+  let w = lower.replace(/[\u064B-\u065F\u0670]/g, "");
+
+  if (ARABIC_NAME_MAP[w]) return ARABIC_NAME_MAP[w];
+
+  // If starts with "ال" (el- prefix)
+  if (w.startsWith("ال") && w.length > 3) {
+    const withoutAl = w.substring(2);
+    if (ARABIC_NAME_MAP[withoutAl]) return "el" + ARABIC_NAME_MAP[withoutAl];
+    return "el" + transliterateArabicNameWord(withoutAl);
+  }
+
+  // Phonetic character-by-character mapping
+  const charMap = {
+    "ا": "a", "أ": "a", "إ": "a", "آ": "a", "ء": "a", "ئ": "a", "ؤ": "o",
+    "ب": "b", "ت": "t", "ث": "th", "ج": "g", "ح": "h", "خ": "kh",
+    "د": "d", "ذ": "dh", "ر": "r", "ز": "z", "س": "s", "ش": "sh",
+    "ص": "s", "ض": "d", "ط": "t", "ظ": "z", "ع": "a", "غ": "gh",
+    "ف": "f", "ق": "q", "ك": "k", "ل": "l", "م": "m", "ن": "n",
+    "ه": "h", "و": "w", "ي": "y", "ى": "y", "ة": "a"
+  };
+
+  let res = "";
+  for (let i = 0; i < w.length; i++) {
+    const ch = w[i];
+    res += charMap[ch] !== undefined ? charMap[ch] : (/[a-z0-9]/.test(ch) ? ch : "");
+  }
+  return res;
+}
+
+/**
+ * Generates an English email address with @entlq.com domain from user's full name.
+ * Supports English and Arabic names, compound names, and title stripping.
+ * Example: "محمد علي" -> "mohamed.ali@entlq.com"
+ * Example: "Sarah Connor" -> "sarah.connor@entlq.com"
+ * Example: "عبد الرحمن أحمد" -> "abdelrahman.ahmed@entlq.com"
+ */
+export function generateEntlqEmail(fullName) {
+  if (!fullName || typeof fullName !== "string") return "";
+  let clean = fullName.trim();
+  if (!clean) return "";
+
+  // Strip honorifics / titles
+  clean = clean.replace(/^(دكتور|د\.?|أستاذ|أ\.?|مستر|مس|المهندس|م\.?|شيخ|mr\.?|mrs\.?|ms\.?|dr\.?|prof\.?)\s+/i, "");
+
+  // Normalize compound Arabic names (عبد + الاسم)
+  clean = clean.replace(/\bعبد\s+(الله|الرحمن|الرحيم|العزيز|القادر|الكريم|الوهاب|الباسط|الغفار|الرازق|الفتاح|الحميد|اللطيف|الحكيم|الرؤوف|الماجد|السلام|الستار|المجيد|السميع|الخالق|المعين|الواحد|المتعال|الوالي|الصمد)\b/gi, (m, p1) => "عبد" + p1);
+  // Normalize compound names ending in الدين
+  clean = clean.replace(/\b(نور|سيف|حسام|صلاح|علاء|شمس|بهاء|عماد|تقي|نجم|ضياء|جمال|زين)\s+الدين\b/gi, (m, p1) => p1 + "الدين");
+  // Normalize ابو بكر
+  clean = clean.replace(/\bابو\s+بكر\b/gi, "ابوبكر");
+
+  const rawWords = clean.split(/[\s_\-\.\,]+/).filter(Boolean);
+  if (!rawWords.length) return "";
+
+  const transWords = rawWords.map(transliterateArabicNameWord).filter(w => w && w.length > 0);
+  if (!transWords.length) return "";
+
+  let userPart = "";
+  if (transWords.length === 1) {
+    userPart = transWords[0];
+  } else {
+    // Standard format: firstname.lastname
+    userPart = transWords.slice(0, 2).join(".");
+  }
+
+  // Clean userPart to alphanumeric and dot
+  userPart = userPart.toLowerCase().replace(/[^a-z0-9\.]/g, "").replace(/\.+/g, ".").replace(/^\.|\.$/g, "");
+  if (!userPart) return "";
+
+  return `${userPart}@entlq.com`;
+}
+
 export function renderEducationSelectHTML({ id = "education-select", selectedValue = "Entlq 3", required = true, style = "" } = {}) {
   const norm = (v) => String(v || "").toLowerCase().trim();
   const current = norm(selectedValue);

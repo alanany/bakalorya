@@ -47,6 +47,7 @@ export default class AdminView {
     this.studentGradeFilter = "all";
     this.studentSearchQuery = "";
     this.adminGroupFilterStatus = "all";
+    this.adminGroupGradeFilter = "all";
     this.adminGroupSearchQuery = "";
     this.adminGroupCourseFilter = "all";
     this.adminGroupTeacherFilter = "all";
@@ -567,7 +568,7 @@ export default class AdminView {
 
   async loadAllData() {
     try {
-      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs, parents, supervisors] = await Promise.all([
+      const [stats, members, courses, reportsData, categories, teacherApplications, sessions, subscriptions, earnings, allPlans, enrollments, settings, pendingGroups, allGroups, blogs, parents, supervisors, allGrades] = await Promise.all([
         apiFetch("/admin/stats").catch(() => ({})),
         apiFetch("/admin/users").catch(() => []),
         apiFetch("/admin/courses").catch(() => []),
@@ -584,7 +585,8 @@ export default class AdminView {
         apiFetch("/admin/all-groups").catch(() => []),
         apiFetch("/admin/blogs").catch(() => []),
         apiFetch("/admin/parents").catch(() => []),
-        apiFetch("/admin/supervisors").catch(() => [])
+        apiFetch("/admin/supervisors").catch(() => []),
+        apiFetch("/curriculum/grades").catch(() => [])
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -603,6 +605,7 @@ export default class AdminView {
       this.allBlogs = blogs || [];
       this.allParents = parents || [];
       this.allSupervisors = supervisors || [];
+      this.allGrades = allGrades || [];
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -942,6 +945,25 @@ export default class AdminView {
       });
     });
 
+    // Admin Groups Grade Filter Dropdown
+    const adminGroupGradeFilter = this.container.querySelector("#admin-groups-grade-filter");
+    if (adminGroupGradeFilter) {
+      adminGroupGradeFilter.addEventListener("change", (e) => {
+        this.adminGroupGradeFilter = e.target.value;
+        this.adminGroupCourseFilter = "all";
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Grade Quick Filter Chips
+    this.container.querySelectorAll(".admin-group-grade-chip-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.adminGroupGradeFilter = btn.getAttribute("data-grade") || "all";
+        this.adminGroupCourseFilter = "all";
+        this.renderTab("groups");
+      });
+    });
+
     // Admin Groups Course Filter Dropdown
     const adminGroupCourseFilter = this.container.querySelector("#admin-groups-course-filter");
     if (adminGroupCourseFilter) {
@@ -973,6 +995,7 @@ export default class AdminView {
     const resetAdminGroupFilters = () => {
       this.adminGroupSearchQuery = "";
       this.adminGroupFilterStatus = "all";
+      this.adminGroupGradeFilter = "all";
       this.adminGroupCourseFilter = "all";
       this.adminGroupTeacherFilter = "all";
       this.adminGroupSort = "newest";

@@ -852,7 +852,7 @@ export class CourseGroupController {
 
       const group = await groupRepo.findOne({
         where: { id },
-        relations: ["course", "course.teacher", "teacher"]
+        relations: ["course", "course.teacher", "course.grade", "course.subject", "teacher"]
       });
 
       if (!group) {
@@ -879,7 +879,14 @@ export class CourseGroupController {
           monthlyPrice: group.monthlyPrice,
           sessionPrice: group.sessionPrice,
           studentHourlyRate: group.studentHourlyRate,
-          teacher: group.teacher || group.course?.teacher || null
+          teacher: group.teacher || group.course?.teacher || null,
+          course: group.course ? {
+            id: group.course.id,
+            title: group.course.title,
+            degree: group.course.degree,
+            grade: group.course.grade,
+            subject: group.course.subject
+          } : null
         },
         totalStudents: enrollments.length,
         students: enrollments.map(e => {
