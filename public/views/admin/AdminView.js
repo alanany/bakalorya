@@ -2098,60 +2098,295 @@ export default class AdminView {
   // ─── Parents Tab ──────────────────────────────────────────────────────────────
   renderParentsTab() {
     const parents = this.allParents || [];
+    const activeCount = parents.filter(p => !p.isBlocked && p.status === 'ACTIVE').length;
+    const pendingCount = parents.filter(p => p.status === 'PENDING').length;
+    const blockedCount = parents.filter(p => p.isBlocked).length;
+    const totalChildren = parents.reduce((sum, p) => sum + (p.childrenCount || 0), 0);
+
     return `
-      <div class="admin-section" style="padding:0;">
-        <!-- Header row -->
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+      <style>
+        .parents-page-wrap {
+          padding: 0;
+          font-family: 'Outfit', 'Cairo', sans-serif;
+        }
+        .parents-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .parents-kpi-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 18px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .parents-kpi-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.4rem;
+          flex-shrink: 0;
+        }
+        .parent-admin-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 22px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+          transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+          position: relative;
+        }
+        .parent-admin-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.06);
+          border-color: rgba(99,102,241,0.4);
+        }
+        .parent-filter-chip {
+          padding: 8px 16px;
+          border-radius: 50px;
+          border: 1.5px solid var(--border-color);
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .parent-filter-chip:hover {
+          border-color: var(--primary);
+          color: var(--primary);
+        }
+        .parent-filter-chip.active {
+          background: var(--primary);
+          border-color: var(--primary);
+          color: #fff;
+          box-shadow: 0 3px 12px rgba(99,102,241,0.3);
+        }
+        .parent-contact-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          text-decoration: none;
+          background: rgba(0,0,0,0.02);
+          padding: 5px 10px;
+          border-radius: 8px;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .parent-contact-pill:hover {
+          color: var(--primary);
+          background: rgba(99,102,241,0.06);
+        }
+      </style>
+
+      <div class="parents-page-wrap">
+        <!-- Top Title & Add Button -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px;">
           <div>
-            <h2 style="margin:0 0 4px;font-size:1.2rem;color:var(--text-primary,#fff);">👨‍👩‍👧 أولياء الأمور (${parents.length})</h2>
-            <p style="margin:0;font-size:0.85rem;color:var(--text-muted,#888);">الإدارة هي الجهة الوحيدة المخولة بإضافة وإدارة حسابات أولياء الأمور وربط أبنائهم.</p>
+            <h2 style="margin:0 0 4px;font-size:1.35rem;font-weight:900;color:var(--text-main);">👨‍👩‍👧 شبكة أولياء الأمور</h2>
+            <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">إدارة حسابات أولياء الأمور، ربط الأبناء، وتتبع متابعة التحصيل الدراسي والواتساب</p>
           </div>
-          <button id="admin-add-parent-btn" class="btn-primary" style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;">
-            <i data-lucide="user-plus" style="width:16px;height:16px;"></i> إضافة ولي أمر جديد
+          <button id="admin-add-parent-btn" class="btn-primary" style="display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:12px;font-weight:800;font-size:0.9rem;box-shadow:0 4px 14px rgba(99,102,241,0.3);">
+            <i data-lucide="user-plus" style="width:16px;height:16px;"></i> إضافة ولي أمر جديد ➕
           </button>
         </div>
 
+        <!-- 4 KPI Stat Counters -->
+        <div class="parents-kpi-grid">
+          <div class="parents-kpi-card">
+            <div class="parents-kpi-icon" style="background:rgba(99,102,241,0.12);color:var(--primary);">👨‍👩‍👧</div>
+            <div>
+              <div style="font-size:1.6rem;font-weight:900;color:var(--text-main);line-height:1.2;">${parents.length}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);font-weight:700;">إجمالي أولياء الأمور</div>
+            </div>
+          </div>
+          <div class="parents-kpi-card">
+            <div class="parents-kpi-icon" style="background:rgba(16,185,129,0.12);color:#10b981;">✅</div>
+            <div>
+              <div style="font-size:1.6rem;font-weight:900;color:#10b981;line-height:1.2;">${activeCount}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);font-weight:700;">حسابات مفعلة ونشطة</div>
+            </div>
+          </div>
+          <div class="parents-kpi-card">
+            <div class="parents-kpi-icon" style="background:rgba(245,158,11,0.12);color:#d97706;">⏳</div>
+            <div>
+              <div style="font-size:1.6rem;font-weight:900;color:#d97706;line-height:1.2;">${pendingCount}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);font-weight:700;">بانتظار الاعتماد</div>
+            </div>
+          </div>
+          <div class="parents-kpi-card">
+            <div class="parents-kpi-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;">👦</div>
+            <div>
+              <div style="font-size:1.6rem;font-weight:900;color:var(--text-main);line-height:1.2;">${totalChildren}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);font-weight:700;">إجمالي الأبناء المربوطين</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+          <!-- Search Input -->
+          <div style="position:relative;flex:1;min-width:240px;">
+            <i data-lucide="search" style="position:absolute;top:50%;right:12px;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted);"></i>
+            <input type="text" id="parent-search-input" class="form-input" placeholder="بحث بالاسم، البريد الإلكتروني، أو رقم الهاتف..." style="width:100%;padding:10px 38px 10px 14px;border-radius:12px;font-size:0.88rem;box-sizing:border-box;">
+          </div>
+
+          <!-- Filter Pills -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="parent-filter-chip active" data-filter="all">الكل (${parents.length})</button>
+            <button class="parent-filter-chip" data-filter="active">النشطين (${activeCount})</button>
+            <button class="parent-filter-chip" data-filter="pending">قيد الاعتماد (${pendingCount})</button>
+            <button class="parent-filter-chip" data-filter="blocked">المحظورين (${blockedCount})</button>
+          </div>
+        </div>
+
+        <!-- Parents Cards Grid -->
         ${parents.length === 0 ? `
-          <div style="text-align:center;padding:60px 24px;background:rgba(255,255,255,0.03);border-radius:16px;border:1px dashed rgba(255,255,255,0.08);">
-            <div style="font-size:3rem;margin-bottom:12px;">👨‍👩‍👧</div>
-            <p style="color:var(--text-muted,#888);margin:0;">لم يتم إضافة أي ولي أمر بعد. استخدم الزر أعلاه لإضافة أول حساب.</p>
+          <div style="text-align:center;padding:70px 24px;background:var(--bg-card);border-radius:20px;border:1px dashed var(--border-color);">
+            <div style="font-size:3.5rem;margin-bottom:12px;">👨‍👩‍👧</div>
+            <h3 style="font-size:1.2rem;font-weight:800;color:var(--text-main);margin-bottom:6px;">لم يتم إضافة أي ولي أمر بعد</h3>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin:0;">استخدم زر "إضافة ولي أمر جديد" أعلاه لبدء تسجيل أولياء الأمور وربط أبنائهم.</p>
           </div>
         ` : `
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            ${parents.map(p => `
-              <div class="parent-admin-card" data-parent-id="${p.id}" style="background:rgba(255,255,255,0.04);border-radius:14px;border:1px solid rgba(255,255,255,0.07);padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;transition:background .2s;" onmouseover="this.style.background='rgba(139,92,246,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
-                <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">👨‍👩‍👧</div>
-                <div style="flex:1;min-width:150px;">
-                  <div style="font-weight:600;color:var(--text-primary,#fff);margin-bottom:3px;">${p.name}</div>
-                  <div style="font-size:0.82rem;color:var(--text-muted,#888);">${p.email}${p.phone ? ' · 📞 ' + p.phone : ''}${p.location ? ' · 📍 ' + p.location : ''}</div>
-                  <div style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <span style="font-size:0.75rem;padding:2px 10px;border-radius:20px;background:${p.isBlocked ? 'rgba(239,68,68,0.15)' : p.status === 'PENDING' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'};color:${p.isBlocked ? '#ef4444' : p.status === 'PENDING' ? '#f59e0b' : '#10b981'};">${p.isBlocked ? 'محظور' : p.status === 'PENDING' ? 'قيد المراجعة' : 'نشط'}</span>
-                    <span style="font-size:0.75rem;color:var(--text-muted,#888);">${p.childrenCount || 0} ابن/ابنة مربوط</span>
+          <div id="parents-cards-container" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));gap:18px;">
+            ${parents.map(p => {
+              const cleanPhone = (p.phone || '').replace(/[^0-9]/g, '');
+              const waText = encodeURIComponent(`السلام عليكم ولي أمر الطالب المحترم (${p.name})، نتواصل معكم من إدارة منصة انطلق التعليمية 🎓`);
+
+              return `
+                <div class="parent-admin-card" data-parent-id="${p.id}" data-parent-status="${p.status || 'ACTIVE'}" data-parent-blocked="${p.isBlocked ? 'true' : 'false'}">
+                  <div>
+                    <!-- Card Top Header -->
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15));color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.4rem;border:1.5px solid rgba(99,102,241,0.3);flex-shrink:0;">
+                          👨‍👩‍👧
+                        </div>
+                        <div>
+                          <h4 style="margin:0 0 3px;font-size:1.05rem;font-weight:900;color:var(--text-main);line-height:1.3;">
+                            ${p.name}
+                          </h4>
+                          <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+                            <i data-lucide="calendar" style="width:12px;height:12px;"></i>
+                            انضمام: ${p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG') : 'حديثاً'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Status Badge -->
+                      <div>
+                        ${p.isBlocked ? `
+                          <span class="badge" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:0.72rem;padding:3px 9px;border-radius:8px;font-weight:800;border:1px solid rgba(239,68,68,0.25);">
+                            🚫 محظور
+                          </span>
+                        ` : p.status === 'PENDING' ? `
+                          <span class="badge" style="background:rgba(245,158,11,0.12);color:#d97706;font-size:0.72rem;padding:3px 9px;border-radius:8px;font-weight:800;border:1px solid rgba(245,158,11,0.25);">
+                            ⏳ قيد المراجعة
+                          </span>
+                        ` : `
+                          <span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.72rem;padding:3px 9px;border-radius:8px;font-weight:800;border:1px solid rgba(16,185,129,0.25);">
+                            ✅ نشط
+                          </span>
+                        `}
+                      </div>
+                    </div>
+
+                    <!-- Linked Children Box (Interactive!) -->
+                    <div style="background:rgba(99,102,241,0.05);border:1px dashed rgba(99,102,241,0.25);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:1.3rem;">👦</span>
+                        <div>
+                          <div style="font-weight:800;font-size:0.88rem;color:var(--text-main);">
+                            ${p.childrenCount > 0 ? `${p.childrenCount} من الأبناء مربوطين` : 'لا يوجد أبناء مربوطين'}
+                          </div>
+                          <div style="font-size:0.72rem;color:var(--text-muted);">
+                            ${p.childrenCount > 0 ? 'متابعة الحصص، النتائج والتقارير' : 'اربط حساب الطالب للبدء بالمتابعة'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button class="parent-view-children-btn btn-outline" data-parent-id="${p.id}" data-parent-name="${p.name}" style="padding:5px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;border-color:rgba(99,102,241,0.3);color:var(--primary);display:inline-flex;align-items:center;gap:4px;" title="عرض قائمة الأبناء المربوطين">
+                        <i data-lucide="users" style="width:13px;height:13px;"></i> الأبناء
+                      </button>
+                    </div>
+
+                    <!-- Contact Details Pills -->
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+                      <a href="mailto:${p.email}" class="parent-contact-pill" title="إرسال بريد إلكتروني">
+                        <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);flex-shrink:0;"></i>
+                        <span style="overflow:hidden;text-overflow:ellipsis;">${p.email}</span>
+                      </a>
+
+                      ${p.phone ? `
+                        <div style="display:flex;align-items:center;gap:8px;">
+                          <a href="tel:${p.phone}" class="parent-contact-pill" style="flex:1;" title="اتصال هاتفي">
+                            <i data-lucide="phone" style="width:13px;height:13px;color:#10b981;flex-shrink:0;"></i>
+                            <span>${p.phone}</span>
+                          </a>
+                          <a href="https://wa.me/${cleanPhone}?text=${waText}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:rgba(37,211,102,0.1);color:#16a34a;border:1px solid rgba(37,211,102,0.25);font-size:0.75rem;font-weight:800;text-decoration:none;" title="محادثة واتساب فورية">
+                            <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+                          </a>
+                        </div>
+                      ` : `
+                        <div class="parent-contact-pill" style="color:var(--text-muted);font-size:0.75rem;">
+                          <i data-lucide="phone-off" style="width:13px;height:13px;flex-shrink:0;"></i> بدون رقم هاتف مسجل
+                        </div>
+                      `}
+
+                      ${p.location ? `
+                        <div class="parent-contact-pill" title="المدينة / المنطقة">
+                          <i data-lucide="map-pin" style="width:13px;height:13px;color:#f59e0b;flex-shrink:0;"></i>
+                          <span>${p.location}</span>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+
+                  <!-- Card Action Buttons -->
+                  <div style="border-top:1px solid var(--border-color);padding-top:14px;display:flex;flex-direction:column;gap:8px;">
+                    <!-- Row 1: Primary Actions -->
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <button class="parent-contact-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" style="flex:1;padding:7px 10px;border-radius:10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-color:rgba(16,185,129,0.3);color:#10b981;background:rgba(16,185,129,0.06);" title="خيارات ونماذج المراسلة">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
+                      </button>
+                      <button class="parent-link-child-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" style="flex:1;padding:7px 10px;border-radius:10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-color:rgba(99,102,241,0.3);color:var(--primary);background:rgba(99,102,241,0.06);" title="ربط طالب إضافي">
+                        <i data-lucide="link" style="width:12px;height:12px;"></i> ربط طالب
+                      </button>
+                      <button class="parent-edit-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" data-parent-location="${p.location || ''}" data-parent-status="${p.status || 'ACTIVE'}" style="padding:7px 10px;border-radius:10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="تعديل بيانات الحساب">
+                        <i data-lucide="edit-3" style="width:12px;height:12px;"></i>
+                      </button>
+                    </div>
+
+                    <!-- Row 2: Moderation & Security -->
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      ${p.status === 'PENDING' ? `
+                        <button class="parent-approve-btn btn-primary" data-parent-id="${p.id}" style="flex:1;padding:7px 12px;border-radius:10px;font-size:0.78rem;font-weight:800;background:linear-gradient(135deg,#10b981,#059669);border:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;">
+                          <i data-lucide="check-circle" style="width:12px;height:12px;"></i> تفعيل الحساب
+                        </button>
+                      ` : ''}
+                      <button class="parent-block-btn btn-secondary" data-parent-id="${p.id}" data-blocked="${p.isBlocked}" style="flex:1;padding:7px 10px;border-radius:10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-color:${p.isBlocked ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'};background:${p.isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};color:${p.isBlocked ? '#10b981' : '#ef4444'};cursor:pointer;">
+                        <i data-lucide="${p.isBlocked ? 'unlock' : 'lock'}" style="width:12px;height:12px;"></i> ${p.isBlocked ? 'رفع الحظر' : 'حظر الحساب'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                  <button class="parent-contact-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;border-color:rgba(16,185,129,0.35);color:#10b981;background:rgba(16,185,129,0.08);font-weight:700;" title="خيارات ونماذج التواصل">
-                    <i data-lucide="message-circle" style="width:13px;height:13px;"></i> تواصل
-                  </button>
-                  ${p.phone ? `
-                    <a href="https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`السلام عليكم ولي أمر الطالب المحترم (${p.name})، نتواصل معكم من إدارة منصة انطلق.`)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding:8px 10px;border-radius:9px;font-size:0.82rem;display:inline-flex;align-items:center;justify-content:center;color:#25D366;border-color:rgba(37,211,102,0.3);background:rgba(37,211,102,0.08);" title="محادثة واتساب فورية">
-                      <i data-lucide="phone-call" style="width:13px;height:13px;"></i>
-                    </a>
-                  ` : ''}
-                  <button class="parent-edit-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" data-parent-email="${p.email}" data-parent-phone="${p.phone || ''}" data-parent-location="${p.location || ''}" data-parent-status="${p.status || 'ACTIVE'}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
-                    <i data-lucide="edit-3" style="width:13px;height:13px;"></i> تعديل
-                  </button>
-                  <button class="parent-link-child-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
-                    <i data-lucide="link" style="width:13px;height:13px;"></i> ربط طالب
-                  </button>
-                  <button class="parent-view-children-btn btn-secondary" data-parent-id="${p.id}" data-parent-name="${p.name}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;display:flex;align-items:center;gap:6px;">
-                    <i data-lucide="users" style="width:13px;height:13px;"></i> الأبناء
-                  </button>
-                  ${p.status === 'PENDING' ? `<button class="parent-approve-btn btn-primary" data-parent-id="${p.id}" style="padding:8px 14px;border-radius:9px;font-size:0.82rem;">✅ تفعيل</button>` : ''}
-                  <button class="parent-block-btn" data-parent-id="${p.id}" data-blocked="${p.isBlocked}" style="padding:8px 14px;border-radius:9px;border:1px solid ${p.isBlocked ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};background:${p.isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};color:${p.isBlocked ? '#10b981' : '#ef4444'};cursor:pointer;font-size:0.82rem;">${p.isBlocked ? '🔓 رفع الحظر' : '🚫 حظر'}</button>
-                </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         `}
 
@@ -2587,6 +2822,33 @@ export default class AdminView {
       });
     });
     document.getElementById("close-view-children-btn")?.addEventListener("click", () => closeModal("view-children-modal"));
+
+    // Live search on parents cards
+    document.getElementById("parent-search-input")?.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll(".parent-admin-card").forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? "" : "none";
+      });
+    });
+
+    // Filter Chips (All, Active, Pending, Blocked)
+    document.querySelectorAll(".parent-filter-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        const f = chip.dataset.filter;
+        document.querySelectorAll(".parent-filter-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        document.querySelectorAll(".parent-admin-card").forEach(card => {
+          const status = card.dataset.parentStatus;
+          const isBlocked = card.dataset.parentBlocked === "true";
+          let match = true;
+          if (f === "active") match = status === "ACTIVE" && !isBlocked;
+          else if (f === "pending") match = status === "PENDING";
+          else if (f === "blocked") match = isBlocked;
+          card.style.display = match ? "" : "none";
+        });
+      });
+    });
   }
 
 
