@@ -669,6 +669,9 @@ export const AdminUsersPage = {
                         </td>
                         <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn-primary view-student-profile-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="عرض الملف الأكاديمي والجدول الدراسي للطالب">
+                              <i data-lucide="calendar" style="width:12px;height:12px;"></i> الملف والجدول 👤
+                            </button>
                             ${state.user?.role === "admin" ? `
                             ${isPending ? `
                               <button class="btn-primary approve-student-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg, #10b981, #059669);border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,0.3);" title="الموافقة على تسجيل الطالب وتفعيل حسابه">

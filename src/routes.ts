@@ -24,6 +24,7 @@ import { PlatformSettingController } from "./controller/PlatformSettingControlle
 import { CurriculumController } from "./controller/CurriculumController";
 import { CourseGroupController } from "./controller/CourseGroupController";
 import { ParentController } from "./controller/ParentController";
+import { AdminStudentController } from "./controller/AdminStudentController";
 import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability } from "./middleware/auth";
 import { authRateLimiter, sensitiveActionLimiter } from "./middleware/rateLimiter";
 import { concurrencyLock } from "./middleware/concurrencyLock";
@@ -371,6 +372,8 @@ router.get("/admin/parents/:parentId/children", authMiddleware, requireRole(["ad
 router.post("/admin/parents/:parentId/children", authMiddleware, requireRole(["admin"]), ParentController.adminAddChild);
 router.delete("/admin/parent-links/:linkId", authMiddleware, requireRole(["admin"]), ParentController.adminRemoveChild);
 router.get("/admin/students/search", authMiddleware, requireRole(["admin"]), ParentController.adminSearchStudents);
+router.get("/admin/students/:studentId/profile", authMiddleware, requireRole(["admin", "supervisor"]), AdminStudentController.getStudentProfile);
+router.patch("/admin/students/:studentId/notes", authMiddleware, requireRole(["admin", "supervisor"]), AdminStudentController.updateStudentNotes);
 // Parent: read-only portal
 router.get("/parent/children", authMiddleware, requireRole(["parent"]), ParentController.myChildren);
 router.get("/parent/children/:studentId/groups", authMiddleware, requireRole(["parent"]), ParentController.childGroups);

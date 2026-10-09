@@ -12,6 +12,7 @@ import { AdminPlansPage } from './AdminPlansPage.js';
 import { AdminSettingsPage } from './AdminSettingsPage.js';
 import { AdminCurriculumPage } from './AdminCurriculumPage.js';
 import { AdminBlogsPage } from './AdminBlogsPage.js';
+import { AdminStudentDetailsPage } from './AdminStudentDetailsPage.js';
 
 export default class AdminView {
 
@@ -27,6 +28,9 @@ export default class AdminView {
     this.activeTab = mainTab;
     if (mainTab === "settings" && subTab) {
       this._settingsSection = subTab;
+    }
+    if (mainTab === "students" && subTab) {
+      this.selectedStudentId = subTab;
     }
     window.adminViewInstance = this;
     this.stats = {};
@@ -690,6 +694,17 @@ export default class AdminView {
     settings: { heading: "⚙️ إعدادات المنصة ورقم الواتساب", sub: "إدارة رقم الواتساب الرسمي، أرقام الدعم الهاتفي، والبريد الإلكتروني للواجهة الرئيسية" },
   };
 
+  showStudentDetails(studentId) {
+    this.selectedStudentId = studentId;
+    this.activeTab = "students";
+    try {
+      if (window.location.hash !== `#admin-dashboard/students/${studentId}`) {
+        history.pushState(null, "", `#admin-dashboard/students/${studentId}`);
+      }
+    } catch (_) {}
+    this.renderTab("students");
+  }
+
   renderTab(tab, args = null) {
     const content = document.getElementById("admin-tab-content");
     if (!content) return;
@@ -713,7 +728,16 @@ export default class AdminView {
     }
     else if (tab === "categories") content.innerHTML = this.renderCategoriesTab();
     else if (tab === "teachers") content.innerHTML = this.renderTeachersTab();
-    else if (tab === "students") content.innerHTML = this.renderStudentsTab();
+    else if (tab === "students") {
+      const studentId = this.selectedStudentId || args?.studentId;
+      if (studentId) {
+        content.innerHTML = "";
+        const page = new AdminStudentDetailsPage(content, this, studentId);
+        page.render();
+        return;
+      }
+      content.innerHTML = this.renderStudentsTab();
+    }
     else if (tab === "teacherApplications") content.innerHTML = this.renderTeacherApplicationsTab();
     else if (tab === "members") content.innerHTML = this.renderMembersTab();
     else if (tab === "courses") {
@@ -1706,6 +1730,16 @@ export default class AdminView {
         const id = btn.getAttribute("data-id");
         const user = this.allMembers.find(u => u.id === id);
         if (user) this.renderMemberModal(user);
+      });
+    });
+
+    // View Student Profile & Timetable
+    this.container.querySelectorAll(".view-student-profile-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id) {
+          this.showStudentDetails(id);
+        }
       });
     });
 
