@@ -1,4 +1,4 @@
-import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber } from "../../app.js";
+import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state } from "../../app.js";
 
 export class AdminStudentDetailsPage {
   constructor(container, adminView, studentId) {
@@ -359,13 +359,16 @@ export class AdminStudentDetailsPage {
             </button>
           </div>
 
-          <!-- Total sessions count badge & Export PDF button -->
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button id="export-weekly-pdf-btn" class="btn-primary" style="padding:7px 16px;border-radius:10px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #ef4444, #b91c1c);color:#fff;border:none;box-shadow:0 3px 12px rgba(239,68,68,0.28);cursor:pointer;transition:transform 0.15s;" title="تصدير وطباعة الجدول الأسبوعي للطالب بصيغة PDF مع شعار الأكاديمية">
-              <i data-lucide="file-down" style="width:14px;height:14px;"></i> تصدير الجدول الأسبوعي (PDF) 📄
+          <!-- Total sessions count badge & Export PDF / Image buttons -->
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button id="export-weekly-pdf-btn" class="btn-primary" style="padding:7px 15px;border-radius:10px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #ef4444, #b91c1c);color:#fff;border:none;box-shadow:0 3px 12px rgba(239,68,68,0.28);cursor:pointer;transition:transform 0.15s;" title="تصدير وطباعة الجدول الأسبوعي للطالب بصيغة PDF مع شعار الأكاديمية">
+              <i data-lucide="file-down" style="width:14px;height:14px;"></i> تصدير (PDF) 📄
+            </button>
+            <button id="export-weekly-img-btn" class="btn-primary" style="padding:7px 15px;border-radius:10px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #8b5cf6, #6d28d9);color:#fff;border:none;box-shadow:0 3px 12px rgba(139,92,246,0.28);cursor:pointer;transition:transform 0.15s;" title="تحميل وتصدير الجدول الأسبوعي كصورة عالية الجودة PNG">
+              <i data-lucide="image" style="width:14px;height:14px;"></i> تحميل كصورة (Image) 🖼️
             </button>
             <div style="font-size:0.85rem;color:var(--text-muted);font-weight:700;">
-              إجمالي الحصص المسجلة: <span style="color:var(--primary);">${allSessions.length}</span>
+              إجمالي الحصص: <span style="color:var(--primary);">${allSessions.length}</span>
             </div>
           </div>
         </div>
@@ -596,10 +599,13 @@ export class AdminStudentDetailsPage {
               ${crs ? `<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;">📚 الكورس: <strong>${crs.title}</strong> ${crs.grade ? `(${crs.grade})` : ''}</div>` : ''}
 
               ${tch ? `
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:rgba(0,0,0,0.02);padding:8px 12px;border-radius:10px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:rgba(0,0,0,0.02);padding:8px 12px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:all 0.2s;" class="open-tch-profile-btn" data-teacher-id="${tch.id}" title="عرض الملف الأكاديمي الشامل للمعلم" onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(99,102,241,0.04)'" onmouseout="this.style.borderColor='transparent';this.style.background='rgba(0,0,0,0.02)'">
                   <img src="${tch.avatar || 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
                   <div>
-                    <div style="font-size:0.82rem;font-weight:800;color:var(--text-main);">أ. ${tch.name}</div>
+                    <div style="font-size:0.82rem;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:4px;">
+                      <span>أ. ${tch.name}</span>
+                      <span style="font-size:0.68rem;background:rgba(99,102,241,0.1);color:var(--primary);padding:1px 5px;border-radius:4px;">الملف 👤</span>
+                    </div>
                     <div style="font-size:0.72rem;color:var(--text-muted);">${tch.phone || 'معلم المادة'}</div>
                   </div>
                 </div>
@@ -882,6 +888,16 @@ export class AdminStudentDetailsPage {
       });
     });
 
+    // Open teacher profile
+    this.container.querySelectorAll(".open-tch-profile-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-teacher-id");
+        if (id && typeof this.adminView.showTeacherDetails === "function") {
+          this.adminView.showTeacherDetails(id);
+        }
+      });
+    });
+
     // Remove student from group
     this.container.querySelectorAll(".remove-from-group-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -903,9 +919,12 @@ export class AdminStudentDetailsPage {
       });
     });
 
-    // Export Weekly Timetable to PDF
+    // Export Weekly Timetable to PDF / Image
     this.container.querySelector("#export-weekly-pdf-btn")?.addEventListener("click", () => {
-      this.exportWeeklyTimetableToPDF();
+      this.exportWeeklyTimetableToPDF(false);
+    });
+    this.container.querySelector("#export-weekly-img-btn")?.addEventListener("click", () => {
+      this.exportWeeklyTimetableToPDF(true);
     });
 
     // Save admin notes
@@ -934,9 +953,10 @@ export class AdminStudentDetailsPage {
   }
 
   // ── EXPORT WEEKLY TIMETABLE TO PDF WITH ACADEMY LOGO ──────────────────────
-  async exportWeeklyTimetableToPDF() {
+  async exportWeeklyTimetableToPDF(autoDownloadImage = false) {
     const student = this.data.student;
     const allSessions = this.getFilteredSessions();
+    const academyManagerName = state.platformSettings?.academyManagerName || this.adminView?.platformSettings?.academyManagerName || "أ. محمد عبد الله";
 
     // Calculate active week
     const d = new Date(this.currentDate);
@@ -971,288 +991,307 @@ export class AdminStudentDetailsPage {
     }
 
     // Build the printable weekly schedule HTML
-    const printableHTML = `
-      <!DOCTYPE html>
-      <html lang="ar" dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>الجدول الدراسي الأسبوعي - ${student.name}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-        <style>
-          @page {
-            size: A4 landscape;
-            margin: 10mm;
-          }
-          * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            font-family: 'Cairo', 'Outfit', sans-serif;
-            background: #ffffff;
-            color: #1e293b;
-            margin: 0;
-            padding: 12px;
-            font-size: 12px;
-          }
-          .pdf-container {
-            width: 100%;
-            max-width: 1100px;
-            margin: 0 auto;
-            border: 2px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 20px;
-            background: #ffffff;
-          }
-          .pdf-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid #4f46e5;
-            padding-bottom: 16px;
-            margin-bottom: 16px;
-          }
-          .academy-brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-          }
-          .academy-logo {
-            width: 65px;
-            height: 65px;
-            object-fit: contain;
-            border-radius: 12px;
-          }
-          .academy-title {
-            font-size: 20px;
-            font-weight: 900;
-            color: #1e1b4b;
-            margin: 0;
-          }
-          .academy-subtitle {
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 700;
-            margin: 2px 0 0;
-          }
-          .report-badge {
-            text-align: center;
-          }
-          .report-tag {
-            background: #e0e7ff;
-            color: #4338ca;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 12px;
-            display: inline-block;
-            margin-bottom: 4px;
-          }
-          .student-banner {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px 18px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 18px;
-          }
-          .student-banner-item {
-            font-size: 11.5px;
-          }
-          .student-banner-label {
-            color: #64748b;
-            font-size: 10px;
-            font-weight: 700;
-            margin-bottom: 2px;
-          }
-          .student-banner-val {
-            font-weight: 800;
-            color: #0f172a;
-          }
-          .timetable-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            margin-bottom: 16px;
-          }
-          .timetable-table th {
-            background: #f1f5f9;
-            color: #1e293b;
-            font-weight: 800;
-            padding: 8px 6px;
-            border: 1px solid #cbd5e1;
-            font-size: 11.5px;
-            text-align: center;
-          }
-          .timetable-table td {
-            vertical-align: top;
-            padding: 8px 6px;
-            border: 1px solid #cbd5e1;
-            background: #ffffff;
-            height: 190px;
-          }
-          .session-card {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-right: 4px solid #16a34a;
-            border-radius: 6px;
-            padding: 6px 8px;
-            margin-bottom: 6px;
-            text-align: right;
-          }
-          .session-card.private {
-            background: #fefce8;
-            border-color: #fef08a;
-            border-right-color: #ca8a04;
-          }
-          .session-time {
-            font-weight: 800;
-            color: #15803d;
-            font-size: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
-          }
-          .session-card.private .session-time {
-            color: #a16207;
-          }
-          .session-name {
-            font-weight: 800;
-            color: #0f172a;
-            font-size: 11px;
-            line-height: 1.3;
-            margin-bottom: 2px;
-          }
-          .session-teacher {
-            color: #64748b;
-            font-size: 9.5px;
-            font-weight: 700;
-          }
-          .no-sessions {
-            text-align: center;
-            color: #94a3b8;
-            font-size: 10.5px;
-            padding: 30px 4px 0;
-            font-weight: 600;
-          }
-          .pdf-footer {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 10px;
-            color: #64748b;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="pdf-container">
-          <!-- Header with Academy Logo -->
-          <div class="pdf-header">
-            <div class="academy-brand">
-              <img src="${logoSrc}" class="academy-logo" alt="Academy Logo">
-              <div>
-                <h1 class="academy-title">منصة انطلق التعليمية</h1>
-                <p class="academy-subtitle">Entlq Educational Academy • التفوق الدراسي الذكي</p>
-              </div>
-            </div>
+    const printableInnerContent = `
+      <style>
+        #std-export-timetable-container {
+          width: 1040px;
+          min-width: 1040px;
+          max-width: 1040px;
+          margin: 0 auto;
+          background: #ffffff !important;
+          color: #1e293b !important;
+          padding: 22px;
+          border-radius: 12px;
+          border: 2px solid #e2e8f0;
+          box-sizing: border-box;
+          direction: rtl;
+          font-family: 'Cairo', 'Outfit', sans-serif;
+        }
+        #std-export-timetable-container * {
+          box-sizing: border-box;
+        }
+        #std-export-timetable-container .pdf-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 2px solid #4f46e5;
+          padding-bottom: 14px;
+          margin-bottom: 14px;
+        }
+        #std-export-timetable-container .academy-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        #std-export-timetable-container .academy-logo {
+          width: 60px;
+          height: 60px;
+          object-fit: contain;
+          border-radius: 10px;
+        }
+        #std-export-timetable-container .academy-title {
+          font-size: 19px;
+          font-weight: 900;
+          color: #1e1b4b;
+          margin: 0;
+        }
+        #std-export-timetable-container .academy-subtitle {
+          font-size: 11px;
+          color: #64748b;
+          font-weight: 700;
+          margin: 2px 0 0;
+        }
+        #std-export-timetable-container .report-badge {
+          text-align: center;
+        }
+        #std-export-timetable-container .report-tag {
+          background: #e0e7ff;
+          color: #4338ca;
+          padding: 4px 14px;
+          border-radius: 20px;
+          font-weight: 800;
+          font-size: 12px;
+          display: inline-block;
+          margin-bottom: 4px;
+        }
+        #std-export-timetable-container .student-banner {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px 16px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        #std-export-timetable-container .student-banner-item {
+          font-size: 11.5px;
+        }
+        #std-export-timetable-container .student-banner-label {
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 700;
+          margin-bottom: 2px;
+        }
+        #std-export-timetable-container .student-banner-val {
+          font-weight: 800;
+          color: #0f172a;
+        }
+        #std-export-timetable-container .timetable-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          margin-bottom: 14px;
+        }
+        #std-export-timetable-container .timetable-table th {
+          background: #f1f5f9;
+          color: #1e293b;
+          font-weight: 800;
+          padding: 8px 6px;
+          border: 1px solid #cbd5e1;
+          font-size: 11.5px;
+          text-align: center;
+        }
+        #std-export-timetable-container .timetable-table td {
+          vertical-align: top;
+          padding: 6px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          min-height: 185px;
+          height: 185px;
+        }
+        #std-export-timetable-container .session-card {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          border-right: 4px solid #16a34a;
+          border-radius: 6px;
+          padding: 6px 8px;
+          margin-bottom: 6px;
+          text-align: right;
+        }
+        #std-export-timetable-container .session-card.private {
+          background: #fefce8;
+          border-color: #fef08a;
+          border-right-color: #ca8a04;
+        }
+        #std-export-timetable-container .session-time {
+          font-weight: 800;
+          color: #15803d;
+          font-size: 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2px;
+        }
+        #std-export-timetable-container .session-card.private .session-time {
+          color: #a16207;
+        }
+        #std-export-timetable-container .session-name {
+          font-weight: 800;
+          color: #0f172a;
+          font-size: 11px;
+          line-height: 1.3;
+          margin-bottom: 2px;
+        }
+        #std-export-timetable-container .session-teacher {
+          color: #64748b;
+          font-size: 9.5px;
+          font-weight: 700;
+        }
+        #std-export-timetable-container .no-sessions {
+          text-align: center;
+          color: #94a3b8;
+          font-size: 10.5px;
+          padding: 28px 4px 0;
+          font-weight: 600;
+        }
+        #std-export-timetable-container .pdf-footer {
+          border-top: 1px solid #e2e8f0;
+          padding-top: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 10px;
+          color: #64748b;
+        }
+      </style>
 
-            <div class="report-badge">
-              <span class="report-tag">📅 الجدول الدراسي الأسبوعي</span>
-              <div style="font-weight:800;font-size:12px;color:#1e293b;">${weekLabel}</div>
-            </div>
-
-            <div style="text-align:left;font-size:10.5px;line-height:1.5;">
-              <div>تاريخ الإصدار: <strong>${new Date().toLocaleDateString('ar-EG')}</strong></div>
-              <div>الحالة: <span style="color:#16a34a;font-weight:800;">معتمد من الإدارة ✅</span></div>
+      <div id="std-export-timetable-container">
+        <!-- Header with Academy Logo -->
+        <div class="pdf-header">
+          <div class="academy-brand">
+            <img src="${logoSrc}" class="academy-logo" alt="Academy Logo">
+            <div>
+              <h1 class="academy-title">منصة انطلق التعليمية</h1>
+              <p class="academy-subtitle">Entlq Educational Academy • التفوق الدراسي الذكي</p>
             </div>
           </div>
 
-          <!-- Student Information Bar -->
-          <div class="student-banner">
-            <div class="student-banner-item">
-              <div class="student-banner-label">👤 اسم الطالب:</div>
-              <div class="student-banner-val">${student.name}</div>
-            </div>
-            <div class="student-banner-item">
-              <div class="student-banner-label">🎓 المرحلة / الصف:</div>
-              <div class="student-banner-val">${student.education || 'غير محدد'}</div>
-            </div>
-            <div class="student-banner-item">
-              <div class="student-banner-label">📧 البريد الإلكتروني:</div>
-              <div class="student-banner-val">${student.email}</div>
-            </div>
-            <div class="student-banner-item">
-              <div class="student-banner-label">📞 هاتف التواصل / ولي الأمر:</div>
-              <div class="student-banner-val">${student.parentPhone || student.phone || 'غير مسجل'}</div>
-            </div>
+          <div class="report-badge">
+            <span class="report-tag">📅 الجدول الدراسي الأسبوعي</span>
+            <div style="font-weight:800;font-size:12px;color:#1e293b;">${weekLabel}</div>
           </div>
 
-          <!-- 7-Day Timetable Grid -->
-          <table class="timetable-table">
-            <thead>
-              <tr>
-                ${weekDays.map((day, idx) => `
-                  <th>
-                    ${dayNames[idx]}<br>
-                    <span style="font-size:10px;font-weight:600;color:#64748b;">${day.getDate()} / ${day.getMonth() + 1}</span>
-                  </th>
-                `).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                ${weekDays.map(day => {
-                  const daySessions = allSessions.filter(s => new Date(s.scheduledAt).toDateString() === day.toDateString());
-                  return `
-                    <td>
-                      ${daySessions.length === 0 ? `
-                        <div class="no-sessions">— لا توجد حصص —</div>
-                      ` : daySessions.map(s => {
-                        const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-                        const isPriv = s.type !== 'GROUP';
-                        return `
-                          <div class="session-card ${isPriv ? 'private' : ''}">
-                            <div class="session-time">
-                              <span>⏰ ${sTime}</span>
-                              <span style="font-size:8.5px;">${isPriv ? 'حصة خاصة' : 'مجموعة'}</span>
-                            </div>
-                            <div class="session-name">📚 ${s.subjectName || s.course?.subject || s.course?.title || s.title}</div>
-                            ${s.teacher ? `<div class="session-teacher">👨‍🏫 أ. ${s.teacher.name}</div>` : ''}
-                          </div>
-                        `;
-                      }).join('')}
-                    </td>
-                  `;
-                }).join('')}
-              </tr>
-            </tbody>
-          </table>
-
-          <!-- Footer & Instructions -->
-          <div class="pdf-footer">
-            <div>
-              📌 <strong>إرشادات هامة:</strong> يرجى التواجد في القاعة الافتراضية قبل موعد الحصة بـ 5 دقائق والالتزام بحل الواجبات المحددة.
-            </div>
-            <div>
-              ختم واعتماد الأكاديمية: <strong style="color:#4f46e5;">إدارة الشؤون الأكاديمية 🎓</strong>
-            </div>
+          <div style="text-align:left;font-size:10.5px;line-height:1.5;">
+            <div>تاريخ الإصدار: <strong>${new Date().toLocaleDateString('ar-EG')}</strong></div>
+            <div>مدير الأكاديمية: <strong style="color:#4f46e5;">${academyManagerName}</strong></div>
+            <div>الحالة: <span style="color:#16a34a;font-weight:800;">معتمد من الإدارة ✅</span></div>
           </div>
         </div>
-      </body>
-      </html>
+
+        <!-- Student Information Bar -->
+        <div class="student-banner">
+          <div class="student-banner-item">
+            <div class="student-banner-label">👤 اسم الطالب:</div>
+            <div class="student-banner-val">${student.name}</div>
+          </div>
+          <div class="student-banner-item">
+            <div class="student-banner-label">🎓 المرحلة / الصف:</div>
+            <div class="student-banner-val">${student.education || 'غير محدد'}</div>
+          </div>
+          <div class="student-banner-item">
+            <div class="student-banner-label">📧 البريد الإلكتروني:</div>
+            <div class="student-banner-val">${student.email}</div>
+          </div>
+          <div class="student-banner-item">
+            <div class="student-banner-label">📞 هاتف التواصل / ولي الأمر:</div>
+            <div class="student-banner-val">${student.parentPhone || student.phone || 'غير مسجل'}</div>
+          </div>
+        </div>
+
+        <!-- 7-Day Timetable Grid -->
+        <table class="timetable-table">
+          <thead>
+            <tr>
+              ${weekDays.map((day, idx) => `
+                <th>
+                  ${dayNames[idx]}<br>
+                  <span style="font-size:10px;font-weight:600;color:#64748b;">${day.getDate()} / ${day.getMonth() + 1}</span>
+                </th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              ${weekDays.map(day => {
+                const daySessions = allSessions.filter(s => new Date(s.scheduledAt).toDateString() === day.toDateString());
+                return `
+                  <td>
+                    ${daySessions.length === 0 ? `
+                      <div class="no-sessions">— لا توجد حصص —</div>
+                    ` : daySessions.map(s => {
+                      const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                      const isPriv = s.type !== 'GROUP';
+                      return `
+                        <div class="session-card ${isPriv ? 'private' : ''}">
+                          <div class="session-time">
+                            <span>⏰ ${sTime}</span>
+                            <span style="font-size:8.5px;">${isPriv ? 'حصة خاصة' : 'مجموعة'}</span>
+                          </div>
+                          <div class="session-name">📚 ${s.subjectName || s.course?.subject || s.course?.title || s.title}</div>
+                          ${s.teacher ? `<div class="session-teacher">👨‍🏫 أ. ${s.teacher.name}</div>` : ''}
+                        </div>
+                      `;
+                    }).join('')}
+                  </td>
+                `;
+              }).join('')}
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Footer & Instructions -->
+        <div class="pdf-footer">
+          <div>
+            📌 <strong>إرشادات هامة:</strong> يرجى التواجد في القاعة الافتراضية قبل موعد الحصة بـ 5 دقائق والالتزام بحل الواجبات المحددة.
+          </div>
+          <div style="text-align:left;">
+            <div>ختم واعتماد الأكاديمية:</div>
+            <div style="font-weight:900;color:#1e1b4b;font-size:11.5px;margin-top:2px;">مدير الأكاديمية: <strong style="color:#4f46e5;">${academyManagerName}</strong> 🎓</div>
+          </div>
+        </div>
+      </div>
     `;
 
     // Show stylish Action Modal for printing or direct download
-    this.showPdfExportModal(printableHTML, student.name);
+    this.showPdfExportModal(printableInnerContent, student.name, autoDownloadImage);
   }
 
-  showPdfExportModal(htmlContent, studentName) {
+  async ensureExportLibraries() {
+    const loadScript = (src) => new Promise((resolve) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = resolve;
+      document.head.appendChild(s);
+    });
+
+    if (typeof window.html2canvas === "undefined") {
+      try {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+      } catch (_) {}
+      if (typeof window.html2canvas === "undefined") {
+        try {
+          await loadScript("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js");
+        } catch (_) {}
+      }
+    }
+
+    const hasJsPdf = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!hasJsPdf) {
+      try {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+      } catch (_) {}
+      if (!((window.jspdf && window.jspdf.jsPDF) || window.jsPDF)) {
+        try {
+          await loadScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+        } catch (_) {}
+      }
+    }
+  }
+
+  showPdfExportModal(innerContent, studentName, autoDownloadImage = false) {
     const existing = document.getElementById("pdf-export-modal");
     if (existing) existing.remove();
 
@@ -1260,7 +1299,7 @@ export class AdminStudentDetailsPage {
     modal.id = "pdf-export-modal";
     modal.style.position = "fixed";
     modal.style.inset = "0";
-    modal.style.background = "rgba(0,0,0,0.65)";
+    modal.style.background = "rgba(0,0,0,0.75)";
     modal.style.backdropFilter = "blur(8px)";
     modal.style.display = "flex";
     modal.style.alignItems = "center";
@@ -1269,32 +1308,37 @@ export class AdminStudentDetailsPage {
     modal.style.padding = "20px";
 
     modal.innerHTML = `
-      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:20px;max-width:960px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:20px;max-width:1120px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
         <div style="padding:16px 22px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.02);">
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:1.4rem;">📄</span>
             <div>
-              <h3 style="margin:0;font-size:1.1rem;font-weight:900;color:var(--text-main);">تصدير الجدول الدراسي الأسبوعي (PDF)</h3>
-              <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted);">معاينة الجدول المعتمد بشعار منصة انطلق التعليمية</p>
+              <h3 style="margin:0;font-size:1.1rem;font-weight:900;color:var(--text-main);">تصدير الجدول الدراسي الأسبوعي للطالب</h3>
+              <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted);">معاينة وتنزيل الجدول كـ PDF مطابق للمعاينة أو صورة عالية الدقة PNG</p>
             </div>
           </div>
           <button id="close-pdf-modal-btn" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;padding:4px 8px;">✕</button>
         </div>
 
-        <div style="flex:1;overflow:auto;padding:16px;background:rgba(0,0,0,0.03);">
-          <iframe id="pdf-preview-iframe" style="width:100%;height:460px;border:1px solid var(--border-color);border-radius:12px;background:#ffffff;"></iframe>
+        <div style="flex:1;overflow:auto;padding:24px 16px;background:#334155;display:flex;justify-content:center;align-items:flex-start;">
+          <div id="std-render-wrapper">
+            ${innerContent}
+          </div>
         </div>
 
         <div style="padding:16px 22px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--bg-card);">
-          <div style="font-size:0.8rem;color:var(--text-muted);">
-            💡 يمكنك الحفظ كملف PDF مباشر بجودة عالية متجهة (Vector A4 Landscape).
+          <div style="font-size:0.82rem;color:var(--text-muted);">
+            ✨ يتم تصدير ملف الـ PDF والصورة بشكل مطابق تماماً لما تراه في المعاينة وبأعلى دقة.
           </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <button id="direct-print-pdf-btn" class="btn-primary" style="padding:9px 20px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,0.35);">
-              🖨️ طباعة / حفظ كـ PDF
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button id="direct-print-pdf-btn" class="btn-primary" style="padding:9px 18px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--primary),#6366f1);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,0.35);cursor:pointer;">
+              🖨️ طباعة الجدول
             </button>
-            <button id="direct-download-pdf-btn" class="btn-primary" style="padding:9px 20px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.3);">
-              📥 تحميل PDF مباشر
+            <button id="direct-download-pdf-btn" class="btn-primary" style="padding:9px 18px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.3);cursor:pointer;">
+              📥 تحميل PDF مطابق للمعاينة
+            </button>
+            <button id="direct-download-img-btn" class="btn-primary" style="padding:9px 18px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 4px 14px rgba(139,92,246,0.3);cursor:pointer;">
+              🖼️ تحميل كصورة (PNG)
             </button>
           </div>
         </div>
@@ -1303,70 +1347,160 @@ export class AdminStudentDetailsPage {
 
     document.body.appendChild(modal);
 
-    const iframe = modal.querySelector("#pdf-preview-iframe");
-    if (iframe) {
-      const doc = iframe.contentWindow.document;
-      doc.open();
-      doc.write(htmlContent);
-      doc.close();
-    }
-
-    // Close button
     modal.querySelector("#close-pdf-modal-btn")?.addEventListener("click", () => modal.remove());
     modal.addEventListener("click", (e) => {
       if (e.target === modal) modal.remove();
     });
 
+    const getTargetElement = () => modal.querySelector("#std-export-timetable-container");
+
     // Print Button
     modal.querySelector("#direct-print-pdf-btn")?.addEventListener("click", () => {
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+      const el = getTargetElement();
+      if (!el) return;
+      const printWin = window.open('', '_blank');
+      if (!printWin) {
+        showToast("يرجى السماح بالنوافذ المنبثقة للطباعة", "warning");
+        return;
       }
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="UTF-8">
+          <title>الجدول الأسبوعي - ${studentName}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+          <style>
+            @page { size: A4 landscape; margin: 8mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { margin: 0; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl; }
+          </style>
+        </head>
+        <body>
+          ${el.outerHTML}
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 300);
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
     });
 
-    // Direct Download PDF via html2pdf.js
+    // Helper: generate canvas
+    const self = this;
+    const generateCanvas = async () => {
+      if (typeof self?.ensureExportLibraries === "function") {
+        await self.ensureExportLibraries();
+      }
+      if (!window.html2canvas) {
+        throw new Error("تعذر تحميل أداة التقاط الصورة. يرجى التحقق من الاتصال بالإنترنت.");
+      }
+      const element = getTargetElement();
+      if (!element) throw new Error("لم يتم العثور على محتوى الجدول");
+
+      return await window.html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+    };
+
+    // Direct Download PDF (Identical to preview via high-resolution canvas)
     modal.querySelector("#direct-download-pdf-btn")?.addEventListener("click", async () => {
       const btn = modal.querySelector("#direct-download-pdf-btn");
+      const origText = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ جارٍ التوليد...';
+        btn.innerHTML = '⏳ جارٍ تجهيز PDF مطابق...';
       }
 
       try {
-        if (!window.html2pdf) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
+        const canvas = await generateCanvas();
+        const jsPdfClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPdfClass) throw new Error("تعذر تحميل مكتبة توليد PDF");
+
+        const pdf = new jsPdfClass({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth(); // 297mm
+        const pageHeight = pdf.internal.pageSize.getHeight(); // 210mm
+        const margin = 8;
+        const availWidth = pageWidth - (margin * 2);
+        const availHeight = pageHeight - (margin * 2);
+
+        const ratio = canvas.width / canvas.height;
+        let printWidth = availWidth;
+        let printHeight = availWidth / ratio;
+
+        if (printHeight > availHeight) {
+          printHeight = availHeight;
+          printWidth = availHeight * ratio;
         }
 
-        const element = iframe.contentWindow.document.querySelector(".pdf-container");
-        const opt = {
-          margin: 8,
-          filename: `جدول_الطالب_${studentName}_الأسبوعي.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
+        const posX = margin + (availWidth - printWidth) / 2;
+        const posY = margin + (availHeight - printHeight) / 2;
 
-        await window.html2pdf().set(opt).from(element).save();
-        showToast("تم تنزيل ملف PDF بنجاح 🎉", "success");
+        const imgData = canvas.toDataURL("image/jpeg", 0.98);
+        pdf.addImage(imgData, "JPEG", posX, posY, printWidth, printHeight);
+        pdf.save(`جدول_الطالب_${studentName}_الأسبوعي.pdf`);
+        showToast("تم تنزيل ملف PDF بنجاح وبنفس تصميم المعاينة بدقة عالية 🎉", "success");
       } catch (err) {
-        console.error("html2pdf error:", err);
-        showToast("جاري فتح نافذة الطباعة كبديل...", "info");
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+        console.error("PDF generation error:", err);
+        showToast(err.message || "حدث خطأ أثناء تصدير PDF", "error");
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '📥 تحميل PDF مباشر';
+          btn.innerHTML = origText || '📥 تحميل PDF مباشر';
         }
       }
     });
+
+    // Direct Download Image (PNG) via html2canvas
+    const handleDownloadImage = async () => {
+      const btn = modal.querySelector("#direct-download-img-btn");
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ جارٍ توليد الصورة...';
+      }
+
+      try {
+        const canvas = await generateCanvas();
+        const link = document.createElement("a");
+        link.download = `جدول_الطالب_${studentName}_الأسبوعي.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        showToast("تم تنزيل الجدول كصورة عالية الجودة بنجاح 🎉", "success");
+      } catch (err) {
+        console.error("Image download error:", err);
+        showToast(err.message || "تعذر توليد الصورة، يرجى المحاولة مرة أخرى", "error");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText || '🖼️ تحميل كصورة (PNG)';
+        }
+      }
+    };
+
+    modal.querySelector("#direct-download-img-btn")?.addEventListener("click", handleDownloadImage);
+
+    // Auto download image if triggered by image button
+    if (autoDownloadImage) {
+      setTimeout(() => {
+        handleDownloadImage();
+      }, 500);
+    }
   }
 }
 

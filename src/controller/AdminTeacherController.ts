@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
+import { CourseGroup } from "../entity/CourseGroup";
+import { Course } from "../entity/Course";
+import { Session } from "../entity/Session";
+import { Subscription } from "../entity/Subscription";
 import { AuditLog } from "../entity/AuditLog";
 import { AuthRequest } from "../middleware/auth";
 import crypto from "crypto";
@@ -158,6 +162,283 @@ export class AdminTeacherController {
       return res.status(200).json(teacher);
     } catch (err) {
       return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Get full comprehensive profile & schedule details of a teacher for Admin Dashboard
+  static async getTeacherProfile(req: AuthRequest, res: Response) {
+    const { teacherId } = req.params;
+    if (!teacherId) {
+      return res.status(400).json({ error: "معرف المعلم مطلوب." });
+    }
+
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const teacher = await userRepo.findOne({
+        where: { id: teacherId, role: "teacher" }
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم غير موجود أو تم حذفه." });
+      }
+
+      // 1. Groups & Courses
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const courseRepo = AppDataSource.getRepository(Course);
+
+      const [groups, courses] = await Promise.all([
+        groupRepo.find({
+          where: { teacher: { id: teacherId } },
+          relations: [
+            "course",
+            "course.grade",
+            "course.subject",
+            "sessions",
+            "enrollments",
+            "enrollments.student"
+          ],
+          order: { createdAt: "DESC" }
+        }),
+        courseRepo.find({
+          where: { teacher: { id: teacherId } },
+          relations: ["grade", "subject", "groups"],
+          order: { createdAt: "DESC" }
+        })
+      ]);
+
+      // 2. Enrolled Students across all groups
+      const studentMap = new Map<string, any>();
+      groups.forEach(grp => {
+        (grp.enrollments || []).forEach(e => {
+          if (e.student && e.status !== "rejected" && e.status !== "banned") {
+            const sid = e.student.id;
+            if (!studentMap.has(sid)) {
+              studentMap.set(sid, {
+                id: sid,
+                name: e.student.name,
+                email: e.student.email,
+                phone: e.student.phone,
+                avatar: e.student.avatar,
+                education: e.student.education,
+                status: e.student.status,
+                enrolledGroups: []
+              });
+            }
+            const sObj = studentMap.get(sid);
+            sObj.enrolledGroups.push({
+              groupId: grp.id,
+              groupName: grp.name,
+              courseTitle: grp.course?.title || null,
+              enrolledAt: e.createdAt,
+              progress: e.progress || 0
+            });
+          }
+        });
+      });
+      const uniqueStudents = Array.from(studentMap.values());
+
+      // 3. Sessions (All sessions where teacher is assigned or group's teacher)
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const allSessions = await sessionRepo.find({
+        where: [
+          { teacher: { id: teacherId } },
+          { group: { teacher: { id: teacherId } } }
+        ],
+        relations: [
+          "group",
+          "group.course",
+          "group.course.subject",
+          "course",
+          "course.subject",
+          "student"
+        ],
+        order: { scheduledAt: "DESC" },
+        take: 300
+      });
+
+      // Deduplicate sessions by ID
+      const sessionMap = new Map<string, Session>();
+      allSessions.forEach(s => {
+        if (!sessionMap.has(s.id)) sessionMap.set(s.id, s);
+      });
+      const uniqueSessions = Array.from(sessionMap.values());
+
+      const groupMap = new Map<string, any>();
+      groups.forEach(g => {
+        if (g.id) groupMap.set(g.id, g);
+      });
+
+      const now = new Date();
+      const mappedSessions = uniqueSessions.map(s => {
+        const fullGroup = s.group?.id ? (groupMap.get(s.group.id) || s.group) : s.group;
+        const crs = fullGroup?.course || s.course;
+        const subjectName = (crs as any)?.subject?.name || (crs as any)?.category || (crs as any)?.title || null;
+        const sessionDate = new Date(s.scheduledAt);
+        const isPast = sessionDate.getTime() < now.getTime() - (s.duration || 60) * 60000;
+        const isToday = sessionDate.toDateString() === now.toDateString();
+
+        const displaySubject = subjectName || (crs?.title) || "المادة الدراسية";
+
+        return {
+          id: s.id,
+          title: displaySubject,
+          subjectName: displaySubject,
+          rawTitle: s.title || null,
+          type: s.group ? "GROUP" : "PRIVATE",
+          scheduledAt: s.scheduledAt,
+          duration: s.duration || 60,
+          meetingLink: s.meetingLink || fullGroup?.meetingLink || teacher.meetingLink || null,
+          status: s.status || (isPast ? "COMPLETED" : "SCHEDULED"),
+          isPast,
+          isToday,
+          group: fullGroup ? { id: fullGroup.id, name: fullGroup.name } : null,
+          course: crs ? { id: crs.id, title: crs.title, subject: (crs as any).subject?.name || null } : null,
+          student: s.student ? { id: s.student.id, name: s.student.name, phone: s.student.phone } : null
+        };
+      });
+
+      const upcomingSessions = mappedSessions.filter(s => !s.isPast).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+      const pastSessions = mappedSessions.filter(s => s.isPast).sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+
+      // 4. Financial Calculations
+      const completedSessions = mappedSessions.filter(s => s.status === "COMPLETED" || s.status === "completed" || s.isPast);
+      const totalMinutes = completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0);
+      const completedHours = Math.round((totalMinutes / 60) * 10) / 10;
+      const hourlyRate = teacher.hourlyRate !== undefined ? teacher.hourlyRate : 150;
+      const totalSalary = Math.round(completedHours * hourlyRate);
+
+      // 5. Private Subscriptions
+      const subRepo = AppDataSource.getRepository(Subscription);
+      const subscriptions = await subRepo.find({
+        where: { teacher: { id: teacherId } },
+        relations: ["plan", "student"],
+        order: { createdAt: "DESC" }
+      });
+
+      const mappedGroups = groups.map(g => {
+        const nextSession = (g.sessions || []).find((s: any) => new Date(s.scheduledAt).getTime() > Date.now()) || null;
+        const activeEnrollments = (g.enrollments || []).filter(e => e.status !== "rejected" && e.status !== "banned");
+        return {
+          id: g.id,
+          name: g.name,
+          scheduleText: g.scheduleText || (g.scheduleDays ? `${g.scheduleDays} ${g.scheduleTime ? 'الساعة ' + g.scheduleTime : ''}` : null),
+          meetingLink: g.meetingLink || teacher.meetingLink || null,
+          status: g.status,
+          course: g.course ? {
+            id: g.course.id,
+            title: g.course.title,
+            grade: (g.course as any).grade?.name || null,
+            subject: (g.course as any).subject?.name || null
+          } : null,
+          sessionsCount: (g.sessions || []).length,
+          studentsCount: activeEnrollments.length,
+          nextSession: nextSession ? { id: nextSession.id, title: nextSession.title, scheduledAt: nextSession.scheduledAt } : null
+        };
+      });
+
+      const mappedCourses = courses.map(c => ({
+        id: c.id,
+        title: c.title,
+        grade: (c as any).grade?.name || null,
+        subject: (c as any).subject?.name || null,
+        groupsCount: (c.groups || []).length,
+        status: (c as any).status || "PUBLISHED"
+      }));
+
+      return res.status(200).json({
+        teacher: {
+          id: teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+          phone: teacher.phone,
+          avatar: teacher.avatar,
+          bio: teacher.education,
+          education: teacher.education,
+          hourlyRate,
+          meetingLink: teacher.meetingLink,
+          teacherCapabilities: teacher.teacherCapabilities || ["COURSE_INSTRUCTOR", "SESSION_TEACHER"],
+          status: teacher.status,
+          isBlocked: teacher.isBlocked,
+          blockReason: teacher.blockReason,
+          notes: teacher.notes,
+          createdAt: teacher.createdAt
+        },
+        stats: {
+          groupsCount: groups.length,
+          coursesCount: courses.length,
+          totalStudentsCount: uniqueStudents.length,
+          completedSessionsCount: completedSessions.length,
+          completedHours,
+          hourlyRate,
+          totalSalary,
+          upcomingSessionsCount: upcomingSessions.length,
+          pastSessionsCount: pastSessions.length,
+          privateSubscriptionsCount: subscriptions.length
+        },
+        groups: mappedGroups,
+        courses: mappedCourses,
+        students: uniqueStudents,
+        sessions: {
+          upcoming: upcomingSessions,
+          past: pastSessions,
+          all: mappedSessions
+        },
+        subscriptions: subscriptions.map(s => ({
+          id: s.id,
+          studentName: s.student?.name || "طالب",
+          studentPhone: s.student?.phone || null,
+          planName: s.plan?.name || "باقة حصص خاصة",
+          status: s.status,
+          sessionsLeft: (s as any).sessionsLeft ?? null,
+          createdAt: s.createdAt
+        }))
+      });
+    } catch (err: any) {
+      console.error("AdminTeacherController.getTeacherProfile error:", err);
+      return res.status(500).json({ error: "فشل جلب ملف المعلم الشامل." });
+    }
+  }
+
+  // Update Admin private notes for this teacher
+  static async updateTeacherNotes(req: AuthRequest, res: Response) {
+    const { teacherId } = req.params;
+    const { notes } = req.body;
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const teacher = await userRepo.findOne({ where: { id: teacherId, role: "teacher" } });
+      if (!teacher) return res.status(404).json({ error: "المعلم غير موجود." });
+
+      teacher.notes = notes !== undefined ? String(notes).trim() : teacher.notes;
+      await userRepo.save(teacher);
+
+      return res.status(200).json({ success: true, message: "تم حفظ ملاحظات المعلم بنجاح.", notes: teacher.notes });
+    } catch (err: any) {
+      console.error("updateTeacherNotes error:", err);
+      return res.status(500).json({ error: "فشل تحديث ملاحظات المعلم." });
+    }
+  }
+
+  // Update hourly rate for teacher
+  static async updateTeacherHourlyRate(req: AuthRequest, res: Response) {
+    const { teacherId } = req.params;
+    const { hourlyRate } = req.body;
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const teacher = await userRepo.findOne({ where: { id: teacherId, role: "teacher" } });
+      if (!teacher) return res.status(404).json({ error: "المعلم غير موجود." });
+
+      const rateNum = Number(hourlyRate);
+      if (isNaN(rateNum) || rateNum < 0) {
+        return res.status(400).json({ error: "سعر الساعة يجب أن يكون رقماً صحيحاً أو عشرياً موجباً." });
+      }
+
+      teacher.hourlyRate = rateNum;
+      await userRepo.save(teacher);
+
+      return res.status(200).json({ success: true, message: "تم تحديث أجر الساعة بنجاح.", hourlyRate: teacher.hourlyRate });
+    } catch (err: any) {
+      console.error("updateTeacherHourlyRate error:", err);
+      return res.status(500).json({ error: "فشل تحديث أجر الساعة." });
     }
   }
 }

@@ -81,10 +81,10 @@ export const AdminUsersPage = {
                       <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
                         <td style="padding:14px 20px;">
                           <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" style="width:38px;height:38px;border-radius:50%;object-fit:cover;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}">
+                            <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" class="view-teacher-profile-btn" data-id="${u.id}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;cursor:pointer;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}" title="عرض الملف الأكاديمي والجدول للمعلم">
                             <div>
                               <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                <span>${u.name}</span>
+                                <span class="view-teacher-profile-btn" data-id="${u.id}" style="cursor:pointer;color:var(--text-main);transition:color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="عرض الملف الأكاديمي والجدول للمعلم">${u.name}</span>
                                 ${isBlocked
               ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
               : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">✅ نشط</span>`
@@ -133,6 +133,9 @@ export const AdminUsersPage = {
                       
                         <td style="padding:14px 20px;">
                           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn-primary view-teacher-profile-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="عرض الملف الأكاديمي والجدول والمجموعات والطلاب والماليات للمعلم">
+                              <i data-lucide="calendar" style="width:12px;height:12px;"></i> الملف والجدول 👤
+                            </button>
                             ${u.phone ? `
                               <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 11px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب مباشرة">
                                 <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
@@ -798,6 +801,15 @@ export const AdminUsersPage = {
         </td>
         <td style="padding:14px 20px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            ${user.role === "teacher" ? `
+              <button class="btn-primary view-teacher-profile-btn" data-id="${user.id}" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;" title="عرض ملف وجدول المعلم">
+                <i data-lucide="calendar" style="width:11px;height:11px;"></i> الملف والجدول 👤
+              </button>
+            ` : user.role === "student" ? `
+              <button class="btn-primary view-student-profile-btn" data-id="${user.id}" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;" title="عرض ملف وجدول الطالب">
+                <i data-lucide="calendar" style="width:11px;height:11px;"></i> الملف والجدول 👤
+              </button>
+            ` : ''}
             ${cleanPhone ? `
               <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(`مرحباً ${user.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 10px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب">
                 <i data-lucide="message-circle" style="width:12px;height:12px;"></i> واتساب

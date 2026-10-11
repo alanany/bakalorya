@@ -13,6 +13,7 @@ import { AdminSettingsPage } from './AdminSettingsPage.js';
 import { AdminCurriculumPage } from './AdminCurriculumPage.js';
 import { AdminBlogsPage } from './AdminBlogsPage.js';
 import { AdminStudentDetailsPage } from './AdminStudentDetailsPage.js';
+import { AdminTeacherDetailsPage } from './AdminTeacherDetailsPage.js';
 
 export default class AdminView {
 
@@ -31,6 +32,9 @@ export default class AdminView {
     }
     if (mainTab === "students" && subTab) {
       this.selectedStudentId = subTab;
+    }
+    if (mainTab === "teachers" && subTab) {
+      this.selectedTeacherId = subTab;
     }
     window.adminViewInstance = this;
     this.stats = {};
@@ -646,6 +650,8 @@ export default class AdminView {
         e.preventDefault();
         e.stopPropagation();
         this.activeTab = tab;
+        if (tab === "students") this.selectedStudentId = null;
+        if (tab === "teachers") this.selectedTeacherId = null;
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         closeSidebar();
@@ -705,6 +711,17 @@ export default class AdminView {
     this.renderTab("students");
   }
 
+  showTeacherDetails(teacherId) {
+    this.selectedTeacherId = teacherId;
+    this.activeTab = "teachers";
+    try {
+      if (window.location.hash !== `#admin-dashboard/teachers/${teacherId}`) {
+        history.pushState(null, "", `#admin-dashboard/teachers/${teacherId}`);
+      }
+    } catch (_) {}
+    this.renderTab("teachers");
+  }
+
   renderTab(tab, args = null) {
     const content = document.getElementById("admin-tab-content");
     if (!content) return;
@@ -727,7 +744,16 @@ export default class AdminView {
       return; // page manages its own icons/events
     }
     else if (tab === "categories") content.innerHTML = this.renderCategoriesTab();
-    else if (tab === "teachers") content.innerHTML = this.renderTeachersTab();
+    else if (tab === "teachers") {
+      const teacherId = this.selectedTeacherId || args?.teacherId;
+      if (teacherId) {
+        content.innerHTML = "";
+        const page = new AdminTeacherDetailsPage(content, this, teacherId);
+        page.render();
+        return;
+      }
+      content.innerHTML = this.renderTeachersTab();
+    }
     else if (tab === "students") {
       const studentId = this.selectedStudentId || args?.studentId;
       if (studentId) {
@@ -1739,6 +1765,16 @@ export default class AdminView {
         const id = btn.getAttribute("data-id");
         if (id) {
           this.showStudentDetails(id);
+        }
+      });
+    });
+
+    // View Teacher Profile & Timetable
+    this.container.querySelectorAll(".view-teacher-profile-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id) {
+          this.showTeacherDetails(id);
         }
       });
     });

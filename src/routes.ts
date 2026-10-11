@@ -185,6 +185,9 @@ router.post("/admin/groups/:id/start-teaching", authMiddleware, requireRole(["ad
 router.post("/admin/teachers/invite", authMiddleware, requireRole(["admin"]), AdminTeacherController.inviteTeacher);
 router.get("/admin/teachers", authMiddleware, requireRole(["admin", "supervisor"]), AdminTeacherController.getAllTeachers);
 router.patch("/admin/teachers/:id/capabilities", authMiddleware, requireRole(["admin"]), AdminTeacherController.updateTeacherCapabilities);
+router.get("/admin/teachers/:teacherId/profile", authMiddleware, requireRole(["admin", "supervisor"]), AdminTeacherController.getTeacherProfile);
+router.patch("/admin/teachers/:teacherId/notes", authMiddleware, requireRole(["admin", "supervisor"]), AdminTeacherController.updateTeacherNotes);
+router.patch("/admin/teachers/:teacherId/hourly-rate", authMiddleware, requireRole(["admin"]), AdminTeacherController.updateTeacherHourlyRate);
 
 // Monthly Subscription Plans & Subscriptions
 router.get("/subscription-plans", SubscriptionController.getPlans);

@@ -958,6 +958,7 @@ export const state = {
   language: localStorage.getItem("language") || "ar",
   translations: {},
   platformSettings: {
+    academyManagerName: "أ. محمد عبد الله",
     whatsappNumber: "+213 555 123 456",
     cleanWhatsApp: "213555123456",
     whatsappUrl: "https://wa.me/213555123456",

@@ -27,6 +27,8 @@ export class PlatformSettingController {
       const contactSubtitle = map["contact_subtitle"] || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.";
       const contactAddress = map["contact_address"] || "الجزائر العاصمة / القاهرة";
 
+      const academyManagerName = map["academy_manager_name"] || "أ. محمد عبد الله";
+
       // Platform Financial Transfer Accounts
       const vodafoneCashNumber = map["vodafone_cash_number"] || "01098765432";
       const instapayHandle = map["instapay_handle"] || "bakalorya@instapay";
@@ -36,6 +38,7 @@ export class PlatformSettingController {
       const paymentInstructions = map["payment_instructions"] || "";
 
       return res.json({
+        academyManagerName,
         whatsappNumber,
         cleanWhatsApp,
         whatsappUrl: cleanWhatsApp ? `https://wa.me/${cleanWhatsApp}` : "https://wa.me/213555123456",
@@ -79,6 +82,8 @@ export class PlatformSettingController {
       const contactSubtitle = map["contact_subtitle"] || "سواء كنت طالباً، معلماً، أو ولي أمر، يسعدنا تواصلك معنا طوال أيام الأسبوع للحصول على الدعم الفني والأكاديمي.";
       const contactAddress = map["contact_address"] || "الجزائر العاصمة / القاهرة";
 
+      const academyManagerName = map["academy_manager_name"] || "أ. محمد عبد الله";
+
       // Platform Financial Transfer Accounts
       const vodafoneCashNumber = map["vodafone_cash_number"] || "01098765432";
       const instapayHandle = map["instapay_handle"] || "bakalorya@instapay";
@@ -88,6 +93,7 @@ export class PlatformSettingController {
       const paymentInstructions = map["payment_instructions"] || "";
 
       return res.json({
+        academyManagerName,
         whatsappNumber,
         cleanWhatsApp,
         whatsappUrl: cleanWhatsApp ? `https://wa.me/${cleanWhatsApp}` : "https://wa.me/213555123456",
@@ -115,6 +121,7 @@ export class PlatformSettingController {
   static async updateSettings(req: Request, res: Response) {
     try {
       const {
+        academyManagerName,
         whatsappNumber,
         contactPhone,
         contactEmail,
@@ -133,6 +140,7 @@ export class PlatformSettingController {
       const settingRepo = AppDataSource.getRepository(PlatformSetting);
 
       const itemsToUpdate = [
+        { key: "academy_manager_name", value: academyManagerName !== undefined ? String(academyManagerName).trim() : undefined },
         { key: "whatsapp_number", value: whatsappNumber !== undefined ? String(whatsappNumber).trim() : undefined },
         { key: "contact_phone", value: contactPhone !== undefined ? String(contactPhone).trim() : undefined },
         { key: "contact_email", value: contactEmail !== undefined ? String(contactEmail).trim() : undefined },
@@ -171,6 +179,7 @@ export class PlatformSettingController {
       return res.json({
         message: "تم حفظ كافة إعدادات المنصة وبيانات التحويل المالي بنجاح ✅",
         settings: {
+          academyManagerName: map["academy_manager_name"] || "أ. محمد عبد الله",
           whatsappNumber: savedWhatsapp,
           cleanWhatsApp,
           whatsappUrl: cleanWhatsApp ? `https://wa.me/${cleanWhatsApp}` : "https://wa.me/213555123456",

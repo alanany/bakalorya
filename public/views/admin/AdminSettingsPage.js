@@ -91,10 +91,17 @@ export const AdminSettingsPage = {
       </div>
 
       <form id="admin-platform-settings-form">
-        <div class="set-fgrp" style="margin-bottom:18px;">
-          <label><i data-lucide="message-circle" style="width:15px;height:15px;color:#10b981;"></i> رقم الواتساب الرسمي <span style="color:#ef4444;">*</span></label>
-          <input type="text" id="setting-whatsapp-number" value="${s.whatsappNumber || ''}" placeholder="+20 101 234 5678">
-          <span class="hint">يُحوَّل تلقائياً إلى رابط wa.me ويظهر في الزر العائم والفوتر.</span>
+        <div class="set-form-grid" style="margin-bottom:18px;">
+          <div class="set-fgrp">
+            <label><i data-lucide="shield-check" style="width:15px;height:15px;color:var(--primary);"></i> اسم مدير الأكاديمية (يظهر في جداول PDF) <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="setting-academy-manager" value="${s.academyManagerName || ''}" placeholder="أ. محمد عبد الله">
+            <span class="hint">يظهر اسم واعتماد المدير في ترويسة وختم جداول الحصص (PDF).</span>
+          </div>
+          <div class="set-fgrp">
+            <label><i data-lucide="message-circle" style="width:15px;height:15px;color:#10b981;"></i> رقم الواتساب الرسمي <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="setting-whatsapp-number" value="${s.whatsappNumber || ''}" placeholder="+20 101 234 5678">
+            <span class="hint">يُحوَّل تلقائياً إلى رابط wa.me ويظهر في الزر العائم والفوتر.</span>
+          </div>
         </div>
 
         <div class="set-form-grid">
@@ -297,6 +304,7 @@ export const AdminSettingsPage = {
         const ga = id => document.getElementById(id)?.value ?? undefined; // for textarea
 
         if (this._settingsSection === 'contact') {
+          body.academyManagerName    = g('setting-academy-manager');
           body.whatsappNumber        = g('setting-whatsapp-number');
           body.contactPhone          = g('setting-contact-phone');
           body.workingHours          = g('setting-working-hours');
