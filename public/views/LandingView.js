@@ -115,8 +115,47 @@ export default class LandingView {
         </section>
 
 
+        <!-- 🎁 ENROLL FREE TEST SESSION (حجز حصة تجريبية مجانية - TEXT & BUTTON ONLY) -->
+        <section id="free-trial-session-section" style="width:100%; margin:0 auto; padding:12px 20px 28px 20px; direction:rtl;">
+          <div style="background:linear-gradient(135deg, rgba(0, 86, 210, 0.08) 0%, rgba(16, 185, 129, 0.06) 50%, rgba(147, 51, 234, 0.05) 100%); border:1.5px solid var(--border-color); border-radius:28px; padding:36px 32px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px;">
+
+            <!-- Subtle Decorative Radial Glows -->
+            <div style="position:absolute; top:-60px; right:-60px; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+            <div style="position:absolute; bottom:-60px; left:-60px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+
+            <!-- Content Info (Text) -->
+            <div style="max-width:680px; position:relative; z-index:1;">
+              <span style="font-size:0.82rem; font-weight:900; background:rgba(16,185,129,0.12); color:#10b981; padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:8px; margin-bottom:12px; border:1px solid rgba(16,185,129,0.25);">
+                <span style="width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 10px #10b981;"></span>
+                عرض ترحيبي خاص • حصة تجريبية مجانية 100% بدون أي التزام
+              </span>
+              <h2 style="font-size:clamp(1.3rem, 3.2vw, 2.1rem); font-weight:900; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
+                احجز حصتك التجريبية المجانية وتفوق معنا 🎯
+              </h2>
+              <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0;">
+                عش تجربة الفصول الافتراضية التفاعلية مع نخبة مدرسي المنصة. احضر بثاً حياً، تفاعل بالصوت والأسئلة، واستلم ملخص الدرس وأوراق العمل مجاناً فور انتهاء الحصة!
+              </p>
+            </div>
+
+            <!-- Action Button -->
+            <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px; min-width:240px;">
+              <button type="button" id="landing-free-trial-cta-btn" class="btn-primary" style="padding:15px 32px; font-weight:900; font-size:1.05rem; border-radius:30px; background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border:none; color:#ffffff; box-shadow:0 10px 28px rgba(0,86,210,0.3); cursor:pointer; display:inline-flex; align-items:center; gap:10px; transition:all 0.25s;" onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 14px 34px rgba(0,86,210,0.4)';" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 28px rgba(0,86,210,0.3)';">
+                <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
+                <span>حجز حصة تجريبية مجانية 🚀</span>
+              </button>
+              <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                🔒 تجربة مجانية تماماً • متبقي 6 مقاعد اليوم
+              </span>
+            </div>
+
+          </div>
+        </section>
+
+
+
         <!-- SCREENSHOT 1: SECTION 2 (DYNAMIC NEW AND POPULAR 3-COLUMNS FROM DATABASE) -->
         <section style="width:100%; margin:0 auto; padding:24px 20px;">
+
           
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
@@ -1533,7 +1572,31 @@ export default class LandingView {
     this.initTeachersAutoScroll();
 
     this.bindChartEvents();
+    this.initFreeTrialSection();
   }
+
+  initFreeTrialSection() {
+    const ctaBtn = this.container.querySelector("#landing-free-trial-cta-btn");
+    ctaBtn?.addEventListener("click", () => {
+      let targetHash = "#free-trial";
+      if (this.explorerGradeId) {
+        targetHash += `?gradeId=${encodeURIComponent(this.explorerGradeId)}`;
+        if (this.explorerSubjectId) {
+          targetHash += `&subjectId=${encodeURIComponent(this.explorerSubjectId)}`;
+        }
+      }
+
+      if (!state.user) {
+        sessionStorage.setItem("redirectAfterAuth", targetHash);
+        showToast("يرجى تسجيل الدخول أو إنشاء حساب جديد لحجز الحصة التجريبية 🎓", "info");
+        window.location.hash = "#login";
+      } else {
+        window.location.hash = targetHash;
+      }
+    });
+  }
+
+
 
   initTeachersAutoScroll() {
     const teachersContainer = this.container.querySelector("#top-teachers-container");

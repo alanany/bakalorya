@@ -103,6 +103,7 @@ router.post("/auth/accept-teacher-invitation", AdminTeacherController.acceptInvi
 // Public Platform Stats & Settings
 router.get("/public/stats", AdminController.getPublicStats);
 router.get("/public/settings", PlatformSettingController.getPublicSettings);
+router.post("/public/free-trial", sensitiveActionLimiter, PlatformSettingController.submitFreeTrial);
 
 // Curriculum (Grades, Subjects & Landing Page Explorer)
 router.get("/curriculum/grades", CurriculumController.getGrades);

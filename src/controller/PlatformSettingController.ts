@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { PlatformSetting } from "../entity/PlatformSetting";
+import { User } from "../entity/User";
+import { NotificationController } from "./NotificationController";
 import { formatPhoneForWhatsApp } from "../utils/whatsapp";
 
 export class PlatformSettingController {
@@ -192,4 +194,45 @@ export class PlatformSettingController {
       return res.status(500).json({ error: "فشل تحديث إعدادات المنصة." });
     }
   }
+
+  // POST /public/free-trial — Submit a free test session request (Public)
+  static async submitFreeTrial(req: Request, res: Response) {
+    try {
+      const { name, phone, stage, grade, subject, timing, notes } = req.body || {};
+
+      if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: "يرجى إدخال اسم الطالب." });
+      }
+      const studentPhone = phone && String(phone).trim() ? String(phone).trim() : "عبر واتساب";
+
+      // Notify all admins about the new free trial booking
+      const userRepo = AppDataSource.getRepository(User);
+      const admins = await userRepo.find({ where: { role: "admin" } });
+
+      const notificationMsg = `طلب جديد لحجز حصة تجريبية مجانية:\nالطالب: ${String(name).trim()}\nالتواصل: ${studentPhone}\nالمرحلة: ${stage || "غير محدد"}\nالصف: ${grade || "غير محدد"}\nالمادة: ${subject || "عامة"}\nالموعد: ${timing || "مرن"}`;
+
+      for (const admin of admins) {
+        try {
+          await NotificationController.createNotification(
+            admin.id,
+            "🎁 طلب حجز حصة تجريبية مجانية جديد",
+            notificationMsg,
+            "info"
+          );
+        } catch (e) {
+          // continue
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "تم تسجيل طلب حجز الحصة التجريبية المجانية بنجاح! سيتواصل معك المنسق قريباً لتأكيد الموعد ورابط الحصة.",
+        data: { name, phone, stage, grade, subject, timing }
+      });
+    } catch (err: any) {
+      console.error("submitFreeTrial error:", err);
+      return res.status(500).json({ error: "فشل تسجيل طلب الحصة التجريبية. يرجى المحاولة مرة أخرى." });
+    }
+  }
 }
+

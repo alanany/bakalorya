@@ -686,6 +686,9 @@ export default class StudentView {
                   <a href="#settings" style="color:var(--primary); font-size:0.76rem; font-weight:800; text-decoration:underline; padding:0 4px; display:inline-flex; align-items:center; gap:3px;">
                     <i data-lucide="settings" style="width:12px; height:12px;"></i> الإعدادات ⚙️
                   </a>
+                  <a href="#free-trial" style="color:#10b981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:20px; padding:3px 12px; font-size:0.76rem; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                    <i data-lucide="gift" style="width:12px; height:12px;"></i> حصة تجريبية مجانية 🎁
+                  </a>
                 </div>
 
                 <p style="color:var(--text-muted); font-size:0.88rem; margin:4px 0 0 0; line-height:1.5;">
@@ -736,6 +739,28 @@ export default class StudentView {
             </div>
 
           </div>
+        </div>
+
+        <!-- 🎁 FREE TRIAL SESSION PROMO BANNER (حجز حصة تجريبية مجانية) -->
+        <div class="glass-card" style="margin-bottom:24px; padding:20px 26px; border-radius:24px; background:linear-gradient(135deg, rgba(0,86,210,0.08) 0%, rgba(16,185,129,0.07) 50%, rgba(147,51,234,0.06) 100%); border:1.5px solid rgba(16,185,129,0.35); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; box-shadow:0 8px 30px rgba(0,86,210,0.06);">
+          <div style="display:flex; align-items:center; gap:16px; min-width:280px; flex:1;">
+            <div style="width:48px; height:48px; border-radius:14px; background:linear-gradient(135deg, #0056D2, #10b981); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.4rem; box-shadow:0 6px 18px rgba(0,86,210,0.25);">
+              🎁
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+                <h3 style="font-size:1.05rem; font-weight:900; color:var(--text-main); margin:0;">احجز حصتك التجريبية المجانية 100% الآن! 🎯</h3>
+                <span style="font-size:0.72rem; font-weight:800; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:10px;">بدون أي التزام</span>
+              </div>
+              <p style="font-size:0.83rem; color:var(--text-muted); margin:0; line-height:1.5;">
+                اختر مادتك المفضلة واحضر بثاً حياً وتفاعل بالصوت والأسئلة مع أفضل المعلمين واستلم ملخص الدرس مجاناً.
+              </p>
+            </div>
+          </div>
+          <a href="#free-trial" class="btn-primary" style="padding:11px 24px; border-radius:30px; font-weight:800; font-size:0.9rem; background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); color:#ffffff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 6px 20px rgba(0,86,210,0.25); transition:all 0.2s;" onmouseenter="this.style.transform='translateY(-2px)';" onmouseleave="this.style.transform='translateY(0)';">
+            <i data-lucide="sparkles" style="width:16px; height:16px;"></i>
+            <span>حجز حصة تجريبية مجانية 🚀</span>
+          </a>
         </div>
 
         <!-- 2. Reduced Cards: Sleek Circular Metrics Hub (دوائر الإنجاز والتقدم الذكي) -->

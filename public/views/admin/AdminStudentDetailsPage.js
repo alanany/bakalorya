@@ -297,9 +297,34 @@ export class AdminStudentDetailsPage {
     }
   }
 
+  // Helper to ensure sessions in timetable are strictly for groups the student is actually enrolled in
+  getFilteredSessions() {
+    const rawSessions = this.data?.sessions?.all || [];
+    const enrolledGroupIds = new Set((this.data?.groups || []).map(g => g.group?.id).filter(Boolean));
+    const directCourseIds = new Set((this.data?.groups || []).filter(g => !g.group && g.course?.id).map(g => g.course.id));
+
+    return rawSessions.filter(s => {
+      // 1. Direct private session for this student
+      if (s.student?.id && s.student.id === this.studentId) return true;
+      if (s.type === "PRIVATE" && !s.group) return true;
+
+      // 2. Group session: student MUST be enrolled in this specific group
+      if (s.group?.id) {
+        return enrolledGroupIds.has(s.group.id);
+      }
+
+      // 3. Direct course session with no group
+      if (s.course?.id && !s.group) {
+        return directCourseIds.has(s.course.id);
+      }
+
+      return false;
+    });
+  }
+
   // ── 1. TIMETABLE TAB (Day / Week / Month) ──────────────────────────────────
   renderTimetableTab() {
-    const allSessions = this.data.sessions.all || [];
+    const allSessions = this.getFilteredSessions();
 
     return `
       <div>
@@ -911,7 +936,7 @@ export class AdminStudentDetailsPage {
   // ── EXPORT WEEKLY TIMETABLE TO PDF WITH ACADEMY LOGO ──────────────────────
   async exportWeeklyTimetableToPDF() {
     const student = this.data.student;
-    const allSessions = this.data.sessions.all || [];
+    const allSessions = this.getFilteredSessions();
 
     // Calculate active week
     const d = new Date(this.currentDate);

@@ -119,12 +119,25 @@ export class AdminStudentController {
         take: 300
       });
 
-      // Filter sessions that belong to this student
-      const studentSessions = allCandidateSessions.filter(s =>
-        (s.student && s.student.id === studentId) ||
-        (s.group && groupIds.includes(s.group.id)) ||
-        (s.course && courseIds.includes(s.course.id))
-      );
+      // Filter sessions that strictly belong to this student
+      const studentSessions = allCandidateSessions.filter(s => {
+        // 1. Direct 1-on-1 private session for this student
+        if (s.student && s.student.id === studentId) {
+          return true;
+        }
+
+        // 2. Group session: strictly only if the student is enrolled in that specific group
+        if (s.group && s.group.id) {
+          return groupIds.includes(s.group.id);
+        }
+
+        // 3. Direct course session with NO group: only if student enrolled in the course without a group
+        if (s.course && s.course.id) {
+          return validEnrollments.some(e => !e.group && e.course?.id === s.course.id);
+        }
+
+        return false;
+      });
 
       // 4. Attendance Records
       const attendanceRepo = AppDataSource.getRepository(SessionAttendance);

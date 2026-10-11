@@ -15,6 +15,7 @@ import RequestsView from "./views/RequestsView.js";
 import TestsView from "./views/TestsView.js";
 import BlogDetailsView from "./views/BlogDetailsView.js";
 import SubjectGroupsView from "./views/SubjectGroupsView.js";
+import FreeTrialView from "./views/FreeTrialView.js";
 
 // ── Admin Views ───────────────────────────────────────────────────────────────
 import AdminView from "./views/admin/AdminView.js";
@@ -2170,7 +2171,7 @@ export async function router() {
     "#courses", "#manage-course", "#course-preview", "#course-details", "#schedule",
     "#assignments", "#resources", "#tests", "#students", "#settings", "#notifications",
     "#search", "#about", "#contact", "#faq", "#subscription-plans", "#subject-groups",
-    "#course-groups", "#subject", "#parent-dashboard"
+    "#course-groups", "#subject", "#parent-dashboard", "#free-trial"
   ]);
 
   if (routeBase && routeBase.startsWith("#") && !definedRoutes.has(routeBase)) {
@@ -2199,6 +2200,14 @@ export async function router() {
     case "#teacher-login":
     case "#admin-login":
     case "#auth": ViewClass = AuthView; break;
+    case "#free-trial":
+      if (!state.user) {
+        showToast("يرجى تسجيل الدخول أو إنشاء حساب جديد لحجز الحصة التجريبية 🎓", "info");
+        window.location.hash = "#login";
+        return;
+      }
+      ViewClass = FreeTrialView;
+      break;
     case "#student-dashboard": ViewClass = StudentView; break;
     case "#student-subscriptions": ViewClass = StudentSubscriptionsView; break;
     case "#student-groups": ViewClass = StudentGroupsView; break;

@@ -288,11 +288,18 @@ export class ParentController {
         take: 100
       });
 
-      const filtered = allSessions.filter(s =>
-        (s.student && s.student.id === studentId) ||
-        (s.group && groupIds.includes(s.group.id)) ||
-        (s.course && courseIds.includes(s.course.id))
-      );
+      const filtered = allSessions.filter(s => {
+        if (s.student && s.student.id === studentId) {
+          return true;
+        }
+        if (s.group && s.group.id) {
+          return groupIds.includes(s.group.id);
+        }
+        if (s.course && s.course.id) {
+          return validEnrollments.some(e => !e.group && e.course?.id === s.course.id);
+        }
+        return false;
+      });
 
       const now = new Date();
       const upcoming = filtered.filter(s => new Date(s.scheduledAt).getTime() >= now.getTime() - 3600000);
