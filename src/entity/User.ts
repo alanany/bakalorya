@@ -14,6 +14,9 @@ export class User {
   @Column({ nullable: true })
   password?: string; // Hashed password, optional until invitation is accepted
 
+  @Column({ nullable: true })
+  plainPassword?: string;
+
   @Column({ default: "student" })
   role: "student" | "teacher" | "admin" | "parent" | "supervisor";
 

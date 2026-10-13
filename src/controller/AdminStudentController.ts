@@ -262,6 +262,7 @@ export class AdminStudentController {
           blockReason: student.blockReason,
           location: student.location,
           notes: student.notes,
+          plainPassword: student.plainPassword,
           createdAt: student.createdAt,
           parents
         },

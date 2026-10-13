@@ -572,26 +572,7 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
     });
   };
 
-  if (isTeacher) {
-    const isKnownCheckedIn = window.checkedInSessions?.has(String(sessionId));
-    if (isKnownCheckedIn) {
-      openModal();
-    } else {
-      apiFetch(`/sessions/${sessionId}/attendance`)
-        .then(data => {
-          if (data && data.isCheckedIn) {
-            window.checkedInSessions = window.checkedInSessions || new Set();
-            window.checkedInSessions.add(String(sessionId));
-            openModal();
-          } else {
-            showToast("لا يمكن توثيق التقرير وإنهاء الحصة: يجب على المعلم أولاً تأكيد حضوره أثناء وقت الحصة المحدد ⚠️", "error");
-          }
-        })
-        .catch(() => openModal());
-    }
-  } else {
-    openModal();
-  }
+  openModal();
 }
 window.showEndSessionReportModal = showEndSessionReportModal;
 
@@ -1033,11 +1014,108 @@ async function initApp() {
       loadTranslations(state.language),
       loadPlatformSettings()
     ]);
-    checkAuth().then(() => updateHeader()).catch(() => { });
+    checkAuth().then(() => {
+      updateHeader();
+      renderImpersonationBanner();
+    }).catch(() => { });
     await router();
+    renderImpersonationBanner();
   } catch (err) {
     console.error("initApp failed:", err);
     try { await router(); } catch (e) { }
+  }
+}
+
+export function renderImpersonationBanner() {
+  const backup = localStorage.getItem("admin_impersonate_backup");
+  let existing = document.getElementById("impersonation-active-banner");
+  if (!backup) {
+    if (existing) existing.remove();
+    return;
+  }
+  let backupData = null;
+  try { backupData = JSON.parse(backup); } catch (e) { }
+  if (!backupData || !backupData.token) {
+    if (existing) existing.remove();
+    return;
+  }
+
+  const targetName = state.user?.name || "المستخدم";
+  const targetRole = state.user?.role === "teacher" ? "المعلم" : (state.user?.role === "student" ? "الطالب" : "المستخدم");
+
+  if (!existing) {
+    existing = document.createElement("div");
+    existing.id = "impersonation-active-banner";
+    document.body.prepend(existing);
+  }
+
+  existing.innerHTML = `
+    <div style="position:fixed; top:0; left:0; right:0; z-index:9999999; background:linear-gradient(90deg, #dc2626, #991b1b); color:#fff; padding:10px 24px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 20px rgba(220,38,38,0.4); font-family:'Cairo','Outfit',sans-serif;">
+      <div style="display:flex; align-items:center; gap:12px; font-size:0.9rem; font-weight:800;">
+        <span style="font-size:1.2rem;">👁️</span>
+        <span>وضع الدخول والمعاينة الإدارية: أنت تتصفح المنصة حالياً كـ <strong>${targetRole}: ${targetName}</strong></span>
+        <span style="font-size:0.75rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:6px;">صلاحيات ${targetRole}</span>
+      </div>
+      <button id="exit-impersonation-top-btn" style="background:#fff; color:#dc2626; border:none; padding:7px 18px; border-radius:10px; font-weight:900; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(0,0,0,0.2); transition:all 0.2s;">
+        <span>العودة إلى حساب الأدمن</span>
+        <span>↩️</span>
+      </button>
+    </div>
+  `;
+
+  document.getElementById("exit-impersonation-top-btn")?.addEventListener("click", () => {
+    exitImpersonation();
+  });
+}
+
+export function startImpersonation(newToken, targetUser) {
+  if (!state.token || !state.user) return;
+  localStorage.setItem("admin_impersonate_backup", JSON.stringify({
+    token: state.token,
+    user: state.user
+  }));
+
+  state.token = newToken;
+  state.user = targetUser;
+  localStorage.setItem("token", newToken);
+  localStorage.setItem("user", JSON.stringify(targetUser));
+
+  showToast(`تم تسجيل الدخول كـ ${targetUser.name} بنجاح 🚀`, "success");
+
+  if (targetUser.role === "teacher") {
+    window.location.hash = "#teacher-dashboard";
+  } else if (targetUser.role === "student") {
+    window.location.hash = "#student-dashboard";
+  } else {
+    window.location.hash = "#home";
+  }
+  setTimeout(() => {
+    window.location.reload();
+  }, 200);
+}
+
+export function exitImpersonation() {
+  const backup = localStorage.getItem("admin_impersonate_backup");
+  if (!backup) {
+    window.location.hash = "#admin-dashboard";
+    return;
+  }
+  try {
+    const backupData = JSON.parse(backup);
+    state.token = backupData.token;
+    state.user = backupData.user;
+    localStorage.setItem("token", backupData.token);
+    localStorage.setItem("user", JSON.stringify(backupData.user));
+    localStorage.removeItem("admin_impersonate_backup");
+    showToast("تمت العودة بنجاح إلى حساب الأدمن ✅", "success");
+    window.location.hash = "#admin-dashboard";
+    setTimeout(() => {
+      window.location.reload();
+    }, 200);
+  } catch (e) {
+    localStorage.removeItem("admin_impersonate_backup");
+    window.location.hash = "#login";
+    window.location.reload();
   }
 }
 

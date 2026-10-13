@@ -350,6 +350,8 @@ router.put("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminCont
 router.patch("/admin/users/:id/role", authMiddleware, requireRole(["admin"]), AdminController.updateUserRole);
 router.patch("/admin/users/:id/block", authMiddleware, requireRole(["admin"]), AdminController.toggleBlockUser);
 router.post("/admin/users/:id/reset-password", authMiddleware, requireRole(["admin"]), AdminController.resetPassword);
+router.post("/admin/members/:id/reset-password", authMiddleware, requireRole(["admin"]), AdminController.resetPassword);
+router.post("/admin/users/:id/impersonate", authMiddleware, requireRole(["admin"]), AdminController.impersonateUser);
 router.delete("/admin/users/:id", authMiddleware, requireRole(["admin"]), AdminController.deleteUser);
 router.get("/admin/courses", authMiddleware, requireRole(["admin", "supervisor"]), AdminController.getCourses);
 router.post("/admin/courses", authMiddleware, requireRole(["admin"]), AdminController.createCourse);

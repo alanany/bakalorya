@@ -295,18 +295,44 @@ export class SessionController {
         meetingLink = "https://" + meetingLink;
       }
 
-      // Format date and time
+      // Determine user's active timezone for accurate display in Arabic messages
+      const userTz =
+        (req.query.timezone as string) ||
+        (req.query.tz as string) ||
+        (req.headers["x-timezone"] as string) ||
+        (req.user as any)?.timezone ||
+        session.teacher?.timezone ||
+        "Africa/Cairo";
+
+      // Format date and time according to user timezone
       const schedDate = session.scheduledAt ? new Date(session.scheduledAt) : new Date();
-      const dateStr = schedDate.toLocaleDateString("ar-EG", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
-      const timeStr = schedDate.toLocaleTimeString("ar-EG", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+      let dateStr = "";
+      let timeStr = "";
+      try {
+        dateStr = schedDate.toLocaleDateString("ar-EG", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: userTz
+        });
+        timeStr = schedDate.toLocaleTimeString("ar-EG", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: userTz
+        });
+      } catch (tzErr) {
+        dateStr = schedDate.toLocaleDateString("ar-EG", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric"
+        });
+        timeStr = schedDate.toLocaleTimeString("ar-EG", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
 
       const sessionTitle = session.title || session.group?.name || session.course?.title || "حصة دراسية مباشرة";
       const studentOrGroupName = session.student?.name || session.group?.name || session.course?.title || "المجموعة الدراسية";

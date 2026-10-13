@@ -1,4 +1,4 @@
-import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state } from "../../app.js";
+import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state, startImpersonation } from "../../app.js";
 
 export class AdminTeacherDetailsPage {
   constructor(container, adminView, teacherId) {
@@ -210,18 +210,48 @@ export class AdminTeacherDetailsPage {
 
             <!-- Quick Action Buttons -->
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button id="tch-impersonate-btn" class="btn-primary" style="padding:8px 16px;border-radius:10px;font-size:0.83rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #6366f1, #8b5cf6);box-shadow:0 2px 8px rgba(99,102,241,0.3);border:none;color:#fff;cursor:pointer;">
+                <i data-lucide="log-in" style="width:14px;height:14px;"></i> الدخول للحساب 🚀
+              </button>
               <button id="tch-rate-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--primary);border-color:var(--primary);">
                 <i data-lucide="dollar-sign" style="width:14px;height:14px;"></i> تعديل أجر الساعة
               </button>
               <button id="tch-edit-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
                 <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل البيانات
               </button>
-              <button id="tch-reset-pwd-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#d97706;border-color:#f59e0b;">
-                <i data-lucide="key" style="width:14px;height:14px;"></i> إعادة كلمة المرور
-              </button>
               <button id="tch-block-toggle-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:${isBlocked ? '#10b981' : '#ef4444'};border-color:${isBlocked ? '#10b981' : '#ef4444'};">
                 <i data-lucide="${isBlocked ? 'unlock' : 'lock'}" style="width:14px;height:14px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر المعلم'}
               </button>
+            </div>
+          </div>
+
+          <!-- Account Access & Credentials Section -->
+          <div style="margin-top:14px;padding:12px 16px;border-radius:12px;background:rgba(99,102,241,0.04);border:1px dashed rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:0.85rem;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="key" style="width:14px;height:14px;color:#f59e0b;"></i> كلمة مرور الحساب:
+                </span>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border-color);padding:3px 10px;border-radius:8px;">
+                  <span id="tch-pwd-display" style="font-family:monospace;font-weight:800;letter-spacing:1px;color:var(--text-main);">
+                    ${teacher.plainPassword ? '••••••••' : '<span style="color:var(--text-muted);font-size:0.78rem;">مشفرة (اضغط تعيين لإظهارها)</span>'}
+                  </span>
+                  ${teacher.plainPassword ? `
+                    <button type="button" id="tch-toggle-pwd-btn" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text-muted);" title="إظهار / إخفاء">
+                      <i data-lucide="eye" style="width:13px;height:13px;"></i>
+                    </button>
+                    <button type="button" id="tch-copy-pwd-btn" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--primary);" title="نسخ كلمة المرور">
+                      <i data-lucide="copy" style="width:13px;height:13px;"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+              <button id="tch-set-pwd-btn" class="btn-outline" style="padding:4px 10px;border-radius:8px;font-size:0.78rem;font-weight:700;color:#d97706;border-color:#f59e0b;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                <i data-lucide="edit-2" style="width:12px;height:12px;"></i> ${teacher.plainPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة مرور واضحة'}
+              </button>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">
+              💡 يمكنك الدخول لحساب المعلم مباشرة لمعاينة وحل أي مشكلة، والعودة لحسابك كمسؤول بنقرة واحدة من الشريط العلوي.
             </div>
           </div>
         </div>
@@ -614,15 +644,25 @@ export class AdminTeacherDetailsPage {
                   </div>
                 ` : ''}
 
-                <div style="border-top:1px solid var(--border-color);padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
-                  <span style="font-size:0.75rem;color:var(--text-muted);font-weight:700;">
-                    إجمالي الحصص: ${grp.sessionsCount || 0}
-                  </span>
-                  ${grp.meetingLink ? `
-                    <a href="${grp.meetingLink}" target="_blank" style="color:var(--primary);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-                      <i data-lucide="video" style="width:13px;height:13px;"></i> رابط البث
-                    </a>
-                  ` : ''}
+                <div style="border-top:1px solid var(--border-color);padding-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:0.75rem;color:var(--text-muted);font-weight:700;">
+                      إجمالي الحصص: ${grp.sessionsCount || 0}
+                    </span>
+                    <span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:0.75rem;padding:3px 8px;border-radius:6px;font-weight:800;">
+                      💰 ${grp.teacherHourlyRate ?? 100} ج.م / س
+                    </span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <button class="btn-outline tch-edit-group-rate-btn" data-group-id="${grp.id}" data-group-name="${grp.name}" data-rate="${grp.teacherHourlyRate ?? 100}" style="padding:3px 8px;border-radius:8px;font-size:0.75rem;cursor:pointer;" title="تعديل أجر ساعة هذه المجموعة">
+                      ✏️ سعر الساعة
+                    </button>
+                    ${grp.meetingLink ? `
+                      <a href="${grp.meetingLink}" target="_blank" style="color:var(--primary);font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                        <i data-lucide="video" style="width:13px;height:13px;"></i> رابط البث
+                      </a>
+                    ` : ''}
+                  </div>
                 </div>
               </div>
             `).join('')}
@@ -745,21 +785,91 @@ export class AdminTeacherDetailsPage {
   // ── 4. FINANCIALS TAB ────────────────────────────────────────────────────────
   renderFinancialsTab() {
     const { teacher, stats } = this.data;
-    const allSessions = this.data.sessions.all || [];
+    const groups = this.data.groups || [];
+    const allSessions = this.data.sessions?.all || [];
     const completedSessions = allSessions.filter(s => s.status === 'COMPLETED' || s.status === 'completed' || s.isPast);
+
+    // Calculate actual total salary sum directly from session earnings
+    const totalEarningsSum = completedSessions.reduce((sum, s) => {
+      const hours = (s.duration || 60) / 60;
+      const appliedRate = s.hourlyRate || s.group?.teacherHourlyRate || (s.type === 'GROUP' ? 100 : (stats.hourlyRate || 150));
+      const earning = s.earnings != null ? Number(s.earnings) : Math.round(hours * appliedRate);
+      return sum + earning;
+    }, 0);
+
+    const displayTotalSalary = stats.totalSalary != null ? stats.totalSalary : totalEarningsSum;
 
     return `
       <div style="display:flex;flex-direction:column;gap:24px;">
-        <!-- Salary Rate Card -->
-        <div class="glass-card" style="padding:24px;border-radius:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
-          <div>
-            <div style="font-size:0.85rem;color:var(--text-muted);font-weight:700;margin-bottom:4px;">سعر الساعة المعتمد للمعلم</div>
-            <div style="font-size:2rem;font-weight:900;color:var(--primary);">${stats.hourlyRate} ج.م <span style="font-size:1rem;color:var(--text-muted);font-weight:600;">/ ساعة عمل</span></div>
-            <p style="font-size:0.8rem;color:var(--text-muted);margin:4px 0 0;">يتم احتساب الراتب تلقائياً بضرب عدد ساعات الحصص المنفذة في هذا السعر.</p>
+        <!-- Financial Policy Notice -->
+        <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.06));border:1.5px solid rgba(99,102,241,0.2);border-radius:18px;padding:18px 22px;display:flex;align-items:flex-start;gap:14px;">
+          <div style="width:38px;height:38px;border-radius:12px;background:rgba(99,102,241,0.15);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">
+            ℹ️
           </div>
-          <button id="tch-financial-update-rate-btn" class="btn-primary" style="padding:10px 20px;border-radius:12px;font-size:0.85rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-            <i data-lucide="edit"></i> تعديل أجر الساعة
-          </button>
+          <div>
+            <h4 style="font-size:0.95rem;font-weight:900;color:var(--text-main);margin:0 0 4px 0;">نظام احتساب المستحقات وسعر الساعة</h4>
+            <p style="font-size:0.83rem;color:var(--text-muted);margin:0;line-height:1.6;">
+              تعتمد المنصة احتساب الراتب لكل حصة بناءً على <strong>سعر ساعة المجموعة الثابت (Fixed Group Hourly Rate)</strong> المحدد في إعدادات كل مجموعة. ويُستخدم <strong>سعر الساعة العام للمعلم</strong> للحصص الخاصة الفردية فقط أو كخيار احتياطي عند عدم تحديد سعر للمجموعة.
+            </p>
+          </div>
+        </div>
+
+        <!-- Groups & Base Hourly Rates Overview Cards Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;">
+          <!-- Teacher Base Rate Card -->
+          <div class="glass-card" style="padding:22px;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;gap:16px;border-inline-start:4px solid var(--primary);">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--primary);font-size:0.75rem;padding:3px 8px;border-radius:6px;font-weight:800;">
+                  السعر الأساسي العام
+                </span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">للحصص الخاصة والافتراضي</span>
+              </div>
+              <div style="font-size:2rem;font-weight:900;color:var(--primary);line-height:1.1;">
+                ${stats.hourlyRate || 150} ج.م <span style="font-size:0.9rem;color:var(--text-muted);font-weight:600;">/ ساعة</span>
+              </div>
+              <p style="font-size:0.78rem;color:var(--text-muted);margin:6px 0 0;">يُطبق على الحصص الخاصة غير المرتبطة بمجموعة دراسية.</p>
+            </div>
+            <button id="tch-financial-update-rate-btn" class="btn-primary" style="padding:8px 16px;border-radius:10px;font-size:0.82rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;align-self:flex-start;cursor:pointer;">
+              <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل السعر العام
+            </button>
+          </div>
+
+          <!-- Groups Rates Summary Card -->
+          <div class="glass-card" style="padding:22px;border-radius:18px;border-inline-start:4px solid #10b981;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h4 style="font-size:0.95rem;font-weight:900;color:var(--text-main);margin:0;">أسعار ساعات المجموعات الدراسية</h4>
+              <span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.75rem;padding:3px 8px;border-radius:6px;font-weight:800;">
+                ${groups.length} مجموعات
+              </span>
+            </div>
+
+            ${groups.length === 0 ? `
+              <p style="font-size:0.82rem;color:var(--text-muted);margin:0;">لا توجد مجموعات مسندة لهذا المعلم بعد.</p>
+            ` : `
+              <div style="display:flex;flex-direction:column;gap:10px;max-height:220px;overflow-y:auto;padding-inline-end:4px;">
+                ${groups.map(grp => {
+                  const grpRate = grp.teacherHourlyRate != null ? grp.teacherHourlyRate : 100;
+                  return `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.02);border:1px solid var(--border-color);border-radius:10px;gap:10px;">
+                      <div style="overflow:hidden;text-overflow:ellipsis;">
+                        <strong style="font-size:0.85rem;color:var(--text-main);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${grp.name}</strong>
+                        <span style="font-size:0.73rem;color:var(--text-muted);">${grp.course ? grp.course.title : 'مجموعة تعليمية'}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                        <span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-weight:800;font-size:0.8rem;padding:3px 8px;border-radius:6px;">
+                          ${grpRate} ج.م / س
+                        </span>
+                        <button class="btn-outline tch-edit-group-rate-btn" data-group-id="${grp.id}" data-group-name="${grp.name}" data-rate="${grpRate}" style="padding:4px 8px;border-radius:8px;font-size:0.75rem;cursor:pointer;" title="تعديل سعر ساعة هذه المجموعة">
+                          ✏️ تعديل
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
         </div>
 
         <!-- 3 KPI Cards for Salary -->
@@ -769,19 +879,24 @@ export class AdminTeacherDetailsPage {
             <div style="font-size:1.6rem;font-weight:900;color:var(--text-main);margin-top:4px;">${completedSessions.length} حصة</div>
           </div>
           <div class="glass-card" style="padding:18px 20px;border-inline-start:4px solid #10b981;">
-            <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">إجمالي ساعات العمل</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">إجمالي ساعات العمل المنفذة</div>
             <div style="font-size:1.6rem;font-weight:900;color:#10b981;margin-top:4px;">${stats.completedHours} ساعة</div>
           </div>
           <div class="glass-card" style="padding:18px 20px;border-inline-start:4px solid #f59e0b;">
-            <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">إجمالي الراتب المستحق</div>
-            <div style="font-size:1.6rem;font-weight:900;color:#d97706;margin-top:4px;">${stats.totalSalary?.toLocaleString() || 0} ج.م</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">إجمالي الراتب المستحق الفعلي</div>
+            <div style="font-size:1.6rem;font-weight:900;color:#d97706;margin-top:4px;">${displayTotalSalary.toLocaleString()} ج.م</div>
           </div>
         </div>
 
         <!-- Completed Sessions Table -->
         <div class="glass-card" style="overflow:hidden;padding:0;">
           <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
-            <h4 style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin:0;">سجل الحصص المنفذة لحساب الراتب (${completedSessions.length})</h4>
+            <h4 style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin:0;">
+              سجل الحصص المنفذة لحساب الراتب (${completedSessions.length})
+            </h4>
+            <span style="font-size:0.78rem;color:var(--text-muted);font-weight:600;">
+              محسوب بأجر ساعة كل مجموعة
+            </span>
           </div>
 
           ${completedSessions.length === 0 ? `
@@ -792,30 +907,42 @@ export class AdminTeacherDetailsPage {
                 <thead>
                   <tr style="background:rgba(0,0,0,0.02);border-bottom:1px solid var(--border-color);">
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">الحصة / المادة</th>
+                    <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">المجموعة / الطالب</th>
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">التاريخ</th>
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">المدة</th>
-                    <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">النوع</th>
+                    <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">سعر الساعة المعتمد</th>
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">المستحق عن الحصة</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${completedSessions.map(s => {
                     const hours = (s.duration || 60) / 60;
-                    const sessionEarnings = Math.round(hours * (stats.hourlyRate || 150));
+                    const isGroup = s.type === 'GROUP' || !!s.group;
+                    const appliedRate = s.hourlyRate || s.group?.teacherHourlyRate || (isGroup ? 100 : (stats.hourlyRate || 150));
+                    const sessionEarnings = s.earnings != null ? Number(s.earnings) : Math.round(hours * appliedRate);
+
                     return `
                       <tr style="border-bottom:1px solid var(--border-color);">
                         <td style="padding:10px 16px;font-weight:700;">
                           <div>📚 ${s.subjectName || s.title}</div>
-                          ${s.group ? `<div style="font-size:0.72rem;color:var(--text-muted);font-weight:500;">👥 ${s.group.name}</div>` : ''}
+                        </td>
+                        <td style="padding:10px 16px;">
+                          ${s.group ? `
+                            <div style="font-weight:700;color:var(--text-main);">👥 ${s.group.name}</div>
+                          ` : (s.student ? `
+                            <div style="color:var(--text-muted);">👤 ${s.student.name}</div>
+                          ` : '<span style="color:var(--text-muted);">-</span>')}
                         </td>
                         <td style="padding:10px 16px;color:var(--text-muted);">${new Date(s.scheduledAt).toLocaleDateString('ar-EG')}</td>
-                        <td style="padding:10px 16px;">${s.duration || 60} دقيقة</td>
+                        <td style="padding:10px 16px;">${s.duration || 60} دقيقة (${hours} س)</td>
                         <td style="padding:10px 16px;">
-                          <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--primary);font-size:0.72rem;padding:2px 6px;border-radius:4px;">
-                            ${s.type === 'GROUP' ? 'مجموعة' : 'خاصة'}
+                          <span class="badge" style="background:${isGroup ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)'};color:${isGroup ? '#10b981' : 'var(--primary)'};font-size:0.75rem;padding:3px 8px;border-radius:6px;font-weight:800;">
+                            ${appliedRate} ج.م/س (${isGroup ? 'سعر المجموعة' : 'سعر المعلم العام'})
                           </span>
                         </td>
-                        <td style="padding:10px 16px;font-weight:800;color:#10b981;">${sessionEarnings} ج.م</td>
+                        <td style="padding:10px 16px;font-weight:900;color:#10b981;font-size:0.95rem;">
+                          ${sessionEarnings.toLocaleString()} ج.م
+                        </td>
                       </tr>
                     `;
                   }).join('')}
@@ -912,17 +1039,62 @@ export class AdminTeacherDetailsPage {
       }
     });
 
-    // Quick action: Reset Password to 123456
-    this.container.querySelector("#tch-reset-pwd-btn")?.addEventListener("click", async () => {
+    // Impersonate (Login as Teacher)
+    this.container.querySelector("#tch-impersonate-btn")?.addEventListener("click", async () => {
       const teacher = this.data.teacher;
-      const confirmed = await confirmDialog(`هل تريد إعادة تعيين كلمة المرور للمعلم "${teacher.name}" إلى: 123456 ؟`, "إعادة تعيين كلمة المرور");
+      const confirmed = await confirmDialog(`هل تريد الدخول المباشر إلى حساب المعلم "${teacher.name}"؟ يمكنك العودة لحساب الأدمن في أي وقت عبر الشريط العلوي.`, "تسجيل الدخول كمعلم 🚀");
       if (!confirmed) return;
 
       try {
-        await apiFetch(`/admin/members/${teacher.id}/reset-password`, { method: "POST" });
-        showToast("تم إعادة تعيين كلمة المرور إلى 123456 بنجاح", "success");
+        const res = await apiFetch(`/admin/users/${teacher.id}/impersonate`, { method: "POST" });
+        if (res.token && res.user) {
+          showToast(`جاري الدخول لحساب المعلم ${teacher.name}...`, "success");
+          startImpersonation(res.token, res.user);
+        }
       } catch (e) {
-        showToast("فشل إعادة تعيين كلمة المرور", "error");
+        showToast(e.message || "فشل الدخول لحساب المعلم", "error");
+      }
+    });
+
+    // Toggle teacher password visibility
+    let pwdVisible = false;
+    this.container.querySelector("#tch-toggle-pwd-btn")?.addEventListener("click", () => {
+      pwdVisible = !pwdVisible;
+      const display = this.container.querySelector("#tch-pwd-display");
+      const btn = this.container.querySelector("#tch-toggle-pwd-btn");
+      if (display) {
+        display.textContent = pwdVisible ? (this.data.teacher.plainPassword || "") : "••••••••";
+      }
+      if (btn) {
+        btn.innerHTML = `<i data-lucide="${pwdVisible ? 'eye-off' : 'eye'}" style="width:13px;height:13px;"></i>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // Copy teacher password
+    this.container.querySelector("#tch-copy-pwd-btn")?.addEventListener("click", () => {
+      if (this.data.teacher.plainPassword) {
+        navigator.clipboard.writeText(this.data.teacher.plainPassword);
+        showToast("تم نسخ كلمة المرور إلى الحافظة 📋", "success");
+      }
+    });
+
+    // Set / Reset teacher password
+    this.container.querySelector("#tch-set-pwd-btn")?.addEventListener("click", async () => {
+      const teacher = this.data.teacher;
+      const newPwd = prompt(`أدخل كلمة المرور الجديدة للمعلم "${teacher.name}":`, teacher.plainPassword || "123456");
+      if (!newPwd || !newPwd.trim()) return;
+
+      try {
+        const res = await apiFetch(`/admin/users/${teacher.id}/reset-password`, { 
+          method: "POST",
+          body: JSON.stringify({ newPassword: newPwd.trim() })
+        });
+        teacher.plainPassword = res.plainPassword || newPwd.trim();
+        showToast(res.message || "تم تعيين كلمة المرور بنجاح", "success");
+        await this.render();
+      } catch (e) {
+        showToast(e.message || "فشل تعيين كلمة المرور", "error");
       }
     });
 
@@ -997,6 +1169,16 @@ export class AdminTeacherDetailsPage {
       this.promptUpdateHourlyRate();
     });
 
+    // Update group hourly rate from Financials tab or Groups tab
+    this.container.querySelectorAll(".tch-edit-group-rate-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const groupId = btn.getAttribute("data-group-id");
+        const groupName = btn.getAttribute("data-group-name") || "المجموعة";
+        const currentRate = parseFloat(btn.getAttribute("data-rate")) || 100;
+        this.promptUpdateGroupHourlyRate(groupId, groupName, currentRate);
+      });
+    });
+
     // Notes form submit
     const notesForm = this.container.querySelector("#tch-notes-form");
     notesForm?.addEventListener("submit", async (e) => {
@@ -1045,7 +1227,7 @@ export class AdminTeacherDetailsPage {
 
   promptUpdateHourlyRate() {
     const currentRate = this.data?.stats?.hourlyRate || 150;
-    const newRateStr = prompt(`أدخل أجر الساعة الجديد للمعلم (ج.م):`, currentRate);
+    const newRateStr = prompt(`أدخل أجر الساعة العام الجديد للمعلم (ج.م):`, currentRate);
     if (!newRateStr) return;
 
     const rateNum = Number(newRateStr);
@@ -1054,14 +1236,39 @@ export class AdminTeacherDetailsPage {
       return;
     }
 
+    const applyToAll = confirm("هل ترغب أيضاً في تطبيق هذا السعر على جميع المجموعات الدراسية المسندة للمعلم؟\n(اضغط موافق للتطبيق على المجموعات، أو إلغاء لتحديث السعر العام فقط)");
+
     apiFetch(`/admin/teachers/${this.teacherId}/hourly-rate`, {
       method: "PATCH",
-      body: JSON.stringify({ hourlyRate: rateNum })
+      body: JSON.stringify({ hourlyRate: rateNum, applyToAllGroups: applyToAll })
     }).then(() => {
       showToast("تم تحديث أجر الساعة بنجاح ✅", "success");
       this.render();
     }).catch(() => {
       showToast("فشل تحديث أجر الساعة", "error");
+    });
+  }
+
+  promptUpdateGroupHourlyRate(groupId, groupName, currentRate) {
+    if (!groupId) return;
+    const newRateStr = prompt(`أدخل أجر الساعة الجديد للمعلم لمجموعة "${groupName}" (ج.م):`, currentRate);
+    if (!newRateStr) return;
+
+    const rateNum = Number(newRateStr);
+    if (isNaN(rateNum) || rateNum < 0) {
+      showToast("يرجى إدخال رقم صحيح وموجب لأجر الساعة.", "warning");
+      return;
+    }
+
+    apiFetch(`/groups/${groupId}`, {
+      method: "PUT",
+      body: JSON.stringify({ teacherHourlyRate: rateNum })
+    }).then(() => {
+      showToast(`تم تحديث أجر الساعة لمجموعة "${groupName}" بنجاح ✅`, "success");
+      this.render();
+    }).catch(err => {
+      console.error("Failed to update group teacher hourly rate:", err);
+      showToast("فشل تحديث أجر ساعة المجموعة", "error");
     });
   }
 

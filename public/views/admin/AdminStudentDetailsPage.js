@@ -1,4 +1,4 @@
-import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state } from "../../app.js";
+import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state, startImpersonation } from "../../app.js";
 
 export class AdminStudentDetailsPage {
   constructor(container, adminView, studentId) {
@@ -208,12 +208,45 @@ export class AdminStudentDetailsPage {
 
             <!-- Quick Action Buttons -->
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button id="std-impersonate-btn" class="btn-primary" style="padding:8px 16px;border-radius:10px;font-size:0.83rem;font-weight:800;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #6366f1, #8b5cf6);box-shadow:0 2px 8px rgba(99,102,241,0.3);border:none;color:#fff;cursor:pointer;">
+                <i data-lucide="log-in" style="width:14px;height:14px;"></i> الدخول للحساب 🚀
+              </button>
               <button id="std-edit-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
                 <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل البيانات
               </button>
               <button id="std-block-toggle-btn" class="btn-outline" style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;color:${isBlocked ? '#10b981' : '#ef4444'};border-color:${isBlocked ? '#10b981' : '#ef4444'};">
                 <i data-lucide="${isBlocked ? 'unlock' : 'lock'}" style="width:14px;height:14px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر الحساب'}
               </button>
+            </div>
+          </div>
+
+          <!-- Account Access & Credentials Section -->
+          <div style="margin-top:14px;padding:12px 16px;border-radius:12px;background:rgba(99,102,241,0.04);border:1px dashed rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:0.85rem;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="key" style="width:14px;height:14px;color:#f59e0b;"></i> كلمة مرور الحساب:
+                </span>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border-color);padding:3px 10px;border-radius:8px;">
+                  <span id="std-pwd-display" style="font-family:monospace;font-weight:800;letter-spacing:1px;color:var(--text-main);">
+                    ${student.plainPassword ? '••••••••' : '<span style="color:var(--text-muted);font-size:0.78rem;">مشفرة (اضغط تعيين لإظهارها)</span>'}
+                  </span>
+                  ${student.plainPassword ? `
+                    <button type="button" id="std-toggle-pwd-btn" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text-muted);" title="إظهار / إخفاء">
+                      <i data-lucide="eye" style="width:13px;height:13px;"></i>
+                    </button>
+                    <button type="button" id="std-copy-pwd-btn" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--primary);" title="نسخ كلمة المرور">
+                      <i data-lucide="copy" style="width:13px;height:13px;"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+              <button id="std-set-pwd-btn" class="btn-outline" style="padding:4px 10px;border-radius:8px;font-size:0.78rem;font-weight:700;color:#d97706;border-color:#f59e0b;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                <i data-lucide="edit-2" style="width:12px;height:12px;"></i> ${student.plainPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة مرور واضحة'}
+              </button>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">
+              💡 يمكنك الدخول لحساب الطالب مباشرة لمعاينة وحل أي مشكلة، والعودة لحسابك كمسؤول بنقرة واحدة من الشريط العلوي.
             </div>
           </div>
         </div>
@@ -827,6 +860,65 @@ export class AdminStudentDetailsPage {
         await this.render();
       } catch (e) {
         showToast(e.message || "فشل تحديث حالة الحساب", "error");
+      }
+    });
+
+    // Impersonate (Login as Student)
+    this.container.querySelector("#std-impersonate-btn")?.addEventListener("click", async () => {
+      const student = this.data.student;
+      const confirmed = await confirmDialog(`هل تريد الدخول المباشر إلى حساب الطالب "${student.name}"؟ يمكنك العودة لحساب الأدمن في أي وقت عبر الشريط العلوي.`, "تسجيل الدخول كطالب 🚀");
+      if (!confirmed) return;
+
+      try {
+        const res = await apiFetch(`/admin/users/${student.id}/impersonate`, { method: "POST" });
+        if (res.token && res.user) {
+          showToast(`جاري الدخول لحساب ${student.name}...`, "success");
+          startImpersonation(res.token, res.user);
+        }
+      } catch (e) {
+        showToast(e.message || "فشل الدخول لحساب الطالب", "error");
+      }
+    });
+
+    // Toggle password visibility
+    let pwdVisible = false;
+    this.container.querySelector("#std-toggle-pwd-btn")?.addEventListener("click", () => {
+      pwdVisible = !pwdVisible;
+      const display = this.container.querySelector("#std-pwd-display");
+      const btn = this.container.querySelector("#std-toggle-pwd-btn");
+      if (display) {
+        display.textContent = pwdVisible ? (this.data.student.plainPassword || "") : "••••••••";
+      }
+      if (btn) {
+        btn.innerHTML = `<i data-lucide="${pwdVisible ? 'eye-off' : 'eye'}" style="width:13px;height:13px;"></i>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
+    // Copy password
+    this.container.querySelector("#std-copy-pwd-btn")?.addEventListener("click", () => {
+      if (this.data.student.plainPassword) {
+        navigator.clipboard.writeText(this.data.student.plainPassword);
+        showToast("تم نسخ كلمة المرور إلى الحافظة 📋", "success");
+      }
+    });
+
+    // Set / Reset password
+    this.container.querySelector("#std-set-pwd-btn")?.addEventListener("click", async () => {
+      const student = this.data.student;
+      const newPwd = prompt(`أدخل كلمة المرور الجديدة للطالب "${student.name}":`, student.plainPassword || "123456");
+      if (!newPwd || !newPwd.trim()) return;
+
+      try {
+        const res = await apiFetch(`/admin/users/${student.id}/reset-password`, {
+          method: "POST",
+          body: JSON.stringify({ newPassword: newPwd.trim() })
+        });
+        student.plainPassword = res.plainPassword || newPwd.trim();
+        showToast(res.message || "تم تعيين كلمة المرور بنجاح", "success");
+        await this.render();
+      } catch (e) {
+        showToast(e.message || "فشل تعيين كلمة المرور", "error");
       }
     });
 

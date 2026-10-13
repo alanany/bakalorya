@@ -192,37 +192,25 @@ export class SessionBookingController {
         return res.status(200).json({ message: "تم تحديث ملخص الحصة بنجاح ✅", session });
       }
 
-      // Check if teacher has confirmed attendance during the session window
-      if (session.group) {
-        if (teacher) {
-          let teacherAttendance = await attendanceRepository.findOne({
-            where: {
-              session: { id: session.id },
-              user: { id: teacher.id }
-            }
-          });
-          if (!teacherAttendance) {
-            teacherAttendance = new SessionAttendance();
-            teacherAttendance.session = session;
-            teacherAttendance.user = teacher;
-            teacherAttendance.status = "PRESENT";
-            teacherAttendance.markedBy = { id: req.user!.id } as User;
-            await attendanceRepository.save(teacherAttendance);
-          }
-        }
-      } else if (!isAdmin) {
-        const teacherAttendance = await attendanceRepository.findOne({
+      // Ensure teacher attendance is recorded as PRESENT upon completing the session
+      const effectiveTeacher = teacher || session.teacher;
+      if (effectiveTeacher) {
+        let teacherAttendance = await attendanceRepository.findOne({
           where: {
             session: { id: session.id },
-            user: { id: session.teacher.id },
-            status: "PRESENT"
+            user: { id: effectiveTeacher.id }
           }
         });
-
         if (!teacherAttendance) {
-          return res.status(400).json({
-            error: "لا يمكن توثيق التقرير وإنهاء الحصة: يجب على المعلم أولاً تأكيد حضوره أثناء وقت الحصة المحدد (بين موعد البدء وموعد الانتهاء). لم يتم تسجيل حضورك في موعد الحصة."
-          });
+          teacherAttendance = new SessionAttendance();
+          teacherAttendance.session = session;
+          teacherAttendance.user = effectiveTeacher;
+          teacherAttendance.status = "PRESENT";
+          teacherAttendance.markedBy = { id: req.user!.id } as User;
+          await attendanceRepository.save(teacherAttendance);
+        } else if (teacherAttendance.status !== "PRESENT") {
+          teacherAttendance.status = "PRESENT";
+          await attendanceRepository.save(teacherAttendance);
         }
       }
 

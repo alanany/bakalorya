@@ -1,4 +1,4 @@
-import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from '../../app.js';
+import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML, getUserTimezone } from '../../app.js';
 
 /**
  * Calculates estimated remaining time or status for a session.
@@ -2705,6 +2705,7 @@ export const AdminSessionsPage = {
     });
 
     this.sessionTimeFilter = this.sessionTimeFilter || 'all';
+    this.sessionTeacherFilter = this.sessionTeacherFilter || 'all';
     this.sessionViewMode = this.sessionViewMode || 'list';
     this.sessionCustomDate = this.sessionCustomDate || '';
 
@@ -2712,8 +2713,22 @@ export const AdminSessionsPage = {
     const todayYMD = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
     const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toDateString();
 
-    // Calculate Week Range (Sunday to Saturday)
-    const currentDay = now.getDay();
+    // Build unique list of teachers from all sessions
+    const teacherMap = new Map();
+    allSessions.forEach(s => {
+      const t = s.teacher || s.course?.teacher || s.group?.teacher;
+      const tId = t?.id || s.teacherId || s.course?.teacherId || s.group?.teacherId;
+      const tName = t?.name || (tId ? `معلم #${String(tId).substring(0, 6)}` : null);
+      if (tId && tName && !teacherMap.has(String(tId))) {
+        teacherMap.set(String(tId), tName);
+      }
+    });
+    const teachersList = Array.from(teacherMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+    // Calculate Week Range (Saturday to Friday)
+    const currentDay = (now.getDay() + 1) % 7; // days since Saturday
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay);
     startOfWeek.setHours(0, 0, 0, 0);
     const endOfWeek = new Date(startOfWeek);
@@ -2724,8 +2739,17 @@ export const AdminSessionsPage = {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // Apply Time Filter
+    // Apply Teacher & Time Filters
     const filteredSessions = allSessions.filter(s => {
+      // 1. Teacher Filter
+      if (this.sessionTeacherFilter && this.sessionTeacherFilter !== 'all') {
+        const sTeacherId = s.teacher?.id || s.teacherId || s.course?.teacher?.id || s.course?.teacherId || s.group?.teacherId;
+        if (String(sTeacherId) !== String(this.sessionTeacherFilter)) {
+          return false;
+        }
+      }
+
+      // 2. Time Filter
       if (!s.scheduledAt) return this.sessionTimeFilter === 'all';
       const sDate = new Date(s.scheduledAt);
 
@@ -2750,7 +2774,7 @@ export const AdminSessionsPage = {
       return `<span style="background:rgba(99,102,241,0.12); color:#6366f1; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px;">📅 مجدولة</span>`;
     };
 
-    const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const dayNames = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
     return `
       <div style="margin-bottom:24px;">
@@ -2759,7 +2783,7 @@ export const AdminSessionsPage = {
             <h3 style="font-weight:800; font-size:1.2rem; color:var(--text-main); margin:0;">
               ${filterSubId ? `حصص الاشتراك #${filterSubId.substring(0, 8)} (${filteredSessions.length})` : `📹 إدارة الحصص والحصص المباشرة (${filteredSessions.length})`}
             </h3>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">فلترة الحصص حسب اليوم والأسبوع والشهر والمعلم مع إمكانية المعاينة كجدول حصص أسبوعي (Timetable).</p>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <button class="btn-primary" id="admin-open-group-session-btn" style="padding:10px 18px; font-size:0.88rem; font-weight:800; gap:8px; background:linear-gradient(135deg,#8b5cf6,#ec4899); border:none; border-radius:12px;">
@@ -2772,26 +2796,42 @@ export const AdminSessionsPage = {
         <!-- Filter Bar & View Switcher -->
         <div class="glass-card" style="padding:14px 20px; border-radius:16px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
           
-          <!-- Time Filters -->
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <span style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin-inline-end:4px;">⏱️ فلترة المواعيد:</span>
+          <!-- Filters (Time & Teacher) -->
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             
-            <button class="btn-secondary admin-session-time-filter-btn" data-filter="all" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'all' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
-              الكل (${allSessions.length})
-            </button>
-            <button class="btn-secondary admin-session-time-filter-btn" data-filter="today" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'today' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
-              ☀️ اليوم
-            </button>
-            <button class="btn-secondary admin-session-time-filter-btn" data-filter="week" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'week' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
-              📅 هذا الأسبوع
-            </button>
-            <button class="btn-secondary admin-session-time-filter-btn" data-filter="month" style="padding:6px 14px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'month' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
-              🗓️ هذا الشهر
-            </button>
+            <!-- Time Filter Buttons -->
+            <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin-inline-end:2px;">⏱️ المواعيد:</span>
+              
+              <button class="btn-secondary admin-session-time-filter-btn" data-filter="all" style="padding:6px 12px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'all' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+                الكل (${allSessions.length})
+              </button>
+              <button class="btn-secondary admin-session-time-filter-btn" data-filter="today" style="padding:6px 12px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'today' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+                ☀️ اليوم
+              </button>
+              <button class="btn-secondary admin-session-time-filter-btn" data-filter="week" style="padding:6px 12px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'week' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+                📅 هذا الأسبوع
+              </button>
+              <button class="btn-secondary admin-session-time-filter-btn" data-filter="month" style="padding:6px 12px; font-size:0.8rem; font-weight:700; ${this.sessionTimeFilter === 'month' ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">
+                🗓️ هذا الشهر
+              </button>
 
-            <div style="display:inline-flex; align-items:center; gap:6px; margin-inline-start:4px;">
-              <input type="date" id="admin-session-date-picker" class="form-input" style="padding:4px 10px; font-size:0.8rem; border-radius:8px;" value="${this.sessionCustomDate || todayYMD}">
+              <div style="display:inline-flex; align-items:center; gap:4px; margin-inline-start:2px;">
+                <input type="date" id="admin-session-date-picker" class="form-input" style="padding:4px 8px; font-size:0.8rem; border-radius:8px;" value="${this.sessionCustomDate || todayYMD}">
+              </div>
             </div>
+
+            <!-- Teacher Filter Dropdown -->
+            <div style="display:inline-flex; align-items:center; gap:6px;">
+              <span style="font-size:0.82rem; font-weight:800; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
+                👨‍🏫 المعلم:
+              </span>
+              <select id="admin-session-teacher-filter-select" class="form-input" style="padding:6px 10px; font-size:0.8rem; border-radius:10px; max-width:210px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border-color); cursor:pointer;">
+                <option value="all" ${this.sessionTeacherFilter === 'all' ? 'selected' : ''}>جميع المعلمين (${teachersList.length})</option>
+                ${teachersList.map(t => `<option value="${t.id}" ${this.sessionTeacherFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+              </select>
+            </div>
+
           </div>
 
           <!-- View Mode Toggle -->
@@ -2818,7 +2858,7 @@ export const AdminSessionsPage = {
       const daySessions = filteredSessions.filter(s => {
         if (!s.scheduledAt) return false;
         const d = new Date(s.scheduledAt);
-        return d.getDay() === dayIdx;
+        return d.toDateString() === dayDate.toDateString();
       }).sort((a, b) => new Date(a.scheduledAt || 0) - new Date(b.scheduledAt || 0));
 
       return `
@@ -2879,14 +2919,20 @@ export const AdminSessionsPage = {
                           </div>
                         ` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px; justify-content:flex-end; flex-wrap:wrap; align-items:center;">
-                          ${sess.status?.toLowerCase() !== "completed" && !sess.status?.toLowerCase().includes("cancelled") ? `
+                          ${(sess.status || '').toLowerCase() === "completed" ? `
+                            <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
+                              <i data-lucide="check-circle" style="width:12px;height:12px;"></i> مكتملة
+                            </span>
+                          ` : (sess.status || '').toLowerCase().includes("cancelled") ? `
+                            <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px;">❌ ملغاة</span>
+                          ` : `
                             <button class="btn-secondary admin-complete-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
                               <i data-lucide="check-circle" style="width:11px;height:11px;"></i> إتمام 💰
                             </button>
                             <button class="btn-secondary admin-reassign-teacher-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px;">تغيير المعلم</button>
                             <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:var(--error);">إلغاء</button>
-                          ` : ''}
-                          <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; cursor:pointer;">Google Meet 🎥</button>
+                            <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; cursor:pointer;">Google Meet 🎥</button>
+                          `}
                         </div>
                       </div>
                     `;
@@ -2920,7 +2966,28 @@ export const AdminSessionsPage = {
                 </thead>
                 <tbody>
                   ${filteredSessions.map(sess => {
-      const dateStr = sess.scheduledAt ? new Date(sess.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
+      const isCompleted = (sess.status || "").toLowerCase() === "completed";
+      const isCancelled = (sess.status || "").toLowerCase().includes("cancelled");
+      const userTz = getUserTimezone();
+
+      let dateDisplay = "-";
+      let timeDisplay = "";
+      if (sess.scheduledAt) {
+        const d = new Date(sess.scheduledAt);
+        const dayName = d.toLocaleDateString("ar-EG", { weekday: "long" }) || "";
+        let datePart = "";
+        let timePart = "";
+        try {
+          datePart = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", timeZone: userTz });
+          timePart = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: userTz });
+        } catch (e) {
+          datePart = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
+          timePart = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+        }
+        dateDisplay = `${dayName}، ${datePart}`;
+        timeDisplay = timePart;
+      }
+
       const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
       const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة 1-على-1");
       const countdown = getSessionCountdownInfo(sess.scheduledAt, sess.status);
@@ -2938,25 +3005,42 @@ export const AdminSessionsPage = {
                           <div style="font-size:0.85rem; color:var(--text-main);">${studentName}</div>
                         </td>
                         <td style="padding:14px 16px; vertical-align:middle;">
-                          <div style="font-size:0.82rem; font-weight:700; color:var(--primary);">${dateStr}</div>
-                          <span style="font-size:0.75rem; color:var(--text-muted);">${sess.duration || 60} دقيقة</span>
+                          <div style="font-size:0.84rem; font-weight:800; color:var(--text-main); display:inline-flex; align-items:center; gap:5px;">
+                            <i data-lucide="calendar" style="width:14px; height:14px; color:var(--primary);"></i>
+                            <span>${dateDisplay}</span>
+                          </div>
+                          ${timeDisplay ? `
+                            <div style="font-size:0.78rem; font-weight:700; color:var(--primary); margin-top:3px; display:inline-flex; align-items:center; gap:4px;">
+                              <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                              <span>${timeDisplay}</span>
+                              <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${sess.duration || 60} دقيقة)</span>
+                            </div>
+                          ` : `
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${sess.duration || 60} دقيقة</div>
+                          `}
                         </td>
                         <td style="padding:14px 16px; vertical-align:middle;">
                           ${getStatusBadge(sess.status)}
                         </td>
                         <td style="padding:14px 20px; vertical-align:middle; text-align:end;">
                           <div style="display:inline-flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; align-items:center;">
-                            ${countdown.shouldShow ? `
-                              <span style="font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:10px; background:${countdown.isNear ? 'rgba(245,158,11,0.12)' : countdown.isLive ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.1)'}; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.25)' : countdown.isLive ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:4px;" title="الوقت التقديري المتبقي لبدء الحصة">
-                                <i data-lucide="${countdown.isLive ? 'radio' : 'clock'}" style="width:12px;height:12px;"></i>
-                                ${countdown.text}
+                            ${isCompleted ? `
+                              <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.8rem; padding:6px 14px; border-radius:20px; display:inline-flex; align-items:center; gap:5px;">
+                                <i data-lucide="check-circle" style="width:14px;height:14px;"></i> مكتملة
                               </span>
-                              <button class="btn-secondary admin-session-whatsapp-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 11px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3);" title="إرسال تذكير واتساب مخصص للمعلم والطالب">
-                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i>
-                                <span>تذكير واتساب 📲</span>
-                              </button>
-                            ` : ''}
-                            ${sess.status?.toLowerCase() !== "completed" && !sess.status?.toLowerCase().includes("cancelled") ? `
+                            ` : isCancelled ? `
+                              <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; font-weight:800; font-size:0.8rem; padding:6px 14px; border-radius:20px;">❌ ملغاة</span>
+                            ` : `
+                              ${countdown.shouldShow ? `
+                                <span style="font-size:0.75rem; font-weight:800; padding:4px 9px; border-radius:10px; background:${countdown.isNear ? 'rgba(245,158,11,0.12)' : countdown.isLive ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.1)'}; color:${countdown.isNear ? '#d97706' : countdown.isLive ? '#ef4444' : '#059669'}; border:1px solid ${countdown.isNear ? 'rgba(245,158,11,0.25)' : countdown.isLive ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}; display:inline-flex; align-items:center; gap:4px;" title="الوقت التقديري المتبقي لبدء الحصة">
+                                  <i data-lucide="${countdown.isLive ? 'radio' : 'clock'}" style="width:12px;height:12px;"></i>
+                                  ${countdown.text}
+                                </span>
+                                <button class="btn-secondary admin-session-whatsapp-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 11px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3);" title="إرسال تذكير واتساب مخصص للمعلم والطالب">
+                                  <i data-lucide="message-circle" style="width:13px;height:13px;"></i>
+                                  <span>تذكير واتساب 📲</span>
+                                </button>
+                              ` : ''}
                               <button class="btn-secondary admin-complete-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 11px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;" title="إتمام الحصة وإضافة الأجر لمحفظة المعلم">
                                 <i data-lucide="check-circle" style="width:12px;height:12px;"></i> إتمام الحصة 💰
                               </button>
@@ -2966,10 +3050,10 @@ export const AdminSessionsPage = {
                               <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:var(--error); color:var(--error); font-weight:700;">
                                 <i data-lucide="x-circle" style="width:12px;height:12px;"></i> إلغاء الحصة
                               </button>
-                            ` : ''}
-                            <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-                              <i data-lucide="video" style="width:12px;height:12px;"></i> Google Meet 🎥
-                            </button>
+                              <button class="btn-primary" data-join-meet-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                                <i data-lucide="video" style="width:12px;height:12px;"></i> Google Meet 🎥
+                              </button>
+                            `}
                           </div>
                         </td>
                       </tr>
@@ -5116,8 +5200,9 @@ export const AdminSessionsPage = {
     if (window.lucide) window.lucide.createIcons();
 
     let reminderData = null;
+    const userTz = getUserTimezone();
     try {
-      reminderData = await apiFetch(`/sessions/${sessionId}/reminder-data`);
+      reminderData = await apiFetch(`/sessions/${sessionId}/reminder-data?tz=${encodeURIComponent(userTz)}`);
     } catch (err) {
       console.warn("API reminder-data fetch failed, falling back to cached session data:", err);
     }
@@ -5137,8 +5222,15 @@ export const AdminSessionsPage = {
       const studentPhone = sess.student?.phone || "";
       const meetLink = (sess.meetingLink || sess.course?.meetingLink || teacher?.meetingLink || "").trim();
       const schedDate = sess.scheduledAt ? new Date(sess.scheduledAt) : new Date();
-      const dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-      const timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      let dateStr = "";
+      let timeStr = "";
+      try {
+        dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: userTz });
+        timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: userTz });
+      } catch (e) {
+        dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      }
       const title = sess.title || sess.course?.title || "حصة دراسية مباشرة";
 
       const tMsg = `مرحباً أستاذ ${teacherName} 🌸\nتذكير بموعد حصتك القادمة على منصة بكالوريا:\n\n📚 عنوان الحصة: *${title}*\n👥 مع: *${studentName}*\n⏰ الموعد: *${dateStr}* - الساعة *${timeStr}*\n🔗 رابط Google Meet:\n${meetLink || "داخل حسابك بالمنصة"}\n\nيرجى التواجد قبل الحصة بـ 5 دقائق لتجهيز القاعة وتأكيد الحضور للطلاب. بالتوفيق! 🌟`;
@@ -5170,7 +5262,7 @@ export const AdminSessionsPage = {
 
     const { session, teacher, student, isGroup, students, groupBroadcastText } = reminderData;
     const countdown = getSessionCountdownInfo(session.scheduledAt, session.status);
-    const dateFormatted = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short' }) : '-';
+    const dateFormatted = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short', timeZone: userTz }) : '-';
 
     const closeModal = () => {
       const modal = document.getElementById("session-whatsapp-modal");

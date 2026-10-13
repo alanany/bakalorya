@@ -16,6 +16,7 @@ let User = class User {
     name;
     email;
     password; // Hashed password, optional until invitation is accepted
+    plainPassword;
     role;
     status;
     isBlocked;
@@ -35,6 +36,7 @@ let User = class User {
     phone;
     parentPhone;
     timezone;
+    notes;
     createdAt;
     updatedAt;
 };
@@ -55,6 +57,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "plainPassword", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: "student" }),
     __metadata("design:type", String)
@@ -131,6 +137,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true, default: "Africa/Cairo" }),
     __metadata("design:type", String)
 ], User.prototype, "timezone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "notes", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

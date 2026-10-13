@@ -1,4 +1,4 @@
-import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML } from "../../app.js";
+import { apiFetch, state, setAuth, showToast, t, confirmDialog, renderPhoneInputGroup, getCleanWhatsAppNumber, renderEducationSelectHTML, handleWhatsAppResponse, formatSessionDateTime, getTimezoneBadgeHTML, startImpersonation } from "../../app.js";
 
 // ── Page Module Imports ──────────────────────────────────────────────────────
 import { AdminStatsPage } from './AdminStatsPage.js';
@@ -1505,6 +1505,15 @@ export default class AdminView {
       });
     }
 
+    // Session Teacher Filter Dropdown
+    const sessionTeacherFilter = this.container.querySelector("#admin-session-teacher-filter-select");
+    if (sessionTeacherFilter) {
+      sessionTeacherFilter.addEventListener("change", (e) => {
+        this.sessionTeacherFilter = e.target.value;
+        this.renderTab("sessions");
+      });
+    }
+
     // Session View Mode Switcher (List vs Timetable)
     this.container.querySelectorAll(".admin-session-view-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
@@ -1954,6 +1963,37 @@ export default class AdminView {
           showToast(res.message || "تم إعادة تعيين كلمة المرور بنجاح إلى 123456", "success");
         } catch (err) {
           showToast(err.message || "فشل إعادة تعيين كلمة المرور", "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Impersonate User (Login as user)
+    this.container.querySelectorAll(".impersonate-user-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (state.user?.role !== "admin") return showToast("هذه الصلاحية خاصة بمدير النظام فقط", "error");
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "المستخدم";
+
+        const confirmed = await confirmDialog({
+          title: "تسجيل الدخول للحساب 🚀",
+          message: `هل تريد الدخول المباشر إلى حساب "${name}"؟ يمكنك العودة لحساب الأدمن في أي وقت عبر الشريط العلوي.`,
+          confirmText: "نعم، الدخول للحساب",
+          cancelText: "إلغاء",
+          danger: false
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/users/${id}/impersonate`, { method: "POST" });
+          if (res.token && res.user) {
+            showToast(`جاري الدخول لحساب ${name}...`, "success");
+            startImpersonation(res.token, res.user);
+          }
+        } catch (err) {
+          showToast(err.message || "فشل الدخول لحساب المستخدم", "error");
         } finally {
           btn.disabled = false;
         }

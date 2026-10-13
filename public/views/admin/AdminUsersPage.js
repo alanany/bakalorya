@@ -101,6 +101,13 @@ export const AdminUsersPage = {
                               <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);"></i> ${u.email}
                             </a>
                           </div>
+                          ${u.plainPassword ? `
+                            <div style="margin-top:3px;">
+                              <span style="background:rgba(245,158,11,0.1);color:#d97706;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="كلمة المرور الحالية">
+                                🔑 <code style="font-family:monospace;letter-spacing:0.5px;">${u.plainPassword}</code>
+                              </span>
+                            </div>
+                          ` : ''}
                           ${u.phone ? `
                             <div style="margin-top:4px;">
                               <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:3px 8px; border-radius:8px;" title="فتح محادثة واتساب">
@@ -136,6 +143,11 @@ export const AdminUsersPage = {
                             <button class="btn-primary view-teacher-profile-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="عرض الملف الأكاديمي والجدول والمجموعات والطلاب والماليات للمعلم">
                               <i data-lucide="calendar" style="width:12px;height:12px;"></i> الملف والجدول 👤
                             </button>
+                            ${state.user?.role === "admin" ? `
+                            <button class="btn-primary impersonate-user-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,0.25);" title="الدخول المباشر لحساب المعلم">
+                              <i data-lucide="log-in" style="width:12px;height:12px;"></i> دخول 🚀
+                            </button>
+                            ` : ''}
                             ${u.phone ? `
                               <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 11px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب مباشرة">
                                 <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
@@ -622,6 +634,13 @@ export const AdminUsersPage = {
                               <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);"></i> ${u.email}
                             </a>
                           </div>
+                          ${u.plainPassword ? `
+                            <div style="margin-top:3px;">
+                              <span style="background:rgba(245,158,11,0.1);color:#d97706;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="كلمة المرور الحالية">
+                                🔑 <code style="font-family:monospace;letter-spacing:0.5px;">${u.plainPassword}</code>
+                              </span>
+                            </div>
+                          ` : ''}
                           ${u.phone ? `
                             <div style="margin-top:4px;">
                               <a href="https://wa.me/${cleanPhone}?text=${studentWaText}" target="_blank" style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:2px 8px; border-radius:6px;" title="واتساب الطالب">
@@ -675,6 +694,11 @@ export const AdminUsersPage = {
                             <button class="btn-primary view-student-profile-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="عرض الملف الأكاديمي والجدول الدراسي للطالب">
                               <i data-lucide="calendar" style="width:12px;height:12px;"></i> الملف والجدول 👤
                             </button>
+                            ${state.user?.role === "admin" ? `
+                            <button class="btn-primary impersonate-user-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,0.25);" title="الدخول المباشر لحساب الطالب">
+                              <i data-lucide="log-in" style="width:12px;height:12px;"></i> دخول 🚀
+                            </button>
+                            ` : ''}
                             ${state.user?.role === "admin" ? `
                             ${isPending ? `
                               <button class="btn-primary approve-student-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg, #10b981, #059669);border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,0.3);" title="الموافقة على تسجيل الطالب وتفعيل حسابه">
@@ -780,6 +804,13 @@ export const AdminUsersPage = {
         </td>
         <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
           <div>${user.email}</div>
+          ${user.plainPassword ? `
+            <div style="margin-top:3px;">
+              <span style="background:rgba(245,158,11,0.1);color:#d97706;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="كلمة المرور الحالية">
+                🔑 <code style="font-family:monospace;letter-spacing:0.5px;">${user.plainPassword}</code>
+              </span>
+            </div>
+          ` : ''}
           ${user.phone ? `
             <div style="margin-top:3px;">
               <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(`مرحباً ${user.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" style="color:#10b981;font-size:0.78rem;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="واتساب">
@@ -808,6 +839,11 @@ export const AdminUsersPage = {
             ` : user.role === "student" ? `
               <button class="btn-primary view-student-profile-btn" data-id="${user.id}" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;" title="عرض ملف وجدول الطالب">
                 <i data-lucide="calendar" style="width:11px;height:11px;"></i> الملف والجدول 👤
+              </button>
+            ` : ''}
+            ${state.user?.role === "admin" && !isMe ? `
+              <button class="btn-primary impersonate-user-btn" data-id="${user.id}" data-name="${user.name}" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,0.25);" title="الدخول المباشر لحساب المستخدم">
+                <i data-lucide="log-in" style="width:11px;height:11px;"></i> دخول 🚀
               </button>
             ` : ''}
             ${cleanPhone ? `

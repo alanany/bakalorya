@@ -5,6 +5,7 @@ import { CourseGroup } from "../entity/CourseGroup";
 import { Course } from "../entity/Course";
 import { Session } from "../entity/Session";
 import { Subscription } from "../entity/Subscription";
+import { TeacherEarning } from "../entity/TeacherEarning";
 import { AuditLog } from "../entity/AuditLog";
 import { AuthRequest } from "../middleware/auth";
 import crypto from "crypto";
@@ -268,6 +269,16 @@ export class AdminTeacherController {
         if (g.id) groupMap.set(g.id, g);
       });
 
+      // Load recorded Teacher Earnings for this teacher to respect actual payouts/earnings
+      const earningRepo = AppDataSource.getRepository(TeacherEarning);
+      const teacherEarnings = await earningRepo.find({
+        where: { teacher: { id: teacherId } }
+      });
+      const earningBySessionMap = new Map<string, number>();
+      teacherEarnings.forEach(e => {
+        if (e.sourceId) earningBySessionMap.set(e.sourceId, Number(e.amount));
+      });
+
       const now = new Date();
       const mappedSessions = uniqueSessions.map(s => {
         const fullGroup = s.group?.id ? (groupMap.get(s.group.id) || s.group) : s.group;
@@ -278,6 +289,23 @@ export class AdminTeacherController {
         const isToday = sessionDate.toDateString() === now.toDateString();
 
         const displaySubject = subjectName || (crs?.title) || "المادة الدراسية";
+        const durationMinutes = s.duration || 60;
+        const durationHours = durationMinutes / 60;
+
+        // Group's fixed teacher hourly rate has priority, fallback to teacher base rate, default 150
+        const isGroup = !!fullGroup;
+        const groupHourlyRate = (fullGroup && fullGroup.teacherHourlyRate !== undefined && fullGroup.teacherHourlyRate !== null && Number(fullGroup.teacherHourlyRate) > 0)
+          ? Number(fullGroup.teacherHourlyRate)
+          : null;
+
+        const effectiveHourlyRate = groupHourlyRate !== null
+          ? groupHourlyRate
+          : (teacher.hourlyRate !== undefined && teacher.hourlyRate !== null && Number(teacher.hourlyRate) > 0 ? Number(teacher.hourlyRate) : 150);
+
+        // Actual earning: if recorded in teacher_earning use that, otherwise compute durationHours * effectiveHourlyRate
+        const sessionEarnings = earningBySessionMap.has(s.id)
+          ? earningBySessionMap.get(s.id)!
+          : Math.round(durationHours * effectiveHourlyRate);
 
         return {
           id: s.id,
@@ -286,12 +314,19 @@ export class AdminTeacherController {
           rawTitle: s.title || null,
           type: s.group ? "GROUP" : "PRIVATE",
           scheduledAt: s.scheduledAt,
-          duration: s.duration || 60,
+          duration: durationMinutes,
+          hourlyRate: effectiveHourlyRate,
+          isGroupRate: groupHourlyRate !== null,
+          earnings: sessionEarnings,
           meetingLink: s.meetingLink || fullGroup?.meetingLink || teacher.meetingLink || null,
           status: s.status || (isPast ? "COMPLETED" : "SCHEDULED"),
           isPast,
           isToday,
-          group: fullGroup ? { id: fullGroup.id, name: fullGroup.name } : null,
+          group: fullGroup ? {
+            id: fullGroup.id,
+            name: fullGroup.name,
+            teacherHourlyRate: fullGroup.teacherHourlyRate !== undefined && fullGroup.teacherHourlyRate !== null ? Number(fullGroup.teacherHourlyRate) : effectiveHourlyRate
+          } : null,
           course: crs ? { id: crs.id, title: crs.title, subject: (crs as any).subject?.name || null } : null,
           student: s.student ? { id: s.student.id, name: s.student.name, phone: s.student.phone } : null
         };
@@ -305,7 +340,8 @@ export class AdminTeacherController {
       const totalMinutes = completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0);
       const completedHours = Math.round((totalMinutes / 60) * 10) / 10;
       const hourlyRate = teacher.hourlyRate !== undefined ? teacher.hourlyRate : 150;
-      const totalSalary = Math.round(completedHours * hourlyRate);
+      // Calculate total salary by accurately summing each completed session's earnings (based on fixed group hour rates)
+      const totalSalary = completedSessions.reduce((sum, s) => sum + (s.earnings || 0), 0);
 
       // 5. Private Subscriptions
       const subRepo = AppDataSource.getRepository(Subscription);
@@ -324,6 +360,9 @@ export class AdminTeacherController {
           scheduleText: g.scheduleText || (g.scheduleDays ? `${g.scheduleDays} ${g.scheduleTime ? 'الساعة ' + g.scheduleTime : ''}` : null),
           meetingLink: g.meetingLink || teacher.meetingLink || null,
           status: g.status,
+          teacherHourlyRate: g.teacherHourlyRate !== undefined && g.teacherHourlyRate !== null ? Number(g.teacherHourlyRate) : (teacher.hourlyRate || 100),
+          sessionPrice: g.sessionPrice,
+          studentHourlyRate: g.studentHourlyRate,
           course: g.course ? {
             id: g.course.id,
             title: g.course.title,
@@ -361,6 +400,7 @@ export class AdminTeacherController {
           isBlocked: teacher.isBlocked,
           blockReason: teacher.blockReason,
           notes: teacher.notes,
+          plainPassword: teacher.plainPassword,
           createdAt: teacher.createdAt
         },
         stats: {
@@ -434,6 +474,15 @@ export class AdminTeacherController {
 
       teacher.hourlyRate = rateNum;
       await userRepo.save(teacher);
+
+      if (req.body.applyToAllGroups) {
+        const groupRepo = AppDataSource.getRepository(CourseGroup);
+        await groupRepo.createQueryBuilder()
+          .update(CourseGroup)
+          .set({ teacherHourlyRate: rateNum })
+          .where("teacherId = :teacherId", { teacherId })
+          .execute();
+      }
 
       return res.status(200).json({ success: true, message: "تم تحديث أجر الساعة بنجاح.", hourlyRate: teacher.hourlyRate });
     } catch (err: any) {

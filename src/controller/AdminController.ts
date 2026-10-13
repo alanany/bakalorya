@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { IsNull } from "typeorm";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
 import { Course } from "../entity/Course";
@@ -257,12 +258,13 @@ export class AdminController {
       }
       if (password && password.trim().length >= 4) {
         user.password = await bcrypt.hash(password, 10);
+        user.plainPassword = password.trim();
       }
 
       await userRepo.save(user);
       return res.json({
         message: "User updated successfully.",
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, status: user.status, isBlocked: user.isBlocked, blockReason: user.blockReason, notes: user.notes }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, hourlyRate: user.hourlyRate, meetingLink: user.meetingLink, teacherCapabilities: user.teacherCapabilities, avatar: user.avatar, status: user.status, isBlocked: user.isBlocked, blockReason: user.blockReason, notes: user.notes, plainPassword: user.plainPassword }
       });
     } catch (err) {
       return res.status(500).json({ error: "Failed to update user." });
@@ -321,8 +323,8 @@ export class AdminController {
       }
 
       const roleName = user.role === "teacher" ? "المعلم" : (user.role === "student" ? "الطالب" : (user.role === "supervisor" ? "المشرف" : "المستخدم"));
-      const actionMsg = newBlockedState 
-        ? `تم حظر ${roleName} (${user.name}) ومنعه من تسجيل الدخول إلى الأكاديمية بنجاح. 🚫` 
+      const actionMsg = newBlockedState
+        ? `تم حظر ${roleName} (${user.name}) ومنعه من تسجيل الدخول إلى الأكاديمية بنجاح. 🚫`
         : `تم إلغاء حظر ${roleName} (${user.name}) والسماح له بتسجيل الدخول بنجاح! ✅`;
 
       return res.json({
@@ -361,6 +363,7 @@ export class AdminController {
 
       const newPwd = password.trim();
       user.password = await bcrypt.hash(newPwd, 10);
+      user.plainPassword = newPwd;
       await userRepo.save(user);
 
       // Audit Log
@@ -389,11 +392,75 @@ export class AdminController {
       const roleLabel = user.role === "student" ? "الطالب" : (user.role === "teacher" ? "المعلم" : (user.role === "supervisor" ? "المشرف" : "المستخدم"));
       return res.json({
         message: `تم إعادة تعيين كلمة مرور ${roleLabel} (${user.name}) بنجاح إلى: ${newPwd} 🔑`,
+        plainPassword: newPwd,
         success: true
       });
     } catch (err) {
       console.error("Reset password error:", err);
       return res.status(500).json({ error: "فشل إعادة تعيين كلمة المرور." });
+    }
+  }
+
+  // POST /admin/users/:id/impersonate — 1-Click Login As user for troubleshooting
+  static async impersonateUser(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const targetUser = await userRepo.findOneBy({ id });
+      if (!targetUser) return res.status(404).json({ error: "المستخدم غير موجود." });
+
+      if (targetUser.role === "admin") {
+        return res.status(400).json({ error: "لا يمكن تسجيل الدخول كمسؤول إداري آخر." });
+      }
+
+      const JWT_SECRET = process.env.JWT_SECRET || "bakalorya_secret_jwt_key_2026_secured";
+      const token = jwt.sign(
+        { id: targetUser.id, email: targetUser.email, role: targetUser.role },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      // Audit Log
+      try {
+        if (req.user?.id) {
+          const auditRepo = AppDataSource.getRepository(AuditLog);
+          const audit = new AuditLog();
+          audit.actor = { id: req.user.id } as User;
+          audit.action = "ADMIN_IMPERSONATE_USER";
+          audit.entityType = "User";
+          audit.entityId = targetUser.id;
+          audit.metadata = JSON.stringify({
+            targetEmail: targetUser.email,
+            targetRole: targetUser.role,
+            targetName: targetUser.name
+          });
+          await auditRepo.save(audit);
+        }
+      } catch (e) {}
+
+      return res.json({
+        token,
+        user: {
+          id: targetUser.id,
+          name: targetUser.name,
+          email: targetUser.email,
+          role: targetUser.role,
+          avatar: targetUser.avatar,
+          phone: targetUser.phone,
+          parentPhone: targetUser.parentPhone,
+          location: targetUser.location,
+          education: targetUser.education,
+          meetingLink: targetUser.meetingLink,
+          teacherCapabilities: targetUser.teacherCapabilities || [],
+          isBlocked: targetUser.isBlocked,
+          status: targetUser.status,
+          plainPassword: targetUser.plainPassword
+        },
+        message: `تم إنشاء جلسة الدخول لحساب ${targetUser.name} بنجاح`
+      });
+    } catch (err) {
+      console.error("Impersonate user error:", err);
+      return res.status(500).json({ error: "فشل إنشاء جلسة الدخول للمستخدم." });
     }
   }
 
@@ -458,8 +525,8 @@ export class AdminController {
         const allGroups = await groupRepo.find({
           relations: ["teacher", "course", "course.teacher"]
         });
-        const teacherGroups = allGroups.filter(g => 
-          (g.teacher && g.teacher.id === id) || 
+        const teacherGroups = allGroups.filter(g =>
+          (g.teacher && g.teacher.id === id) ||
           (g.course?.teacher && g.course.teacher.id === id)
         );
 
@@ -558,7 +625,7 @@ export class AdminController {
             try {
               const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
               if (atts.length > 0) await attendanceRepo.remove(atts);
-            } catch (e) {}
+            } catch (e) { }
           }
           if (grpSessions.length > 0) {
             await sessionRepo.remove(grpSessions);
@@ -572,7 +639,7 @@ export class AdminController {
             try {
               const subs = await submissionRepo.find({ where: { assignment: { id: a.id } } });
               if (subs.length > 0) await submissionRepo.remove(subs);
-            } catch (e) {}
+            } catch (e) { }
           }
           if (grpAssignments.length > 0) {
             await assignmentRepo.remove(grpAssignments);
@@ -599,7 +666,7 @@ export class AdminController {
                   const filename = path.basename(p.receiptUrl);
                   const fPath = path.join(uploadDir, filename);
                   if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
-                } catch (e) {}
+                } catch (e) { }
               }
               enr.payment = null as any;
               await enrollmentRepo.save(enr);
@@ -647,7 +714,7 @@ export class AdminController {
           try {
             const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
             if (atts.length > 0) await attendanceRepo.remove(atts);
-          } catch (e) {}
+          } catch (e) { }
         }
         if (remainingTeacherSessions.length > 0) {
           await sessionRepo.remove(remainingTeacherSessions);
@@ -813,7 +880,7 @@ export class AdminController {
               const filename = path.basename(p.receiptUrl);
               const fPath = path.join(uploadDir, filename);
               if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -826,7 +893,7 @@ export class AdminController {
                 const filename = path.basename(p.receiptUrl);
                 const fPath = path.join(uploadDir, filename);
                 if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
-              } catch (e) {}
+              } catch (e) { }
             }
             enr.payment = null as any;
             await enrollmentRepo.save(enr);
@@ -849,7 +916,7 @@ export class AdminController {
           try {
             const atts = await attendanceRepo.find({ where: { session: { id: s.id } } });
             if (atts.length > 0) await attendanceRepo.remove(atts);
-          } catch (e) {}
+          } catch (e) { }
         }
         if (studentPrivateSessions.length > 0) {
           await sessionRepo.remove(studentPrivateSessions);
@@ -875,7 +942,7 @@ export class AdminController {
                   const filename = path.basename(ans.fileUrl);
                   const fPath = path.join(uploadDir, filename);
                   if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
-                } catch (e) {}
+                } catch (e) { }
               }
             }
           }
@@ -884,7 +951,7 @@ export class AdminController {
               const filename = path.basename(sub.feedbackFileUrl);
               const fPath = path.join(uploadDir, filename);
               if (fs.existsSync(fPath)) fs.unlinkSync(fPath);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (submissions.length > 0) {
@@ -934,14 +1001,14 @@ export class AdminController {
 
       // Finally delete the user record
       await userRepo.remove(user);
-      return res.json({ 
-        message: user.role === "teacher" 
+      return res.json({
+        message: user.role === "teacher"
           ? `تم حذف حساب المعلم "${user.name}" وإزالة جميع المجموعات والكورسات والبيانات المرتبطة به بنجاح من كافة أقسام المنصة! ✅`
           : (user.role === "student"
             ? `تم حذف حساب الطالب "${user.name}" وإلغاء قيده وحذف كافة بياناته المالية والإيصالات والواجبات المرتبطة به بنجاح! ✅`
             : (user.role === "supervisor"
               ? `تم حذف حساب المشرف "${user.name}" بنجاح! ✅`
-              : "تم حذف المستخدم بنجاح.")) 
+              : "تم حذف المستخدم بنجاح."))
       });
     } catch (err: any) {
       console.error("Admin deleteUser error:", err);
@@ -1641,7 +1708,7 @@ export class AdminController {
           type: paymentType
         });
         await auditRepo.save(audit);
-      } catch (aErr) {}
+      } catch (aErr) { }
 
       return res.status(200).json({
         message: "تم حذف الفاتورة والسجل المالي بنجاح! 🗑️✅"

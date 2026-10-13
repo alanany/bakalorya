@@ -324,7 +324,10 @@ export default class TeacherView {
                   <p style="color:var(--text-muted); font-size:0.84rem; margin:3px 0 0 0;">جميع حصص المجموعات المجدولة لليوم بتنسيق جدول الحصص (Timetable)</p>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <button id="teacher-download-timetable-btn" class="btn-primary" style="font-size:0.82rem; padding:8px 15px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, #10b981, #059669); border:none; box-shadow:0 3px 10px rgba(16,185,129,0.25); cursor:pointer;">
+                    <i data-lucide="download" style="width:14px;height:14px;"></i> تحميل وطباعة الجدول 📥
+                  </button>
                   <a href="#schedule" class="btn-secondary" style="font-size:0.82rem; padding:8px 16px; border-radius:14px; border-color:var(--primary); color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     <i data-lucide="calendar"></i> الجدول الأسبوعي الكامل ↗
                   </a>
@@ -358,7 +361,7 @@ export default class TeacherView {
                     <div style="font-size:0.78rem;">يمكنك متابعة جدول الحصص الأسبوعي أو مراجعة واجبات وتكليفات الطلاب.</div>
                   </div>
                 ` : `
-                  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; width:100%;">
+                  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:14px; width:100%;">
                     ${allTodaySessions.map(sess => this.renderTodaySessionCard(sess)).join('')}
                   </div>
                 `}
@@ -921,7 +924,7 @@ export default class TeacherView {
     `;
   }
 
-  // ── Helper: Render Today's Session Card (Timetable Grid Card) ────────────
+  // ── Helper: Render Today's Session Card (Simple & Compact Redesign) ────────────
   renderTodaySessionCard(session) {
     const date = new Date(session.scheduledAt);
     const sessionTime = date.getTime();
@@ -931,9 +934,8 @@ export default class TeacherView {
     const sessionStart = sessionTime;
     const sessionEnd = sessionStart + durationMs;
 
-    const endDate = new Date(sessionEnd);
-    const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const formattedTime = date.toLocaleTimeString('ar-EG', { hour: "2-digit", minute: "2-digit" });
+    const formattedEndTime = new Date(sessionEnd).toLocaleTimeString('ar-EG', { hour: "2-digit", minute: "2-digit" });
 
     const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
     const isPastSession = !isCompleted && (nowTime > sessionEnd);
@@ -943,11 +945,7 @@ export default class TeacherView {
 
     const isGroup = session.sessionType === 'group' || (!session.student && (session.group || session.course));
     const studentName = session.student?.name || session.subscription?.student?.name || session.group?.name || (isGroup ? 'طلاب المجموعة' : 'طالب');
-    const studentAvatar = (session.student?.avatar && !session.student.avatar.includes('dicebear.com')) ? session.student.avatar : 'assets/logo.png';
-
-    const personLabel = (session.student || session.subscription) ? 'الطالب' : 'المجموعة';
     const personName = studentName;
-    const personAvatar = studentAvatar;
     const personIcon = (session.student || session.subscription) ? 'user' : 'users';
 
     const rawSubject = session.course?.subject?.name || 
@@ -956,162 +954,111 @@ export default class TeacherView {
                         (typeof session.subject === 'string' ? session.subject : null);
 
     const courseTitle = session.course?.title || session.course?.category || session.topic || "";
-    const hasSubject = !!rawSubject;
     const subjectName = rawSubject || courseTitle || "حصة تدريسية";
-    const subjectLabel = hasSubject ? "المادة" : "الكورس";
 
     const gradeName = session.course?.grade?.name || 
                       (typeof session.course?.grade === 'string' ? session.course.grade : null) || 
                       null;
 
-    let statusTag = `<span class="session-tag">${t("session.scheduled") || "مجدولة اليوم ⏰"}</span>`;
-    let sessionAction = "";
-
+    let statusBadge = "";
     if (isCompleted) {
-      statusTag = `<span class="session-tag" style="background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:800;">✅ مكتملة وموثقة</span>`;
-      sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:14px; font-size:0.84rem; padding:10px; opacity:0.85; width:100%; justify-content:center;" disabled>تم إنهاء الحصة واحتساب الأرصدة ✅</button>`;
+      statusBadge = `<span style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> مكتملة</span>`;
+    } else if (isLive) {
+      statusBadge = `<span style="background:rgba(239,68,68,0.12); color:#ef4444; font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="radio" style="width:11px;height:11px;"></i> مباشر الآن</span>`;
     } else if (isPastSession) {
-      statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
+      statusBadge = `<span style="background:rgba(245,158,11,0.12); color:#d97706; font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="clock" style="width:11px;height:11px;"></i> انتهت</span>`;
+    } else {
+      statusBadge = `<span style="background:rgba(99,102,241,0.1); color:var(--primary); font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:3px;">📅 اليوم</span>`;
+    }
+
+    let actionHtml = "";
+    if (isCompleted) {
+      actionHtml = `
+        <div style="font-size:0.73rem; color:#10b981; font-weight:800; background:rgba(16,185,129,0.08); padding:5px 8px; border-radius:8px; text-align:center; display:flex; align-items:center; justify-content:center; gap:4px;">
+          <i data-lucide="check-circle-2" style="width:12px;height:12px;"></i> تم إنهاء الحصة واحتساب الرصيد ✅
+        </div>
+      `;
+    } else if (isLive) {
       if (isCheckedIn) {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم في موعد الحصة ✅
-            </span>
-            <button class="btn-primary ${isGroup ? 'end-session-btn' : 'complete-private-btn'}" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:10px; justify-content:center; font-weight:800; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
-              <i data-lucide="file-check" style="width:16px;height:16px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
+        actionHtml = `
+          <div style="display:flex; gap:6px;">
+            <button class="btn-primary" data-join-meet-id="${session.id}" style="flex:1; padding:6px 10px; font-size:0.76rem; font-weight:800; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 6px rgba(16,185,129,0.25);">
+              <i data-lucide="video" style="width:12px;height:12px;"></i> Google Meet 🎥
+            </button>
+            <button class="btn-secondary ${isGroup ? 'end-session-btn' : 'complete-private-btn'}" data-id="${session.id}" style="padding:6px 10px; font-size:0.76rem; font-weight:800; color:var(--error); border-color:var(--error); border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;" title="إنهاء وتوثيق التقرير">
+              <i data-lucide="stop-circle" style="width:12px;height:12px;"></i> إنهاء
             </button>
           </div>
         `;
       } else {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:10px 12px; color:#ef4444; font-size:0.78rem; font-weight:800; text-align:center; line-height:1.4;">
-              <i data-lucide="alert-triangle" style="width:15px; height:15px; vertical-align:middle;"></i> انتهى وقت الحصة ولم يؤكد الحضور في الموعد (مسجل غياب المعلم) ⚠️
-            </div>
-            <button disabled class="btn-secondary" style="opacity:0.6; cursor:not-allowed; font-size:0.78rem; padding:8px; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted); font-weight:700;" title="لا يمكن توثيق التقرير لعدم تأكيد الحضور أثناء وقت الحصة">
-              <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> توثيق التقرير مقفل (غياب المعلم) 🔒
+        actionHtml = `
+          <div class="session-actions-wrapper" data-id="${session.id}">
+            <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="width:100%; padding:7px 10px; font-size:0.78rem; font-weight:800; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; box-shadow:0 2px 8px rgba(16,185,129,0.25);">
+              <i data-lucide="user-check" style="width:13px;height:13px;"></i> تأكيد حضور المعلم الآن ✍️
             </button>
           </div>
         `;
       }
-    } else if (isDuringSession || session.status === "live" || session.status === "LIVE") {
-      statusTag = `<span class="session-tag live">${session.status === "live" || session.status === "LIVE" ? (t("session.liveNow") || "LIVE NOW 🔴") : ("🔴 موعد الحصة الآن (" + formattedTime + " - " + formattedEndTime + ")")}</span>`;
-      if (isCheckedIn) {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر في الموعد) ✅
-            </span>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-              <button class="btn-primary" data-join-meet-id="${session.id}" style="background:var(--success); font-size:0.88rem; padding:10px; justify-content:center; border:none; cursor:pointer; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px; border-radius:10px;"><i data-lucide="video"></i> Google Meet 🎥</button>
-              <button class="btn-secondary ${isGroup ? 'end-session-btn' : 'complete-private-btn'}" data-id="${session.id}" style="font-size:0.82rem; padding:10px; justify-content:center; color:var(--error); border-color:var(--error); font-weight:800;"><i data-lucide="stop-circle"></i> إنهاء وتوثيق</button>
-            </div>
-          </div>
-        `;
-      } else {
-        sessionAction = `
-          <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.88rem; padding:11px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-              <i data-lucide="user-check" style="width:16px; height:16px;"></i> تأكيد حضور المعلم الآن (في وقت الحصة) ✍️
-            </button>
-            <div style="font-size:0.74rem; color:var(--text-muted); text-align:center;">* متاح تأكيد الحضور الآن فقط حتى نهاية وقت الحصة (${formattedEndTime})</div>
-          </div>
-        `;
-      }
+    } else if (isPastSession) {
+      actionHtml = `
+        <button class="btn-primary ${isGroup ? 'end-session-btn' : 'complete-private-btn'}" data-id="${session.id}" style="width:100%; padding:6px 10px; font-size:0.76rem; font-weight:800; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 6px rgba(16,185,129,0.2);">
+          <i data-lucide="file-check" style="width:12px;height:12px;"></i> توثيق وإنهاء الحصة 📝
+        </button>
+      `;
     } else {
       const teacherWindow = 60 * 60 * 1000;
       const isTeacherJoinable = nowTime >= (sessionTime - teacherWindow);
-
       if (isTeacherJoinable) {
-        statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">⚡ تبدأ في تمام ${formattedTime}</span>`;
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; color:var(--primary); font-size:0.78rem; font-weight:800; text-align:center;">
-              <i data-lucide="clock" style="width:14px; height:14px; vertical-align:middle;"></i> ينشط تأكيد الحضور في موعد الحصة تماماً (${formattedTime}) 🔒
-            </div>
-            <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.85rem; padding:9px; justify-content:center; display:flex; align-items:center; gap:6px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video"></i> معاينة Google Meet 🎥</button>
-          </div>
+        actionHtml = `
+          <button class="btn-secondary" data-join-meet-id="${session.id}" style="width:100%; padding:6px 10px; font-size:0.76rem; font-weight:800; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px;">
+            <i data-lucide="video" style="width:12px;height:12px;"></i> رابط Google Meet 🎥
+          </button>
         `;
       } else {
-        statusTag = `<span class="session-tag" style="background:rgba(99,102,241,0.1); color:var(--primary); font-weight:800;">${t("session.scheduled") || "مجدولة اليوم ⏰"}</span>`;
-        sessionAction = `
-          <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:14px;">
-            <button disabled class="btn-secondary session-action restricted-join-btn" style="cursor:not-allowed; font-size:0.82rem; padding:10px; opacity:0.85; width:100%; justify-content:center; background:rgba(99,102,241,0.06); color:var(--primary); border-color:rgba(99,102,241,0.2); font-weight:700;" title="ينشط دخول المعلم قبل موعد الحصة بساعة واحدة (60 دقيقة)"><i data-lucide="lock" style="width:14px;height:14px;margin-inline-end:4px;"></i> ينشط دخول المعلم قبل الموعد بساعة 🔒</button>
+        actionHtml = `
+          <div style="font-size:0.72rem; color:var(--text-muted); text-align:center; padding:4px 6px; background:var(--bg-card); border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; gap:4px;">
+            <i data-lucide="lock" style="width:11px;height:11px;"></i> ينشط الرابط قبل الموعد بساعة
           </div>
         `;
       }
     }
 
     return `
-      <div class="glass-card session-card" style="padding:22px 20px; display:flex; flex-direction:column; justify-content:space-between; border-radius:18px; ${isLive ? "border-color: var(--success); box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);" : ""}">
-        <div>
-          <div class="session-header-row" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-            ${statusTag}
-            <span style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">
-              <i data-lucide="clock" style="width:13px;height:13px;vertical-align:middle;margin-inline-end:4px;"></i>${durationMins} دقيقة
+      <div class="session-simple-card glass-card" style="background:var(--bg-app); border-radius:14px; padding:12px; border:1px solid ${isLive ? '#10b981' : 'var(--border-color)'}; display:flex; flex-direction:column; gap:7px; position:relative; ${isLive ? 'box-shadow:0 0 14px rgba(16,185,129,0.15);' : ''}">
+        
+        <!-- Header: Time & Status -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:wrap;">
+          <span style="font-size:0.76rem; color:var(--primary); font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+            <i data-lucide="clock" style="width:12px;height:12px;"></i> ${formattedTime} (${durationMins} د)
+          </span>
+          ${statusBadge}
+        </div>
+
+        <!-- Title -->
+        <div style="font-size:0.88rem; font-weight:800; color:var(--text-main); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${session.title || 'حصة تدريسية'}">
+          ${session.title || (isGroup ? (session.group?.name || 'حصة جماعية') : 'حصة خاصة')}
+        </div>
+
+        <!-- Chips / Meta -->
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:0.72rem; font-weight:700; color:#e51d74; background:rgba(229,29,116,0.08); padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${subjectName}">
+            <i data-lucide="book-open" style="width:10px;height:10px;"></i> ${subjectName}
+          </span>
+          <span style="font-size:0.72rem; font-weight:700; color:var(--primary); background:rgba(99,102,241,0.08); padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${personName}">
+            <i data-lucide="${personIcon}" style="width:10px;height:10px;"></i> ${personName}
+          </span>
+          ${gradeName ? `
+            <span style="font-size:0.7rem; font-weight:700; color:#10b981; background:rgba(16,185,129,0.08); padding:2px 6px; border-radius:6px;">
+              ${gradeName}
             </span>
-          </div>
-
-          <!-- Group / Session Name -->
-          <h4 class="session-title" style="font-size:1.15rem; font-weight:800; margin:0 0 10px 0; color:var(--text-main); line-height:1.35;">
-            ${session.title || (isGroup ? (session.group?.name || 'حصة تدريسية جماعية') : 'حصة خاصة')}
-          </h4>
-
-          <!-- Under Group Name: Teacher & Subject Details -->
-          <div class="session-meta-strip" style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:12px 14px; margin-bottom:14px; display:flex; flex-direction:column; gap:10px;">
-            
-            <!-- Person Row: Student or Group -->
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-              <div style="display:flex; align-items:center; gap:9px;">
-                ${personAvatar ? `
-                  <img src="${personAvatar}" alt="${personName}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid rgba(99,102,241,0.25);">
-                ` : `
-                  <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, ${personIcon === 'user' ? '#a855f7, #6366f1' : '#10b981, #059669'}); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.8rem; flex-shrink:0;">
-                    <i data-lucide="${personIcon}" style="width:16px; height:16px;"></i>
-                  </div>
-                `}
-                <div style="display:flex; flex-direction:column;">
-                  <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600; display:flex; align-items:center; gap:4px;">
-                    <i data-lucide="${personIcon}" style="width:12px; height:12px; color:var(--primary);"></i> ${personLabel}
-                  </span>
-                  <span style="font-size:0.92rem; font-weight:800; color:var(--text-main);">${personName}</span>
-                </div>
-              </div>
-              ${session.course && hasSubject ? `
-                <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); padding:3px 10px; border-radius:10px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${session.course.title}">
-                  <i data-lucide="book" style="width:12px; height:12px; vertical-align:middle;"></i> ${session.course.title}
-                </span>
-              ` : ''}
-            </div>
-
-            <!-- Subject & Grade Badges Row -->
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed var(--border-color);">
-              <div style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.08); padding:4px 10px; border-radius:10px; border:1px solid rgba(229,29,116,0.2);">
-                <i data-lucide="book-open" style="width:13px; height:13px;"></i>
-                <span>${subjectLabel}: <strong>${subjectName}</strong></span>
-              </div>
-
-              ${gradeName ? `
-                <div style="display:inline-flex; align-items:center; gap:5px; font-size:0.8rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.08); padding:4px 10px; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
-                  <i data-lucide="graduation-cap" style="width:13px; height:13px;"></i>
-                  <span>${gradeName}</span>
-                </div>
-              ` : ''}
-            </div>
-
-          </div>
-
-          ${session.description ? `<p style="font-size:0.84rem; color:var(--text-muted); line-height:1.5; margin:0 0 10px 0;">${session.description}</p>` : ''}
+          ` : ''}
         </div>
 
-        <div style="margin-top:auto;">
-          <div class="session-time" style="padding:10px 12px; background:var(--bg-app); border-radius:10px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-            <i data-lucide="calendar" style="width:15px;height:15px;color:var(--primary);"></i>
-            <span style="font-weight:700; font-size:0.86rem; color:var(--text-main);">اليوم في تمام ${formattedTime} (حتى ${formattedEndTime})</span>
-          </div>
-          ${sessionAction}
+        <!-- Action Button -->
+        <div style="margin-top:2px;">
+          ${actionHtml}
         </div>
+
       </div>
     `;
   }
@@ -1209,142 +1156,7 @@ export default class TeacherView {
   }
 
   renderTeacherSessionCard(session) {
-    const date = new Date(session.scheduledAt);
-    const sessionTime = date.getTime();
-    const durationMins = session.duration || 60;
-    const durationMs = durationMins * 60 * 1000;
-    const nowTime = Date.now();
-
-    const sessionStart = sessionTime;
-    const sessionEnd = sessionStart + durationMs;
-
-    const endDate = new Date(sessionEnd);
-    const formattedEndTime = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const formattedDate = date.toLocaleDateString([], { month: "short", day: "numeric" });
-
-    const isCompleted = session.status === "completed" || session.status === "COMPLETED" || session.status?.includes("CANCELLED");
-    const isPastSession = !isCompleted && (nowTime > sessionEnd);
-    const isDuringSession = !isCompleted && (nowTime >= sessionStart && nowTime <= sessionEnd);
-    const isLive = !isCompleted && (session.status === "live" || session.status === "active" || session.status === "LIVE");
-    const isCheckedIn = window.checkedInSessions?.has(session.id) || !!session.isCheckedIn;
-
-    let statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
-    let sessionAction = "";
-
-    if (isCompleted) {
-      statusTag = `<span class="session-tag" style="background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:800;">${t("session.finished") || '✅ مكتملة وموثقة'}</span>`;
-      sessionAction = `<button class="btn-secondary session-action" style="cursor:default; margin-top:12px; font-size:0.8rem; padding:8px; opacity:0.85;" disabled>تم توثيق التقرير واعتماد الرصيد ✅</button>`;
-    } else if (isPastSession) {
-      statusTag = `<span class="session-tag" style="background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.25); font-weight:800;">⌛ انتهى وقت الحصة</span>`;
-      if (isCheckedIn) {
-        // Teacher was on time! Now can document the report and finalize
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم في موعد الحصة ✅
-            </span>
-            <button class="btn-primary end-session-btn" data-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; font-size:0.82rem; padding:9px 12px; justify-content:center; font-weight:800; border-radius:12px; box-shadow:0 4px 12px rgba(16,185,129,0.25); cursor:pointer;">
-              <i data-lucide="file-check" style="width:15px;height:15px;"></i> 📝 توثيق التقرير وإنهاء الحصة (واحتساب الرصيد)
-            </button>
-          </div>
-        `;
-      } else {
-        // Missed attendance window! (Past session end and never checked in)
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:10px 12px; color:#ef4444; font-size:0.78rem; font-weight:800; text-align:center; line-height:1.4;">
-              <i data-lucide="alert-triangle" style="width:15px; height:15px; vertical-align:middle;"></i> انتهى وقت الحصة ولم يتم تأكيد الحضور في الموعد (مسجل غياب المعلم) ⚠️
-            </div>
-            <button disabled class="btn-secondary" style="opacity:0.6; cursor:not-allowed; font-size:0.78rem; padding:8px; width:100%; justify-content:center; background:rgba(0,0,0,0.04); color:var(--text-muted); font-weight:700;" title="لا يمكن توثيق التقرير لعدم تأكيد الحضور أثناء وقت الحصة">
-              <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> توثيق التقرير مقفل (غياب المعلم) 🔒
-            </button>
-          </div>
-        `;
-      }
-    } else if (isDuringSession) {
-      statusTag = `<span class="session-tag live">${session.status === "live" ? t("session.liveNow") : "🔴 موعد الحصة الآن (" + formattedTime + " - " + formattedEndTime + ")"}</span>`;
-      if (isCheckedIn) {
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <span style="font-size:0.78rem; font-weight:800; color:#10b981; padding:6px 10px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم تأكيد حضور المعلم (حاضر في الموعد) ✅
-            </span>
-            <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
-              <button class="btn-primary" data-join-meet-id="${session.id}" style="background:linear-gradient(135deg, #10b981, #059669); font-size:0.82rem; font-weight:800; padding:9px 14px; justify-content:center; border-radius:12px; display:flex; align-items:center; gap:6px; border:none; color:#fff; cursor:pointer;"><i data-lucide="video" style="width:16px;height:16px;"></i> فتح Google Meet الآن 🔴</button>
-              <button class="btn-secondary end-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:6px 12px; justify-content:center; color:var(--error); border-color:var(--error); font-weight:800;"><i data-lucide="stop-circle" style="width:14px;height:14px;"></i> إنهاء وتوثيق</button>
-            </div>
-          </div>
-        `;
-      } else {
-        // Teacher MUST check in right now during session window!
-        sessionAction = `
-          <div class="session-actions-wrapper" data-id="${session.id}" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <button class="btn-primary session-checkin-btn" data-id="${session.id}" data-role="teacher" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; font-size:0.85rem; padding:10px; justify-content:center; font-weight:800; width:100%; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); cursor:pointer;">
-              <i data-lucide="user-check" style="width:15px; height:15px;"></i> تأكيد حضور المعلم الآن (في وقت الحصة) ✍️
-            </button>
-            <div style="font-size:0.74rem; color:var(--text-muted); text-align:center;">* متاح تأكيد الحضور الآن فقط حتى نهاية وقت الحصة (${formattedEndTime})</div>
-          </div>
-        `;
-      }
-    } else {
-      // Pre-session (nowTime < sessionStart)
-      const isWithinOneHour = canJoinSession(session);
-      if (isWithinOneHour) {
-        statusTag = `<span class="session-tag" style="background:var(--info-glow); color:var(--info); border-color:var(--info); font-weight:800;">⚡ تبدأ في ${formattedTime}</span>`;
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:8px 12px; color:var(--primary); font-size:0.78rem; font-weight:800; text-align:center;">
-              <i data-lucide="clock" style="width:14px; height:14px; vertical-align:middle;"></i> ينشط تأكيد الحضور في موعد الحصة تماماً (${formattedTime}) 🔒
-            </div>
-            <div style="display:grid; grid-template-columns:1fr auto; gap:6px;">
-              <button class="btn-secondary" data-join-meet-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; display:flex; align-items:center; gap:4px; font-weight:800; cursor:pointer; border-radius:10px;"><i data-lucide="video" style="width:13px;height:13px;"></i> معاينة Google Meet 🎥</button>
-              <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.78rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
-                <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
-              </button>
-            </div>
-          </div>
-        `;
-      } else {
-        statusTag = `<span class="session-tag">${t("session.scheduled")}</span>`;
-        sessionAction = `
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-            <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
-              <button disabled class="btn-secondary" style="font-size:0.78rem; padding:7px 10px; opacity:0.85; cursor:not-allowed; justify-content:center; background:rgba(99,102,241,0.06); color:var(--primary); border-color:rgba(99,102,241,0.2); font-weight:700;">
-                <i data-lucide="lock" style="width:13px;height:13px;margin-inline-end:4px;"></i> ينشط قبل الموعد بساعة 🔒
-              </button>
-              <button class="btn-secondary edit-session-btn" data-id="${session.id}" style="font-size:0.8rem; padding:7px 10px; justify-content:center; border-color:var(--primary); color:var(--primary);" title="تعديل تاريخ ووقت الجلسة">
-                <i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>
-              </button>
-            </div>
-          </div>
-        `;
-      }
-    }
-
-    return `
-      <div class="glass-card session-card" style="${isLive ? "border-color: var(--success);" : ""}">
-        <div class="session-header-row">
-          ${statusTag}
-          <span style="font-size: 0.75rem; color:var(--text-muted); font-weight:600;">${session.duration} ${t("session.mins")}</span>
-        </div>
-        <h4 class="session-title">${session.title}</h4>
-        
-        <!-- Student Name & Course in Teacher Dashboard -->
-        <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; margin-bottom:6px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:8px 10px;">
-          <div style="font-size:0.84rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="${session.student ? 'user' : 'users'}" style="width:14px; height:14px; color:var(--primary);"></i>
-            <span>الطالب: <strong style="color:var(--primary);">${session.student?.name || session.subscription?.student?.name || 'طلاب المجموعة'}</strong></span>
-          </div>
-          ${session.course ? `<div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; display:flex; align-items:center; gap:5px;"><i data-lucide="book" style="width:12px;height:12px;color:#e51d74;"></i> ${session.course.subject?.name ? `المادة: <strong style="color:var(--text-main);">${session.course.subject.name}</strong> • ${session.course.title}` : `الكورس: <strong style="color:var(--text-main);">${session.course.title}</strong>`}</div>` : ""}
-        </div>
-        <div class="session-time" style="margin-top:6px;">
-          <i data-lucide="calendar" style="width:14px;height:14px;"></i>
-          <span>${formattedDate} ${t("session.at")} ${formattedTime}</span>
-        </div>
-        ${sessionAction}
-      </div>
-    `;
+    return this.renderTodaySessionCard(session);
   }
 
 
@@ -1506,6 +1318,18 @@ export default class TeacherView {
           }
         }
       });
+    });
+
+    // Download timetable button for Teacher
+    this.container.querySelector("#teacher-download-timetable-btn")?.addEventListener("click", async () => {
+      if (typeof window.exportWeeklyTimetable === "function") {
+        await window.exportWeeklyTimetable();
+      } else {
+        window.location.hash = "#schedule";
+        setTimeout(() => {
+          window.exportWeeklyTimetable?.();
+        }, 300);
+      }
     });
 
     // Schedule filter buttons click handler for Teacher
@@ -2006,7 +1830,9 @@ export default class TeacherView {
     document.querySelectorAll(".end-session-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
-        this.renderEndSessionReportModal(id);
+        if (typeof window.showEndSessionReportModal === 'function') {
+          window.showEndSessionReportModal(id, () => this.render());
+        }
       });
     });
   }
