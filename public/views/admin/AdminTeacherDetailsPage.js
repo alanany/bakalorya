@@ -912,6 +912,7 @@ export class AdminTeacherDetailsPage {
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">المدة</th>
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">سعر الساعة المعتمد</th>
                     <th style="padding:10px 16px;text-align:start;font-size:0.78rem;color:var(--text-muted);">المستحق عن الحصة</th>
+                    <th style="padding:10px 16px;text-align:end;font-size:0.78rem;color:var(--text-muted);">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -942,6 +943,16 @@ export class AdminTeacherDetailsPage {
                         </td>
                         <td style="padding:10px 16px;font-weight:900;color:#10b981;font-size:0.95rem;">
                           ${sessionEarnings.toLocaleString()} ج.م
+                        </td>
+                        <td style="padding:10px 16px;text-align:end;">
+                          <div style="display:inline-flex;gap:6px;justify-content:flex-end;align-items:center;">
+                            <button class="btn-secondary tch-revert-session-btn" data-id="${s.id}" style="font-size:0.74rem;padding:4px 8px;color:#d97706;border-color:#f59e0b;background:rgba(245,158,11,0.08);border-radius:8px;font-weight:800;display:inline-flex;align-items:center;gap:3px;cursor:pointer;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من رصيد المعلم">
+                              <i data-lucide="rotate-ccw" style="width:11px;height:11px;"></i> تراجع لمجدولة ↩️
+                            </button>
+                            <button class="btn-secondary tch-cancel-session-btn" data-id="${s.id}" style="font-size:0.74rem;padding:4px 8px;color:var(--error);border-color:var(--error);background:rgba(239,68,68,0.06);border-radius:8px;font-weight:800;display:inline-flex;align-items:center;gap:3px;cursor:pointer;" title="إلغاء الحصة المكتملة وحذف أجرها من رصيد المعلم">
+                              <i data-lucide="x-circle" style="width:11px;height:11px;"></i> إلغاء وحذف الأجر 🚫
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     `;
@@ -1211,6 +1222,59 @@ export class AdminTeacherDetailsPage {
         const studentId = btn.getAttribute("data-id");
         if (studentId && typeof this.adminView.showStudentDetails === "function") {
           this.adminView.showStudentDetails(studentId);
+        }
+      });
+    });
+
+    // Cancel / Revert session from teacher details salary table
+    this.container.querySelectorAll(".tch-cancel-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog({
+          title: "إلغاء الحصة وحذف الأجر من الرصيد ⚠️",
+          message: "هل أنت متأكد من إلغاء هذه الحصة المكتملة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم واسترجاع رصيد الحصة للطالب.",
+          danger: true,
+          confirmText: "نعم، إلغاء وحذف من الرصيد"
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ reason: "إلغاء إداري من قبل أدمن المنصة" })
+          });
+          showToast(res.message || "تم إلغاء الحصة بنجاح وتحديث الرصيد. ✅", "success");
+          if (this.adminView?.loadAllData) await this.adminView.loadAllData();
+          await this.render();
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء الحصة", "error");
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".tch-revert-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog({
+          title: "إلغاء إتمام الحصة وإعادتها لمجدولة ↩️",
+          message: "هل تريد إلغاء إتمام هذه الحصة وإعادتها لقائمة الحصص المجدولة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم وإعادة رصيد الحصة.",
+          confirmText: "نعم، إعادة لمجدولة وحذف الأجر",
+          danger: false
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ action: "revert", reason: "إلغاء الإتمام وإعادة الحصة لمجدولة وحذف الأجر" })
+          });
+          showToast(res.message || "تم إلغاء إتمام الحصة وحذف الأجر من الرصيد بنجاح. ✅", "success");
+          if (this.adminView?.loadAllData) await this.adminView.loadAllData();
+          await this.render();
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء إتمام الحصة", "error");
         }
       });
     });

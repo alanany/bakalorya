@@ -36,6 +36,11 @@ export default class AdminView {
     if (mainTab === "teachers" && subTab) {
       this.selectedTeacherId = subTab;
     }
+    if (mainTab === "earnings" && subTab) {
+      this.earningsSubTab = subTab;
+    } else {
+      this.earningsSubTab = this.earningsSubTab || "teachers";
+    }
     window.adminViewInstance = this;
     this.stats = {};
     this.allMembers = [];
@@ -470,11 +475,19 @@ export default class AdminView {
               <span class="admin-nav-badge" id="admin-badge-supervisors" style="background:#0ea5e9;color:#fff;">0</span>
             </button>
 
-            <div class="admin-nav-section">إعدادات النظام</div>
-            <button class="admin-nav-btn ${this.activeTab === "earnings" ? "active" : ""}" data-tab="earnings">
-              <i data-lucide="dollar-sign"></i>
-              المدفوعات والمستحقات
+            <div class="admin-nav-section">المالية والمدفوعات</div>
+            <button class="admin-nav-btn ${this.activeTab === "earnings" && this.earningsSubTab !== "students" ? "active" : ""}" data-tab="earnings" data-subtab="teachers">
+              <i data-lucide="wallet"></i>
+              إيصالات ومستحقات المعلمين
+              <span class="admin-nav-badge" id="admin-badge-teacher-payouts" style="background:rgba(245,158,11,0.2); color:#f59e0b;">0</span>
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "earnings" && this.earningsSubTab === "students" ? "active" : ""}" data-tab="earnings" data-subtab="students">
+              <i data-lucide="receipt"></i>
+              فواتير ومدفوعات الطلاب
+              <span class="admin-nav-badge" id="admin-badge-student-billings">0</span>
+            </button>
+
+            <div class="admin-nav-section">إعدادات النظام</div>
             <button class="admin-nav-btn ${this.activeTab === "settings" ? "active" : ""}" data-tab="settings" style="border:1px solid rgba(99,102,241,0.25); background:rgba(99,102,241,0.06);">
               <i data-lucide="settings-2"></i>
               ⚙️ إعدادات المنصة
@@ -571,6 +584,11 @@ export default class AdminView {
     el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
     el("admin-badge-parents", (this.allParents || []).length);
     el("admin-badge-supervisors", (this.allSupervisors || []).length);
+    const earningsData = this.adminEarnings || { payments: [], earnings: [] };
+    const pendingTeacherPayouts = (earningsData.earnings || []).filter(ear => ear.status === "pending").length;
+    const pendingStudentPayments = (earningsData.payments || []).filter(p => p.status === "PENDING").length;
+    el("admin-badge-teacher-payouts", pendingTeacherPayouts > 0 ? `${pendingTeacherPayouts} معلق` : (earningsData.earnings || []).length);
+    el("admin-badge-student-billings", pendingStudentPayments > 0 ? `${pendingStudentPayments} معلق` : (earningsData.payments || []).length);
   }
 
 
@@ -643,6 +661,7 @@ export default class AdminView {
     this.container.querySelectorAll(".admin-nav-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const tab = btn.getAttribute("data-tab");
+        const subtab = btn.getAttribute("data-subtab");
         if (!tab) {
           closeSidebar();
           return;
@@ -650,14 +669,32 @@ export default class AdminView {
         e.preventDefault();
         e.stopPropagation();
         this.activeTab = tab;
+        if (tab === "earnings") {
+          this.earningsSubTab = subtab || this.earningsSubTab || "teachers";
+        }
         if (tab === "students") this.selectedStudentId = null;
         if (tab === "teachers") this.selectedTeacherId = null;
-        this.container.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
+        this.container.querySelectorAll(".admin-nav-btn").forEach(b => {
+          const bTab = b.getAttribute("data-tab");
+          const bSub = b.getAttribute("data-subtab");
+          if (bTab === tab) {
+            if (tab === "earnings" && bSub) {
+              b.classList.toggle("active", bSub === this.earningsSubTab);
+            } else if (tab === "earnings") {
+              b.classList.toggle("active", this.earningsSubTab !== "students");
+            } else {
+              b.classList.add("active");
+            }
+          } else {
+            b.classList.remove("active");
+          }
+        });
         closeSidebar();
         try {
           const targetUrl = tab === "settings" && this._settingsSection
             ? `#admin-dashboard/settings/${this._settingsSection}`
+            : tab === "earnings" && this.earningsSubTab
+            ? `#admin-dashboard/earnings/${this.earningsSubTab}`
             : `#admin-dashboard/${tab}`;
           if (window.location.hash !== targetUrl) {
             history.pushState(null, "", targetUrl);
@@ -727,7 +764,20 @@ export default class AdminView {
     if (!content) return;
 
     // Update top-bar heading
-    const meta = AdminView.TAB_META[tab] || {};
+    let meta = AdminView.TAB_META[tab] || {};
+    if (tab === "earnings") {
+      if (this.earningsSubTab === "students") {
+        meta = {
+          heading: "🎓 فواتير ومدفوعات الطلاب",
+          sub: "سجل مدفوعات وفواتير الطلاب وإيصالات التحويل البنكي"
+        };
+      } else {
+        meta = {
+          heading: "👨‍🏫 إيصالات ومستحقات المعلمين",
+          sub: "متابعة مستحقات المعلمين وتسجيل التحويلات ورفع إيصالات الصرف"
+        };
+      }
+    }
     const hEl = document.getElementById("admin-topbar-heading");
     const sEl = document.getElementById("admin-topbar-sub");
     if (hEl) hEl.textContent = meta.heading || "";
@@ -1345,12 +1395,28 @@ export default class AdminView {
       });
     });
 
-    // Admin Billings Stat Cards Scroll Actions
+    // Admin Earnings Sub-Tab Buttons
+    this.container.querySelectorAll(".admin-earnings-subtab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const subtab = btn.getAttribute("data-subtab");
+        if (typeof this.switchEarningsSubTab === "function") {
+          this.switchEarningsSubTab(subtab);
+        }
+      });
+    });
+
+    // Admin Billings Stat Cards Scroll & Tab Actions
     this.container.querySelector("#stat-card-total-revenue")?.addEventListener("click", () => {
+      if (typeof this.switchEarningsSubTab === "function") {
+        this.switchEarningsSubTab("students");
+      }
       document.getElementById("admin-billings-section")?.scrollIntoView({ behavior: "smooth" });
     });
 
     this.container.querySelector("#stat-card-total-payouts")?.addEventListener("click", () => {
+      if (typeof this.switchEarningsSubTab === "function") {
+        this.switchEarningsSubTab("teachers");
+      }
       document.getElementById("admin-payouts-section")?.scrollIntoView({ behavior: "smooth" });
     });
 
@@ -1468,20 +1534,56 @@ export default class AdminView {
     this.container.querySelectorAll(".admin-cancel-session-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
-        const confirmed = await confirmDialog({ message: "هل أنت تأكد من إلغاء هذه الحصة كمسؤول نظام؟", danger: true });
+        const isCompleted = btn.getAttribute("data-completed") === "true";
+        const message = isCompleted
+          ? "هل أنت متأكد من إلغاء هذه الحصة المكتملة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم واسترجاع رصيد الحصة للطالب."
+          : "هل أنت متأكد من إلغاء هذه الحصة كمسؤول نظام؟";
+        const confirmed = await confirmDialog({
+          title: isCompleted ? "إلغاء الحصة وحذف الأجر من الرصيد ⚠️" : "تأكيد إلغاء الحصة ⚠️",
+          message,
+          danger: true,
+          confirmText: isCompleted ? "نعم، إلغاء وحذف من الرصيد" : "نعم، إلغاء الحصة"
+        });
         if (!confirmed) return;
         btn.disabled = true;
         try {
-          await apiFetch(`/sessions/${id}/cancel`, {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
             method: "POST",
             body: JSON.stringify({ reason: "إلغاء إداري من قبل أدمن المنصة" })
           });
-          showToast("تم إلغاء الحصة بنجاح وتوجيه الرصيد. ✅", "success");
+          showToast(res.message || "تم إلغاء الحصة بنجاح وتحديث الرصيد. ✅", "success");
           await this.loadAllData();
           this.renderTab("sessions");
         } catch (err) {
           btn.disabled = false;
           showToast(err.message || "فشل إلغاء الحصة", "error");
+        }
+      });
+    });
+
+    // Admin Revert Completed Session to Scheduled
+    this.container.querySelectorAll(".admin-revert-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog({
+          title: "إلغاء إتمام الحصة وإعادتها لمجدولة ↩️",
+          message: "هل تريد إلغاء إتمام هذه الحصة وإعادتها لقائمة الحصص المجدولة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم وإعادة رصيد الحصة.",
+          confirmText: "نعم، إعادة لمجدولة وحذف الأجر",
+          danger: false
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ action: "revert", reason: "إلغاء الإتمام وإعادة الحصة لمجدولة وحذف الأجر" })
+          });
+          showToast(res.message || "تم إلغاء إتمام الحصة وحذف الأجر من الرصيد بنجاح. ✅", "success");
+          await this.loadAllData();
+          this.renderTab("sessions");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء إتمام الحصة", "error");
         }
       });
     });

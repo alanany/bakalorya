@@ -2132,9 +2132,15 @@ export const AdminSessionsPage = {
                           Google Meet 🎥
                         </button>
                       ` : isCompleted ? `
-                        <span style="font-size:0.75rem; font-weight:800; background:rgba(107,114,128,0.12); color:#6b7280; padding:3px 10px; border-radius:10px;">
-                          ✓ مكتملة
+                        <span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; padding:3px 10px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="check-circle" style="width:12px; height:12px;"></i> ✓ مكتملة
                         </span>
+                        <button class="btn-secondary admin-revert-session-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:#d97706; border-color:#f59e0b; background:rgba(245,158,11,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:3px;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من محفظة المعلم">
+                          <i data-lucide="rotate-ccw" style="width:11px; height:11px;"></i> تراجع لمجدولة ↩️
+                        </button>
+                        <button class="btn-secondary admin-cancel-session-btn" data-id="${s.id}" data-group-id="${groupId}" data-completed="true" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:var(--error); border-color:var(--error); background:rgba(239,68,68,0.06); cursor:pointer; display:inline-flex; align-items:center; gap:3px;" title="إلغاء الحصة المكتملة نهائياً وحذف أجرها من رصيد المعلم">
+                          <i data-lucide="x-circle" style="width:11px; height:11px;"></i> إلغاء وحذف الأجر 🚫
+                        </button>
                       ` : `
                         <span style="font-size:0.75rem; font-weight:800; background:rgba(99,102,241,0.1); color:var(--primary); padding:3px 10px; border-radius:10px;">
                           ⏳ قادمة ومجدولة
@@ -2200,6 +2206,64 @@ export const AdminSessionsPage = {
         this.renderAdminCompleteSessionModal(sessionId, gId, () => {
           this.renderGroupSessionsViewModal(groupId);
         });
+      });
+    });
+
+    wrapper.querySelectorAll(".admin-cancel-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const isCompleted = btn.getAttribute("data-completed") === "true";
+        const message = isCompleted
+          ? "هل أنت متأكد من إلغاء هذه الحصة المكتملة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم واسترجاع رصيد الحصة للطالب."
+          : "هل أنت متأكد من إلغاء هذه الحصة كمسؤول نظام؟";
+        const confirmed = await confirmDialog({
+          title: isCompleted ? "إلغاء الحصة وحذف الأجر من الرصيد ⚠️" : "تأكيد إلغاء الحصة ⚠️",
+          message,
+          danger: true,
+          confirmText: isCompleted ? "نعم، إلغاء وحذف من الرصيد" : "نعم، إلغاء الحصة"
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ reason: "إلغاء إداري من قبل أدمن المنصة" })
+          });
+          showToast(res.message || "تم إلغاء الحصة بنجاح وتحديث الرصيد. ✅", "success");
+          if (this.loadAllData) await this.loadAllData();
+          this.renderGroupSessionsViewModal(groupId);
+          if (this.renderTab) this.renderTab("sessions");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء الحصة", "error");
+        }
+      });
+    });
+
+    wrapper.querySelectorAll(".admin-revert-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const confirmed = await confirmDialog({
+          title: "إلغاء إتمام الحصة وإعادتها لمجدولة ↩️",
+          message: "هل تريد إلغاء إتمام هذه الحصة وإعادتها لقائمة الحصص المجدولة؟ سيتم حذف الأجر المالي تلقائياً من محفظة ورصيد المعلم وإعادة رصيد الحصة.",
+          confirmText: "نعم، إعادة لمجدولة وحذف الأجر",
+          danger: false
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/sessions/${id}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ action: "revert", reason: "إلغاء الإتمام وإعادة الحصة لمجدولة وحذف الأجر" })
+          });
+          showToast(res.message || "تم إلغاء إتمام الحصة وحذف الأجر من الرصيد بنجاح. ✅", "success");
+          if (this.loadAllData) await this.loadAllData();
+          this.renderGroupSessionsViewModal(groupId);
+          if (this.renderTab) this.renderTab("sessions");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إلغاء إتمام الحصة", "error");
+        }
       });
     });
 
@@ -2923,6 +2987,12 @@ export const AdminSessionsPage = {
                             <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
                               <i data-lucide="check-circle" style="width:12px;height:12px;"></i> مكتملة
                             </span>
+                            <button class="btn-secondary admin-revert-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:#d97706; border-color:#f59e0b; background:rgba(245,158,11,0.08); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من محفظة المعلم">
+                              <i data-lucide="rotate-ccw" style="width:11px;height:11px;"></i> تراجع لمجدولة ↩️
+                            </button>
+                            <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" data-completed="true" style="font-size:0.72rem; padding:4px 8px; color:var(--error); border-color:var(--error); background:rgba(239,68,68,0.06); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إلغاء الحصة المكتملة وحذف أجرها من رصيد المعلم">
+                              <i data-lucide="x-circle" style="width:11px;height:11px;"></i> إلغاء وحذف الأجر 🚫
+                            </button>
                           ` : (sess.status || '').toLowerCase().includes("cancelled") ? `
                             <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px;">❌ ملغاة</span>
                           ` : `
@@ -3028,6 +3098,12 @@ export const AdminSessionsPage = {
                               <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.8rem; padding:6px 14px; border-radius:20px; display:inline-flex; align-items:center; gap:5px;">
                                 <i data-lucide="check-circle" style="width:14px;height:14px;"></i> مكتملة
                               </span>
+                              <button class="btn-secondary admin-revert-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:#f59e0b; color:#d97706; background:rgba(245,158,11,0.08); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من رصيد المعلم">
+                                <i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> تراجع لمجدولة ↩️
+                              </button>
+                              <button class="btn-secondary admin-cancel-session-btn" data-id="${sess.id}" data-completed="true" style="font-size:0.75rem; padding:5px 10px; border-color:var(--error); color:var(--error); background:rgba(239,68,68,0.06); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="إلغاء الحصة المكتملة نهائياً وحذف أجرها من رصيد المعلم">
+                                <i data-lucide="x-circle" style="width:12px;height:12px;"></i> إلغاء وحذف من الرصيد 🚫
+                              </button>
                             ` : isCancelled ? `
                               <span class="badge" style="background:rgba(239,68,68,0.12); color:#ef4444; font-weight:800; font-size:0.8rem; padding:6px 14px; border-radius:20px;">❌ ملغاة</span>
                             ` : `

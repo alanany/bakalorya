@@ -231,6 +231,7 @@ router.post("/sessions/recheck-schedule-conflicts", authMiddleware, SessionBooki
 router.post("/sessions/confirm-package-schedule", authMiddleware, sensitiveActionLimiter, concurrencyLock, idempotency, SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", authMiddleware, requireCapability("SESSION_TEACHER"), SessionBookingController.completeSession);
 router.post("/sessions/:id/cancel", authMiddleware, SessionBookingController.cancelSession);
+router.post("/sessions/:id/revert", authMiddleware, requireRole(["admin"]), (req, res) => { req.body.action = "revert"; return SessionBookingController.cancelSession(req as any, res); });
 router.post("/sessions/:id/no-show", authMiddleware, requireCapability("SESSION_TEACHER"), SessionBookingController.noShowSession);
 router.post("/sessions/:id/checkin", authMiddleware, SessionBookingController.checkInAttendance);
 router.post("/sessions/:id/check-in", authMiddleware, SessionBookingController.checkInAttendance);

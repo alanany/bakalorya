@@ -98,10 +98,49 @@ export const AdminEarningsPage = {
     const studentsWithPendingCount = studentGroups.filter(g => g.pendingAmount > 0).length;
     const studentsWithSuccessCount = studentGroups.filter(g => g.successAmount > 0).length;
 
+    const currentSubTab = this.earningsSubTab === 'students' ? 'students' : 'teachers';
+
     return `
-      <!-- Stat Cards Grid (Clickable) -->
-      <div class="dashboard-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom:32px;">
-        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-revenue" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لعرض جدول الفواتير والمدفوعات الكامل">
+      <style>
+        .admin-earnings-subtab-btn {
+          padding: 10px 20px;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-muted);
+          font-weight: 700;
+          font-size: 0.92rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+        .admin-earnings-subtab-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-main);
+          transform: translateY(-1px);
+        }
+        .admin-earnings-subtab-btn.active {
+          border-color: var(--primary) !important;
+          background: linear-gradient(135deg, var(--primary), #4f46e5) !important;
+          color: #ffffff !important;
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+        }
+        .admin-earnings-subtab-btn.active .admin-subtab-badge {
+          background: rgba(255, 255, 255, 0.25) !important;
+          color: #ffffff !important;
+        }
+        .admin-stat-card-clickable:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        }
+      </style>
+
+      <!-- Stat Cards Grid (Clickable to switch tab) -->
+      <div class="dashboard-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom:24px;">
+        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-revenue" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لفتح تبويب فواتير ومدفوعات الطلاب">
           <div class="stat-box-icon" style="color:var(--success); background:var(--success-glow);">
             <i data-lucide="dollar-sign"></i>
           </div>
@@ -109,12 +148,12 @@ export const AdminEarningsPage = {
             <div class="stat-box-val">${formatCurrency(totalRevenue)}</div>
             <div class="stat-box-lbl" style="font-weight:700;">إجمالي إيرادات المنصة 💳</div>
             <div style="font-size:0.75rem; color:var(--success); margin-top:4px; font-weight:600; display:flex; align-items:center; gap:4px;">
-              <i data-lucide="arrow-down" style="width:12px;height:12px;"></i> انقر للتنقل لجدول الفواتير (${payments.length})
+              <i data-lucide="layers" style="width:12px;height:12px;"></i> انقر للتنقل لتبويب فواتير الطلاب (${payments.length})
             </div>
           </div>
         </div>
 
-        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-payouts" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لعرض مستحقات المعلمين">
+        <div class="glass-card stat-box admin-stat-card-clickable" id="stat-card-total-payouts" style="cursor:pointer; transition: all 0.2s ease; border: 1px solid var(--border-color);" title="انقر لفتح تبويب إيصالات ومستحقات المعلمين">
           <div class="stat-box-icon" style="color:var(--warning, #f59e0b); background:rgba(245,158,11,0.15);">
             <i data-lucide="credit-card"></i>
           </div>
@@ -122,7 +161,7 @@ export const AdminEarningsPage = {
             <div class="stat-box-val">${formatCurrency(totalPayouts)}</div>
             <div class="stat-box-lbl" style="font-weight:700;">إجمالي مستحقات المعلمين 💰</div>
             <div style="font-size:0.75rem; color:var(--warning, #f59e0b); margin-top:4px; font-weight:600; display:flex; align-items:center; gap:4px;">
-              <i data-lucide="arrow-down" style="width:12px;height:12px;"></i> انقر للتنقل للمستحقات (${earnings.length})
+              <i data-lucide="layers" style="width:12px;height:12px;"></i> انقر للتنقل لمستحقات وإيصالات المعلمين (${earnings.length})
             </div>
           </div>
         </div>
@@ -141,8 +180,44 @@ export const AdminEarningsPage = {
         </div>
       </div>
 
+      <!-- Navigation Tabs: Teachers Receipts / Students Billings -->
+      <div class="earnings-tabs-nav" style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); padding:10px 14px; border-radius:18px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="admin-earnings-subtab-btn ${currentSubTab === 'teachers' ? 'active' : ''}" data-subtab="teachers">
+            <i data-lucide="wallet" style="width:18px; height:18px;"></i>
+            <span>إيصالات ومستحقات المعلمين</span>
+            <span class="badge admin-subtab-badge" style="background:${currentSubTab === 'teachers' ? 'rgba(255,255,255,0.25)' : 'rgba(245,158,11,0.15)'}; color:${currentSubTab === 'teachers' ? '#ffffff' : '#f59e0b'}; font-weight:800; font-size:0.78rem; padding:3px 9px; border-radius:10px;">
+              ${teacherGroups.length} معلم
+            </span>
+            ${teachersWithPendingCount > 0 ? `
+              <span class="badge admin-subtab-badge-pending" style="background:${currentSubTab === 'teachers' ? '#ef4444' : 'rgba(239,68,68,0.15)'}; color:${currentSubTab === 'teachers' ? '#ffffff' : '#ef4444'}; font-weight:800; font-size:0.78rem; padding:3px 9px; border-radius:10px;">
+                ${teachersWithPendingCount} معلق
+              </span>
+            ` : ''}
+          </button>
+
+          <button type="button" class="admin-earnings-subtab-btn ${currentSubTab === 'students' ? 'active' : ''}" data-subtab="students">
+            <i data-lucide="receipt" style="width:18px; height:18px;"></i>
+            <span>فواتير ومدفوعات الطلاب</span>
+            <span class="badge admin-subtab-badge" style="background:${currentSubTab === 'students' ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.15)'}; color:${currentSubTab === 'students' ? '#ffffff' : 'var(--primary)'}; font-weight:800; font-size:0.78rem; padding:3px 9px; border-radius:10px;">
+              ${studentGroups.length} طالب
+            </span>
+            ${studentsWithPendingCount > 0 ? `
+              <span class="badge admin-subtab-badge-pending" style="background:${currentSubTab === 'students' ? '#f59e0b' : 'rgba(245,158,11,0.15)'}; color:${currentSubTab === 'students' ? '#ffffff' : '#f59e0b'}; font-weight:800; font-size:0.78rem; padding:3px 9px; border-radius:10px;">
+                ${studentsWithPendingCount} معلق
+              </span>
+            ` : ''}
+          </button>
+        </div>
+
+        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+          <i data-lucide="layers" style="width:15px; height:15px; opacity:0.8; color:var(--primary);"></i>
+          <span>انقر على التبويب للتنقل بين مستحقات المعلمين وفواتير الطلاب</span>
+        </div>
+      </div>
+
       <!-- Section 1: Detailed Student Billings & Payments (Grouped Accordions) -->
-      <div class="glass-card" id="admin-billings-section" style="padding:24px; margin-bottom:32px; border-radius:16px;">
+      <div class="glass-card" id="admin-billings-section" style="padding:24px; border-radius:16px; display: ${currentSubTab === 'students' ? 'block' : 'none'};">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
           <div>
             <h3 style="font-weight:800; font-size:1.2rem; display:flex; align-items:center; gap:10px; margin:0 0 4px 0; color:var(--text-main);">
@@ -332,14 +407,14 @@ export const AdminEarningsPage = {
       </div>
 
       <!-- Section 2: Teacher Payouts Grouped Accordions -->
-      <div class="glass-card" id="admin-payouts-section" style="padding:24px; border-radius:16px;">
+      <div class="glass-card" id="admin-payouts-section" style="padding:24px; border-radius:16px; display: ${currentSubTab === 'teachers' ? 'block' : 'none'};">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border-color);">
               <div>
                 <h3 style="font-weight:800; font-size:1.2rem; display:flex; align-items:center; gap:10px; margin:0 0 4px 0; color:var(--text-main);">
                   <i data-lucide="wallet" style="color:var(--warning,#f59e0b); width:24px; height:24px;"></i>
-                  مستحقات المعلمين (Teacher Payouts)
+                  مستحقات وإيصالات المعلمين (Teacher Receipts & Payouts)
                 </h3>
-                <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">عرض مجمّع لكل معلم يشمل إجمالي المستحقات، إمكانية السداد الكامل أو الجزئي، وسجل تفصيلي قابل للطي (Accordion)</p>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">عرض مجمّع لكل معلم يشمل إجمالي المستحقات، رفع واعتماد إيصالات التحويل البنكي، وسجل تفصيلي قابل للطي (Accordion)</p>
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <div style="position:relative;">
@@ -573,6 +648,40 @@ export const AdminEarningsPage = {
             </div>
       </div>
     `;
+  },
+
+  switchEarningsSubTab(subtab = "teachers") {
+    this.earningsSubTab = subtab;
+    const billingsSec = document.getElementById("admin-billings-section");
+    const payoutsSec = document.getElementById("admin-payouts-section");
+
+    if (billingsSec) billingsSec.style.display = subtab === "students" ? "block" : "none";
+    if (payoutsSec) payoutsSec.style.display = subtab === "teachers" ? "block" : "none";
+
+    this.container.querySelectorAll(".admin-earnings-subtab-btn").forEach(btn => {
+      const isTarget = btn.getAttribute("data-subtab") === subtab;
+      btn.classList.toggle("active", isTarget);
+    });
+
+    this.container.querySelectorAll(".admin-nav-btn[data-tab='earnings']").forEach(btn => {
+      const bSub = btn.getAttribute("data-subtab") || "teachers";
+      btn.classList.toggle("active", bSub === subtab);
+    });
+
+    const hEl = document.getElementById("admin-topbar-heading");
+    const sEl = document.getElementById("admin-topbar-sub");
+    if (subtab === "students") {
+      if (hEl) hEl.textContent = "🎓 فواتير ومدفوعات الطلاب";
+      if (sEl) sEl.textContent = "سجل مدفوعات وفواتير الطلاب وإيصالات التحويل البنكي";
+    } else {
+      if (hEl) hEl.textContent = "👨‍🏫 إيصالات ومستحقات المعلمين";
+      if (sEl) sEl.textContent = "متابعة أرباح ومستحقات المعلمين وتسجيل التحويلات ورفع إيصالات الصرف";
+    }
+
+    try {
+      history.replaceState(null, "", `#admin-dashboard/earnings/${subtab}`);
+    } catch (_) {}
+    if (window.lucide) window.lucide.createIcons();
   },
 
   renderBillingsTableRows(payments, showStudent = false) {

@@ -14,6 +14,7 @@ import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { AuthRequest } from "../middleware/auth";
 import { NotificationController } from "./NotificationController";
+import { AuditLog } from "../entity/AuditLog";
 import { sanitizeString } from "../utils/sanitize";
 
 export class SessionBookingController {
@@ -304,17 +305,117 @@ export class SessionBookingController {
 
       const session = await sessionRepository.findOne({
         where: { id },
-        relations: ["teacher", "student", "subscription"]
+        relations: ["teacher", "student", "subscription", "group", "course", "group.teacher", "course.teacher"]
       });
 
       if (!session) return res.status(404).json({ error: "الحصة غير موجودة." });
 
-      const isTeacher = session.teacher.id === req.user!.id;
+      const teacher = session.teacher || session.group?.teacher || session.course?.teacher;
+      const isTeacher = teacher && teacher.id === req.user!.id;
       const isStudent = session.student?.id === req.user!.id;
       const isAdmin = req.user!.role === "admin";
 
       if (!isTeacher && !isStudent && !isAdmin) {
         return res.status(403).json({ error: "غير مصرح لك بإلغاء هذه الحصة." });
+      }
+
+      const wasCompleted = (session.status === "COMPLETED" || session.status === "completed");
+
+      // Non-admins cannot cancel an already completed session
+      if (!isAdmin && wasCompleted) {
+        return res.status(400).json({ error: "لا يمكن إلغاء حصة تم إتمامها بالفعل إلا من قِبل إدارة المنصة." });
+      }
+
+      // Admin cancellation (handles both scheduled and completed sessions)
+      if (isAdmin) {
+        const earningRepository = AppDataSource.getRepository(TeacherEarning);
+        const attendanceRepository = AppDataSource.getRepository(SessionAttendance);
+
+        // 1. Remove TeacherEarning records associated with this session to deduct/remove from teacher's balance
+        const earnings = await earningRepository.find({
+          where: [
+            { sourceId: session.id },
+            { sourceId: session.id, sourceType: "SESSION_COMPLETED" }
+          ],
+          relations: ["teacher"]
+        });
+
+        let totalRemovedEarnings = 0;
+        for (const earning of earnings) {
+          totalRemovedEarnings += Number(earning.amount) || 0;
+          if (earning.receiptUrl && earning.receiptUrl.includes("/uploads/")) {
+            try {
+              const filename = path.basename(earning.receiptUrl);
+              const filepath = path.join(process.cwd(), "public", "uploads", filename);
+              if (fs.existsSync(filepath)) {
+                fs.unlinkSync(filepath);
+              }
+            } catch (fErr) {
+              console.error("Failed to delete receipt file from disk:", fErr);
+            }
+          }
+          await earningRepository.remove(earning);
+        }
+
+        // 2. Restore student session credit if it was deducted
+        const ledgers = await ledgerRepository.find({
+          where: { session: { id: session.id } }
+        });
+
+        for (const entry of ledgers) {
+          if (entry.amount < 0) {
+            await ledgerRepository.remove(entry);
+          }
+        }
+
+        // 3. Clear attendances for this session
+        const attendances = await attendanceRepository.find({
+          where: { session: { id: session.id } }
+        });
+        if (attendances.length > 0) {
+          await attendanceRepository.remove(attendances);
+        }
+
+        // 4. Update session status & dates
+        session.completedAt = null as any;
+        session.startedAt = null as any;
+
+        const isRevert = req.body.action === "revert" || req.body.revertToScheduled === true;
+        if (isRevert) {
+          session.status = "SCHEDULED";
+        } else {
+          session.status = "CANCELLED_BY_TEACHER";
+        }
+
+        await sessionRepository.save(session);
+
+        // Audit log
+        try {
+          const auditRepo = AppDataSource.getRepository(AuditLog);
+          const audit = new AuditLog();
+          audit.actor = { id: req.user!.id } as User;
+          audit.action = isRevert ? "SESSION_COMPLETION_REVERTED" : "SESSION_CANCELLED_BY_ADMIN";
+          audit.entityType = "Session";
+          audit.entityId = session.id;
+          audit.metadata = JSON.stringify({
+            wasCompleted,
+            totalRemovedEarnings,
+            reason: reason || "إلغاء إداري من قبل إدارة المنصة"
+          });
+          await auditRepo.save(audit);
+        } catch (aErr) {}
+
+        const msg = isRevert
+          ? `تم إلغاء إتمام الحصة وإعادتها لمجدولة بنجاح، وتم حذف الأجر (${totalRemovedEarnings} ج.م) من محفظة ورصيد المعلم واسترجاع رصيد الطالب. ✅`
+          : (wasCompleted
+              ? `تم إلغاء الحصة المكتملة بنجاح، وحذف الأجر (${totalRemovedEarnings} ج.م) من محفظة ورصيد المعلم واسترجاع رصيد الطالب. ✅`
+              : "تم إلغاء الحصة بنجاح دون خصم أي رصيد. ✅");
+
+        return res.status(200).json({
+          message: msg,
+          session,
+          totalRemovedEarnings
+        });
       }
 
       const scheduledTime = new Date(session.scheduledAt).getTime();

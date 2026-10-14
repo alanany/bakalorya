@@ -30,19 +30,8 @@ export default class ScheduleView {
                 <span>${t("nav.schedule") || "جدول الحصص والبث المباشر (Timetable)"}</span>
               </h2>
               <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">
-                ${state.user?.role === 'teacher' ? 'متابعة مواعيد حصص البث المباشر الأسبوعية وإدارتها وتنزيل الجدول بسهولة.' : 'جدول ومواعيد حصصك الدراسية عبر الأكاديمية.'}
+                ${state.user?.role === 'teacher' ? 'متابعة مواعيد حصص البث المباشر الأسبوعية وإدارتها بسهولة.' : 'جدول ومواعيد حصصك الدراسية عبر الأكاديمية.'}
               </p>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <button class="btn-primary" id="top-download-timetable-btn" style="padding:10px 18px; border-radius:12px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, #10b981, #059669); border:none; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;" title="معاينة وتنزيل جدول الحصص الأسبوعي">
-                <i data-lucide="download" style="width:16px; height:16px;"></i> 📥 تحميل وطباعة الجدول الأسبوعي
-              </button>
-              ${state.user?.role === 'teacher' ? `
-                <button class="btn-primary" id="open-session-modal-btn" style="padding:10px 18px; border-radius:12px; font-weight:800; font-size:0.86rem; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),#7c3aed); border:none; box-shadow:0 4px 14px rgba(99,102,241,0.3);">
-                  <i data-lucide="plus-circle" style="width:16px; height:16px;"></i> جدولة حصة جديدة ➕
-                </button>
-              ` : ''}
             </div>
           </div>
           
