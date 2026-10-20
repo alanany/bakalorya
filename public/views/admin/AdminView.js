@@ -1695,6 +1695,19 @@ export default class AdminView {
       });
     });
 
+    // Admin Renew Group Cycle Button
+    this.container.querySelectorAll(".admin-renew-group-cycle-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        if (group) {
+          this.renderRenewGroupCycleModal(group);
+        } else {
+          showToast("لم يتم العثور على بيانات المجموعة.", "error");
+        }
+      });
+    });
+
     // Admin Edit Group Button
     this.container.querySelectorAll(".admin-edit-group-btn").forEach(btn => {
       btn.addEventListener("click", () => {

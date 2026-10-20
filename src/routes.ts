@@ -130,6 +130,7 @@ router.delete("/groups/:id", authMiddleware, requireRole(["teacher", "admin", "s
 router.get("/groups/:id/roster", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.getGroupRoster);
 router.get("/groups/:id/sessions", authMiddleware, CourseGroupController.getGroupSessions);
 router.post("/groups/:id/sessions", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.createGroupSession);
+router.post("/groups/:id/renew-cycle", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.renewGroupCycle);
 router.delete("/groups/:id/sessions/:sessionId", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.deleteGroupSession);
 router.get("/groups/:id/hub", authMiddleware, CourseGroupController.getGroupHub);
 router.post("/groups/:id/announcements", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.postGroupAnnouncement);
@@ -180,6 +181,7 @@ router.post("/admin/groups/:id/reject", authMiddleware, requireRole(["admin", "s
 router.post("/admin/groups/:id/add-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.addStudentToGroup);
 router.post("/admin/groups/:id/remove-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.startTeachingAndGenerateSessions);
+router.post("/admin/groups/:id/renew-cycle", authMiddleware, requireRole(["admin", "supervisor", "teacher"]), CourseGroupController.renewGroupCycle);
 
 // Admin Teacher Management
 router.post("/admin/teachers/invite", authMiddleware, requireRole(["admin"]), AdminTeacherController.inviteTeacher);
@@ -270,6 +272,7 @@ router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", authMid
 router.post("/student/enrollments/:courseId/activity-submit", authMiddleware, StudentController.submitActivityFile);
 router.delete("/student/enrollments/:courseId/activity-submit", authMiddleware, StudentController.deleteActivityFile);
 router.get("/student/stats", authMiddleware, StudentController.getDashboardStats);
+router.post("/student/groups/:id/renew-receipt", authMiddleware, requireRole(["student", "parent"]), CourseGroupController.submitGroupRenewalReceipt);
 
 // Notifications
 router.get("/notifications", authMiddleware, NotificationController.getUserNotifications);

@@ -784,6 +784,7 @@ export default class LandingView {
       this.renderPlatformStats(this.platformStats);
       this.initLiveChart(this.platformStats, this.currentChartType);
       await this.initCurriculumExplorerAsync();
+      this.updateScrollToggleState?.();
       if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.error("Failed to load data for landing page", e);
@@ -1573,6 +1574,7 @@ export default class LandingView {
 
     this.bindChartEvents();
     this.initFreeTrialSection();
+    this.initScrollToggleButton();
   }
 
   initFreeTrialSection() {
@@ -2037,7 +2039,111 @@ export default class LandingView {
     }
   }
 
+  initScrollToggleButton() {
+    if (this.scrollToggleCleanup) {
+      this.scrollToggleCleanup();
+      this.scrollToggleCleanup = null;
+    }
+    const existing = document.getElementById("landing-scroll-toggle-container");
+    if (existing) existing.remove();
+
+    const container = document.createElement("div");
+    container.id = "landing-scroll-toggle-container";
+    container.className = "landing-scroll-toggle-container";
+    container.innerHTML = `
+      <span class="landing-scroll-tooltip" id="landing-scroll-tooltip">إلى أسفل الصفحة ⬇️</span>
+      <button id="landing-scroll-toggle-btn" class="landing-scroll-toggle-btn" type="button" aria-label="التمرير السريع" data-direction="down" title="الانتقال إلى أسفل الصفحة ⬇️">
+        <svg class="landing-scroll-progress-ring" viewBox="0 0 52 52">
+          <defs>
+            <linearGradient id="landingScrollGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0056D2" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <circle class="landing-scroll-ring-bg" cx="26" cy="26" r="22" />
+          <circle class="landing-scroll-ring-fill" id="landing-scroll-ring-fill" cx="26" cy="26" r="22" transform="rotate(-90 26 26)" />
+        </svg>
+        <div class="landing-scroll-icon-wrapper" id="landing-scroll-icon-wrapper">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </div>
+      </button>
+    `;
+    document.body.appendChild(container);
+
+    const btn = container.querySelector("#landing-scroll-toggle-btn");
+    const ringFill = container.querySelector("#landing-scroll-ring-fill");
+    const tooltip = container.querySelector("#landing-scroll-tooltip");
+
+    const updateScrollState = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (scrollHeight <= 60) {
+        container.style.opacity = "0";
+        container.style.pointerEvents = "none";
+        return;
+      } else {
+        container.style.opacity = "1";
+        container.style.pointerEvents = "auto";
+      }
+
+      const progress = Math.min(1, Math.max(0, scrollTop / scrollHeight));
+      const circumference = 2 * Math.PI * 22; // ~138.23
+      const offset = circumference - (progress * circumference);
+      if (ringFill) {
+        ringFill.style.strokeDashoffset = offset;
+      }
+
+      // If near top (within top 450px or upper 35% of page), point DOWN to go to bottom
+      // Otherwise (scrolled down), point UP to go back to top
+      const isNearTop = scrollTop < Math.min(450, scrollHeight * 0.35);
+      if (isNearTop) {
+        btn.setAttribute("data-direction", "down");
+        btn.title = "الانتقال إلى أسفل الصفحة ⬇️";
+        if (tooltip) tooltip.textContent = "إلى أسفل الصفحة ⬇️";
+      } else {
+        btn.setAttribute("data-direction", "up");
+        btn.title = "العودة إلى أعلى الصفحة ⬆️";
+        if (tooltip) tooltip.textContent = "العودة للأعلى ⬆️";
+      }
+    };
+
+    btn.addEventListener("click", () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const isNearTop = scrollTop < Math.min(450, scrollHeight * 0.35);
+
+      if (isNearTop) {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth"
+        });
+      } else {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      }
+    });
+
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    updateScrollState();
+    this.updateScrollToggleState = updateScrollState;
+
+    this.scrollToggleCleanup = () => {
+      window.removeEventListener("scroll", updateScrollState);
+      container.remove();
+    };
+  }
+
   onDestroy() {
+    if (this.scrollToggleCleanup) {
+      this.scrollToggleCleanup();
+      this.scrollToggleCleanup = null;
+    }
     if (this.teachersAutoScrollTimer) {
       clearInterval(this.teachersAutoScrollTimer);
       this.teachersAutoScrollTimer = null;

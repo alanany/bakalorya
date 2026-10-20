@@ -859,8 +859,20 @@ export const AdminSessionsPage = {
                       
                       <!-- Primary Direct Controls -->
                       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button type="button" class="btn-primary admin-view-group-sessions-btn" data-id="${grp.id}"
-                          style="padding:8px 16px; font-size:0.82rem; font-weight:900; border-radius:12px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(99,102,241,0.25); cursor:pointer;">
+                        <a href="#group-hub?id=${grp.id}&preview=student"
+                          style="padding:8px 16px; font-size:0.82rem; font-weight:900; border-radius:12px; background:linear-gradient(135deg,#0284c7,#0369a1); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(2,132,199,0.3); text-decoration:none; cursor:pointer;"
+                          title="دخول صفحة المجموعة ومعاينتها كطالب (المحتوى، الحصص، الروابط، والمهام)">
+                          <i data-lucide="eye" style="width:15px; height:15px;"></i> صفحة المجموعة (كطالب) 🎓👁️
+                        </a>
+
+                        <button type="button" class="btn-primary admin-renew-group-cycle-btn" data-id="${grp.id}"
+                          style="padding:8px 16px; font-size:0.82rem; font-weight:900; border-radius:12px; background:linear-gradient(135deg,#8b5cf6,#6366f1); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(139,92,246,0.3); cursor:pointer;"
+                          title="تجديد دورة المجموعة وجدولة حصص جديدة (للشهر الجديد / دورة إضافية)">
+                          <i data-lucide="refresh-cw" style="width:15px; height:15px;"></i> تجديد دورة المجموعة 🔄
+                        </button>
+
+                        <button type="button" class="btn-secondary admin-view-group-sessions-btn" data-id="${grp.id}"
+                          style="padding:8px 16px; font-size:0.82rem; font-weight:900; border-radius:12px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); color:var(--primary); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
                           <i data-lucide="calendar" style="width:15px; height:15px;"></i> جدول الحصص (${grp.totalSessions || 24} حصة) 📅
                         </button>
 
@@ -1704,6 +1716,10 @@ export const AdminSessionsPage = {
         try {
           await this.loadAllData();
           this.renderTab("groups");
+          window.dispatchEvent(new CustomEvent("sessions-updated"));
+          if (window.scheduleViewInstance && typeof window.scheduleViewInstance.loadContent === "function") {
+            window.scheduleViewInstance.loadContent();
+          }
         } catch (reloadErr) {
           console.error("Error refreshing tab after group edit:", reloadErr);
         }
@@ -1969,6 +1985,680 @@ export const AdminSessionsPage = {
     });
   },
 
+  // ── Render Renew Group Cycle Modal ──────────────────────────────────────────
+  async renderRenewGroupCycleModal(group) {
+    const existing = document.getElementById("admin-renew-group-cycle-modal-wrapper");
+    if (existing) existing.remove();
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "admin-renew-group-cycle-modal-wrapper";
+    document.body.appendChild(wrapper);
+
+    const closeModal = () => { wrapper.remove(); };
+
+    // Fetch existing sessions to know exact count and last date
+    let existingSessions = [];
+    try {
+      const res = await apiFetch(`/groups/${group.id}/sessions`).catch(() => null);
+      if (res && res.sessions) {
+        existingSessions = res.sessions;
+      }
+    } catch (_) {}
+
+    // Fetch group roster to show student checklist
+    let groupStudents = [];
+    try {
+      const rosterRes = await apiFetch(`/groups/${group.id}/roster`).catch(() => null);
+      if (rosterRes && Array.isArray(rosterRes.students)) {
+        groupStudents = rosterRes.students;
+      }
+    } catch (_) {}
+
+    const previousSessionCount = existingSessions.length || (group.totalSessions || 0);
+    const lastSession = existingSessions[existingSessions.length - 1];
+
+    const dayIndexMap = {
+      'الأحد': 0, 'الاثنين': 1, 'الإثنين': 1, 'الثلاثاء': 2,
+      'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6
+    };
+    const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const monthsArabic = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+    const currentDaysStr = `${group.scheduleDays || ''} ${group.scheduleText || ''}` || "الأحد، الثلاثاء";
+    const isDaySelected = (day) => {
+      if (currentDaysStr.includes(day)) return true;
+      if (day === 'الاثنين' && currentDaysStr.includes('الإثنين')) return true;
+      if (day === 'الإثنين' && currentDaysStr.includes('الاثنين')) return true;
+      return false;
+    };
+    const hasAnyMatched = daysList.some(d => isDaySelected(d));
+
+    const duration = group.sessionDuration || 60;
+    const scheduleDaysStr = group.scheduleDays || "الأحد، الثلاثاء";
+    const scheduleTimeStr = group.scheduleTime || "6:00م";
+
+    // Sensible default start date:
+    let defaultStartDateObj = new Date();
+    if (lastSession && new Date(lastSession.scheduledAt) > new Date()) {
+      defaultStartDateObj = new Date(lastSession.scheduledAt);
+      defaultStartDateObj.setDate(defaultStartDateObj.getDate() + 1);
+    } else {
+      defaultStartDateObj.setDate(defaultStartDateObj.getDate() + 1);
+    }
+    const defaultStartDate = defaultStartDateObj.toISOString().slice(0, 10);
+    const defaultMeetingLink = group.meetingLink || "";
+    const defaultMonthlyPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320);
+    const defaultTeacherHourlyRate = (group.teacherHourlyRate !== undefined && group.teacherHourlyRate !== null && Number(group.teacherHourlyRate) > 0)
+      ? Number(group.teacherHourlyRate)
+      : (group.teacher?.hourlyRate || 100);
+
+    const generatePreview = (startDateVal, countVal, daysStr, timeStr) => {
+      const daysArr = (daysStr !== undefined ? daysStr : scheduleDaysStr)
+        .split(/[,،]+/)
+        .map(d => d.trim())
+        .filter(Boolean);
+      const targetDays = daysArr.map(d => dayIndexMap[d]).filter(d => d !== undefined);
+
+      if (targetDays.length === 0) {
+        return [];
+      }
+
+      let hour = 18;
+      let min = 0;
+      const tStr = timeStr || scheduleTimeStr;
+      const isPM = tStr.includes("م") || tStr.toLowerCase().includes("pm");
+      const isAM = tStr.includes("ص") || tStr.toLowerCase().includes("am");
+      const cleanTime = tStr.replace(/[^0-9:]/g, "");
+      const parts = cleanTime.split(":");
+      if (parts.length >= 1) {
+        hour = parseInt(parts[0], 10) || 18;
+        if (isPM && hour < 12) hour += 12;
+        if (isAM && hour === 12) hour = 0;
+      }
+      if (parts.length >= 2) {
+        min = parseInt(parts[1], 10) || 0;
+      }
+
+      let curr = new Date(startDateVal || new Date());
+      curr.setHours(hour, min, 0, 0);
+
+      const list = [];
+      let count = 0;
+      let safety = 0;
+      const targetCount = parseInt(countVal, 10) || 8;
+
+      while (count < targetCount && safety < 1000) {
+        safety++;
+        if (targetDays.length === 0 || targetDays.includes(curr.getDay())) {
+          count++;
+          const d = new Date(curr);
+          const dayName = daysArabic[d.getDay()];
+          const dateFormatted = `${dayName} ${d.getDate()} ${monthsArabic[d.getMonth()]} ${d.getFullYear()}`;
+          const sessionNum = previousSessionCount + count;
+
+          list.push({
+            sessionNumber: sessionNum,
+            title: `${group.name || group.title} - حصة ${sessionNum}`,
+            scheduledAt: d.toISOString(),
+            dateFormatted,
+            timeFormatted: tStr,
+            duration
+          });
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+      return list;
+    };
+
+    const initialDays = daysList.filter(d => (hasAnyMatched ? isDaySelected(d) : (d === "الأحد" || d === "الثلاثاء")));
+    const initialDaysStr = initialDays.join("، ");
+    let previewList = generatePreview(defaultStartDate, 8, initialDaysStr, scheduleTimeStr);
+    const teacherName = group.teacher?.name || group.course?.teacher?.name || "معلم المنصة";
+    const enrolledStudentsCount = group.enrolledCount || (group.students ? group.students.length : 0);
+
+    const renderPreviewHTML = (sessions) => {
+      if (!sessions || sessions.length === 0) {
+        return '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:0.82rem;">يرجى اختيار يوم واحد على الأقل وتاريخ البدء لمعاينة الحصص.</div>';
+      }
+      return sessions.map(s => `
+        <div style="padding:10px 14px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.84rem;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:28px; height:28px; border-radius:8px; background:rgba(139,92,246,0.15); color:#8b5cf6; font-weight:900; font-size:0.8rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+              ${s.sessionNumber}
+            </span>
+            <div>
+              <strong style="color:var(--text-main); font-size:0.86rem; display:block;">${s.title}</strong>
+              <span style="color:var(--text-muted); font-size:0.76rem;">📅 ${s.dateFormatted}</span>
+            </div>
+          </div>
+          <div style="text-align:left; flex-shrink:0;">
+            <span style="font-weight:800; color:#8b5cf6; font-size:0.82rem; background:rgba(139,92,246,0.06); padding:3px 8px; border-radius:8px; border:1px solid rgba(139,92,246,0.2); display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="clock" style="width:12px; height:12px;"></i> ${s.timeFormatted} (${s.duration} د)
+            </span>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    wrapper.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div class="glass-card" style="width:100%; max-width:720px; border-radius:28px; padding:26px; max-height:92vh; display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden; border:1.5px solid rgba(139,92,246,0.35); box-shadow:0 25px 60px rgba(0,0,0,0.45);">
+          
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:48px; height:48px; border-radius:16px; background:linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.25)); color:#8b5cf6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="refresh-cw" style="width:24px; height:24px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.25rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">
+                  تجديد دورة المجموعة وإضافة حصص جديدة 🔄✨
+                </h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                  إضافة حصص تفاعلية جديدة للشهر القادم / دورة دراسية جديدة دون فقدان محتوى أو طلاب المجموعة.
+                </p>
+              </div>
+            </div>
+            <button id="close-renew-cycle-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">&times;</button>
+          </div>
+
+          <!-- Group Info Strip -->
+          <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:12px 16px; display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; font-size:0.82rem;">
+            <div>
+              <span style="color:var(--text-muted); display:block;">المجموعة:</span>
+              <strong style="color:var(--text-main);">${group.name || group.title}</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted); display:block;">المعلم المشرف:</span>
+              <strong style="color:var(--primary);">${teacherName}</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted); display:block;">الحصص السابقة:</span>
+              <strong style="color:#8b5cf6;">${previousSessionCount} حصة مجدولة</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted); display:block;">الطلاب المقيدون:</span>
+              <strong style="color:#10b981;">👥 ${enrolledStudentsCount} طالب مسجل</strong>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <form id="renew-group-cycle-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
+            
+            <!-- Quick Sessions Presets -->
+            <div>
+              <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                عدد الحصص الإضافية للدورة الجديدة: <span style="color:#ef4444;">*</span>
+              </label>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                <button type="button" class="renew-preset-btn" data-count="4" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+4 حصص</button>
+                <button type="button" class="renew-preset-btn active" data-count="8" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--primary); background:linear-gradient(135deg,var(--primary),#4f46e5); color:#fff; cursor:pointer;">+8 حصص (شهر كامل ⭐)</button>
+                <button type="button" class="renew-preset-btn" data-count="12" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+12 حصة</button>
+                <button type="button" class="renew-preset-btn" data-count="16" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+16 حصة</button>
+              </div>
+              <input type="number" id="renew-cycle-sessions-count" value="8" min="1" max="60" required class="form-input"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; box-sizing:border-box;">
+            </div>
+
+            <!-- Row: Start Date & Cycle Title -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  تاريخ بداية أول حصة في الدورة الجديدة: <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="date" id="renew-cycle-start-date" value="${defaultStartDate}" required class="form-input"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  عنوان / مسمى الدورة (اختياري):
+                </label>
+                <input type="text" id="renew-cycle-title" placeholder="مثال: الشهر الثاني / المراجعة النهائية" class="form-input"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Schedule Days (Checkboxes like Create Group) -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
+                </label>
+                <span style="font-size:0.73rem; color:#8b5cf6; font-weight:700;">اختيار الأيام 🗓️</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
+                ${daysList.map((day, idx) => {
+                  const isChecked = hasAnyMatched ? isDaySelected(day) : (idx === 1 || idx === 3);
+                  return `
+                    <label style="display:flex; align-items:center; gap:5px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.8rem; font-weight:700; cursor:pointer;">
+                      <input type="checkbox" name="renew-cycle-days" value="${day}" ${isChecked ? 'checked' : ''} style="accent-color:#8b5cf6;">
+                      <span>${day}</span>
+                    </label>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Schedule Time -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="renew-cycle-time" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  توقيت الحصة: <span style="color:#ef4444;">*</span>
+                </label>
+                <span style="font-size:0.73rem; color:#8b5cf6; font-weight:700;">اختيار بالنقرة 🕒</span>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <select id="renew-cycle-time" required class="form-input" style="flex:1; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; cursor:pointer;">
+                  ${this.renderTimeSelectOptions(scheduleTimeStr || "06:00 م")}
+                </select>
+                <input type="time" id="renew-cycle-time-picker" value="${this.timeToArabicTo24(scheduleTimeStr || '06:00 م')}" title="اختيار من الساعة 🕒" style="width:42px; height:42px; padding:4px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Financial Section: Student Price & Teacher Rate & Profit Estimation -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
+                  <i data-lucide="coins" style="width:16px; height:16px; color:#10b981;"></i>
+                  التسعير والماليات للدورة الجديدة (الطلاب والمعلم) 💳
+                </label>
+                <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.73rem; padding:2px 8px; border-radius:8px;">
+                  حسابات الأرباح المباشرة ⚡
+                </span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <!-- Student Price -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label for="renew-cycle-price" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
+                      سعر الدورة للطالب (ج.م): <span style="color:#ef4444;">*</span>
+                    </label>
+                    <span id="renew-per-session-price-label" style="font-size:0.72rem; color:var(--primary); font-weight:700;">
+                      (~${Math.round(defaultMonthlyPrice / 8)} ج.م/حصة)
+                    </span>
+                  </div>
+                  <input type="number" id="renew-cycle-price" value="${defaultMonthlyPrice}" min="0" step="10" required class="form-input"
+                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box;">
+                </div>
+
+                <!-- Teacher Hourly Rate -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label for="renew-cycle-teacher-rate" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
+                      أجر المعلم في الساعة (ج.م): <span style="color:#ef4444;">*</span>
+                    </label>
+                    <span id="renew-teacher-total-payout-label" style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">
+                      (إجمالي: ${Math.round(defaultTeacherHourlyRate * 8 * (duration / 60))} ج.م)
+                    </span>
+                  </div>
+                  <input type="number" id="renew-cycle-teacher-rate" value="${defaultTeacherHourlyRate}" min="0" step="10" required class="form-input"
+                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box;">
+                </div>
+              </div>
+
+              <!-- Live Profit Margin Calculator Strip -->
+              <div id="renew-financial-summary-strip" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; padding:10px 12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); font-size:0.78rem;">
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">إجمالي إيراد الطلاب:</span>
+                  <strong id="renew-calc-student-revenue" style="color:#10b981; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">استحقاق المعلم:</span>
+                  <strong id="renew-calc-teacher-cost" style="color:#ef4444; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">صافي ربح المنصة:</span>
+                  <strong id="renew-calc-net-profit" style="color:#6366f1; font-size:0.95rem; font-weight:900;">0 ج.م</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Meeting Link -->
+            <div>
+              <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                رابط قاعة البث (Zoom / Google Meet):
+              </label>
+              <input type="url" id="renew-cycle-meeting-link" value="${defaultMeetingLink}" placeholder="https://zoom.us/j/... أو Meet" class="form-input"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Live Sessions Preview Box -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="calendar-plus" style="width:16px; height:16px; color:#8b5cf6;"></i>
+                  معاينة الحصص الجديدة التي ستتم جدولتها (<span id="renew-preview-count-label">${previewList.length}</span> حصص)
+                </label>
+                <span id="renew-sessions-date-range-label" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                  من ${previewList[0]?.dateFormatted || ''} إلى ${previewList[previewList.length - 1]?.dateFormatted || ''}
+                </span>
+              </div>
+
+              <div id="renew-sessions-preview-container" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; border:1px solid var(--border-color); border-radius:16px; padding:10px; background:rgba(0,0,0,0.02);">
+                ${renderPreviewHTML(previewList)}
+              </div>
+            </div>
+
+            <!-- Student Selection Checklist -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
+                    <i data-lucide="users" style="width:16px; height:16px; color:#8b5cf6;"></i>
+                    الطلاب المستمرون في الدورة الجديدة (<span id="renew-selected-students-count">${groupStudents.length}</span> من ${groupStudents.length})
+                  </label>
+                  <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">
+                    ألغِ تحديد أي طالب لم يسدد أو اعتذر لاستبعاده وتوفير مقعده للدورة الجديدة
+                  </span>
+                </div>
+                ${groupStudents.length > 0 ? `
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" id="renew-select-all-students-btn" style="padding:4px 10px; font-size:0.75rem; font-weight:800; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); cursor:pointer;">
+                      تحديد الكل ✔
+                    </button>
+                    <button type="button" id="renew-deselect-all-students-btn" style="padding:4px 10px; font-size:0.75rem; font-weight:800; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); cursor:pointer;">
+                      إلغاء التحديد ✖
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+
+              ${groupStudents.length === 0 ? `
+                <div style="text-align:center; padding:14px; color:var(--text-muted); font-size:0.82rem; background:var(--bg-card); border-radius:12px; border:1px dashed var(--border-color);">
+                  لا يوجد طلاب مسجلون في هذه المجموعة حالياً.
+                </div>
+              ` : `
+                <div id="renew-students-list-container" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-inline-end:4px;">
+                  ${groupStudents.map(st => `
+                    <label class="renew-student-row" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); cursor:pointer; user-select:none; transition:all 0.15s ease;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" class="renew-student-checkbox" value="${st.studentId || st.enrollmentId}" checked style="width:16px; height:16px; cursor:pointer; accent-color:#8b5cf6;">
+                        <div>
+                          <span style="font-size:0.84rem; font-weight:800; color:var(--text-main); display:block;">${st.name}</span>
+                          ${st.phone ? `<span style="font-size:0.74rem; color:var(--text-muted); direction:ltr; display:inline-block;">📱 ${st.phone}</span>` : ''}
+                        </div>
+                      </div>
+                      <span class="renew-student-badge" style="font-size:0.74rem; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.1); color:#10b981;">
+                        مستمر ✔
+                      </span>
+                    </label>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- Notify Checkbox -->
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(99,102,241,0.06); padding:10px 14px; border-radius:12px; border:1px solid rgba(99,102,241,0.2);">
+              <input type="checkbox" id="renew-cycle-notify" checked style="width:18px; height:18px; cursor:pointer; accent-color:var(--primary);">
+              <label for="renew-cycle-notify" style="font-size:0.82rem; font-weight:800; color:var(--text-main); cursor:pointer;">
+                إرسال إشعارات وتنبيهات فورية لجميع الطلاب المستمرين بالدورة الجديدة 🔔💬
+              </label>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; border-top:1px solid var(--border-color); padding-top:14px;">
+              <button type="button" id="cancel-renew-cycle-modal-btn" class="btn-secondary" style="padding:10px 22px; border-radius:20px; font-size:0.88rem; font-weight:700;">إلغاء</button>
+              <button type="submit" id="submit-renew-cycle-btn" class="btn-primary" style="padding:10px 28px; border-radius:20px; font-weight:900; font-size:0.92rem; background:linear-gradient(135deg, #8b5cf6, #6366f1); border:none; box-shadow:0 4px 16px rgba(139,92,246,0.35); display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                <i data-lucide="refresh-cw" style="width:18px; height:18px;"></i>
+                <span id="submit-renew-btn-label">تأكيد تجديد الدورة وجدولة (+8 حصص) 🔄🚀</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    document.getElementById("close-renew-cycle-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-renew-cycle-modal-btn")?.addEventListener("click", closeModal);
+
+    // Student checkboxes toggle & live count update
+    const updateStudentCount = () => {
+      const cbs = wrapper.querySelectorAll(".renew-student-checkbox");
+      const checked = Array.from(cbs).filter(cb => cb.checked);
+      const countEl = document.getElementById("renew-selected-students-count");
+      if (countEl) countEl.textContent = checked.length;
+
+      cbs.forEach(cb => {
+        const row = cb.closest(".renew-student-row");
+        const badge = row?.querySelector(".renew-student-badge");
+        if (badge) {
+          if (cb.checked) {
+            badge.textContent = "مستمر ✔";
+            badge.style.background = "rgba(16,185,129,0.1)";
+            badge.style.color = "#10b981";
+            if (row) row.style.opacity = "1";
+          } else {
+            badge.textContent = "مستبعد ✖";
+            badge.style.background = "rgba(239,68,68,0.1)";
+            badge.style.color = "#ef4444";
+            if (row) row.style.opacity = "0.55";
+          }
+        }
+      });
+
+      updateFinancials();
+    };
+
+    // Live update financials (Student revenue, teacher payout, net margin)
+    const updateFinancials = () => {
+      const studentPrice = parseFloat(wrapper.querySelector("#renew-cycle-price")?.value) || 0;
+      const teacherRate = parseFloat(wrapper.querySelector("#renew-cycle-teacher-rate")?.value) || 0;
+      const countVal = parseInt(wrapper.querySelector("#renew-cycle-sessions-count")?.value, 10) || 8;
+      const checkedStudents = wrapper.querySelectorAll(".renew-student-checkbox:checked").length;
+
+      // Update per-session price label
+      const perSessionLabel = wrapper.querySelector("#renew-per-session-price-label");
+      if (perSessionLabel) {
+        const perSession = countVal > 0 ? Math.round((studentPrice / countVal) * 10) / 10 : 0;
+        perSessionLabel.textContent = `(~${perSession} ج.م/حصة)`;
+      }
+
+      // Update teacher payout label
+      const totalHours = countVal * (duration / 60);
+      const teacherTotalPayout = Math.round(totalHours * teacherRate);
+      const teacherPayoutLabel = wrapper.querySelector("#renew-teacher-total-payout-label");
+      if (teacherPayoutLabel) {
+        teacherPayoutLabel.textContent = `(إجمالي: ${teacherTotalPayout.toLocaleString()} ج.م)`;
+      }
+
+      // Update summary strip
+      const totalStudentRevenue = Math.round(checkedStudents * studentPrice);
+      const netProfit = totalStudentRevenue - teacherTotalPayout;
+
+      const revEl = wrapper.querySelector("#renew-calc-student-revenue");
+      if (revEl) revEl.textContent = `${totalStudentRevenue.toLocaleString()} ج.م (${checkedStudents} طالب)`;
+
+      const costEl = wrapper.querySelector("#renew-calc-teacher-cost");
+      if (costEl) costEl.textContent = `${teacherTotalPayout.toLocaleString()} ج.م (${totalHours} س)`;
+
+      const profitEl = wrapper.querySelector("#renew-calc-net-profit");
+      if (profitEl) {
+        profitEl.textContent = `${netProfit > 0 ? '+' : ''}${netProfit.toLocaleString()} ج.م`;
+        profitEl.style.color = netProfit >= 0 ? '#6366f1' : '#ef4444';
+      }
+    };
+
+    wrapper.querySelectorAll(".renew-student-checkbox").forEach(cb => {
+      cb.addEventListener("change", updateStudentCount);
+    });
+
+    document.getElementById("renew-select-all-students-btn")?.addEventListener("click", () => {
+      wrapper.querySelectorAll(".renew-student-checkbox").forEach(cb => { cb.checked = true; });
+      updateStudentCount();
+    });
+
+    document.getElementById("renew-deselect-all-students-btn")?.addEventListener("click", () => {
+      wrapper.querySelectorAll(".renew-student-checkbox").forEach(cb => { cb.checked = false; });
+      updateStudentCount();
+    });
+
+    const getSelectedDays = () => {
+      const checked = Array.from(wrapper.querySelectorAll("input[name='renew-cycle-days']:checked")).map(cb => cb.value);
+      return checked.join("، ");
+    };
+
+    // Live update preview helper
+    const updatePreview = () => {
+      const countVal = document.getElementById("renew-cycle-sessions-count")?.value || 8;
+      const startDateVal = document.getElementById("renew-cycle-start-date")?.value || defaultStartDate;
+      const daysVal = getSelectedDays();
+      const timeVal = document.getElementById("renew-cycle-time")?.value || scheduleTimeStr;
+
+      previewList = generatePreview(startDateVal, countVal, daysVal, timeVal);
+      const container = document.getElementById("renew-sessions-preview-container");
+      if (container) {
+        container.innerHTML = renderPreviewHTML(previewList);
+        if (window.lucide) window.lucide.createIcons();
+      }
+      const countLabel = document.getElementById("renew-preview-count-label");
+      if (countLabel) countLabel.textContent = previewList.length;
+
+      const rangeLabel = document.getElementById("renew-sessions-date-range-label");
+      if (rangeLabel && previewList.length > 0) {
+        rangeLabel.textContent = `من ${previewList[0]?.dateFormatted || ''} إلى ${previewList[previewList.length - 1]?.dateFormatted || ''}`;
+      } else if (rangeLabel) {
+        rangeLabel.textContent = "يرجى تحديد أيام الحصص لمعاينة المواعيد";
+      }
+      const submitLabel = document.getElementById("submit-renew-btn-label");
+      if (submitLabel) submitLabel.textContent = `تأكيد تجديد الدورة وجدولة (+${countVal} حصص) 🔄🚀`;
+
+      updateFinancials();
+    };
+
+    // Preset buttons click
+    wrapper.querySelectorAll(".renew-preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        wrapper.querySelectorAll(".renew-preset-btn").forEach(b => {
+          b.classList.remove("active");
+          b.style.background = "var(--bg-app)";
+          b.style.color = "var(--text-main)";
+          b.style.border = "1px solid var(--border-color)";
+        });
+        btn.classList.add("active");
+        btn.style.background = "linear-gradient(135deg,var(--primary),#4f46e5)";
+        btn.style.color = "#fff";
+        btn.style.border = "1px solid var(--primary)";
+
+        const count = btn.getAttribute("data-count");
+        const countInput = document.getElementById("renew-cycle-sessions-count");
+        if (countInput) countInput.value = count;
+        updatePreview();
+      });
+    });
+
+    // Schedule days checkboxes change
+    wrapper.querySelectorAll("input[name='renew-cycle-days']").forEach(cb => {
+      cb.addEventListener("change", updatePreview);
+    });
+
+    // Sync renew-cycle-time select and time picker
+    const renewTimeSelect = wrapper.querySelector("#renew-cycle-time");
+    const renewTimePicker = wrapper.querySelector("#renew-cycle-time-picker");
+
+    renewTimeSelect?.addEventListener("change", (e) => {
+      if (renewTimePicker && e.target.value) {
+        renewTimePicker.value = this.timeToArabicTo24(e.target.value);
+      }
+      updatePreview();
+    });
+
+    renewTimePicker?.addEventListener("change", (e) => {
+      if (e.target.value && renewTimeSelect) {
+        const arabTime = this.normalizeTimeToArabic(e.target.value);
+        let matched = Array.from(renewTimeSelect.options).find(opt => opt.value === arabTime);
+        if (!matched) {
+          const newOpt = new Option(`⏰ ${arabTime} (توقيت مخصص)`, arabTime, true, true);
+          renewTimeSelect.add(newOpt, 0);
+        } else {
+          renewTimeSelect.value = arabTime;
+        }
+        updatePreview();
+      }
+    });
+
+    document.getElementById("renew-cycle-sessions-count")?.addEventListener("input", updatePreview);
+    document.getElementById("renew-cycle-start-date")?.addEventListener("change", updatePreview);
+    document.getElementById("renew-cycle-price")?.addEventListener("input", updateFinancials);
+    document.getElementById("renew-cycle-teacher-rate")?.addEventListener("input", updateFinancials);
+
+    // Initial calculation of financials
+    updateFinancials();
+
+    // Form Submit
+    document.getElementById("renew-group-cycle-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-renew-cycle-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>جاري تجديد الدورة وجدولة الحصص... ⏳</span>`;
+      }
+
+      const additionalSessionsVal = document.getElementById("renew-cycle-sessions-count")?.value || 8;
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='renew-cycle-days']:checked")).map(cb => cb.value);
+      if (checkedDays.length === 0) {
+        showToast("يرجى اختيار يوم واحد على الأقل من أيام الحصص الأسبوعية.", "warning");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>تأكيد تجديد الدورة وجدولة (+${additionalSessionsVal} حصص) 🔄🚀</span>`;
+        }
+        return;
+      }
+
+      const startDateVal = document.getElementById("renew-cycle-start-date")?.value;
+      const cycleTitleVal = document.getElementById("renew-cycle-title")?.value?.trim() || "";
+      const scheduleDaysVal = checkedDays.join("، ");
+      const scheduleTimeVal = document.getElementById("renew-cycle-time")?.value?.trim() || null;
+      const monthlyPriceVal = document.getElementById("renew-cycle-price")?.value || null;
+      const teacherHourlyRateVal = document.getElementById("renew-cycle-teacher-rate")?.value || null;
+      const meetingLinkVal = document.getElementById("renew-cycle-meeting-link")?.value?.trim() || null;
+      const notifyStudentsVal = document.getElementById("renew-cycle-notify")?.checked !== false;
+
+      const studentCheckboxes = wrapper.querySelectorAll(".renew-student-checkbox");
+      let studentIdsToKeep = undefined;
+      if (studentCheckboxes.length > 0) {
+        studentIdsToKeep = Array.from(studentCheckboxes)
+          .filter(cb => cb.checked)
+          .map(cb => cb.value);
+      }
+
+      try {
+        const res = await apiFetch(`/admin/groups/${group.id}/renew-cycle`, {
+          method: "POST",
+          body: JSON.stringify({
+            additionalSessions: additionalSessionsVal,
+            startDate: startDateVal,
+            cycleTitle: cycleTitleVal,
+            scheduleDays: scheduleDaysVal,
+            scheduleTime: scheduleTimeVal,
+            monthlyPrice: monthlyPriceVal,
+            teacherHourlyRate: teacherHourlyRateVal,
+            meetingLink: meetingLinkVal,
+            notifyStudents: notifyStudentsVal,
+            studentIdsToKeep
+          })
+        });
+
+        showToast(res.message || "تم تجديد دورة المجموعة وجدولة الحصص بنجاح! 🔄🎉", "success");
+        closeModal();
+        await this.loadAllData();
+        this.renderTab("groups");
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="refresh-cw" style="width:18px; height:18px;"></i> <span>تأكيد تجديد الدورة وجدولة (+${additionalSessionsVal} حصص) 🔄🚀</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+        showToast(err.message || "فشل تجديد دورة المجموعة.", "error");
+      }
+    });
+  },
+
   // ── Render Group Sessions View Modal ──────────────────────────────────────────
   async renderGroupSessionsViewModal(groupId) {
     const existing = document.getElementById("admin-group-sessions-view-modal-wrapper");
@@ -2170,8 +2860,14 @@ export const AdminSessionsPage = {
               </a>
             ` : '<span></span>'}
 
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <a href="#group-hub?id=${groupId}&preview=student" class="btn-secondary" style="padding:8px 16px; border-radius:20px; font-size:0.82rem; font-weight:800; color:#0284c7; border-color:#0284c7; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="eye" style="width:13px; height:13px;"></i> صفحة المجموعة (كطالب) 🎓👁️
+              </a>
               ${group && sessions.length > 0 ? `
+                <button type="button" id="admin-modal-renew-group-cycle-btn" class="btn-primary" style="padding:8px 18px; border-radius:20px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                  <i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> تجديد دورة جديدة (+8 حصص) 🔄
+                </button>
                 <button type="button" id="admin-modal-regenerate-teaching-btn" class="btn-secondary" style="padding:8px 18px; border-radius:20px; font-size:0.82rem; font-weight:800; color:#8b5cf6; border-color:#8b5cf6;">
                   <i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> إعادة جدولة الحصص ⚡
                 </button>
@@ -2188,6 +2884,11 @@ export const AdminSessionsPage = {
 
     document.getElementById("close-group-sessions-view-modal")?.addEventListener("click", closeModal);
     document.getElementById("cancel-group-sessions-view-modal-btn")?.addEventListener("click", closeModal);
+
+    document.getElementById("admin-modal-renew-group-cycle-btn")?.addEventListener("click", () => {
+      closeModal();
+      if (group) this.renderRenewGroupCycleModal(group);
+    });
 
     document.getElementById("admin-modal-start-teaching-btn")?.addEventListener("click", () => {
       closeModal();

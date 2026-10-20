@@ -3638,3 +3638,135 @@ body.sidebar-open {
 #top-teachers-container::-webkit-scrollbar {
   display: none;
 }
+
+/* ─── Smart Floating Scroll Toggle Button (Landing Page) ─── */
+.landing-scroll-toggle-container {
+  position: fixed;
+  bottom: 26px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  flex-direction: row-reverse;
+  gap: 10px;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.landing-scroll-toggle-btn {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color, rgba(0, 86, 210, 0.2));
+  background: var(--bg-card, #ffffff);
+  color: var(--primary, #0056D2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  box-shadow: 0 10px 28px rgba(0, 86, 210, 0.22), 0 3px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landing-scroll-toggle-btn:hover {
+  transform: translateY(-4px) scale(1.08);
+  box-shadow: 0 14px 34px rgba(0, 86, 210, 0.35), 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary, #0056D2);
+}
+
+.landing-scroll-toggle-btn:active {
+  transform: translateY(-1px) scale(0.95);
+}
+
+.landing-scroll-progress-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.landing-scroll-ring-bg {
+  fill: none;
+  stroke: rgba(0, 86, 210, 0.12);
+  stroke-width: 3.5;
+}
+
+body.dark-theme .landing-scroll-ring-bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.landing-scroll-ring-fill {
+  fill: none;
+  stroke: url(#landingScrollGradient);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 138.23;
+  stroke-dashoffset: 138.23;
+  transition: stroke-dashoffset 0.12s ease-out;
+}
+
+.landing-scroll-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary, #0056D2);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s ease;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.landing-scroll-toggle-btn[data-direction="down"] .landing-scroll-icon-wrapper {
+  transform: rotate(180deg);
+}
+
+.landing-scroll-toggle-btn[data-direction="up"] .landing-scroll-icon-wrapper {
+  transform: rotate(0deg);
+}
+
+/* Tooltip Badge */
+.landing-scroll-tooltip {
+  background: var(--bg-card, #ffffff);
+  color: var(--text-color, #0f172a);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+  font-family: 'Cairo', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.landing-scroll-toggle-container:hover .landing-scroll-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .landing-scroll-toggle-container {
+    bottom: 20px;
+    right: 16px;
+  }
+  .landing-scroll-toggle-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .landing-scroll-tooltip {
+    display: none;
+  }
+}

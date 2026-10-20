@@ -705,6 +705,14 @@ export class CourseGroupController {
         return res.status(403).json({ error: "Not authorized to update this group." });
       }
 
+      const previousScheduleTime = group.scheduleTime;
+      const previousScheduleDays = group.scheduleDays;
+      const previousDuration = group.sessionDuration;
+      const previousStartDate = group.startDate;
+      const previousMeetingLink = group.meetingLink;
+      const previousTeacherId = group.teacher?.id;
+      const previousName = group.name;
+
       if (name !== undefined) group.name = name;
       if (description !== undefined) group.description = description;
       if (scheduleDays !== undefined) group.scheduleDays = scheduleDays;
@@ -756,14 +764,223 @@ export class CourseGroupController {
       if (meetingLink !== undefined) group.meetingLink = meetingLink;
       if (status !== undefined) group.status = status;
 
+      let newTeacher: User | null = null;
       if (teacherId !== undefined && req.user!.role === "admin") {
-        const newTeacher = await userRepo.findOneBy({ id: teacherId });
+        newTeacher = await userRepo.findOneBy({ id: teacherId });
         if (newTeacher) {
           group.teacher = newTeacher;
         }
       }
 
       const updated = await groupRepo.save(group);
+
+      // ── Directly synchronize scheduled sessions and timetable when schedule changes ──
+      const timeChanged = scheduleTime !== undefined && scheduleTime !== previousScheduleTime;
+      const daysChanged = scheduleDays !== undefined && scheduleDays !== previousScheduleDays;
+      const durationChanged = sessionDuration !== undefined && parseInt(sessionDuration, 10) !== previousDuration;
+      const startDateChanged = startDate !== undefined && (
+        (startDate && !previousStartDate) ||
+        (!startDate && previousStartDate) ||
+        (startDate && previousStartDate && new Date(startDate).getTime() !== new Date(previousStartDate).getTime())
+      );
+      const teacherChanged = Boolean(teacherId !== undefined && newTeacher && previousTeacherId !== newTeacher.id);
+      const meetingLinkChanged = meetingLink !== undefined && meetingLink !== previousMeetingLink;
+      const nameChanged = name !== undefined && name !== previousName;
+
+      const shouldSyncSessions = timeChanged || daysChanged || durationChanged || startDateChanged || teacherChanged || meetingLinkChanged || nameChanged || (scheduleTime !== undefined);
+
+      if (shouldSyncSessions) {
+        try {
+          const sessionRepo = AppDataSource.getRepository(Session);
+          const allGroupSessions = await sessionRepo.find({
+            where: { group: { id: group.id } },
+            relations: ["teacher", "course"],
+            order: { scheduledAt: "ASC" }
+          });
+
+          const completedSessions = allGroupSessions.filter(s => s.status === "COMPLETED" || s.completedAt != null);
+          const scheduledSessions = allGroupSessions.filter(s => s.status !== "COMPLETED" && s.completedAt == null && s.status !== "CANCELLED_BY_STUDENT" && s.status !== "CANCELLED_BY_TEACHER");
+
+          // Parse target schedule time (hours and minutes)
+          let hour = 18;
+          let min = 0;
+          const timeStr = group.scheduleTime || "18:00";
+          const isPM = timeStr.includes("م") || timeStr.toLowerCase().includes("pm");
+          const isAM = timeStr.includes("ص") || timeStr.toLowerCase().includes("am");
+          const cleanTime = timeStr.replace(/[^0-9:]/g, "");
+          const parts = cleanTime.split(":");
+          if (parts.length >= 1) {
+            hour = parseInt(parts[0], 10) || 18;
+            if (isPM && hour < 12) hour += 12;
+            if (isAM && hour === 12) hour = 0;
+          }
+          if (parts.length >= 2) {
+            min = parseInt(parts[1], 10) || 0;
+          }
+
+          const dayIndexMap: Record<string, number> = {
+            'الأحد': 0, 'الاحد': 0,
+            'الاثنين': 1, 'الإثنين': 1, 'اثنين': 1,
+            'الثلاثاء': 2,
+            'الأربعاء': 3, 'الاربعاء': 3,
+            'الخميس': 4,
+            'الجمعة': 5,
+            'السبت': 6
+          };
+          const fullScheduleText = `${group.scheduleDays || ''} ${group.scheduleText || ''}`;
+          const targetDays: number[] = [];
+          for (const [dayName, dayIndex] of Object.entries(dayIndexMap)) {
+            if (fullScheduleText.includes(dayName)) {
+              if (!targetDays.includes(dayIndex)) {
+                targetDays.push(dayIndex);
+              }
+            }
+          }
+
+          if (scheduledSessions.length > 0) {
+            const needsDayResequencing = daysChanged || startDateChanged || (targetDays.length > 0 && scheduledSessions.some(s => !targetDays.includes(new Date(s.scheduledAt).getDay())));
+            if (needsDayResequencing) {
+              // Re-sequence scheduled sessions along the new target days
+              let startFrom = new Date();
+              if (completedSessions.length > 0) {
+                const lastCompleted = completedSessions[completedSessions.length - 1];
+                if (lastCompleted && lastCompleted.scheduledAt) {
+                  startFrom = new Date(lastCompleted.scheduledAt);
+                  startFrom.setDate(startFrom.getDate() + 1);
+                }
+              } else if (group.startDate) {
+                startFrom = new Date(group.startDate);
+              }
+
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              if (startFrom < today) {
+                startFrom = new Date();
+              }
+
+              let currDate = new Date(startFrom);
+              currDate.setHours(hour, min, 0, 0);
+              if (currDate < new Date()) {
+                currDate.setDate(currDate.getDate() + 1);
+                currDate.setHours(hour, min, 0, 0);
+              }
+
+              let safety = 0;
+              let idx = 0;
+              while (idx < scheduledSessions.length && safety < 1500) {
+                safety++;
+                if (targetDays.length === 0 || targetDays.includes(currDate.getDay())) {
+                  const sess = scheduledSessions[idx];
+                  sess.scheduledAt = new Date(currDate);
+                  if (group.sessionDuration) sess.duration = group.sessionDuration;
+                  if (meetingLink !== undefined) sess.meetingLink = meetingLink;
+                  if (group.teacher) sess.teacher = group.teacher;
+                  if (nameChanged && previousName && sess.title && sess.title.includes(previousName)) {
+                    sess.title = sess.title.replace(previousName, group.name);
+                  }
+                  idx++;
+                }
+                currDate.setDate(currDate.getDate() + 1);
+              }
+            } else {
+              // Days did not change: update scheduled sessions' time, duration, and metadata directly
+              for (const sess of scheduledSessions) {
+                const d = new Date(sess.scheduledAt);
+                d.setHours(hour, min, 0, 0);
+                sess.scheduledAt = d;
+                if (group.sessionDuration) sess.duration = group.sessionDuration;
+                if (meetingLink !== undefined) sess.meetingLink = meetingLink;
+                if (group.teacher) sess.teacher = group.teacher;
+                if (nameChanged && previousName && sess.title && sess.title.includes(previousName)) {
+                  sess.title = sess.title.replace(previousName, group.name);
+                }
+              }
+            }
+
+            await sessionRepo.save(scheduledSessions);
+
+            if (scheduledSessions.length > 0) {
+              group.endDate = new Date(scheduledSessions[scheduledSessions.length - 1].scheduledAt);
+              await groupRepo.save(group);
+            }
+
+            // Notify Teacher & Enrolled Students about the new timetable schedule
+            try {
+              const scheduleSummary = group.scheduleText || `${group.scheduleDays || ''} الساعة ${group.scheduleTime || ''}`.trim();
+              const notifMsg = `📅 تم تحديث موعد جدول حصص مجموعة "${group.name}" إلى: ${scheduleSummary}. تم تعديل كافة الحصص القادمة في الجدول الزمني تلقائياً.`;
+
+              if (group.teacher?.id) {
+                await NotificationController.createNotification(
+                  group.teacher.id,
+                  "تحديث مواعيد جدول المجموعة 🕒",
+                  notifMsg,
+                  "info",
+                  "#schedule"
+                );
+              }
+
+              const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+              const enrollments = await enrollmentRepo.find({
+                where: { group: { id: group.id } },
+                relations: ["student"]
+              });
+
+              for (const enr of enrollments) {
+                if (enr.student?.id) {
+                  await NotificationController.createNotification(
+                    enr.student.id,
+                    "تحديث جدول ومواعيد حصص مجموعتك الدراسية 🕒",
+                    notifMsg,
+                    "info",
+                    "#schedule"
+                  );
+                }
+              }
+            } catch (notifErr) {
+              console.error("Error sending schedule update notification:", notifErr);
+            }
+          } else if (allGroupSessions.length === 0 && group.status === "IN_PROGRESS" && (group.teacher || group.course?.teacher)) {
+            // If group had 0 sessions and is IN_PROGRESS, generate them along the schedule
+            const activeTeacher = group.teacher || group.course?.teacher;
+            const count = group.totalSessions || 24;
+            const createdSessions: Session[] = [];
+            let currDate = new Date(group.startDate || new Date());
+            currDate.setHours(hour, min, 0, 0);
+            if (currDate < new Date()) {
+              currDate.setDate(currDate.getDate() + 1);
+              currDate.setHours(hour, min, 0, 0);
+            }
+            let added = 0;
+            let safety = 0;
+            while (added < count && safety < 1500) {
+              safety++;
+              if (targetDays.length === 0 || targetDays.includes(currDate.getDay())) {
+                added++;
+                const sess = new Session();
+                sess.title = `${group.name} - حصة ${added}`;
+                sess.description = `حصة تفاعلية مباشرة ضمن ${group.name}`;
+                sess.course = group.course;
+                sess.group = group;
+                sess.teacher = activeTeacher as User;
+                sess.student = null as any;
+                sess.scheduledAt = new Date(currDate);
+                sess.duration = group.sessionDuration || 60;
+                sess.status = "SCHEDULED";
+                sess.meetingLink = group.meetingLink;
+                createdSessions.push(sess);
+              }
+              currDate.setDate(currDate.getDate() + 1);
+            }
+            if (createdSessions.length > 0) {
+              await sessionRepo.save(createdSessions);
+              group.endDate = new Date(createdSessions[createdSessions.length - 1].scheduledAt);
+              await groupRepo.save(group);
+            }
+          }
+        } catch (rescheduleErr) {
+          console.error("Error rescheduling group sessions:", rescheduleErr);
+        }
+      }
 
       if (Array.isArray(req.body.lessons)) {
         const lessonRepo = AppDataSource.getRepository(Lesson);
@@ -1615,6 +1832,339 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error starting teaching and generating sessions:", err);
       return res.status(500).json({ error: err.message || "فشل بدء التدريس وتوليد الحصص." });
+    }
+  }
+
+  // POST /admin/groups/:id/renew-cycle or POST /groups/:id/renew-cycle
+  static async renewGroupCycle(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        additionalSessions,
+        startDate,
+        scheduleDays,
+        scheduleTime,
+        sessionDuration,
+        meetingLink,
+        monthlyPrice,
+        teacherHourlyRate,
+        cycleTitle,
+        notifyStudents = true,
+        studentIdsToKeep
+      } = req.body || {};
+
+      const countToAdd = parseInt(additionalSessions, 10) || 8;
+      if (countToAdd < 1 || countToAdd > 100) {
+        return res.status(400).json({ error: "يرجى تحديد عدد حصص صالح للتجديد (بين 1 و 100 حصة)." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const sessionRepo = AppDataSource.getRepository(Session);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "teacher", "course.teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      // Check permission if teacher
+      if (req.user?.role === "teacher") {
+        const teacherId = group.teacher?.id || group.course?.teacher?.id;
+        if (String(teacherId) !== String(req.user.id)) {
+          return res.status(403).json({ error: "غير مصرح لك بتجديد دورة هذه المجموعة." });
+        }
+      }
+
+      const teacher = group.teacher || group.course?.teacher;
+      if (!teacher) {
+        return res.status(400).json({ error: "يجب تعيين معلم مشرف للمجموعة لتجديد دورتها وجدولة الحصص." });
+      }
+
+      // Update group configuration if provided
+      if (meetingLink) group.meetingLink = meetingLink;
+      if (scheduleDays) group.scheduleDays = scheduleDays;
+      if (scheduleTime) group.scheduleTime = scheduleTime;
+      if (sessionDuration) group.sessionDuration = parseInt(sessionDuration, 10);
+      if (monthlyPrice !== undefined && monthlyPrice !== null && !isNaN(parseFloat(monthlyPrice))) {
+        group.monthlyPrice = parseFloat(monthlyPrice);
+        group.sessionPrice = Math.round((group.monthlyPrice / countToAdd) * 100) / 100;
+        group.studentHourlyRate = group.sessionPrice;
+      }
+      if (req.user?.role !== "teacher" && teacherHourlyRate !== undefined && teacherHourlyRate !== null && !isNaN(parseFloat(teacherHourlyRate))) {
+        group.teacherHourlyRate = parseFloat(teacherHourlyRate);
+      }
+
+      // Handle student retention / exclusion if studentIdsToKeep is provided
+      let removedStudentsCount = 0;
+      let keptStudentsCount = 0;
+      const currentEnrollments = await enrollmentRepo.find({
+        where: { group: { id } },
+        relations: ["student"]
+      });
+
+      if (Array.isArray(studentIdsToKeep)) {
+        const keepSet = new Set(studentIdsToKeep.map((sId: any) => String(sId)));
+        for (const enr of currentEnrollments) {
+          const studentIdStr = enr.student ? String(enr.student.id) : "";
+          const enrIdStr = String(enr.id);
+          const shouldKeep = keepSet.has(studentIdStr) || keepSet.has(enrIdStr);
+
+          if (!shouldKeep) {
+            // Detach student from this group for the new cycle
+            enr.group = null as any;
+            await enrollmentRepo.save(enr);
+            removedStudentsCount++;
+
+            if (enr.student) {
+              try {
+                await NotificationController.createNotification(
+                  enr.student.id,
+                  `انتهاء قيدك في مجموعة "${group.name}"`,
+                  `تم إنهاء قيدك في مجموعة "${group.name}" مع ختام الدورة السابقة. إذا كنت ترغب في الانضمام للدورة الجديدة، يرجى التواصل مع الإدارة.`,
+                  "info",
+                  "#student-groups"
+                );
+              } catch (_) {}
+            }
+          } else {
+            keptStudentsCount++;
+          }
+        }
+      } else {
+        keptStudentsCount = currentEnrollments.length;
+      }
+
+      // Find existing sessions count to continue numbering
+      const existingSessions = await sessionRepo.find({
+        where: { group: { id: group.id } },
+        order: { scheduledAt: "ASC" }
+      });
+      const previousSessionCount = existingSessions.length;
+      const lastSession = existingSessions[existingSessions.length - 1];
+
+      // Determine starting date
+      const daysArr = (group.scheduleDays || "الأحد، الثلاثاء").split(/[,،]+/).map((d: string) => d.trim());
+      const dayIndexMap: Record<string, number> = {
+        'الأحد': 0, 'الاثنين': 1, 'الإثنين': 1, 'الثلاثاء': 2,
+        'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6
+      };
+      const targetDays = daysArr.map((d: string) => dayIndexMap[d]).filter((d: any) => d !== undefined);
+      const duration = group.sessionDuration || 60;
+
+      let hour = 18;
+      let min = 0;
+      const timeStr = group.scheduleTime || "18:00";
+      const isPM = timeStr.includes("م") || timeStr.toLowerCase().includes("pm");
+      const isAM = timeStr.includes("ص") || timeStr.toLowerCase().includes("am");
+      const cleanTime = timeStr.replace(/[^0-9:]/g, "");
+      const parts = cleanTime.split(":");
+      if (parts.length >= 1) {
+        hour = parseInt(parts[0], 10) || 18;
+        if (isPM && hour < 12) hour += 12;
+        if (isAM && hour === 12) hour = 0;
+      }
+      if (parts.length >= 2) {
+        min = parseInt(parts[1], 10) || 0;
+      }
+
+      let currDate: Date;
+      if (startDate) {
+        currDate = new Date(startDate);
+      } else if (lastSession && new Date(lastSession.scheduledAt) > new Date()) {
+        // Start after the last scheduled session
+        currDate = new Date(lastSession.scheduledAt);
+        currDate.setDate(currDate.getDate() + 1);
+      } else {
+        currDate = new Date();
+        currDate.setDate(currDate.getDate() + 1);
+      }
+      currDate.setHours(hour, min, 0, 0);
+
+      const createdSessions: Session[] = [];
+      let added = 0;
+      let safety = 0;
+      while (added < countToAdd && safety < 1000) {
+        safety++;
+        if (targetDays.length === 0 || targetDays.includes(currDate.getDay())) {
+          added++;
+          const sessionIndex = previousSessionCount + added;
+          const sess = new Session();
+          sess.title = `${group.name} - حصة ${sessionIndex}${cycleTitle ? ` (${cycleTitle})` : ''}`;
+          sess.description = `حصة تفاعلية مباشرة ضمن الدورة المجددة لمجموعة ${group.name}`;
+          sess.course = group.course;
+          sess.group = group;
+          sess.teacher = teacher;
+          sess.student = null as any;
+          sess.scheduledAt = new Date(currDate);
+          sess.duration = duration;
+          sess.status = "SCHEDULED";
+          createdSessions.push(sess);
+        }
+        currDate.setDate(currDate.getDate() + 1);
+      }
+
+      await sessionRepo.save(createdSessions);
+
+      // Update group overall counters and status
+      group.totalSessions = (group.totalSessions || previousSessionCount) + countToAdd;
+      group.status = "IN_PROGRESS";
+      if (createdSessions.length > 0) {
+        group.endDate = new Date(createdSessions[createdSessions.length - 1].scheduledAt);
+      }
+
+      // Add announcement to the group for all students
+      try {
+        const cycleLabel = cycleTitle ? ` (${cycleTitle})` : '';
+        const firstDateStr = createdSessions[0] ? new Date(createdSessions[0].scheduledAt).toLocaleDateString("ar-EG") : '';
+        const announcementObj = {
+          id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          title: `🔄 تم تجديد دورة المجموعة بنجاح${cycleLabel}`,
+          content: `أعزاءنا طلاب مجموعة "${group.name}"، تم بحمد الله تجديد الدورة وجدولة ${countToAdd} حصص جديدة تبدأ يوم ${firstDateStr}. مواعيدنا: ${group.scheduleDays} في تمام الساعة ${group.scheduleTime}. نرجو من الجميع الالتزام بمواعيد الحصص وتأكيد سداد اشتراك الدورة الجديدة (${group.monthlyPrice || monthlyPrice || 320} ج.م). بالتوفيق والنجاح! 🚀📚`,
+          authorName: (req.user as any)?.name || (req.user?.role === "teacher" ? teacher.name : "إدارة المنصة"),
+          authorRole: req.user?.role === "teacher" ? "معلم المادة" : "إدارة المنصة",
+          createdAt: new Date().toISOString(),
+          isPinned: true
+        };
+        group.announcements = [announcementObj, ...(group.announcements || [])];
+      } catch (_) {}
+
+      await groupRepo.save(group);
+
+      // Notify Teacher
+      try {
+        await NotificationController.createNotification(
+          teacher.id,
+          "تم تجديد دورة المجموعة بنجاح! 🔄🎉",
+          `تم تجديد دورة مجموعة "${group.name}" بنجاح وإضافة (${createdSessions.length}) حصص جديدة إلى جدولك الدراسي مع استمرار (${keptStudentsCount}) طالب.`,
+          "success",
+          "#teacher-dashboard/groups"
+        );
+      } catch (e) {}
+
+      // Notify Enrolled Students who were kept
+      if (notifyStudents) {
+        try {
+          const activeEnrollments = await enrollmentRepo.find({
+            where: { group: { id } },
+            relations: ["student"]
+          });
+
+          const cycleLabel = cycleTitle ? ` (${cycleTitle})` : '';
+          const firstDateStr = createdSessions[0] ? new Date(createdSessions[0].scheduledAt).toLocaleDateString("ar-EG") : '';
+          const priceStr = (group.monthlyPrice || monthlyPrice) ? `قيمة اشتراك الدورة: ${group.monthlyPrice || monthlyPrice} ج.م.` : '';
+
+          for (const enr of activeEnrollments) {
+            if (enr.student) {
+              await NotificationController.createNotification(
+                enr.student.id,
+                `تجديد دورة مجموعتك الدراسية! 🔄📚${cycleLabel}`,
+                `تم تجديد دورة مجموعة "${group.name}" وإضافة ${countToAdd} حصص تفاعلية جديدة! موعد أول حصة: ${firstDateStr}. ${priceStr} يرجى مراجعة الجدول.`,
+                "info",
+                "#student-groups"
+              );
+            }
+          }
+        } catch (e) {}
+      }
+
+      return res.status(200).json({
+        message: `تم تجديد دورة المجموعة بنجاح وإضافة (${createdSessions.length}) حصص جديدة! استمر (${keptStudentsCount}) طالب في الدورة. 🔄🎉`,
+        group,
+        previousSessionsCount: previousSessionCount,
+        addedSessionsCount: createdSessions.length,
+        totalSessionsCount: group.totalSessions,
+        keptStudentsCount,
+        removedStudentsCount,
+        firstNewSession: createdSessions[0]?.scheduledAt,
+        lastNewSession: createdSessions[createdSessions.length - 1]?.scheduledAt,
+        sessions: createdSessions
+      });
+    } catch (err: any) {
+      console.error("Error renewing group cycle:", err);
+      return res.status(500).json({ error: err.message || "فشل تجديد دورة المجموعة." });
+    }
+  }
+
+  // POST /student/groups/:id/renew-receipt
+  static async submitGroupRenewalReceipt(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { amount, provider, providerTransactionId, receiptUrl, notes } = req.body || {};
+
+      if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
+        return res.status(400).json({ error: "يرجى إرفاق صورة إيصال التحويل البنكي أو المحفظة الإلكترونية." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const userRepo = AppDataSource.getRepository(User);
+
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "teacher"]
+      });
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      const student = await userRepo.findOneBy({ id: req.user!.id });
+      if (!student) {
+        return res.status(404).json({ error: "الملف الشخصي للطالب غير موجود." });
+      }
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { student: { id: student.id }, group: { id } },
+        relations: ["group", "student"]
+      });
+      if (!enrollment) {
+        return res.status(403).json({ error: "أنت لست مسجلاً في هذه المجموعة الدراسية." });
+      }
+
+      const calculatedAmount = (amount !== undefined && Number(amount) > 0)
+        ? Number(amount)
+        : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320));
+
+      const payment = new Payment();
+      payment.student = student;
+      payment.amount = calculatedAmount;
+      payment.currency = "EGP";
+      payment.type = "GROUP_ENROLLMENT";
+      payment.courseEnrollment = enrollment;
+      payment.provider = provider || "vodafone_cash";
+      if (providerTransactionId) payment.providerTransactionId = providerTransactionId;
+      payment.receiptUrl = receiptUrl.trim();
+      payment.notes = notes || `إيصال تجديد دورة شهرية جديدة لمجموعة ${group.name}`;
+      payment.status = "PENDING";
+
+      await paymentRepo.save(payment);
+
+      // Notify Admins
+      try {
+        const admins = await userRepo.find({ where: { role: "admin" } });
+        for (const adm of admins) {
+          await NotificationController.createNotification(
+            adm.id,
+            "إيصال تجديد دورة دراسية جديد 🧾",
+            `قام الطالب ${student.name} برفع إيصال سداد بقيمة ${calculatedAmount} ج.م لتجديد دورة مجموعة "${group.name}". يرجى المراجعة والاعتماد.`,
+            "info",
+            "#admin-dashboard/earnings"
+          );
+        }
+      } catch (_) {}
+
+      return res.status(200).json({
+        success: true,
+        message: "تم إرسال إيصال سداد الدورة الجديدة بنجاح، جاري مراجعته واعتماده من إدارة المنصة! 🧾✅",
+        payment
+      });
+    } catch (err: any) {
+      console.error("Error submitting group renewal receipt:", err);
+      return res.status(500).json({ error: err.message || "فشل إرسال إيصال السداد." });
     }
   }
 

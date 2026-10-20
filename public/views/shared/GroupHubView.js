@@ -18,6 +18,40 @@ export default class GroupHubView {
     this.resourceSearchQuery = "";
     this.resourceTypeFilter = "all";
     this.loading = true;
+
+    // Check preview query param or admin preview mode
+    const hashQuery = window.location.hash.split("?")[1] || "";
+    const searchParams = new URLSearchParams(hashQuery);
+    const previewParam = searchParams.get("preview");
+    // If preview=student, or if user is admin/supervisor and hasn't explicitly set preview=admin, default to student preview mode
+    const isAdminUser = state.user?.role === "admin" || state.user?.role === "supervisor";
+    this.previewStudent = previewParam === "student" || (isAdminUser && previewParam !== "admin");
+  }
+
+  get effectiveRoles() {
+    const rawIsAdmin = Boolean(this.hubData?.isAdmin || state.user?.role === "admin" || state.user?.role === "supervisor");
+    const rawIsTeacher = Boolean(this.hubData?.isTeacher || state.user?.role === "teacher");
+    const isParent = Boolean(this.hubData?.isParent || state.user?.role === "parent");
+
+    if (this.previewStudent) {
+      return {
+        isAdmin: false,
+        isTeacher: false,
+        isParent: false,
+        isStudent: true,
+        canManage: false,
+        actualIsAdmin: rawIsAdmin
+      };
+    }
+
+    return {
+      isAdmin: rawIsAdmin,
+      isTeacher: rawIsTeacher,
+      isParent: isParent,
+      isStudent: !rawIsTeacher && !rawIsAdmin && !isParent,
+      canManage: rawIsTeacher || rawIsAdmin,
+      actualIsAdmin: rawIsAdmin
+    };
   }
 
   async render() {
@@ -66,7 +100,8 @@ export default class GroupHubView {
   renderUI() {
     if (!this.hubData) return;
 
-    const { group, course, teacher, lessons = [], videos = [], sessions = [], assignments = [], resources = [], announcements = [], stats, students = [], isTeacher, isAdmin, isStudent } = this.hubData;
+    const { isAdmin, isTeacher, isStudent, isParent, actualIsAdmin } = this.effectiveRoles;
+    const { group, course, teacher, lessons = [], videos = [], sessions = [], assignments = [], resources = [], announcements = [], stats, students = [] } = this.hubData;
     const now = new Date();
 
     // Find Live Session or Next Upcoming Session
@@ -86,9 +121,8 @@ export default class GroupHubView {
       }
     }
 
-    const isParent = this.hubData.isParent || state.user?.role === 'parent';
-    const backUrl = isTeacher ? '#teacher-groups' : (isParent ? '#parent-dashboard' : '#student-groups');
-    const backTitle = isTeacher ? 'لوحة مجموعات المعلم' : (isParent ? 'لوحة تحكم ولي الأمر 👨‍👩‍👧' : 'مجموعاتي الدراسية');
+    const backUrl = actualIsAdmin ? '#admin-dashboard' : (isTeacher ? '#teacher-groups' : (isParent ? '#parent-dashboard' : '#student-groups'));
+    const backTitle = actualIsAdmin ? 'لوحة تحكم الإدارة (المجموعات)' : (isTeacher ? 'لوحة مجموعات المعلم' : (isParent ? 'لوحة تحكم ولي الأمر 👨‍👩‍👧' : 'مجموعاتي الدراسية'));
     const courseCoverImg = course?.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200';
 
     const maxSeats = group.maxStudents || 25;
@@ -103,6 +137,83 @@ export default class GroupHubView {
     this.container.innerHTML = `
       <div class="group-hub-wrapper" style="min-height:100vh; background:var(--bg-app); padding:20px 8px 80px; font-family:'Cairo', sans-serif; box-sizing:border-box;">
         <div style="max-width:1380px; width:100%; margin:0 auto; padding:0 8px; display:flex; flex-direction:column; gap:20px; box-sizing:border-box;">
+
+          <!-- Admin Floating Mode Bar (When accessed by Admin / Supervisor) -->
+          ${actualIsAdmin ? `
+            <div class="admin-preview-floating-bar" style="
+              position: sticky;
+              top: 10px;
+              z-index: 1000;
+              margin-bottom: 4px;
+              background: ${this.previewStudent ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)'};
+              color: #fff;
+              border-radius: 18px;
+              padding: 12px 20px;
+              box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              flex-wrap: wrap;
+              gap: 14px;
+              border: 1px solid rgba(255,255,255,0.25);
+              font-family: 'Cairo', sans-serif;
+            ">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0;">
+                  ${this.previewStudent ? '🎓' : '⚙️'}
+                </div>
+                <div>
+                  <div style="font-weight:900; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                    <span>${this.previewStudent ? 'وضع معاينة الطالب 👁️🎓 (Student View Mode)' : 'وضع إدارة المجموعة ⚙️ (Admin Management Mode)'}</span>
+                    <span style="font-size:0.72rem; background:rgba(255,255,255,0.25); padding:2px 8px; border-radius:8px; font-weight:800;">
+                      ${this.previewStudent ? 'تصفح حي كطالب مسجّل' : 'صلاحيات الإشراف والتحكم الكامل'}
+                    </span>
+                  </div>
+                  <div style="font-size:0.78rem; opacity:0.92; margin-top:2px;">
+                    ${this.previewStudent ? 'أنت تشاهد صفحة المجموعة بالكامل تماماً كما يراها الطالب (المقرر، الفيديوهات، رابط Meet، الواجبات، الحضور، وتجديد الاشتراك).' : 'أنت في وضع الإدارة الكامل: يمكنك تعديل بيانات المجموعة، رفع الملفات والفيديوهات، وجدولة وتجديد الحصص.'}
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="toggle-admin-preview-mode-btn" style="
+                  padding: 8px 16px;
+                  border-radius: 12px;
+                  font-weight: 900;
+                  font-size: 0.82rem;
+                  border: none;
+                  cursor: pointer;
+                  background: #fff;
+                  color: ${this.previewStudent ? '#0369a1' : '#4338ca'};
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+                  transition: transform 0.15s;
+                ">
+                  <i data-lucide="${this.previewStudent ? 'settings' : 'eye'}" style="width:15px; height:15px;"></i>
+                  <span>${this.previewStudent ? 'التبديل لوضع الإدارة ⚙️' : 'معاينة كطالب 🎓👁️'}</span>
+                </button>
+
+                <a href="#admin-dashboard" style="
+                  padding: 8px 16px;
+                  border-radius: 12px;
+                  font-weight: 800;
+                  font-size: 0.82rem;
+                  text-decoration: none;
+                  background: rgba(255,255,255,0.18);
+                  color: #fff;
+                  border: 1px solid rgba(255,255,255,0.3);
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                ">
+                  <i data-lucide="arrow-right" style="width:14px; height:14px;"></i>
+                  <span>لوحة الإدارة 🔙</span>
+                </a>
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Top Navigation Breadcrumb -->
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
@@ -245,6 +356,30 @@ export default class GroupHubView {
               </div>
             ` : ''}
 
+            <!-- Student Renewal & Payment Notice Banner -->
+            ${(!isTeacher && !isAdmin) ? `
+              <div style="padding:12px 24px; background:linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(99,102,241,0.06) 100%); border-bottom:1px solid rgba(16,185,129,0.2); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="width:34px; height:34px; border-radius:10px; background:rgba(16,185,129,0.15); color:#10b981; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="receipt" style="width:18px; height:18px;"></i>
+                  </span>
+                  <div>
+                    <span style="font-size:0.88rem; font-weight:800; color:var(--text-main); display:block;">
+                      تجديد وسداد اشتراك المجموعة (${monthlyPrice} ج.م / شهر) 🔄
+                    </span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                      عند سداد اشتراك الشهر الجديد عبر فودافون كاش أو انستاباي، يمكنك إرفاق الإيصال هنا لاعتماده فوراً
+                    </span>
+                  </div>
+                </div>
+                <button type="button" id="open-student-upload-renewal-receipt-btn" class="btn-primary"
+                  style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; cursor:pointer; box-shadow:0 3px 12px rgba(16,185,129,0.25);">
+                  <i data-lucide="upload" style="width:14px; height:14px;"></i>
+                  <span>رفع إيصال سداد الدورة الجديدة 📤</span>
+                </button>
+              </div>
+            ` : ''}
+
             <!-- Sub-Navigation Tabs Bar -->
             <div style="display:flex; gap:6px; padding:8px 16px; background:var(--bg-app); border-bottom:1px solid var(--border-color); overflow-x:auto;">
 ${this.renderTabButton("curriculum", "📖 المنهج", (this.hubData.lessons || []).length)}
@@ -312,7 +447,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab: Curriculum (الوحدات والدروس والخطة التدريسية) ──
   renderCurriculumTab() {
-    const { lessons = [], isTeacher, isAdmin } = this.hubData;
+    const { lessons = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const canManage = isTeacher || isAdmin;
 
     // Extract all unique units / chapters
@@ -606,7 +742,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 0: Videos (Sorted Newer First) ─────────────────────────────────
   renderVideosTab() {
-    const { videos = [], isTeacher, isAdmin } = this.hubData;
+    const { videos = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const canManageVideos = isTeacher || isAdmin;
 
     // Ensure sorted newer first
@@ -823,7 +960,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 1: Sessions & Live Classes ──────────────────────────────────────
   renderSessionsTab() {
-    const { sessions = [], group, isTeacher, isAdmin } = this.hubData;
+    const { sessions = [], group } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const now = new Date();
 
     const filteredSessions = sessions.filter(s => {
@@ -854,15 +992,21 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
             </button>
           </div>
 
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">
               إجمالي الحصص المجدولة: <span style="font-weight:900; color:var(--text-main);">${sessions.length} حصة</span>
             </div>
             ${(isTeacher || isAdmin) ? `
-              <button id="open-add-group-session-modal-btn" class="btn-primary"
-                style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; font-weight:800; font-size:0.82rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5); color:#fff;">
+              <button id="open-renew-group-cycle-modal-btn" class="btn-primary"
+                style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; font-weight:800; font-size:0.82rem; border:none; cursor:pointer; background:linear-gradient(135deg, #10b981, #059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.25);"
+                title="تجديد دورة المجموعة وجدولة حصص جديدة (للشهر القادم / دورة إضافية)">
+                <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i>
+                <span>تجديد دورة المجموعة 🔄</span>
+              </button>
+              <button id="open-add-group-session-modal-btn" class="btn-secondary"
+                style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; font-weight:800; font-size:0.82rem; border:1px solid var(--border-color); cursor:pointer; background:var(--bg-card); color:var(--text-main);">
                 <i data-lucide="plus" style="width:14px; height:14px;"></i>
-                <span>إضافة حصة للمجموعة ➕</span>
+                <span>إضافة حصة منفردة ➕</span>
               </button>
             ` : ''}
           </div>
@@ -876,13 +1020,19 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
             </div>
             <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin-bottom:8px;">لا توجد حصص في هذا التصنيف</h3>
             <p style="color:var(--text-muted); font-size:0.88rem; max-width:420px; margin:0 auto 20px; line-height:1.6;">
-              ${this.sessionFilter === 'all' ? 'لم يتم جدولة حصص لهذه المجموعة بعد. يمكنك إضافة حصص جديدة أو الانتظار حتى موعد بدء التدريس.' : 'لا توجد حصص تطابق التصفية المحددة حالياً.'}
+              ${this.sessionFilter === 'all' ? 'لم يتم جدولة حصص لهذه المجموعة بعد. يمكنك تجديد دورة المجموعة وجدولة الحصص تلقائياً أو إضافة حصص منفردة.' : 'لا توجد حصص تطابق التصفية المحددة حالياً.'}
             </p>
             ${(isTeacher || isAdmin) && this.sessionFilter === 'all' ? `
-              <button id="open-add-first-session-btn" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, var(--primary), #4f46e5);">
-                <i data-lucide="plus" style="width:16px; height:16px;"></i>
-                <span>إضافة أول حصة للمجموعة الآن 📅</span>
-              </button>
+              <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                <button id="open-renew-first-cycle-btn" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; background:linear-gradient(135deg, #10b981, #059669); color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.25);">
+                  <i data-lucide="refresh-cw" style="width:16px; height:16px;"></i>
+                  <span>جدولة دورة حصص جديدة (+8) 🔄</span>
+                </button>
+                <button id="open-add-first-session-btn" class="btn-secondary" style="display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:14px; font-weight:800; font-size:0.88rem; border:1px solid var(--border-color); cursor:pointer; background:var(--bg-card); color:var(--text-main);">
+                  <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                  <span>إضافة حصة منفردة 📅</span>
+                </button>
+              </div>
             ` : ''}
           </div>
         ` : `
@@ -917,11 +1067,15 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
                         <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:10px; background:${badgeBg}; color:${badgeColor};">
                           ${badgeText}
                         </span>
-                        ${s.myAttendance ? `
-                          <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:10px; background:${s.myAttendance === 'PRESENT' || s.myAttendance === 'LATE' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}; color:${s.myAttendance === 'PRESENT' || s.myAttendance === 'LATE' ? '#10b981' : '#ef4444'};">
-                            ${s.myAttendance === 'PRESENT' ? 'حاضر ✅' : s.myAttendance === 'LATE' ? 'متأخر ⏱️' : 'غائب ❌'}
-                          </span>
-                        ` : ''}
+                        ${(() => {
+                          const attStatus = s.myAttendance || (this.previewStudent ? (s.status === 'COMPLETED' ? 'PRESENT' : null) : null);
+                          if (!attStatus) return '';
+                          return `
+                            <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:10px; background:${attStatus === 'PRESENT' || attStatus === 'LATE' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}; color:${attStatus === 'PRESENT' || attStatus === 'LATE' ? '#10b981' : '#ef4444'};">
+                              ${attStatus === 'PRESENT' ? 'حاضر ✅' : attStatus === 'LATE' ? 'متأخر ⏱️' : 'غائب ❌'}
+                            </span>
+                          `;
+                        })()}
                       </div>
 
                       <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem; color:var(--text-muted); font-weight:700;">
@@ -976,7 +1130,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 2: Group Assignments ──────────────────────────────────────────
   renderAssignmentsTab() {
-    const { assignments = [], isTeacher, isAdmin } = this.hubData;
+    const { assignments = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
 
     return `
       <div style="display:flex; flex-direction:column; gap:16px;">
@@ -1146,7 +1301,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab: Group Files & Resources (ملفات ومذكرات المجموعة) ─────────────────
   renderResourcesTab() {
-    const { resources = [], isTeacher, isAdmin } = this.hubData;
+    const { resources = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const canManage = isTeacher || isAdmin;
 
     const filteredResources = resources.filter(res => {
@@ -1398,7 +1554,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 3: Group Notice Board / Announcements ─────────────────────────
   renderAnnouncementsTab() {
-    const { announcements = [], isTeacher, isAdmin } = this.hubData;
+    const { announcements = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
 
     return `
       <div style="display:flex; flex-direction:column; gap:20px;">
@@ -1490,8 +1647,13 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 4: Attendance & Performance ───────────────────────────────────
   renderAttendanceTab() {
-    const { sessions = [], stats, isTeacher, isAdmin } = this.hubData;
-    const userAtt = stats?.userAttendance;
+    const { sessions = [], stats } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
+    const userAtt = stats?.userAttendance || (this.previewStudent ? {
+      percentage: 100,
+      attendedCount: stats?.completedSessions || 0,
+      completedSessionsCount: stats?.completedSessions || 0
+    } : null);
 
     return `
       <div style="display:flex; flex-direction:column; gap:20px;">
@@ -1556,6 +1718,7 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
                 <tbody>
                   ${sessions.map((s, idx) => {
       const fmt = formatSessionDateTime(s.scheduledAt);
+      const attStatus = s.myAttendance || (this.previewStudent ? (s.status === 'COMPLETED' ? 'PRESENT' : null) : null);
       return `
                       <tr style="border-bottom:1px solid var(--border-color);">
                         <td style="padding:12px; font-weight:800; color:var(--primary);">${idx + 1}</td>
@@ -1568,11 +1731,11 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
                         </td>
                         ${!isTeacher && !isAdmin ? `
                           <td style="padding:12px;">
-                            ${s.myAttendance === 'PRESENT' ? `
+                            ${attStatus === 'PRESENT' ? `
                               <span style="color:#10b981; font-weight:800;">حاضر ✅</span>
-                            ` : s.myAttendance === 'LATE' ? `
+                            ` : attStatus === 'LATE' ? `
                               <span style="color:#f59e0b; font-weight:800;">متأخر ⏱️</span>
-                            ` : s.myAttendance === 'ABSENT' ? `
+                            ` : attStatus === 'ABSENT' ? `
                               <span style="color:#ef4444; font-weight:800;">غائب ❌</span>
                             ` : `
                               <span style="color:var(--text-muted); font-weight:700;">قادمة ⏳</span>
@@ -1594,7 +1757,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Tab 5: Class Roster & Members ─────────────────────────────────────
   renderRosterTab() {
-    const { students = [], isTeacher, isAdmin } = this.hubData;
+    const { students = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
 
     return `
       <div style="display:flex; flex-direction:column; gap:16px;">
@@ -1654,6 +1818,16 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
   // ── Event Handlers & Modal Interactions ───────────────────────────────
   bindEvents() {
+    // Admin Preview Mode Toggle
+    const toggleAdminPreviewBtn = this.container.querySelector("#toggle-admin-preview-mode-btn");
+    if (toggleAdminPreviewBtn) {
+      toggleAdminPreviewBtn.addEventListener("click", () => {
+        this.previewStudent = !this.previewStudent;
+        showToast(this.previewStudent ? "تم التبديل إلى وضع معاينة الطالب 🎓👁️" : "تم التبديل إلى وضع إدارة المشرف ⚙️", "info");
+        this.renderUI();
+      });
+    }
+
     // Tab switching
     this.container.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1771,6 +1945,22 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
         this.openSessionNotesModal(s);
       });
     });
+
+    // Renew Group Cycle Button (for Teacher / Admin)
+    const renewCycleBtn = this.container.querySelector("#open-renew-group-cycle-modal-btn");
+    if (renewCycleBtn) {
+      renewCycleBtn.addEventListener("click", () => this.openRenewCycleModal());
+    }
+    const renewFirstCycleBtn = this.container.querySelector("#open-renew-first-cycle-btn");
+    if (renewFirstCycleBtn) {
+      renewFirstCycleBtn.addEventListener("click", () => this.openRenewCycleModal());
+    }
+
+    // Student Upload Renewal Receipt Button
+    const uploadRenewalReceiptBtn = this.container.querySelector("#open-student-upload-renewal-receipt-btn");
+    if (uploadRenewalReceiptBtn) {
+      uploadRenewalReceiptBtn.addEventListener("click", () => this.openUploadRenewalReceiptModal());
+    }
 
     // Add Session Button (for Teacher / Admin)
     const addSessionBtn = this.container.querySelector("#open-add-group-session-modal-btn");
@@ -2600,7 +2790,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
     let modal = document.getElementById("lesson-details-modal");
     if (modal) modal.remove();
 
-    const { assignments = [], isTeacher, isAdmin } = this.hubData;
+    const { assignments = [] } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const relatedAssignments = assignments.filter(a => (a.lesson && a.lesson.id === lesson.id) || (a.title && a.title.includes(lesson.title)));
 
     modal = document.createElement("div");
@@ -2937,6 +3128,9 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
 
     const { group, course } = this.hubData;
 
+    const daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+    const currentDaysStr = `${group.scheduleDays || ''} ${group.scheduleText || ''}`;
+
     modal = document.createElement("div");
     modal.id = "edit-group-details-modal";
     modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
@@ -2950,8 +3144,8 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
               <i data-lucide="edit-3" style="width:20px; height:20px;"></i>
             </div>
             <div>
-              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">تعديل محتوى وملخص المجموعة الدراسية ✏️</h3>
-              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">يظهر هذا الملخص للطلاب في أعلى قاعة المجموعة كفهرس ومخطط تدريسي</div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">تعديل مواعيد وبيانات المجموعة الدراسية ✏️</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">يتم تحديث مواعيد كافة الحصص القادمة وجدول البث المباشر (Timetable) تلقائياً 🕒</div>
             </div>
           </div>
           <button id="close-edit-group-modal-btn" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
@@ -2977,16 +3171,52 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
                 </label>
                 <span style="font-size:0.72rem; color:var(--primary); font-weight:700;">يظهر بدلاً من الغلاف 📖</span>
               </div>
-              <textarea id="edit-modal-group-desc" rows="4" placeholder="اكتب وصفاً وملخصاً لما سيتم التركيز عليه وشرحه في هذه المجموعة والمخرجات التعليمية..."
+              <textarea id="edit-modal-group-desc" rows="3" placeholder="اكتب وصفاً وملخصاً لما سيتم التركيز عليه وشرحه في هذه المجموعة والمخرجات التعليمية..."
                 style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; line-height:1.6; resize:vertical; box-sizing:border-box;">${group.description || course?.description || ''}</textarea>
             </div>
 
-            <!-- Schedule Text -->
+            <!-- Schedule Days Checkboxes -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
-                نص مواعيد الحصص (Schedule):
+                أيام الأسبوع للحصص (تتغير مباشرة في الجدول الزمني):
               </label>
-              <input type="text" id="edit-modal-group-schedule" value="${group.scheduleText || ''}" placeholder="مثال: كل سبت وثلاثاء الساعة 6:00 مساءً"
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
+                ${daysList.map(day => `
+                  <label style="display:flex; align-items:center; gap:5px; padding:7px 9px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.8rem; font-weight:700; cursor:pointer;">
+                    <input type="checkbox" name="edit-modal-group-days" value="${day}" ${currentDaysStr.includes(day) ? 'checked' : ''} style="accent-color:#6366f1;">
+                    <span>${day}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Schedule Time & Start Date -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  توقيت الحصة (Time): <span style="color:#6366f1; font-size:0.75rem;">تحديث مباشر 🕒</span>
+                </label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <input type="text" id="edit-modal-group-time" value="${group.scheduleTime || '06:00 م'}" placeholder="مثال: 06:00 م أو 18:00"
+                    style="flex:1; width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <input type="time" id="edit-modal-group-time-picker" title="اختيار من الساعة 🕒" style="width:40px; height:38px; padding:2px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+                </div>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                  تاريخ بدء الدراسة:
+                </label>
+                <input type="date" id="edit-modal-group-start-date" value="${group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : ''}"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Schedule Text (Optional Custom Note) -->
+            <div>
+              <label style="display:block; font-size:0.85rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                نص مواعيد الحصص المخصص (اختياري للعرض للطلاب):
+              </label>
+              <input type="text" id="edit-modal-group-schedule" value="${group.scheduleText || ''}" placeholder="مثال: الأحد والثلاثاء الساعة 6:00 مساءً"
                 style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.88rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
             </div>
 
@@ -3024,7 +3254,7 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
               إلغاء
             </button>
             <button type="submit" id="save-edit-group-modal-btn" class="btn-primary" style="padding:9px 26px; border-radius:14px; font-weight:900; font-size:0.88rem; background:linear-gradient(135deg, #6366f1, #4f46e5); color:#fff; border:none; cursor:pointer; box-shadow:0 4px 14px rgba(99,102,241,0.3);">
-              حفظ التعديلات 💾
+              حفظ وتحديث الحصص والجدول 💾
             </button>
           </div>
         </form>
@@ -3039,19 +3269,45 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
     modal.querySelector("#close-edit-group-modal-btn")?.addEventListener("click", closeModal);
     modal.querySelector("#cancel-edit-group-modal-btn")?.addEventListener("click", closeModal);
 
+    const timeInput = modal.querySelector("#edit-modal-group-time");
+    const timePicker = modal.querySelector("#edit-modal-group-time-picker");
+    if (timePicker && timeInput) {
+      timePicker.addEventListener("input", (e) => {
+        if (e.target.value) {
+          const [hStr, mStr] = e.target.value.split(":");
+          let h = parseInt(hStr, 10);
+          const m = mStr || "00";
+          const suffix = h >= 12 ? "م" : "ص";
+          if (h > 12) h -= 12;
+          if (h === 0) h = 12;
+          const formatted = `${String(h).padStart(2, "0")}:${m} ${suffix}`;
+          timeInput.value = formatted;
+        }
+      });
+    }
+
     modal.querySelector("#edit-group-details-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = modal.querySelector("#edit-modal-group-name")?.value.trim();
       const description = modal.querySelector("#edit-modal-group-desc")?.value.trim();
-      const scheduleText = modal.querySelector("#edit-modal-group-schedule")?.value.trim();
+      let scheduleText = modal.querySelector("#edit-modal-group-schedule")?.value.trim();
       const meetingLink = modal.querySelector("#edit-modal-group-meeting-link")?.value.trim();
       const sessionDuration = parseInt(modal.querySelector("#edit-modal-group-duration")?.value, 10) || 60;
       const totalSessions = parseInt(modal.querySelector("#edit-modal-group-total-sessions")?.value, 10) || 24;
+      const scheduleTime = modal.querySelector("#edit-modal-group-time")?.value.trim() || null;
+      const startDate = modal.querySelector("#edit-modal-group-start-date")?.value || null;
+
+      const checkedDays = Array.from(modal.querySelectorAll("input[name='edit-modal-group-days']:checked")).map(cb => cb.value);
+      const scheduleDays = checkedDays.length > 0 ? checkedDays.join("، ") : null;
+
+      if (!scheduleText && scheduleDays && scheduleTime) {
+        scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
+      }
 
       const saveBtn = modal.querySelector("#save-edit-group-modal-btn");
       if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.innerText = "جاري الحفظ...";
+        saveBtn.innerText = "جاري الحفظ وتحديث الحصص...";
       }
 
       try {
@@ -3060,27 +3316,45 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
           body: JSON.stringify({
             name,
             description,
+            scheduleDays,
+            scheduleTime,
             scheduleText,
+            startDate,
             meetingLink,
             sessionDuration,
             totalSessions
           })
         });
 
-        this.hubData.group.name = name;
-        this.hubData.group.description = description;
-        if (scheduleText) this.hubData.group.scheduleText = scheduleText;
-        if (meetingLink !== undefined) this.hubData.group.meetingLink = meetingLink;
-        this.hubData.group.sessionDuration = sessionDuration;
-        this.hubData.group.totalSessions = totalSessions;
+        // Re-fetch fresh hub data so sessions reflect the new dates and times immediately
+        const freshHub = await apiFetch(`/groups/${this.groupId}/hub`).catch(() => null);
+        if (freshHub) {
+          this.hubData = freshHub;
+        } else {
+          this.hubData.group.name = name;
+          this.hubData.group.description = description;
+          if (scheduleText) this.hubData.group.scheduleText = scheduleText;
+          if (scheduleDays) this.hubData.group.scheduleDays = scheduleDays;
+          if (scheduleTime) this.hubData.group.scheduleTime = scheduleTime;
+          if (startDate) this.hubData.group.startDate = startDate;
+          if (meetingLink !== undefined) this.hubData.group.meetingLink = meetingLink;
+          this.hubData.group.sessionDuration = sessionDuration;
+          this.hubData.group.totalSessions = totalSessions;
+        }
 
-        showToast("تم تحديث ملخص ومحتوى وبيانات المجموعة بنجاح! 🎉💾", "success");
+        showToast("تم تحديث مواعيد المجموعة وجدول الحصص بنجاح! 🎉💾", "success");
         closeModal();
         this.renderUI();
+
+        // Trigger timetable & global sessions reload
+        window.dispatchEvent(new CustomEvent("sessions-updated"));
+        if (window.scheduleViewInstance && typeof window.scheduleViewInstance.loadContent === "function") {
+          window.scheduleViewInstance.loadContent();
+        }
       } catch (err) {
         if (saveBtn) {
           saveBtn.disabled = false;
-          saveBtn.innerText = "حفظ التعديلات 💾";
+          saveBtn.innerText = "حفظ وتحديث الحصص والجدول 💾";
         }
         showToast(err.message || "فشل تحديث بيانات المجموعة.", "error");
       }
@@ -3389,6 +3663,830 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
           submitBtn.disabled = false;
           submitBtn.innerText = "حفظ وإضافة الحصة 📅";
         }
+      }
+    });
+  }
+
+  // ── Renew Group Cycle Modal (Teacher / Admin) ───────────────────────────
+  async openRenewCycleModal() {
+    let modal = document.getElementById("renew-group-cycle-modal");
+    if (modal) modal.remove();
+
+    const group = this.hubData?.group || {};
+    const existingSessions = this.hubData?.sessions || [];
+    const previousSessionCount = existingSessions.length || (group.totalSessions || 0);
+    const lastSession = existingSessions[existingSessions.length - 1];
+
+    const dayIndexMap = {
+      'الأحد': 0, 'الاثنين': 1, 'الإثنين': 1, 'الثلاثاء': 2,
+      'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6
+    };
+    const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const monthsArabic = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+    const currentDaysStr = `${group.scheduleDays || ''} ${group.scheduleText || ''}` || "الأحد، الثلاثاء";
+    const isDaySelected = (day) => {
+      if (currentDaysStr.includes(day)) return true;
+      if (day === 'الاثنين' && currentDaysStr.includes('الإثنين')) return true;
+      if (day === 'الإثنين' && currentDaysStr.includes('الاثنين')) return true;
+      return false;
+    };
+    const hasAnyMatched = daysList.some(d => isDaySelected(d));
+
+    const duration = group.sessionDuration || 60;
+    const scheduleDaysStr = group.scheduleDays || "الأحد، الثلاثاء";
+    const scheduleTimeStr = group.scheduleTime || "6:00م";
+
+    // Sensible default start date:
+    let defaultStartDateObj = new Date();
+    if (lastSession && new Date(lastSession.scheduledAt) > new Date()) {
+      defaultStartDateObj = new Date(lastSession.scheduledAt);
+      defaultStartDateObj.setDate(defaultStartDateObj.getDate() + 1);
+    } else {
+      defaultStartDateObj.setDate(defaultStartDateObj.getDate() + 1);
+    }
+    const defaultStartDate = defaultStartDateObj.toISOString().slice(0, 10);
+    const defaultMeetingLink = group.meetingLink || "";
+    const { isAdmin, isTeacher, actualIsAdmin } = this.effectiveRoles || {};
+    const canEditTeacherRate = Boolean(isAdmin || actualIsAdmin);
+    const defaultMonthlyPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320);
+    const defaultTeacherHourlyRate = (group.teacherHourlyRate !== undefined && group.teacherHourlyRate !== null && Number(group.teacherHourlyRate) > 0)
+      ? Number(group.teacherHourlyRate)
+      : (group.teacher?.hourlyRate || this.hubData?.teacher?.hourlyRate || 100);
+
+    const generatePreview = (startDateVal, countVal, daysStr, timeStr) => {
+      const daysArr = (daysStr !== undefined ? daysStr : scheduleDaysStr)
+        .split(/[,،]+/)
+        .map(d => d.trim())
+        .filter(Boolean);
+      const targetDays = daysArr.map(d => dayIndexMap[d]).filter(d => d !== undefined);
+
+      if (targetDays.length === 0) {
+        return [];
+      }
+
+      let hour = 18;
+      let min = 0;
+      const tStr = timeStr || scheduleTimeStr;
+      const isPM = tStr.includes("م") || tStr.toLowerCase().includes("pm");
+      const isAM = tStr.includes("ص") || tStr.toLowerCase().includes("am");
+      const cleanTime = tStr.replace(/[^0-9:]/g, "");
+      const parts = cleanTime.split(":");
+      if (parts.length >= 1) {
+        hour = parseInt(parts[0], 10) || 18;
+        if (isPM && hour < 12) hour += 12;
+        if (isAM && hour === 12) hour = 0;
+      }
+      if (parts.length >= 2) {
+        min = parseInt(parts[1], 10) || 0;
+      }
+
+      let curr = new Date(startDateVal || new Date());
+      curr.setHours(hour, min, 0, 0);
+
+      const list = [];
+      let count = 0;
+      let safety = 0;
+      const targetCount = parseInt(countVal, 10) || 8;
+
+      while (count < targetCount && safety < 1000) {
+        safety++;
+        if (targetDays.length === 0 || targetDays.includes(curr.getDay())) {
+          count++;
+          const d = new Date(curr);
+          const dayName = daysArabic[d.getDay()];
+          const dateFormatted = `${dayName} ${d.getDate()} ${monthsArabic[d.getMonth()]} ${d.getFullYear()}`;
+          const sessionNum = previousSessionCount + count;
+
+          list.push({
+            sessionNumber: sessionNum,
+            title: `${group.name || group.title || 'المجموعة'} - حصة ${sessionNum}`,
+            scheduledAt: d.toISOString(),
+            dateFormatted,
+            timeFormatted: tStr,
+            duration
+          });
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+      return list;
+    };
+
+    const initialDays = daysList.filter(d => (hasAnyMatched ? isDaySelected(d) : (d === "الأحد" || d === "الثلاثاء")));
+    const initialDaysStr = initialDays.join("، ");
+    let previewList = generatePreview(defaultStartDate, 8, initialDaysStr, scheduleTimeStr);
+    const enrolledStudentsCount = (this.hubData?.students || []).length || group.enrolledCount || 0;
+
+    const renderPreviewHTML = (sessions) => {
+      if (!sessions || sessions.length === 0) {
+        return '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:0.82rem;">يرجى اختيار يوم واحد على الأقل وتاريخ البدء لمعاينة الحصص.</div>';
+      }
+      return sessions.map(s => `
+        <div style="padding:10px 14px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.84rem;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:28px; height:28px; border-radius:8px; background:rgba(16,185,129,0.15); color:#10b981; font-weight:900; font-size:0.8rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+              ${s.sessionNumber}
+            </span>
+            <div>
+              <strong style="color:var(--text-main); font-size:0.86rem; display:block;">${s.title}</strong>
+              <span style="color:var(--text-muted); font-size:0.76rem;">📅 ${s.dateFormatted}</span>
+            </div>
+          </div>
+          <div style="text-align:left; flex-shrink:0;">
+            <span style="font-weight:800; color:#10b981; font-size:0.82rem; background:rgba(16,185,129,0.08); padding:3px 8px; border-radius:8px; border:1px solid rgba(16,185,129,0.2); display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="clock" style="width:12px; height:12px;"></i> ${s.timeFormatted} (${s.duration} د)
+            </span>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    modal = document.createElement("div");
+    modal.id = "renew-group-cycle-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:26px; width:100%; max-width:700px; max-height:92vh; display:flex; flex-direction:column; border:1.5px solid rgba(16,185,129,0.35); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.45); overflow:hidden;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg, rgba(16,185,129,0.25), rgba(5,150,105,0.25)); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="refresh-cw" style="width:22px; height:22px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.2rem; font-weight:900; color:var(--text-main); margin:0 0 2px 0;">تجديد دورة المجموعة وجدولة الحصص 🔄✨</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">إضافة شهر جديد / دورة حصص جديدة لطلاب "${group.name || group.title || 'المجموعة'}"</div>
+            </div>
+          </div>
+          <button id="close-renew-hub-cycle-modal" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Group Status Strip -->
+        <div style="background:var(--bg-app); border-bottom:1px solid var(--border-color); padding:10px 24px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; font-size:0.8rem; flex-shrink:0;">
+          <div>
+            <span style="color:var(--text-muted); display:block;">الحصص السابقة:</span>
+            <strong style="color:var(--text-main);">${previousSessionCount} حصة</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted); display:block;">المسجلون:</span>
+            <strong style="color:#10b981;">👥 ${enrolledStudentsCount} طالب</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted); display:block;">الأيام المقررة:</span>
+            <strong style="color:var(--primary);">${scheduleDaysStr}</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted); display:block;">الموعد:</span>
+            <strong style="color:var(--text-main);">${scheduleTimeStr}</strong>
+          </div>
+        </div>
+
+        <form id="renew-group-hub-cycle-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:18px 24px; display:flex; flex-direction:column; gap:14px;">
+            
+            <!-- Quick Presets -->
+            <div>
+              <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                عدد الحصص الإضافية: <span style="color:#ef4444;">*</span>
+              </label>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                <button type="button" class="hub-renew-preset-btn" data-count="4" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+4 حصص</button>
+                <button type="button" class="hub-renew-preset-btn active" data-count="8" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid #10b981; background:linear-gradient(135deg,#10b981,#059669); color:#fff; cursor:pointer;">+8 حصص (شهر كامل ⭐)</button>
+                <button type="button" class="hub-renew-preset-btn" data-count="12" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+12 حصة</button>
+                <button type="button" class="hub-renew-preset-btn" data-count="16" style="padding:6px 14px; border-radius:10px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer;">+16 حصة</button>
+              </div>
+              <input type="number" id="hub-renew-cycle-sessions-count" value="8" min="1" max="60" required
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; box-sizing:border-box;">
+            </div>
+
+            <!-- Start Date & Cycle Title -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  تاريخ بداية أول حصة: <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="date" id="hub-renew-cycle-start-date" value="${defaultStartDate}" required
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  مسمى الدورة (اختياري):
+                </label>
+                <input type="text" id="hub-renew-cycle-title" placeholder="مثال: الشهر الثاني / دورة المراجعة"
+                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Schedule Days (Checkboxes like Create Group) -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  أيام الأسبوع للحصص: <span style="color:#ef4444;">*</span>
+                </label>
+                <span style="font-size:0.73rem; color:#10b981; font-weight:700;">اختيار الأيام 🗓️</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:6px;">
+                ${daysList.map((day, idx) => {
+                  const isChecked = hasAnyMatched ? isDaySelected(day) : (idx === 1 || idx === 3);
+                  return `
+                    <label style="display:flex; align-items:center; gap:5px; padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-app); font-size:0.8rem; font-weight:700; cursor:pointer;">
+                      <input type="checkbox" name="hub-renew-cycle-days" value="${day}" ${isChecked ? 'checked' : ''} style="accent-color:#10b981;">
+                      <span>${day}</span>
+                    </label>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Schedule Time -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="hub-renew-cycle-time" style="font-size:0.85rem; font-weight:800; color:var(--text-main); margin:0;">
+                  توقيت الحصة: <span style="color:#ef4444;">*</span>
+                </label>
+                <span style="font-size:0.73rem; color:#10b981; font-weight:700;">اختيار بالنقرة 🕒</span>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <select id="hub-renew-cycle-time" required class="form-input" style="flex:1; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; cursor:pointer;">
+                  ${this.renderTimeSelectOptions(scheduleTimeStr || "06:00 م")}
+                </select>
+                <input type="time" id="hub-renew-cycle-time-picker" value="${this.timeToArabicTo24(scheduleTimeStr || '06:00 م')}" title="اختيار من الساعة 🕒" style="width:42px; height:42px; padding:4px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); cursor:pointer; flex-shrink:0; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <!-- Financial Section: Student Price & Teacher Rate & Profit Estimation -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
+                  <i data-lucide="coins" style="width:16px; height:16px; color:#10b981;"></i>
+                  التسعير والماليات للدورة الجديدة (الطلاب والمعلم) 💳
+                </label>
+                <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.73rem; padding:2px 8px; border-radius:8px;">
+                  حسابات الأرباح المباشرة ⚡
+                </span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <!-- Student Price -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label for="hub-renew-cycle-price" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
+                      سعر الدورة للطالب (ج.م): <span style="color:#ef4444;">*</span>
+                    </label>
+                    <span id="hub-renew-per-session-price-label" style="font-size:0.72rem; color:#10b981; font-weight:700;">
+                      (~${Math.round(defaultMonthlyPrice / 8)} ج.م/حصة)
+                    </span>
+                  </div>
+                  <input type="number" id="hub-renew-cycle-price" value="${defaultMonthlyPrice}" min="0" step="10" required class="form-input"
+                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box;">
+                </div>
+
+                <!-- Teacher Hourly Rate -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label for="hub-renew-cycle-teacher-rate" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
+                      أجر المعلم في الساعة (ج.م): ${canEditTeacherRate ? '<span style="color:#ef4444;">*</span>' : '<span style="font-size:0.7rem; color:var(--text-muted);">(معتمد)</span>'}
+                    </label>
+                    <span id="hub-renew-teacher-total-payout-label" style="font-size:0.72rem; color:#6366f1; font-weight:700;">
+                      (إجمالي: ${Math.round(defaultTeacherHourlyRate * 8 * (duration / 60))} ج.م)
+                    </span>
+                  </div>
+                  <input type="number" id="hub-renew-cycle-teacher-rate" value="${defaultTeacherHourlyRate}" min="0" step="10" ${canEditTeacherRate ? 'required' : 'readonly'} class="form-input"
+                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:${canEditTeacherRate ? 'var(--bg-card)' : 'rgba(0,0,0,0.04)'}; color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box; ${!canEditTeacherRate ? 'cursor:not-allowed;' : ''}">
+                </div>
+              </div>
+
+              <!-- Live Financial Summary Strip -->
+              <div id="hub-renew-financial-summary-strip" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; padding:10px 12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); font-size:0.78rem;">
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">إجمالي إيراد الطلاب:</span>
+                  <strong id="hub-renew-calc-student-revenue" style="color:#10b981; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">${canEditTeacherRate ? 'استحقاق المعلم:' : 'إجمالي مستحقاتك:'}</span>
+                  <strong id="hub-renew-calc-teacher-cost" style="color:#ef4444; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted); display:block; font-weight:700;">${canEditTeacherRate ? 'صافي ربح المنصة:' : 'معدل الحصة:'}</span>
+                  <strong id="hub-renew-calc-net-profit" style="color:#6366f1; font-size:0.95rem; font-weight:900;">0 ج.م</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Meeting Link -->
+            <div>
+              <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                رابط البث (Zoom / Meet):
+              </label>
+              <input type="url" id="hub-renew-cycle-meeting-link" value="${defaultMeetingLink}" placeholder="https://zoom.us/j/... أو Meet"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- Live Sessions Preview Box -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="calendar-plus" style="width:16px; height:16px; color:#10b981;"></i>
+                  معاينة الحصص الجديدة المجدولة (<span id="hub-renew-preview-count-label">${previewList.length}</span> حصص)
+                </label>
+                <span id="hub-renew-date-range-label" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                  من ${previewList[0]?.dateFormatted || ''} إلى ${previewList[previewList.length - 1]?.dateFormatted || ''}
+                </span>
+              </div>
+              <div id="hub-renew-sessions-preview-container" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; border:1px solid var(--border-color); border-radius:16px; padding:10px; background:rgba(0,0,0,0.02);">
+                ${renderPreviewHTML(previewList)}
+              </div>
+            </div>
+
+            <!-- Student Selection Checklist -->
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
+                    <i data-lucide="users" style="width:16px; height:16px; color:#10b981;"></i>
+                    الطلاب المستمرون في الدورة الجديدة (<span id="hub-renew-selected-students-count">${enrolledStudentsCount}</span> من ${enrolledStudentsCount})
+                  </label>
+                  <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">
+                    ألغِ تحديد أي طالب لم يسدد أو اعتذر لاستبعاده وتوفير مقعده للدورة الجديدة
+                  </span>
+                </div>
+                ${(this.hubData?.students || []).length > 0 ? `
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" id="hub-renew-select-all-students-btn" style="padding:4px 10px; font-size:0.75rem; font-weight:800; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); cursor:pointer;">
+                      تحديد الكل ✔
+                    </button>
+                    <button type="button" id="hub-renew-deselect-all-students-btn" style="padding:4px 10px; font-size:0.75rem; font-weight:800; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); cursor:pointer;">
+                      إلغاء التحديد ✖
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+
+              ${(this.hubData?.students || []).length === 0 ? `
+                <div style="text-align:center; padding:14px; color:var(--text-muted); font-size:0.82rem; background:var(--bg-card); border-radius:12px; border:1px dashed var(--border-color);">
+                  لا يوجد طلاب مسجلون في هذه المجموعة حالياً.
+                </div>
+              ` : `
+                <div id="hub-renew-students-list-container" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-inline-end:4px;">
+                  ${(this.hubData?.students || []).map(st => `
+                    <label class="hub-renew-student-row" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); cursor:pointer; user-select:none; transition:all 0.15s ease;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" class="hub-renew-student-checkbox" value="${st.id || st.studentId || st.enrollmentId}" checked style="width:16px; height:16px; cursor:pointer; accent-color:#10b981;">
+                        <div>
+                          <span style="font-size:0.84rem; font-weight:800; color:var(--text-main); display:block;">${st.name}</span>
+                          ${st.phone ? `<span style="font-size:0.74rem; color:var(--text-muted); direction:ltr; display:inline-block;">📱 ${st.phone}</span>` : ''}
+                        </div>
+                      </div>
+                      <span class="hub-renew-student-badge" style="font-size:0.74rem; font-weight:800; padding:2px 8px; border-radius:6px; background:rgba(16,185,129,0.1); color:#10b981;">
+                        مستمر ✔
+                      </span>
+                    </label>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- Notify Students Checkbox -->
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(16,185,129,0.08); padding:10px 14px; border-radius:12px; border:1px solid rgba(16,185,129,0.25);">
+              <input type="checkbox" id="hub-renew-cycle-notify" checked style="width:18px; height:18px; cursor:pointer; accent-color:#10b981;">
+              <label for="hub-renew-cycle-notify" style="font-size:0.82rem; font-weight:800; color:var(--text-main); cursor:pointer;">
+                إرسال إشعار فوري لجميع الطلاب المستمرين بالدورة الجديدة 🔔💬
+              </label>
+            </div>
+
+          </div>
+
+          <!-- Footer Buttons -->
+          <div style="padding:14px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-renew-hub-cycle-btn" class="btn-secondary" style="padding:10px 22px; border-radius:20px; font-size:0.88rem; font-weight:700;">إلغاء</button>
+            <button type="submit" id="submit-renew-hub-cycle-btn" class="btn-primary" style="padding:10px 28px; border-radius:20px; font-weight:900; font-size:0.92rem; background:linear-gradient(135deg, #10b981, #059669); border:none; box-shadow:0 4px 16px rgba(16,185,129,0.35); display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+              <i data-lucide="refresh-cw" style="width:18px; height:18px;"></i>
+              <span id="submit-hub-renew-label">تأكيد تجديد الدورة وجدولة (+8 حصص) 🔄🚀</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { modal.remove(); };
+    modal.querySelector("#close-renew-hub-cycle-modal")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-renew-hub-cycle-btn")?.addEventListener("click", closeModal);
+
+    // Live update financials (Student revenue, teacher payout, net margin)
+    const updateFinancials = () => {
+      const studentPrice = parseFloat(modal.querySelector("#hub-renew-cycle-price")?.value) || 0;
+      const teacherRate = parseFloat(modal.querySelector("#hub-renew-cycle-teacher-rate")?.value) || 0;
+      const countVal = parseInt(modal.querySelector("#hub-renew-cycle-sessions-count")?.value, 10) || 8;
+      const checkedStudents = modal.querySelectorAll(".hub-renew-student-checkbox:checked").length;
+
+      // Update per-session price label
+      const perSessionLabel = modal.querySelector("#hub-renew-per-session-price-label");
+      if (perSessionLabel) {
+        const perSession = countVal > 0 ? Math.round((studentPrice / countVal) * 10) / 10 : 0;
+        perSessionLabel.textContent = `(~${perSession} ج.م/حصة)`;
+      }
+
+      // Update teacher payout label
+      const totalHours = countVal * (duration / 60);
+      const teacherTotalPayout = Math.round(totalHours * teacherRate);
+      const teacherPayoutLabel = modal.querySelector("#hub-renew-teacher-total-payout-label");
+      if (teacherPayoutLabel) {
+        teacherPayoutLabel.textContent = `(إجمالي: ${teacherTotalPayout.toLocaleString()} ج.م)`;
+      }
+
+      // Update summary strip
+      const totalStudentRevenue = Math.round(checkedStudents * studentPrice);
+      const netProfit = totalStudentRevenue - teacherTotalPayout;
+
+      const revEl = modal.querySelector("#hub-renew-calc-student-revenue");
+      if (revEl) revEl.textContent = `${totalStudentRevenue.toLocaleString()} ج.م (${checkedStudents} طالب)`;
+
+      const costEl = modal.querySelector("#hub-renew-calc-teacher-cost");
+      if (costEl) costEl.textContent = `${teacherTotalPayout.toLocaleString()} ج.م (${totalHours} س)`;
+
+      const profitEl = modal.querySelector("#hub-renew-calc-net-profit");
+      if (profitEl) {
+        if (canEditTeacherRate) {
+          profitEl.textContent = `${netProfit > 0 ? '+' : ''}${netProfit.toLocaleString()} ج.م`;
+          profitEl.style.color = netProfit >= 0 ? '#6366f1' : '#ef4444';
+        } else {
+          const perSessionTeacher = countVal > 0 ? Math.round(teacherTotalPayout / countVal) : 0;
+          profitEl.textContent = `~${perSessionTeacher.toLocaleString()} ج.م/حصة`;
+          profitEl.style.color = '#10b981';
+        }
+      }
+    };
+
+    // Student checkboxes toggle & live count update
+    const updateStudentCount = () => {
+      const cbs = modal.querySelectorAll(".hub-renew-student-checkbox");
+      const checked = Array.from(cbs).filter(cb => cb.checked);
+      const countEl = modal.querySelector("#hub-renew-selected-students-count");
+      if (countEl) countEl.textContent = checked.length;
+
+      cbs.forEach(cb => {
+        const row = cb.closest(".hub-renew-student-row");
+        const badge = row?.querySelector(".hub-renew-student-badge");
+        if (badge) {
+          if (cb.checked) {
+            badge.textContent = "مستمر ✔";
+            badge.style.background = "rgba(16,185,129,0.1)";
+            badge.style.color = "#10b981";
+            if (row) row.style.opacity = "1";
+          } else {
+            badge.textContent = "مستبعد ✖";
+            badge.style.background = "rgba(239,68,68,0.1)";
+            badge.style.color = "#ef4444";
+            if (row) row.style.opacity = "0.55";
+          }
+        }
+      });
+
+      updateFinancials();
+    };
+
+    modal.querySelectorAll(".hub-renew-student-checkbox").forEach(cb => {
+      cb.addEventListener("change", updateStudentCount);
+    });
+
+    modal.querySelector("#hub-renew-select-all-students-btn")?.addEventListener("click", () => {
+      modal.querySelectorAll(".hub-renew-student-checkbox").forEach(cb => { cb.checked = true; });
+      updateStudentCount();
+    });
+
+    modal.querySelector("#hub-renew-deselect-all-students-btn")?.addEventListener("click", () => {
+      modal.querySelectorAll(".hub-renew-student-checkbox").forEach(cb => { cb.checked = false; });
+      updateStudentCount();
+    });
+
+    const getSelectedDays = () => {
+      const checked = Array.from(modal.querySelectorAll("input[name='hub-renew-cycle-days']:checked")).map(cb => cb.value);
+      return checked.join("، ");
+    };
+
+    const updatePreview = () => {
+      const countVal = modal.querySelector("#hub-renew-cycle-sessions-count")?.value || 8;
+      const startDateVal = modal.querySelector("#hub-renew-cycle-start-date")?.value || defaultStartDate;
+      const daysVal = getSelectedDays();
+      const timeVal = modal.querySelector("#hub-renew-cycle-time")?.value || scheduleTimeStr;
+
+      previewList = generatePreview(startDateVal, countVal, daysVal, timeVal);
+      const container = modal.querySelector("#hub-renew-sessions-preview-container");
+      if (container) {
+        container.innerHTML = renderPreviewHTML(previewList);
+        if (window.lucide) window.lucide.createIcons();
+      }
+      const countLabel = modal.querySelector("#hub-renew-preview-count-label");
+      if (countLabel) countLabel.textContent = previewList.length;
+
+      const rangeLabel = modal.querySelector("#hub-renew-date-range-label");
+      if (rangeLabel && previewList.length > 0) {
+        rangeLabel.textContent = `من ${previewList[0]?.dateFormatted || ''} إلى ${previewList[previewList.length - 1]?.dateFormatted || ''}`;
+      } else if (rangeLabel) {
+        rangeLabel.textContent = "يرجى تحديد أيام الحصص لمعاينة المواعيد";
+      }
+      const submitLabel = modal.querySelector("#submit-hub-renew-label");
+      if (submitLabel) submitLabel.textContent = `تأكيد تجديد الدورة وجدولة (+${countVal} حصص) 🔄🚀`;
+
+      updateFinancials();
+    };
+
+    modal.querySelectorAll(".hub-renew-preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        modal.querySelectorAll(".hub-renew-preset-btn").forEach(b => {
+          b.classList.remove("active");
+          b.style.background = "var(--bg-app)";
+          b.style.color = "var(--text-main)";
+          b.style.border = "1px solid var(--border-color)";
+        });
+        btn.classList.add("active");
+        btn.style.background = "linear-gradient(135deg,#10b981,#059669)";
+        btn.style.color = "#fff";
+        btn.style.border = "1px solid #10b981";
+
+        const count = btn.getAttribute("data-count");
+        const countInput = modal.querySelector("#hub-renew-cycle-sessions-count");
+        if (countInput) countInput.value = count;
+        updatePreview();
+      });
+    });
+
+    // Schedule days checkboxes change
+    modal.querySelectorAll("input[name='hub-renew-cycle-days']").forEach(cb => {
+      cb.addEventListener("change", updatePreview);
+    });
+
+    // Sync hub-renew-cycle-time select and time picker
+    const renewTimeSelect = modal.querySelector("#hub-renew-cycle-time");
+    const renewTimePicker = modal.querySelector("#hub-renew-cycle-time-picker");
+
+    renewTimeSelect?.addEventListener("change", (e) => {
+      if (renewTimePicker && e.target.value) {
+        renewTimePicker.value = this.timeToArabicTo24(e.target.value);
+      }
+      updatePreview();
+    });
+
+    renewTimePicker?.addEventListener("change", (e) => {
+      if (e.target.value && renewTimeSelect) {
+        const arabTime = this.normalizeTimeToArabic(e.target.value);
+        let matched = Array.from(renewTimeSelect.options).find(opt => opt.value === arabTime);
+        if (!matched) {
+          const newOpt = new Option(`⏰ ${arabTime} (توقيت مخصص)`, arabTime, true, true);
+          renewTimeSelect.add(newOpt, 0);
+        } else {
+          renewTimeSelect.value = arabTime;
+        }
+        updatePreview();
+      }
+    });
+
+    modal.querySelector("#hub-renew-cycle-sessions-count")?.addEventListener("input", updatePreview);
+    modal.querySelector("#hub-renew-cycle-start-date")?.addEventListener("change", updatePreview);
+    modal.querySelector("#hub-renew-cycle-price")?.addEventListener("input", updateFinancials);
+    modal.querySelector("#hub-renew-cycle-teacher-rate")?.addEventListener("input", updateFinancials);
+
+    // Initial calculation of financials
+    updateFinancials();
+
+    const form = modal.querySelector("#renew-group-hub-cycle-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = modal.querySelector("#submit-renew-hub-cycle-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>جاري تجديد الدورة وجدولة الحصص... ⏳</span>`;
+      }
+
+      const additionalSessionsVal = modal.querySelector("#hub-renew-cycle-sessions-count")?.value || 8;
+      const checkedDays = Array.from(modal.querySelectorAll("input[name='hub-renew-cycle-days']:checked")).map(cb => cb.value);
+      if (checkedDays.length === 0) {
+        showToast("يرجى اختيار يوم واحد على الأقل من أيام الحصص الأسبوعية.", "warning");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>تأكيد تجديد الدورة وجدولة (+${additionalSessionsVal} حصص) 🔄🚀</span>`;
+        }
+        return;
+      }
+
+      const startDateVal = modal.querySelector("#hub-renew-cycle-start-date")?.value;
+      const cycleTitleVal = modal.querySelector("#hub-renew-cycle-title")?.value?.trim() || "";
+      const scheduleDaysVal = checkedDays.join("، ");
+      const scheduleTimeVal = modal.querySelector("#hub-renew-cycle-time")?.value?.trim() || null;
+      const monthlyPriceVal = modal.querySelector("#hub-renew-cycle-price")?.value || null;
+      const teacherHourlyRateVal = modal.querySelector("#hub-renew-cycle-teacher-rate")?.value || null;
+      const meetingLinkVal = modal.querySelector("#hub-renew-cycle-meeting-link")?.value?.trim() || null;
+      const notifyStudentsVal = modal.querySelector("#hub-renew-cycle-notify")?.checked !== false;
+
+      const studentCheckboxes = modal.querySelectorAll(".hub-renew-student-checkbox");
+      let studentIdsToKeep = undefined;
+      if (studentCheckboxes.length > 0) {
+        studentIdsToKeep = Array.from(studentCheckboxes)
+          .filter(cb => cb.checked)
+          .map(cb => cb.value);
+      }
+
+      try {
+        const res = await apiFetch(`/groups/${this.groupId}/renew-cycle`, {
+          method: "POST",
+          body: JSON.stringify({
+            additionalSessions: additionalSessionsVal,
+            startDate: startDateVal,
+            cycleTitle: cycleTitleVal,
+            scheduleDays: scheduleDaysVal,
+            scheduleTime: scheduleTimeVal,
+            monthlyPrice: monthlyPriceVal,
+            teacherHourlyRate: canEditTeacherRate ? teacherHourlyRateVal : undefined,
+            meetingLink: meetingLinkVal,
+            notifyStudents: notifyStudentsVal,
+            studentIdsToKeep
+          })
+        });
+
+        showToast(res.message || "تم تجديد دورة المجموعة وجدولة الحصص بنجاح! 🔄🎉", "success");
+        closeModal();
+        this.activeTab = "sessions";
+        await this.render();
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="refresh-cw" style="width:18px; height:18px;"></i> <span>تأكيد تجديد الدورة وجدولة (+${additionalSessionsVal} حصص) 🔄🚀</span>`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+        showToast(err.message || "فشل تجديد دورة المجموعة.", "error");
+      }
+    });
+  }
+
+  // ── Student Upload Renewal Receipt Modal ──────────────────────────────
+  openUploadRenewalReceiptModal() {
+    let modal = document.getElementById("student-group-renewal-receipt-modal");
+    if (modal) modal.remove();
+
+    const group = this.hubData?.group || {};
+    const defaultPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320);
+
+    modal = document.createElement("div");
+    modal.id = "student-group-renewal-receipt-modal";
+    modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+
+    modal.innerHTML = `
+      <div class="glass-card" style="background:var(--bg-card); border-radius:24px; width:100%; max-width:540px; max-height:92vh; display:flex; flex-direction:column; border:1px solid var(--border-color); font-family:'Cairo', sans-serif; box-shadow:0 24px 60px rgba(0,0,0,0.45); overflow:hidden;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--bg-app); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="receipt" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.15rem; font-weight:900; color:var(--text-main); margin:0;">رفع إيصال سداد الدورة الجديدة 🧾</h3>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">مجموعة: ${group.name || 'المجموعة الدراسية'}</div>
+            </div>
+          </div>
+          <button id="close-renewal-receipt-modal" style="background:transparent; border:none; color:var(--text-muted); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <form id="student-renewal-receipt-form" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Payment Info Strip -->
+            <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:14px; padding:12px 16px; font-size:0.84rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="color:var(--text-muted); font-weight:700;">قيمة الاشتراك للدورة الجديدة:</span>
+                <strong style="color:#10b981; font-size:1.05rem;">${defaultPrice} ج.م</strong>
+              </div>
+              <p style="margin:0; font-size:0.76rem; color:var(--text-muted); line-height:1.5;">
+                يمكنك التحويل عبر فودافون كاش أو انستاباي ثم إرفاق صورة واضحة من إيصال التحويل بالأسفل.
+              </p>
+            </div>
+
+            <!-- Amount Input -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                المبلغ المدفوع (ج.م): <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="number" id="renewal-receipt-amount" value="${defaultPrice}" required min="1"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; box-sizing:border-box;">
+            </div>
+
+            <!-- Payment Method / Provider -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                طريقة التحويل / الدفع: <span style="color:#ef4444;">*</span>
+              </label>
+              <select id="renewal-receipt-provider" required
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                <option value="vodafone_cash">فودافون كاش (Vodafone Cash)</option>
+                <option value="instapay">انستاباي (InstaPay)</option>
+                <option value="bank_transfer">تحويل بنكي مباشر</option>
+                <option value="fawry">فوري / محافظ إلكترونية أخرى</option>
+              </select>
+            </div>
+
+            <!-- Transaction Reference / Phone -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                رقم الهاتف المحول منه أو الرقم المرجعي للعملية:
+              </label>
+              <input type="text" id="renewal-receipt-ref" placeholder="مثال: 010xxxxxxxx أو رقم العملية"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+            </div>
+
+            <!-- File Upload -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                صورة إيصال التحويل / السكرين شوت: <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="file" id="renewal-receipt-file" accept="image/*" required
+                style="width:100%; padding:8px; border-radius:12px; border:1px dashed var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; box-sizing:border-box;">
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <label style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                ملاحظات إضافية (اختياري):
+              </label>
+              <textarea id="renewal-receipt-notes" rows="2" placeholder="أي ملاحظات للإدارة..."
+                style="width:100%; padding:8px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.82rem; box-sizing:border-box;"></textarea>
+            </div>
+
+          </div>
+
+          <!-- Footer Buttons -->
+          <div style="padding:14px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px; background:var(--bg-app); flex-shrink:0;">
+            <button type="button" id="cancel-renewal-receipt-btn" class="btn-secondary" style="padding:10px 20px; border-radius:16px; font-size:0.86rem; font-weight:700;">إلغاء</button>
+            <button type="submit" id="submit-renewal-receipt-btn" class="btn-primary" style="padding:10px 24px; border-radius:16px; font-weight:900; font-size:0.88rem; background:linear-gradient(135deg, #10b981, #059669); border:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#fff;">
+              <i data-lucide="check-circle-2" style="width:16px; height:16px;"></i>
+              <span>إرسال الإيصال للاعتماد 🚀</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => { modal.remove(); };
+    modal.querySelector("#close-renewal-receipt-modal")?.addEventListener("click", closeModal);
+    modal.querySelector("#cancel-renewal-receipt-btn")?.addEventListener("click", closeModal);
+
+    const form = modal.querySelector("#student-renewal-receipt-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = modal.querySelector("#submit-renewal-receipt-btn");
+      const fileInput = modal.querySelector("#renewal-receipt-file");
+      const file = fileInput?.files?.[0];
+
+      if (!file) {
+        showToast("يرجى اختيار صورة الإيصال أولاً.", "warning");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>جاري رفع الإيصال... ⏳</span>`;
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        const receiptUrl = uploadData.url;
+
+        if (!receiptUrl) {
+          throw new Error("فشل رفع صورة الإيصال، يرجى المحاولة مجدداً.");
+        }
+
+        const amount = modal.querySelector("#renewal-receipt-amount")?.value || defaultPrice;
+        const provider = modal.querySelector("#renewal-receipt-provider")?.value || "vodafone_cash";
+        const providerTransactionId = modal.querySelector("#renewal-receipt-ref")?.value?.trim() || "";
+        const notes = modal.querySelector("#renewal-receipt-notes")?.value?.trim() || "";
+
+        const res = await apiFetch(`/student/groups/${this.groupId}/renew-receipt`, {
+          method: "POST",
+          body: JSON.stringify({
+            amount,
+            provider,
+            providerTransactionId,
+            receiptUrl,
+            notes
+          })
+        });
+
+        showToast(res.message || "تم إرسال إيصال السداد بنجاح! 🧾✅", "success");
+        closeModal();
+      } catch (err) {
+        showToast(err.message || "فشل إرسال إيصال السداد.", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="check-circle-2" style="width:16px; height:16px;"></i> <span>إرسال الإيصال للاعتماد 🚀</span>`;
+        if (window.lucide) window.lucide.createIcons();
       }
     });
   }
@@ -3784,7 +4882,7 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
     if (modal) modal.remove();
 
     const fmt = formatSessionDateTime(session.scheduledAt);
-    const { isTeacher, isAdmin } = this.hubData;
+    const { isTeacher, isAdmin } = this.effectiveRoles;
     const canManageReport = isTeacher || isAdmin;
     const hasReport = Boolean(session.topic || session.whatWasCovered || session.homework || session.teacherNotes);
 
@@ -4537,5 +5635,111 @@ ${this.renderTabButton("roster", "👥 الأعضاء", students.length)}
         }
       }
     });
+  }
+
+  normalizeTimeToArabic(timeStr) {
+    if (!timeStr) return "06:00 م";
+    const s = String(timeStr).trim();
+    const isPM = s.includes("م") || s.toLowerCase().includes("pm");
+    const isAM = s.includes("ص") || s.toLowerCase().includes("am");
+    const nums = s.replace(/[^0-9:]/g, "").split(":");
+    let h = parseInt(nums[0], 10);
+    const m = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    if (isNaN(h)) return "06:00 م";
+
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+
+    const pm = h >= 12;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const mStr = String(isNaN(m) ? 0 : m).padStart(2, "0");
+    const hStr = String(h12).padStart(2, "0");
+    return `${hStr}:${mStr} ${pm ? "م" : "ص"}`;
+  }
+
+  timeToArabicTo24(timeStr) {
+    if (!timeStr) return "18:00";
+    const s = String(timeStr).trim();
+    const isPM = s.includes("م") || s.toLowerCase().includes("pm");
+    const isAM = s.includes("ص") || s.toLowerCase().includes("am");
+    const nums = s.replace(/[^0-9:]/g, "").split(":");
+    let h = parseInt(nums[0], 10);
+    const m = nums.length > 1 ? parseInt(nums[1], 10) : 0;
+    if (isNaN(h)) return "18:00";
+
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+
+    return `${String(h).padStart(2, "0")}:${String(isNaN(m) ? 0 : m).padStart(2, "0")}`;
+  }
+
+  renderTimeSelectOptions(selectedTimeStr = "06:00 م") {
+    const targetNorm = this.normalizeTimeToArabic(selectedTimeStr || "06:00 م");
+
+    const slots = [
+      // Evening slots (most common)
+      { val: "05:00 م", label: "05:00 م (5:00 مساءً)", group: "evening" },
+      { val: "05:30 م", label: "05:30 م (5:30 مساءً)", group: "evening" },
+      { val: "06:00 م", label: "06:00 م (6:00 مساءً) ⭐", group: "evening" },
+      { val: "06:30 م", label: "06:30 م (6:30 مساءً)", group: "evening" },
+      { val: "07:00 م", label: "07:00 م (7:00 مساءً)", group: "evening" },
+      { val: "07:30 م", label: "07:30 م (7:30 مساءً)", group: "evening" },
+      { val: "08:00 م", label: "08:00 م (8:00 مساءً)", group: "evening" },
+      { val: "08:30 م", label: "08:30 م (8:30 مساءً)", group: "evening" },
+      { val: "09:00 م", label: "09:00 م (9:00 مساءً)", group: "evening" },
+      { val: "09:30 م", label: "09:30 م (9:30 مساءً)", group: "evening" },
+      { val: "10:00 م", label: "10:00 م (10:00 مساءً)", group: "evening" },
+      { val: "10:30 م", label: "10:30 م (10:30 مساءً)", group: "evening" },
+      { val: "11:00 م", label: "11:00 م (11:00 مساءً)", group: "evening" },
+
+      // Noon & Afternoon slots
+      { val: "12:00 م", label: "12:00 م (12:00 ظهراً)", group: "noon" },
+      { val: "12:30 م", label: "12:30 م", group: "noon" },
+      { val: "01:00 م", label: "01:00 م (1:00 ظهراً)", group: "noon" },
+      { val: "01:30 م", label: "01:30 م", group: "noon" },
+      { val: "02:00 م", label: "02:00 م (2:00 ظهراً)", group: "noon" },
+      { val: "02:30 م", label: "02:30 م", group: "noon" },
+      { val: "03:00 م", label: "03:00 م (3:00 عصراً)", group: "noon" },
+      { val: "03:30 م", label: "03:30 م (3:30 عصراً)", group: "noon" },
+      { val: "04:00 م", label: "04:00 م (4:00 عصراً)", group: "noon" },
+      { val: "04:30 م", label: "04:30 م (4:30 عصراً)", group: "noon" },
+
+      // Morning slots
+      { val: "08:00 ص", label: "08:00 ص (8:00 صباحاً)", group: "morning" },
+      { val: "08:30 ص", label: "08:30 ص", group: "morning" },
+      { val: "09:00 ص", label: "09:00 ص (9:00 صباحاً)", group: "morning" },
+      { val: "09:30 ص", label: "09:30 ص", group: "morning" },
+      { val: "10:00 ص", label: "10:00 ص (10:00 صباحاً)", group: "morning" },
+      { val: "10:30 ص", label: "10:30 ص", group: "morning" },
+      { val: "11:00 ص", label: "11:00 ص (11:00 صباحاً)", group: "morning" },
+      { val: "11:30 ص", label: "11:30 ص", group: "morning" }
+    ];
+
+    const eveningSlots = slots.filter(s => s.group === "evening");
+    const noonSlots = slots.filter(s => s.group === "noon");
+    const morningSlots = slots.filter(s => s.group === "morning");
+
+    const renderOpts = (arr) => arr.map(s => {
+      const isSel = (s.val === targetNorm) ? "selected" : "";
+      return `<option value="${s.val}" ${isSel}>${s.label}</option>`;
+    }).join("");
+
+    let html = `
+      <optgroup label="🌙 الفترة المسائية (الأكثر شيوعاً)">
+        ${renderOpts(eveningSlots)}
+      </optgroup>
+      <optgroup label="☀️ فترة الظهيرة والعصر">
+        ${renderOpts(noonSlots)}
+      </optgroup>
+      <optgroup label="🌅 الفترة الصباحية">
+        ${renderOpts(morningSlots)}
+      </optgroup>
+    `;
+
+    if (targetNorm && !slots.some(s => s.val === targetNorm)) {
+      html = `<option value="${targetNorm}" selected>⏰ ${targetNorm} (توقيت مخصص)</option>` + html;
+    }
+
+    return html;
   }
 }

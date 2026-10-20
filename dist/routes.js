@@ -158,6 +158,7 @@ router.delete("/groups/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["te
 router.get("/groups/:id/roster", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.getGroupRoster);
 router.get("/groups/:id/sessions", auth_1.authMiddleware, CourseGroupController_1.CourseGroupController.getGroupSessions);
 router.post("/groups/:id/sessions", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.createGroupSession);
+router.post("/groups/:id/renew-cycle", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.renewGroupCycle);
 router.delete("/groups/:id/sessions/:sessionId", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.deleteGroupSession);
 router.get("/groups/:id/hub", auth_1.authMiddleware, CourseGroupController_1.CourseGroupController.getGroupHub);
 router.post("/groups/:id/announcements", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.postGroupAnnouncement);
@@ -205,6 +206,7 @@ router.post("/admin/groups/:id/reject", auth_1.authMiddleware, (0, auth_1.requir
 router.post("/admin/groups/:id/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.addStudentToGroup);
 router.post("/admin/groups/:id/remove-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.startTeachingAndGenerateSessions);
+router.post("/admin/groups/:id/renew-cycle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor", "teacher"]), CourseGroupController_1.CourseGroupController.renewGroupCycle);
 // Admin Teacher Management
 router.post("/admin/teachers/invite", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminTeacherController_1.AdminTeacherController.inviteTeacher);
 router.get("/admin/teachers", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), AdminTeacherController_1.AdminTeacherController.getAllTeachers);
@@ -284,6 +286,7 @@ router.patch("/student/enrollments/:courseId/lessons/objectives/toggle", auth_1.
 router.post("/student/enrollments/:courseId/activity-submit", auth_1.authMiddleware, StudentController_1.StudentController.submitActivityFile);
 router.delete("/student/enrollments/:courseId/activity-submit", auth_1.authMiddleware, StudentController_1.StudentController.deleteActivityFile);
 router.get("/student/stats", auth_1.authMiddleware, StudentController_1.StudentController.getDashboardStats);
+router.post("/student/groups/:id/renew-receipt", auth_1.authMiddleware, (0, auth_1.requireRole)(["student", "parent"]), CourseGroupController_1.CourseGroupController.submitGroupRenewalReceipt);
 // Notifications
 router.get("/notifications", auth_1.authMiddleware, NotificationController_1.NotificationController.getUserNotifications);
 router.get("/notifications/unread-count", auth_1.authMiddleware, NotificationController_1.NotificationController.getUnreadCount);

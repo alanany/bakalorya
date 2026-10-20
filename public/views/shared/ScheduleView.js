@@ -15,6 +15,13 @@ export default class ScheduleView {
     this.currentWeekStart.setHours(0, 0, 0, 0);
     window.scheduleViewInstance = this;
     window.exportWeeklyTimetable = (autoDownloadImage = false) => this.exportWeeklyTimetableToPDF(autoDownloadImage);
+
+    // Auto-reload timetable if sessions or group schedule times are updated anywhere
+    window.addEventListener("sessions-updated", () => {
+      if (document.contains(this.container) && typeof this.loadContent === "function") {
+        this.loadContent();
+      }
+    });
   }
 
   async render() {
