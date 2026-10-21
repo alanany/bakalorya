@@ -2706,13 +2706,19 @@ export const AdminSessionsPage = {
     const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const monthsArabic = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
+    const userTz = getUserTimezone();
     const formatDateTime = (dateStr) => {
       if (!dateStr) return { date: '—', time: '—' };
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return { date: dateStr, time: '' };
       const dayName = daysArabic[d.getDay()];
       const dateText = `${dayName} ${d.getDate()} ${monthsArabic[d.getMonth()]} ${d.getFullYear()}`;
-      const timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      let timeText = '';
+      try {
+        timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', timeZone: userTz });
+      } catch (e) {
+        timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      }
       return { date: dateText, time: timeText };
     };
 
@@ -2793,9 +2799,9 @@ export const AdminSessionsPage = {
                         <strong style="font-size:0.9rem; color:var(--text-main); display:block;">
                           ${s.title || `${groupTitle} - حصة ${idx + 1}`}
                         </strong>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:8px;">
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                           <span>📅 ${dt.date}</span>
-                          ${dt.time ? `<span>• ⏰ ${dt.time}</span>` : ''}
+                          ${dt.time ? `<span>• ⏰ ${dt.time}</span> ${getTimezoneBadgeHTML(userTz)}` : ''}
                           <span>• ⏱️ ${s.duration || 60} دقيقة</span>
                         </div>
                       </div>
@@ -3646,8 +3652,10 @@ export const AdminSessionsPage = {
                       لا توجد حصص مجدولة
                     </div>
                   ` : daySessions.map(sess => {
-        const teacherTz = sess.teacher?.timezone || "Africa/Cairo";
-        const formatted = formatSessionDateTime(sess.scheduledAt, "Asia/Riyadh", { secondaryTz: teacherTz });
+        const userTz = getUserTimezone();
+        const teacherTz = sess.teacher?.timezone || null;
+        const secondaryTz = (teacherTz && teacherTz !== userTz) ? teacherTz : (userTz !== "Asia/Riyadh" ? "Asia/Riyadh" : null);
+        const formatted = formatSessionDateTime(sess.scheduledAt, userTz, { secondaryTz });
         const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
         const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
         const sessTeacherId = sess.teacher?.id || sess.teacherId || sess.course?.teacher?.id;
@@ -3740,23 +3748,17 @@ export const AdminSessionsPage = {
       const isCompleted = (sess.status || "").toLowerCase() === "completed";
       const isCancelled = (sess.status || "").toLowerCase().includes("cancelled");
       const userTz = getUserTimezone();
+      const teacherTz = sess.teacher?.timezone || null;
+      const secondaryTz = (teacherTz && teacherTz !== userTz) ? teacherTz : (userTz !== "Asia/Riyadh" ? "Asia/Riyadh" : null);
+      const formatted = formatSessionDateTime(sess.scheduledAt, userTz, { secondaryTz });
 
       let dateDisplay = "-";
       let timeDisplay = "";
       if (sess.scheduledAt) {
         const d = new Date(sess.scheduledAt);
         const dayName = d.toLocaleDateString("ar-EG", { weekday: "long" }) || "";
-        let datePart = "";
-        let timePart = "";
-        try {
-          datePart = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", timeZone: userTz });
-          timePart = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: userTz });
-        } catch (e) {
-          datePart = d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
-          timePart = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-        }
-        dateDisplay = `${dayName}، ${datePart}`;
-        timeDisplay = timePart;
+        dateDisplay = `${dayName}، ${formatted.dateStr}`;
+        timeDisplay = formatted.timeStr;
       }
 
       const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
@@ -3781,9 +3783,13 @@ export const AdminSessionsPage = {
                             <span>${dateDisplay}</span>
                           </div>
                           ${timeDisplay ? `
-                            <div style="font-size:0.78rem; font-weight:700; color:var(--primary); margin-top:3px; display:inline-flex; align-items:center; gap:4px;">
-                              <i data-lucide="clock" style="width:12px; height:12px;"></i>
-                              <span>${timeDisplay}</span>
+                            <div style="font-size:0.78rem; font-weight:700; color:var(--primary); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                              <span style="display:inline-flex; align-items:center; gap:4px;">
+                                <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                                <span>${timeDisplay}</span>
+                              </span>
+                              ${formatted.badgeHTML}
+                              ${formatted.secondaryTZHTML}
                               <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${sess.duration || 60} دقيقة)</span>
                             </div>
                           ` : `

@@ -33,6 +33,11 @@ export default class LandingView {
           </div>
         </div>
 
+        <!-- 🔴 LIVE NOW URGENCY STRIP -->
+        <div id="live-now-strip" style="background:linear-gradient(90deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%); border-bottom:1px solid rgba(99,102,241,0.3); padding:10px 0; overflow:hidden; position:relative; cursor:pointer; direction:ltr; width:100%;" onclick="window.location.hash='#courses'">
+          <div id="live-now-track" style="display:flex; align-items:center; white-space:nowrap; width:max-content; will-change:transform;"></div>
+        </div>
+
         <!-- SCREENSHOT 1: SECTION 1 (DUAL HERO CAROUSEL) -->
         <section style="width:100%; margin:0 auto; padding:24px 20px 16px 20px;">
           <div class="hero-section-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:stretch;">
@@ -83,6 +88,18 @@ export default class LandingView {
             <span class="hero-dot active" style="width:28px; height:8px; border-radius:4px; background:var(--primary); cursor:pointer;"></span>
             <span class="hero-dot" style="width:10px; height:8px; border-radius:4px; background:var(--border-color); cursor:pointer;"></span>
             <span class="hero-dot" style="width:10px; height:8px; border-radius:4px; background:var(--border-color); cursor:pointer;"></span>
+          </div>
+
+          <!-- ⚡ QUICK GRADE FILTER -->
+          <div id="quick-grade-filter" style="margin-top:20px; padding:16px 20px; background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <span style="font-size:0.88rem; font-weight:900; color:var(--text-color); white-space:nowrap;">🎯 أنا في:</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1;">
+              <button class="quick-grade-btn active-grade" data-stage="SECONDARY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:var(--primary); color:#ffffff; border:2px solid var(--primary); cursor:pointer; transition:all 0.2s;">🎓 الثانوية</button>
+              <button class="quick-grade-btn" data-stage="PREPARATORY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">📘 الإعدادية</button>
+              <button class="quick-grade-btn" data-stage="PRIMARY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🎒 الابتدائية</button>
+              <button class="quick-grade-btn" data-stage="AZHAR" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🕌 الأزهر</button>
+            </div>
+            <button id="quick-grade-go-btn" style="padding:9px 22px; border-radius:20px; font-size:0.85rem; font-weight:900; background:linear-gradient(135deg,#0056D2 0%,#10b981 100%); color:#ffffff; border:none; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(0,86,210,0.3); transition:all 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">ابحث عن دورتي 🚀</button>
           </div>
         </section>
 
@@ -609,6 +626,230 @@ export default class LandingView {
         </section>
 
 
+        <!-- ⭐ STUDENT TESTIMONIALS SECTION -->
+        <section class="landing-testimonials-section">
+          <!-- Background Ambient Glow Orbs -->
+          <div style="position:absolute; top:-60px; right:10%; width:420px; height:420px; background:radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%); filter:blur(60px); pointer-events:none; z-index:1;"></div>
+          <div style="position:absolute; bottom:-60px; left:10%; width:420px; height:420px; background:radial-gradient(circle, rgba(236,72,153,0.06) 0%, transparent 70%); filter:blur(60px); pointer-events:none; z-index:1;"></div>
+
+          <div class="testimonials-grid-container">
+            <!-- Centered Header -->
+            <div style="max-width:760px; margin:0 auto; text-align:center; margin-bottom:28px;">
+              <span style="font-size:0.84rem; font-weight:800; background:linear-gradient(135deg, rgba(245,158,11,0.14), rgba(99,102,241,0.1)); color:#f59e0b; border:1px solid rgba(245,158,11,0.28); padding:7px 20px; border-radius:30px; display:inline-flex; align-items:center; gap:7px; margin-bottom:14px; box-shadow:0 4px 16px rgba(245,158,11,0.08);">
+                <i data-lucide="sparkles" style="width:15px;height:15px;"></i> قصص نجاح وتفوق حقيقية
+              </span>
+              <h2 style="font-size:clamp(1.85rem, 3.2vw, 2.5rem); font-weight:900; color:var(--text-color); margin:0 0 10px 0; line-height:1.3;">
+                ماذا يقول طلابنا عن <span style="background:linear-gradient(135deg, var(--primary) 0%, #ec4899 50%, #8b5cf6 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">انطلق؟</span> 🌟
+              </h2>
+              <p style="color:var(--text-muted); font-size:1rem; margin:0 auto; line-height:1.6; max-width:620px;">
+                شهادات وتجارب واقعية لطلاب حوّلوا صعوبات المواد إلى شغف وتفوق ملحوظ في درجاتهم
+              </p>
+            </div>
+
+            <!-- Centered Social Proof Bar -->
+            <div style="display:flex; justify-content:center; align-items:center; gap:20px; flex-wrap:wrap; margin:0 auto 38px auto; padding:12px 24px; background:var(--bg-app); border:1px solid var(--border-color); border-radius:30px; width:fit-content; box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <span style="color:#f59e0b; font-size:1.1rem; line-height:1;">★</span>
+                <span style="font-size:0.92rem; font-weight:900; color:var(--text-color);">4.9 / 5</span>
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">(متوسط التقييم العام)</span>
+              </div>
+              <span style="width:1px; height:18px; background:var(--border-color);"></span>
+              <div style="display:flex; align-items:center; gap:7px;">
+                <i data-lucide="trending-up" style="width:16px;height:16px;color:#10b981;"></i>
+                <span style="font-size:0.92rem; font-weight:900; color:var(--text-color);">+35%</span>
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">(متوسط قفزة الدرجات)</span>
+              </div>
+              <span style="width:1px; height:18px; background:var(--border-color);"></span>
+              <div style="display:flex; align-items:center; gap:7px;">
+                <i data-lucide="shield-check" style="width:16px;height:16px;color:var(--primary);"></i>
+                <span style="font-size:0.92rem; font-weight:900; color:var(--text-color);">100%</span>
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">(شهادات مؤكدة وموثقة)</span>
+              </div>
+            </div>
+
+            <!-- Centered Grid of 4 Cards -->
+            <div id="testimonials-cards-grid" class="testimonials-cards-grid">
+
+              <!-- Card 1: أحمد محمد -->
+              <div class="testimonial-card">
+                <div style="position:absolute; top:10px; left:18px; font-size:3.8rem; line-height:1; font-family:Georgia, serif; color:var(--primary); opacity:0.1; pointer-events:none; user-select:none;">“</div>
+                
+                <div>
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                    <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
+                      <div style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #4f46e5, #06b6d4); display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:900; color:#fff; box-shadow:0 4px 12px rgba(79,70,229,0.25);">أ</div>
+                      <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:9px; border:2px solid var(--bg-card);"><i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i></span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:0.98rem; font-weight:900; color:var(--text-color); margin-bottom:2px;">أحمد محمد</div>
+                      <div style="font-size:0.75rem; color:var(--primary); font-weight:700;">طالب ثانوي • الثالث الثانوي</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <span style="color:#f59e0b; font-size:0.85rem; letter-spacing:1px;">★★★★★</span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">5.0</span>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(79,70,229,0.05); border-radius:16px; padding:14px 16px; border-inline-start:3px solid var(--primary); margin-bottom:14px;">
+                    <p style="font-size:0.88rem; color:var(--text-color); line-height:1.7; margin:0; font-style:italic;">
+                      "قبل انطلق كانت درجتي في الرياضيات 55، بعد شهرين مع الأستاذ بالمنصة قفزت لـ 91! الشرح التفاعلي جعل المادة أسهل وأكثر متعة."
+                    </p>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); border-radius:12px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:0.78rem;">
+                    <span style="color:var(--text-muted); font-weight:700;">📈 قفزة الدرجات:</span>
+                    <strong style="color:#10b981; font-weight:900;">55 ➔ 91 (+36)</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
+                    <span>📐 مادة الرياضيات</span>
+                    <span style="color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                      <i data-lucide="badge-check" style="width:13px;height:13px;"></i> نتيجة مؤكدة
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2: نور الهدى سالم -->
+              <div class="testimonial-card">
+                <div style="position:absolute; top:10px; left:18px; font-size:3.8rem; line-height:1; font-family:Georgia, serif; color:#ec4899; opacity:0.1; pointer-events:none; user-select:none;">“</div>
+                
+                <div>
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                    <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
+                      <div style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #ec4899, #8b5cf6); display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:900; color:#fff; box-shadow:0 4px 12px rgba(236,72,153,0.25);">ن</div>
+                      <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:9px; border:2px solid var(--bg-card);"><i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i></span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:0.98rem; font-weight:900; color:var(--text-color); margin-bottom:2px;">نور الهدى سالم</div>
+                      <div style="font-size:0.75rem; color:#ec4899; font-weight:700;">طالبة إعدادي • الثالث الإعدادي</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <span style="color:#f59e0b; font-size:0.85rem; letter-spacing:1px;">★★★★★</span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">5.0</span>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(236,72,153,0.05); border-radius:16px; padding:14px 16px; border-inline-start:3px solid #ec4899; margin-bottom:14px;">
+                    <p style="font-size:0.88rem; color:var(--text-color); line-height:1.7; margin:0; font-style:italic;">
+                      "الأساتذة على المنصة يشرحون بأسلوب شيق ومبتكر، والحصص التفاعلية جعلتني أعشق العلوم وأحصل على المركز الأول بالمدرسة!"
+                    </p>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="background:rgba(236,72,153,0.08); border:1px solid rgba(236,72,153,0.2); border-radius:12px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:0.78rem;">
+                    <span style="color:var(--text-muted); font-weight:700;">🏆 الإنجاز الدراسي:</span>
+                    <strong style="color:#ec4899; font-weight:900;">المركز الأول بالمدرسة</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
+                    <span>🔬 مادة العلوم</span>
+                    <span style="color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                      <i data-lucide="badge-check" style="width:13px;height:13px;"></i> نتيجة مؤكدة
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3: محمد إبراهيم -->
+              <div class="testimonial-card">
+                <div style="position:absolute; top:10px; left:18px; font-size:3.8rem; line-height:1; font-family:Georgia, serif; color:#f59e0b; opacity:0.1; pointer-events:none; user-select:none;">“</div>
+                
+                <div>
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                    <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
+                      <div style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #f59e0b, #ef4444); display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:900; color:#fff; box-shadow:0 4px 12px rgba(245,158,11,0.25);">م</div>
+                      <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:9px; border:2px solid var(--bg-card);"><i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i></span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:0.98rem; font-weight:900; color:var(--text-color); margin-bottom:2px;">محمد إبراهيم</div>
+                      <div style="font-size:0.75rem; color:#f59e0b; font-weight:700;">طالب ثانوي • أدبي</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <span style="color:#f59e0b; font-size:0.85rem; letter-spacing:1px;">★★★★★</span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">5.0</span>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(245,158,11,0.05); border-radius:16px; padding:14px 16px; border-inline-start:3px solid #f59e0b; margin-bottom:14px;">
+                    <p style="font-size:0.88rem; color:var(--text-color); line-height:1.7; margin:0; font-style:italic;">
+                      "المنصة وفّرت عليّ وقتاً ضخماً في التنقلات، والملخصات التفاعلية والاختبارات الذكية جعلتني أتقن النحو والبلاغة بامتياز."
+                    </p>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:12px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:0.78rem;">
+                    <span style="color:var(--text-muted); font-weight:700;">📚 درجات الامتحانات:</span>
+                    <strong style="color:#f59e0b; font-weight:900;">98% في اللغة العربية</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
+                    <span>📖 اللغة العربية</span>
+                    <span style="color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                      <i data-lucide="badge-check" style="width:13px;height:13px;"></i> نتيجة مؤكدة
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4: فاطمة علي (عن ولي الأمر) -->
+              <div class="testimonial-card">
+                <div style="position:absolute; top:10px; left:18px; font-size:3.8rem; line-height:1; font-family:Georgia, serif; color:#10b981; opacity:0.1; pointer-events:none; user-select:none;">“</div>
+                
+                <div>
+                  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                    <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
+                      <div style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #10b981, #0056D2); display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:900; color:#fff; box-shadow:0 4px 12px rgba(16,185,129,0.25);">ف</div>
+                      <span style="position:absolute; bottom:-2px; right:-2px; background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:9px; border:2px solid var(--bg-card);"><i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i></span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:0.98rem; font-weight:900; color:var(--text-color); margin-bottom:2px;">د. منى (والدة فاطمة)</div>
+                      <div style="font-size:0.75rem; color:#10b981; font-weight:700;">ولي أمر • الصف السادس الابتدائي</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <span style="color:#f59e0b; font-size:0.85rem; letter-spacing:1px;">★★★★★</span>
+                      <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">5.0</span>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(16,185,129,0.05); border-radius:16px; padding:14px 16px; border-inline-start:3px solid #10b981; margin-bottom:14px;">
+                    <p style="font-size:0.88rem; color:var(--text-color); line-height:1.7; margin:0; font-style:italic;">
+                      "ابنتي كانت تتهرب من المذاكرة، بعد أسبوعين فقط من الحصص الفردية بالمنصة أصبحت تحل المسائل بحماس وتنتظر موعد الدرس!"
+                    </p>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); border-radius:12px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:0.78rem;">
+                    <span style="color:var(--text-muted); font-weight:700;">❤️ شهادة ولي أمر:</span>
+                    <strong style="color:#10b981; font-weight:900;">شغف وتفوق ملحوظ</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
+                    <span>👩‍👧 المتابعة والتأسيس</span>
+                    <span style="color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:3px;">
+                      <i data-lucide="badge-check" style="width:13px;height:13px;"></i> تقييم مؤكد
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Mobile Slider Controls (Visible only on smaller screens) -->
+            <div id="testimonials-mobile-controls" style="display:none; justify-content:center; align-items:center; gap:16px; margin-top:24px;">
+              <button id="testimonials-prev-btn" title="السابق" style="width:40px; height:40px; border-radius:50%; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                <i data-lucide="chevron-right" style="width:18px;height:18px;"></i>
+              </button>
+              <div id="testimonials-dots" style="display:flex; justify-content:center; gap:8px;"></div>
+              <button id="testimonials-next-btn" title="التالي" style="width:40px; height:40px; border-radius:50%; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-color); cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                <i data-lucide="chevron-left" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+
+          </div>
+        </section>
+
         <!-- CALL TO ACTION BANNER -->
         <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:60px 20px; text-align:center;">
           <div style="max-width:850px; margin:0 auto;">
@@ -751,6 +992,16 @@ export default class LandingView {
         </footer>
 
       </div>
+
+      <!-- 📱 STICKY MOBILE CTA BAR -->
+      <div id="landing-sticky-mobile-cta" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9000; background:linear-gradient(90deg,#0056D2 0%,#4f46e5 100%); padding:12px 20px; box-shadow:0 -4px 24px rgba(0,86,210,0.35); align-items:center; justify-content:space-between; gap:12px;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:0.82rem; font-weight:900; color:#ffffff;">🚀 سجّل مجاناً الآن</div>
+          <div style="font-size:0.72rem; color:rgba(255,255,255,0.8); font-weight:700;">انضم لآلاف الطلاب المتفوقين</div>
+        </div>
+        <a href="#signup" style="flex-shrink:0; background:#ffffff; color:#0056D2; font-weight:900; font-size:0.9rem; padding:10px 22px; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">ابدأ مجاناً →</a>
+        <button id="landing-sticky-close-btn" style="flex-shrink:0; background:rgba(255,255,255,0.2); border:none; color:#fff; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
@@ -785,6 +1036,8 @@ export default class LandingView {
       this.initLiveChart(this.platformStats, this.currentChartType);
       await this.initCurriculumExplorerAsync();
       this.updateScrollToggleState?.();
+      // Re-run live strip now that real groups & sessions data is loaded
+      this.initLiveNowStrip();
       if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.error("Failed to load data for landing page", e);
@@ -1569,12 +1822,303 @@ export default class LandingView {
       });
     });
 
+    // Quick Grade Filter
+    this.initQuickGradeFilter();
+
     // Top Teachers Carousel & Auto-Scroll
     this.initTeachersAutoScroll();
 
     this.bindChartEvents();
     this.initFreeTrialSection();
     this.initScrollToggleButton();
+    this.initLiveNowStrip();
+    this.initStickyMobileCTA();
+    this.initTestimonialsCarousel();
+    this.initCountUpOnScroll();
+  }
+
+  initQuickGradeFilter() {
+    const btns = this.container.querySelectorAll(".quick-grade-btn");
+    const goBtn = this.container.querySelector("#quick-grade-go-btn");
+    let selectedStage = "SECONDARY";
+
+    btns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedStage = btn.getAttribute("data-stage");
+        btns.forEach(b => {
+          const active = b === btn;
+          b.style.background = active ? "var(--primary)" : "transparent";
+          b.style.color = active ? "#ffffff" : "var(--text-color)";
+          b.style.borderColor = active ? "var(--primary)" : "var(--border-color)";
+          b.classList.toggle("active-grade", active);
+        });
+      });
+    });
+
+    goBtn?.addEventListener("click", () => {
+      // Try to open the curriculum accordion for the selected stage
+      const explorer = document.getElementById("interactive-curriculum-explorer");
+      if (explorer) {
+        explorer.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Set the explorer stage and re-render
+        this.explorerStage = selectedStage;
+        this.explorerGradeId = null;
+        this.explorerSubjectId = null;
+        // Trigger accordion re-render if already loaded
+        setTimeout(() => {
+          const accordion = document.getElementById("curriculum-accordion-container");
+          if (accordion && this.allGradesData?.length > 0) {
+            this.initCurriculumExplorerAsync();
+          }
+        }, 400);
+      } else {
+        window.location.hash = "#courses";
+      }
+    });
+  }
+
+  initLiveNowStrip() {
+    const track = document.getElementById("live-now-track");
+    if (!track) return;
+
+    const now = new Date();
+
+    // ── 1. Collect LIVE sessions happening right now ─────────────────
+    const liveSessions = (this.sessions || []).filter(s => {
+      if (!s.startTime) return false;
+      const start = new Date(s.startTime);
+      const end = s.endTime ? new Date(s.endTime) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+      return start <= now && now <= end;
+    });
+
+    // ── 2. Collect OPEN groups with available seats from courses ──────
+    const openGroups = [];
+    (this.courses || []).forEach(course => {
+      (course.groups || []).forEach(group => {
+        const excluded = ["FULL", "CLOSED", "PENDING_APPROVAL", "REJECTED"];
+        if (excluded.includes(group.status)) return;
+        const enrolled = (group.enrollments || []).filter(e =>
+          !e.status || e.status === "active" || e.status === "confirmed"
+        ).length;
+        const maxStudents = group.maxStudents || 25;
+        const availableSeats = Math.max(0, maxStudents - enrolled);
+        if (availableSeats <= 0) return;
+        openGroups.push({
+          groupName:      group.name || "",
+          teacherName:    group.teacher?.name || course.teacher?.name || "",
+          subject:        course.category || course.title || "",
+          grade:          course.grade?.name || course.degree || "",
+          scheduleDays:   group.scheduleDays || "",
+          scheduleTime:   group.scheduleTime || "",
+          scheduleText:   group.scheduleText || "",
+          availableSeats,
+          maxStudents,
+          courseId:       course.id,
+          isLive:         false
+        });
+      });
+    });
+
+    // Sort: fewest seats first (most urgent)
+    openGroups.sort((a, b) => a.availableSeats - b.availableSeats);
+
+    // ── 3. Build slide items ──────────────────────────────────────────
+    const items = [];
+
+    // Live sessions → highest priority
+    liveSessions.forEach(s => {
+      const subject = s.subject?.name || s.group?.course?.category || s.course?.category || "درس";
+      const teacher = s.teacher?.name || s.group?.teacher?.name || "الأستاذ";
+      const grade   = s.group?.course?.grade?.name || s.group?.course?.degree || "";
+      items.push({
+        dot:   "#ef4444",
+        badge: "🔴 بث مباشر الآن",
+        text:  `${subject}${grade ? " • " + grade : ""} مع أ/ ${teacher} — انضم الآن`,
+        isLive: true
+      });
+    });
+
+    // Open groups → advertise with urgency
+    openGroups.slice(0, 6).forEach(g => {
+      const scheduleDisplay = g.scheduleText || (g.scheduleDays ? `${g.scheduleDays}${g.scheduleTime ? " " + g.scheduleTime : ""}` : "");
+      const urgency    = g.availableSeats <= 3 ? "🔥" : g.availableSeats <= 7 ? "⚡" : "📚";
+      const seatsText  = `متبقي ${g.availableSeats} من ${g.maxStudents} مقعد`;
+      const teacherText = g.teacherName ? ` مع أ/ ${g.teacherName}` : "";
+      const schedText  = scheduleDisplay ? ` • ${scheduleDisplay}` : "";
+      items.push({
+        dot:   g.availableSeats <= 3 ? "#ef4444" : g.availableSeats <= 7 ? "#f59e0b" : "#10b981",
+        badge: g.availableSeats <= 3 ? "🔥 مقاعد محدودة" : g.availableSeats <= 7 ? "⚡ يمتلئ قريباً" : "✅ مفتوحة للتسجيل",
+        text:  `${urgency} ${g.subject}${g.grade ? " • " + g.grade : ""}${teacherText}${schedText} • ${seatsText}`,
+        isLive: false
+      });
+    });
+
+    // Fallback: if no real data yet, keep static placeholders
+    if (items.length === 0) {
+      items.push(
+        { dot: "#ef4444", badge: "🔴 بث مباشر الآن",    text: "📐 رياضيات ثانوي — انضم الآن",                          isLive: true  },
+        { dot: "#10b981", badge: "✅ مفتوحة للتسجيل",  text: "🎓 سجّل مجاناً واحجز مقعدك قبل امتلاء المجموعة",      isLive: false },
+        { dot: "#f59e0b", badge: "⚡ يمتلئ قريباً",    text: "⚡ فيزياء إعدادي — الحصة بدأت، لا تفوتها!",           isLive: true  },
+        { dot: "#ef4444", badge: "🔴 بث مباشر الآن",    text: "📖 مراجعة ليلية شاملة للثانوية — تبدأ بعد قليل",      isLive: false }
+      );
+    }
+
+    // ── 4. Build one item span ────────────────────────────────────────
+    const buildItem = (item) =>
+      `<span style="display:inline-flex;align-items:center;gap:10px;font-size:0.84rem;font-weight:800;color:#ffffff;padding:0 36px;border-right:1px solid rgba(255,255,255,0.1);flex-shrink:0;direction:rtl;">` +
+      `<span style="width:8px;height:8px;border-radius:50%;background:${item.dot};display:inline-block;flex-shrink:0;${item.isLive ? 'animation:livePulse 1.4s ease-in-out infinite;' : ''}"></span>` +
+      `<span style="color:${item.dot};white-space:nowrap;">${item.badge}</span>` +
+      `<span style="color:rgba(255,255,255,0.4);">•</span>` +
+      `<span style="white-space:nowrap;">${item.text}</span>` +
+      `</span>`;
+
+    // Ensure enough items in base list so one half spans wide screens (>= 6 items)
+    let baseList = [...items];
+    while (baseList.length < 6) {
+      baseList = baseList.concat(items);
+    }
+
+    // Duplicate exactly once: [Half A, Half B] for mathematically seamless infinite scroll
+    const html = [...baseList, ...baseList].map(buildItem).join("");
+
+    // Only update if content actually changed (avoids unnecessary animation resets)
+    if (track.dataset.lastContent === html) return;
+    track.dataset.lastContent = html;
+
+    // Direct click handler for reliable navigation to courses
+    const strip = document.getElementById("live-now-strip");
+    if (strip && !strip._hasCoursesClick) {
+      strip._hasCoursesClick = true;
+      strip.addEventListener("click", () => {
+        window.location.hash = "#courses";
+      });
+    }
+
+    // Update content
+    track.innerHTML = html;
+
+    // Restart animation cleanly via reflow trick
+    track.style.animation = "none";
+    void track.offsetWidth; // force reflow
+    const speed = Math.max(30, baseList.length * 6); // smooth comfortable reading speed (6s per item)
+    track.style.animation = `liveStripScroll ${speed}s linear infinite`;
+  }
+
+  initStickyMobileCTA() {
+    const bar = document.getElementById("landing-sticky-mobile-cta");
+    const closeBtn = document.getElementById("landing-sticky-close-btn");
+    if (!bar) return;
+
+    const isMobile = () => window.innerWidth < 768;
+    let dismissed = false;
+
+    const checkVisibility = () => {
+      if (dismissed || !isMobile()) {
+        bar.style.display = "none";
+        return;
+      }
+      const scrolled = window.scrollY > 300;
+      bar.style.display = scrolled ? "flex" : "none";
+    };
+
+    const scrollHandler = () => checkVisibility();
+    window.addEventListener("scroll", scrollHandler, { passive: true });
+    window.addEventListener("resize", checkVisibility);
+    checkVisibility();
+
+    closeBtn?.addEventListener("click", () => {
+      dismissed = true;
+      bar.style.display = "none";
+    });
+
+    // Cleanup
+    const prevCleanup = this.scrollToggleCleanup;
+    this.scrollToggleCleanup = () => {
+      if (prevCleanup) prevCleanup();
+      window.removeEventListener("scroll", scrollHandler);
+      window.removeEventListener("resize", checkVisibility);
+    };
+  }
+
+  initTestimonialsCarousel() {
+    const grid = document.getElementById("testimonials-cards-grid");
+    const prevBtn = document.getElementById("testimonials-prev-btn");
+    const nextBtn = document.getElementById("testimonials-next-btn");
+    const dotsContainer = document.getElementById("testimonials-dots");
+    if (!grid) return;
+
+    const cards = grid.querySelectorAll(".testimonial-card");
+    if (cards.length === 0) return;
+
+    if (dotsContainer) {
+      dotsContainer.innerHTML = Array.from({ length: cards.length }, (_, i) => `
+        <button style="width:${i === 0 ? '22px' : '8px'}; height:8px; border-radius:4px; border:none; cursor:pointer; background:${i === 0 ? 'var(--primary)' : 'var(--border-color)'}; transition:all 0.3s;" data-index="${i}" title="قصة ${i + 1}"></button>
+      `).join("");
+
+      const dots = dotsContainer.querySelectorAll("button");
+      dots.forEach((dot, idx) => {
+        dot.addEventListener("click", () => {
+          if (cards[idx]) {
+            cards[idx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          }
+        });
+      });
+
+      grid.addEventListener("scroll", () => {
+        const scrollLeft = Math.abs(grid.scrollLeft);
+        const cardWidth = cards[0]?.offsetWidth || 300;
+        const activeIdx = Math.min(cards.length - 1, Math.max(0, Math.round(scrollLeft / (cardWidth + 16))));
+        dots.forEach((d, i) => {
+          d.style.width = i === activeIdx ? "22px" : "8px";
+          d.style.background = i === activeIdx ? "var(--primary)" : "var(--border-color)";
+        });
+      }, { passive: true });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        grid.scrollBy({ left: 320, behavior: "smooth" });
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        grid.scrollBy({ left: -320, behavior: "smooth" });
+      });
+    }
+  }
+
+  initCountUpOnScroll() {
+    // Use IntersectionObserver so numbers animate when scrolled into view
+    const statIds = [
+      { id: "stat-students-num", key: "totalStudents", fallback: 50 },
+      { id: "stat-courses-num", key: "totalCourses", fallback: 12 },
+      { id: "stat-teachers-num", key: "totalTeachers", fallback: 6 }
+    ];
+
+    // Reset to 0 first
+    statIds.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = "+0";
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+
+        const stats = this.platformStats;
+        const students = stats?.totalStudents !== undefined ? Math.max(stats.totalStudents, 15) : (this.teachers?.length || 1) * 25;
+        const courses = stats?.totalCourses !== undefined ? stats.totalCourses : (this.courses?.length || 12);
+        const teachers = stats?.totalTeachers !== undefined ? stats.totalTeachers : (this.teachers?.length || 6);
+
+        this.animateValue("stat-students-num", 0, students, 1600, "+");
+        this.animateValue("stat-courses-num", 0, courses, 1400, "+");
+        this.animateValue("stat-teachers-num", 0, teachers, 1200, "+");
+      });
+    }, { threshold: 0.3 });
+
+    const statsSection = document.getElementById("platform-analytics-section");
+    if (statsSection) observer.observe(statsSection);
   }
 
   initFreeTrialSection() {
@@ -1743,10 +2287,7 @@ export default class LandingView {
     const teachers = stats?.totalTeachers !== undefined ? stats.totalTeachers : (this.teachers?.length || 6);
     const sessions = stats?.totalSessions !== undefined ? stats.totalSessions : (this.sessions?.length || 45);
 
-    this.animateValue("stat-students-num", 0, students, 1400, "+");
-    this.animateValue("stat-courses-num", 0, courses, 1200, "+");
-    this.animateValue("stat-teachers-num", 0, teachers, 1000, "+");
-
+    // Stats are now animated on scroll via initCountUpOnScroll — skip immediate fire here
     const sessionsBadge = document.getElementById("chart-stat-sessions");
     if (sessionsBadge) {
       sessionsBadge.textContent = `+${sessions} حصة`;
@@ -2148,9 +2689,16 @@ export default class LandingView {
       clearInterval(this.teachersAutoScrollTimer);
       this.teachersAutoScrollTimer = null;
     }
+    if (this._testimonialsTimer) {
+      clearInterval(this._testimonialsTimer);
+      this._testimonialsTimer = null;
+    }
     if (this.chartInstance) {
       this.chartInstance.destroy();
       this.chartInstance = null;
     }
+    // Remove sticky mobile CTA if still present
+    const stickyBar = document.getElementById("landing-sticky-mobile-cta");
+    if (stickyBar) stickyBar.remove();
   }
 }

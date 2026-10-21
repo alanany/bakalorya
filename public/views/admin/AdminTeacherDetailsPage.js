@@ -1,4 +1,4 @@
-import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state, startImpersonation } from "../../app.js";
+import { apiFetch, showToast, confirmDialog, getCleanWhatsAppNumber, state, startImpersonation, getUserTimezone } from "../../app.js";
 
 export class AdminTeacherDetailsPage {
   constructor(container, adminView, teacherId) {
@@ -466,7 +466,7 @@ export class AdminTeacherDetailsPage {
                 ${daySessions.length === 0 ? `
                   <div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:24px 0;">لا توجد حصص</div>
                 ` : daySessions.map(s => {
-                  const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                  const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', timeZone: getUserTimezone() });
                   const subjectName = s.subjectName || s.course?.subject || s.course?.title || s.title;
                   return `
                     <div style="background:rgba(99,102,241,0.06);border-inline-start:3px solid var(--primary);border-radius:8px;padding:8px 10px;font-size:0.8rem;">
@@ -1606,7 +1606,7 @@ export class AdminTeacherDetailsPage {
                     ${daySessions.length === 0 ? `
                       <div class="no-sessions">— لا توجد حصص —</div>
                     ` : daySessions.map(s => {
-                      const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                      const sTime = new Date(s.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', timeZone: getUserTimezone() });
                       const isPriv = s.type !== 'GROUP';
                       const subName = s.subjectName || s.course?.subject || s.course?.title || s.title;
                       return `
