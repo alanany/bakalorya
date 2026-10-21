@@ -10,7 +10,11 @@ export const AdminSubscriptionsPage = {
     let statusBadgeColor = '#10b981';
     let statusText = s.status;
 
-    if (s.isGroup) {
+    if (s.isAllCompleted) {
+      statusBadgeBg = 'rgba(239,68,68,0.2)';
+      statusBadgeColor = '#ef4444';
+      statusText = '🚨 اكتملت جميع الحصص (بحاجة للتجديد)';
+    } else if (s.isGroup) {
       if (s.status === 'PENDING_PAYMENT') {
         statusBadgeBg = 'rgba(245,158,11,0.15)';
         statusBadgeColor = '#f59e0b';
@@ -48,9 +52,18 @@ export const AdminSubscriptionsPage = {
       }
     }
 
-    const rowBg = s.isLowBalance
-      ? 'background:rgba(239,68,68,0.03);'
-      : (isChild ? 'background:rgba(0,0,0,0.015);' : '');
+    let rowBg = '';
+    let cardBorder = '';
+    if (s.isAllCompleted) {
+      rowBg = 'background:rgba(239,68,68,0.12);';
+      cardBorder = 'border-inline-start:5px solid #ef4444; border-top:1px solid rgba(239,68,68,0.25); border-bottom:1px solid rgba(239,68,68,0.25);';
+    } else if (s.isLowBalance) {
+      rowBg = 'background:rgba(239,68,68,0.04);';
+      cardBorder = 'border-inline-start:4px solid #ef4444;';
+    } else if (isChild) {
+      rowBg = 'background:rgba(0,0,0,0.015);';
+      cardBorder = 'border-inline-start:4px solid var(--primary);';
+    }
 
     const displayStyle = isHidden ? 'display:none;' : '';
     const childBorder = isChild ? 'border-inline-start:4px solid var(--primary);' : '';
@@ -107,7 +120,7 @@ export const AdminSubscriptionsPage = {
     const cleanWa = studentPhone ? getCleanWhatsAppNumber(studentPhone) : '';
 
     return `
-    <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${childBorder}${displayStyle}">
+    <tr class="${isChild ? `admin-sub-child-row student-child-${studentIdAttr}` : ''}" style="border-bottom:1px solid var(--border-color);font-size:0.85rem;${rowBg}${cardBorder || childBorder}${displayStyle}">
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
         ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0, 8)}
         <div style="margin-top:4px;">
@@ -143,11 +156,15 @@ export const AdminSubscriptionsPage = {
           <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:700; font-size:0.8rem; padding:4px 8px; border-radius:8px;">
             ${statusText}
           </span>
-          ${s.isLowBalance ? `
+          ${s.isAllCompleted ? `
+            <span class="badge" style="background:#ef4444;color:#fff;font-weight:800;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(239,68,68,0.35);">
+              <i data-lucide="bell-ring" style="width:12px;height:12px;"></i> تنبيه: انتهت كافة الحصص - تجديد مطلوب!
+            </span>
+          ` : (s.isLowBalance ? `
             <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
               <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> رصيد منخفض (${s.remainingSessionsInPackage} حصص متبقية)
             </span>
-          ` : ''}
+          ` : '')}
           ${s.receiptUrl ? `
             <a href="${s.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; border-radius:6px; color:var(--primary); border-color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700;" title="عرض إيصال السداد المرفوع">
               <i data-lucide="receipt" style="width:12px; height:12px;"></i> الإيصال المعتمد 📄
@@ -178,13 +195,19 @@ export const AdminSubscriptionsPage = {
               </button>
             ` : ''}
 
+            ${s.isAllCompleted ? `
+              <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:6px 12px;font-size:0.75rem;background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%);border-color:#ef4444;color:#fff;gap:4px;font-weight:800;box-shadow:0 3px 8px rgba(239,68,68,0.35);">
+                <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> تجديد الاشتراك 💳
+              </button>
+            ` : ''}
+
             <button class="btn-secondary admin-view-group-students-btn" data-group-id="${s.group?.id || ''}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:var(--text-main);" title="عرض تفاصيل المجموعة ومقاعد الطلاب">
               <i data-lucide="users" style="width:13px;height:13px;"></i> المجموعة 👥
             </button>
 
             ${cleanWa ? `
-              <a href="https://wa.me/${cleanWa}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;" title="مراسلة الطالب عبر واتساب">
-                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+              <a href="https://wa.me/${cleanWa}${s.isAllCompleted ? `?text=${encodeURIComponent(`السلام عليكم ${s.student?.name || ''}، نود تذكيركم بأن حصص اشتراككم (${s.plan?.name || s.group?.name || 'المجموعة'}) في منصة انطلق قد اكتملت بالكامل (${s.totalSessions} حصة) 🌟. يمكنكم الآن تجديد الاشتراك لمتابعة الدراسة.`)}` : ''}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;" title="${s.isAllCompleted ? 'تذكير الطالب بالتجديد عبر واتساب' : 'مراسلة الطالب عبر واتساب'}">
+                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> ${s.isAllCompleted ? 'تنبيه للتجديد 📲' : 'واتساب'}
               </a>
             ` : ''}
 
@@ -216,10 +239,20 @@ export const AdminSubscriptionsPage = {
             </button>
             ` : ''}
 
-            ${(s.status === 'ACTIVE' || s.isLowBalance) ? `
+            ${s.isAllCompleted ? `
+            <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:7px 12px;font-size:0.78rem;background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%);border-color:#ef4444;color:#fff;gap:5px;font-weight:800;box-shadow:0 3px 10px rgba(239,68,68,0.35);">
+              <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 💳 تجديد الاشتراك الآن ⚠️
+            </button>
+            ` : ((s.status === 'ACTIVE' || s.isLowBalance) ? `
             <button class="btn-primary admin-renew-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#8b5cf6;border-color:#8b5cf6;gap:4px;">
               <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> تجديد + رفع إيصال 💳
             </button>
+            ` : '')}
+
+            ${cleanWa && s.isAllCompleted ? `
+            <a href="https://wa.me/${cleanWa}?text=${encodeURIComponent(`السلام عليكم ${s.student?.name || ''}، نود تذكيركم بأن حصص باقتكم (${s.plan?.name || 'الحصص الخاصة'}) في منصة انطلق قد اكتملت بالكامل (${s.totalSessions} حصة) 🌟. يمكنكم الآن تجديد الاشتراك لمتابعة الحصص مع المعلم دون انقطاع.`)}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;" title="إرسال تذكير بتجديد الاشتراك عبر واتساب">
+              <i data-lucide="message-circle" style="width:13px;height:13px;"></i> تذكير للتجديد 📲
+            </a>
             ` : ''}
 
             ${s.status === 'ACTIVE' ? `
@@ -236,7 +269,14 @@ export const AdminSubscriptionsPage = {
           `}
         </div>
 
-        ${s.status === 'ACTIVE' ? `
+        ${s.isAllCompleted ? `
+        <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:#ef4444; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); padding:6px 10px; border-radius:6px; font-weight:700;">
+            <span style="color:#ef4444;font-weight:800;">🔴 مكتملة: ${s.completedSessions}/${s.totalSessions} (100%)</span>
+            <span style="color:#ef4444;font-weight:800;">المتبقي بالباقة: 0 حصص (انتهت بالكامل)</span>
+            <span style="color:#dc2626;font-weight:800;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="alert-octagon" style="width:13px;height:13px;"></i> يرجى التجديد الآن</span>
+            ${s.isGroup && s.group ? `<span style="color:var(--text-muted);font-weight:600;">سعة المجموعة: ${s.group.maxStudents || 25} طالب</span>` : ''}
+        </div>
+        ` : (s.status === 'ACTIVE' ? `
         <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); background:rgba(0,0,0,0.02); padding:6px; border-radius:6px;">
             <span style="color:#10b981;font-weight:600;">مكتملة: ${s.completedSessions}</span>
             <span style="color:var(--primary);font-weight:600;">مجدولة: ${s.scheduledSessions}</span>
@@ -244,7 +284,7 @@ export const AdminSubscriptionsPage = {
             <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي: ${s.remainingSessionsInPackage}</span>
             ${s.isGroup && s.group ? `<span style="color:var(--primary);font-weight:700;">سعة المجموعة: ${s.group.maxStudents || 25} طالب</span>` : ''}
         </div>
-        ` : ''}
+        ` : '')}
       </td>
     </tr>
   `;
@@ -281,7 +321,8 @@ export const AdminSubscriptionsPage = {
       const totalBooked = completedSessions + scheduledSessions;
       const remainingToBook = Math.max(0, totalSessions - totalBooked);
       const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
-      const isLowBalance = (s.status === 'ACTIVE' || s.status === 'TEACHER_ASSIGNMENT_PENDING') && remainingSessionsInPackage < 3;
+      const isAllCompleted = totalSessions > 0 && (completedSessions >= totalSessions || remainingSessionsInPackage === 0);
+      const isLowBalance = !isAllCompleted && (s.status === 'ACTIVE' || s.status === 'TEACHER_ASSIGNMENT_PENDING') && remainingSessionsInPackage < 3;
 
       const upcomingSessions = subSessions.filter(sess => {
         if (!sess.scheduledAt) return false;
@@ -315,6 +356,7 @@ export const AdminSubscriptionsPage = {
         totalBooked,
         remainingToBook,
         remainingSessionsInPackage,
+        isAllCompleted,
         isLowBalance,
         nextSession,
         nextSessionTime
@@ -357,7 +399,8 @@ export const AdminSubscriptionsPage = {
       const totalBooked = completedSessions + scheduledSessions;
       const remainingToBook = Math.max(0, totalSessions - totalBooked);
       const remainingSessionsInPackage = Math.max(0, totalSessions - completedSessions);
-      const isLowBalance = remainingSessionsInPackage < 3 && remainingSessionsInPackage > 0;
+      const isAllCompleted = totalSessions > 0 && (completedSessions >= totalSessions || remainingSessionsInPackage === 0);
+      const isLowBalance = !isAllCompleted && remainingSessionsInPackage < 3 && remainingSessionsInPackage > 0;
 
       const upcomingSessions = groupSessions.filter(sess => {
         if (!sess.scheduledAt) return false;
@@ -426,6 +469,7 @@ export const AdminSubscriptionsPage = {
         totalBooked,
         remainingToBook,
         remainingSessionsInPackage,
+        isAllCompleted,
         isLowBalance,
         nextSession,
         nextSessionTime,
@@ -437,9 +481,10 @@ export const AdminSubscriptionsPage = {
     // 3. Combine into unified subscriptions list
     const allUnifiedSubs = [...privateSubsWithMetrics, ...groupSubsWithMetrics];
 
+    const completedSubsCount = allUnifiedSubs.filter(s => s.isAllCompleted).length;
     const lowBalanceCount = allUnifiedSubs.filter(s => s.isLowBalance).length;
     const pendingCount = allUnifiedSubs.filter(s => s.status === 'PENDING_PAYMENT').length;
-    const activeCount = allUnifiedSubs.filter(s => s.status === 'ACTIVE').length;
+    const activeCount = allUnifiedSubs.filter(s => s.status === 'ACTIVE' && !s.isAllCompleted).length;
     const cancelledCount = allUnifiedSubs.filter(s => s.status === 'CANCELLED').length;
     const groupsCount = groupSubsWithMetrics.length;
     const privateCount = privateSubsWithMetrics.length;
@@ -456,6 +501,7 @@ export const AdminSubscriptionsPage = {
     // Apply Filter
     const filter = this.subFilter || "all";
     let filteredSubs = allUnifiedSubs.filter(s => {
+      if (filter === "completed_renewal") return s.isAllCompleted;
       if (filter === "groups") return s.isGroup;
       if (filter === "private") return !s.isGroup;
       if (filter === "low_sessions") return s.isLowBalance;
@@ -519,6 +565,8 @@ export const AdminSubscriptionsPage = {
       const remainingToBookSum = group.subs.reduce((sum, item) => sum + (item.remainingToBook || 0), 0);
       const remainingSessionsInPackageSum = group.subs.reduce((sum, item) => sum + (item.remainingSessionsInPackage || 0), 0);
       const totalPriceSum = group.subs.reduce((sum, item) => sum + (item.plan?.price || 0), 0);
+      const isAllCompletedGroup = totalSessionsSum > 0 && (completedSessionsSum >= totalSessionsSum || remainingSessionsInPackageSum === 0);
+      const isAllCompletedAny = group.subs.some(item => item.isAllCompleted);
       const isLowBalanceAny = group.subs.some(item => item.isLowBalance);
       const pendingCountGroup = group.subs.filter(item => item.status === 'PENDING_PAYMENT').length;
       const activeCountGroup = group.subs.filter(item => item.status === 'ACTIVE').length;
@@ -567,7 +615,13 @@ export const AdminSubscriptionsPage = {
       const latestSub = group.subs[0];
       let primaryActionBtnHtml = '';
 
-      if (latestSub.status === 'PENDING_PAYMENT') {
+      if (isAllCompletedGroup || isAllCompletedAny) {
+        primaryActionBtnHtml = `
+          <button class="btn-primary admin-renew-sub-btn" data-id="${latestSub.id}" style="padding:7px 12px;font-size:0.78rem;background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%);border-color:#ef4444;color:#fff;gap:5px;font-weight:800;box-shadow:0 3px 10px rgba(239,68,68,0.35);">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 💳 تجديد الاشتراك الآن ⚠️
+          </button>
+        `;
+      } else if (latestSub.status === 'PENDING_PAYMENT') {
         primaryActionBtnHtml = `
           <button class="btn-primary admin-approve-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
             <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
@@ -598,8 +652,12 @@ export const AdminSubscriptionsPage = {
         ? latestCreatedDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
         : '-';
 
+      const summaryRowBg = isAllCompletedGroup
+        ? 'background:rgba(239,68,68,0.12); border-inline-start:5px solid #ef4444; border-top:1px solid rgba(239,68,68,0.25); border-bottom:1px solid rgba(239,68,68,0.25);'
+        : 'background:rgba(99,102,241,0.06);';
+
       const summaryRow = `
-        <tr class="admin-student-summary-row" data-student-id="${group.studentId}" style="border-bottom:1px solid var(--border-color); font-size:0.85rem; background:rgba(99,102,241,0.06); cursor:pointer;">
+        <tr class="admin-student-summary-row" data-student-id="${group.studentId}" style="border-bottom:1px solid var(--border-color); font-size:0.85rem; ${summaryRowBg} cursor:pointer;">
           <td style="padding:12px; color:var(--primary); font-weight:800;">
             <div style="display:flex; align-items:center; gap:6px;">
               <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-left'}" style="width:16px;height:16px;"></i>
@@ -622,10 +680,20 @@ export const AdminSubscriptionsPage = {
           <td style="padding:12px; font-weight:600; font-size:0.82rem;">${teachersList}</td>
           <td style="padding:12px;">
             <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
-              <span class="badge" style="background:rgba(59,130,246,0.15); color:#3b82f6; font-weight:700;">
-                مجموع ${group.subs.length} اشتراكات (${activeCountGroup} نشط${pendingCountGroup > 0 ? `، ${pendingCountGroup} انتظار` : ''})
-              </span>
-              ${isLowBalanceAny ? `
+              ${isAllCompletedGroup ? `
+                <span class="badge" style="background:#ef4444; color:#fff; font-weight:800; font-size:0.76rem; display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:8px; box-shadow:0 2px 6px rgba(239,68,68,0.35);">
+                  <i data-lucide="alert-octagon" style="width:13px;height:13px;"></i> كافة الحصص منتهية - تجديد مطلوب!
+                </span>
+              ` : (isAllCompletedAny ? `
+                <span class="badge" style="background:rgba(239,68,68,0.18); color:#ef4444; font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="alert-octagon" style="width:12px;height:12px;"></i> يوجد اشتراك مكتمل وبحاجة للتجديد
+                </span>
+              ` : `
+                <span class="badge" style="background:rgba(59,130,246,0.15); color:#3b82f6; font-weight:700;">
+                  مجموع ${group.subs.length} اشتراكات (${activeCountGroup} نشط${pendingCountGroup > 0 ? `، ${pendingCountGroup} انتظار` : ''})
+                </span>
+              `)}
+              ${isLowBalanceAny && !isAllCompletedGroup ? `
                 <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;font-weight:700;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
                   <i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> يوجد اشتراك برصيد منخفض
                 </span>
@@ -650,7 +718,7 @@ export const AdminSubscriptionsPage = {
               <span style="color:#10b981;font-weight:700;">مكتملة: ${completedSessionsSum}</span>
               <span style="color:var(--primary);font-weight:700;">مجدولة: ${scheduledSessionsSum}</span>
               <span style="color:#8b5cf6;font-weight:700;">غير مجدولة: ${remainingToBookSum}</span>
-              <span style="color:${remainingSessionsInPackageSum < 3 ? '#ef4444' : '#10b981'};font-weight:800;">المتبقي بالباقة: ${remainingSessionsInPackageSum}</span>
+              <span style="color:${isAllCompletedGroup ? '#ef4444' : (remainingSessionsInPackageSum < 3 ? '#ef4444' : '#10b981')};font-weight:800;">المتبقي بالباقة: ${isAllCompletedGroup ? '0 (منتهية بالكامل)' : remainingSessionsInPackageSum}</span>
             </div>
           </td>
         </tr>
@@ -661,6 +729,28 @@ export const AdminSubscriptionsPage = {
     }).join('');
 
     return `
+      ${completedSubsCount > 0 ? `
+      <div class="glass-card" style="background:linear-gradient(135deg, rgba(239,68,68,0.14) 0%, rgba(220,38,38,0.06) 100%); border:2px solid #ef4444; color:#ef4444; padding:18px 22px; border-radius:16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; box-shadow:0 4px 20px rgba(239,68,68,0.18);">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:46px; height:46px; border-radius:12px; background:#ef4444; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 12px rgba(239,68,68,0.4);">
+            <i data-lucide="bell-ring" style="width:24px;height:24px;"></i>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong style="font-size:1.05rem; color:#dc2626;">تنبيه تجديد الاشتراكات: حصص مكتملة بالكامل 🚨</strong>
+              <span class="badge" style="background:#ef4444; color:#fff; font-weight:900; font-size:0.75rem; padding:3px 9px; border-radius:10px;">${completedSubsCount} اشتراك انتهى</span>
+            </div>
+            <div style="font-size:0.88rem; color:var(--text-main); margin-top:4px;">
+              يوجد <strong>${completedSubsCount}</strong> اشتراك تم إتمام كافة حصصه (0 حصة متبقية). تظهر بطاقاتها باللون الأحمر للتنبيه بوجوب تجديد الاشتراك ومراسلة الطالب.
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary admin-sub-filter-btn" data-filter="completed_renewal" style="background:#ef4444; border-color:#ef4444; font-size:0.8rem; padding:8px 16px; font-weight:800; border-radius:10px; box-shadow:0 3px 10px rgba(239,68,68,0.35); display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> عرض الاشتراكات المنتهية للتجديد (${completedSubsCount})
+        </button>
+      </div>
+      ` : ''}
+
       ${lowBalanceCount > 0 ? `
       <div class="glass-card" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:16px 20px; border-radius:14px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
         <div style="display:flex; align-items:center; gap:12px;">
@@ -703,6 +793,11 @@ export const AdminSubscriptionsPage = {
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'all' ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}">
               الكل (${allUnifiedSubs.length})
             </button>
+            ${completedSubsCount > 0 ? `
+              <button class="btn-secondary admin-sub-filter-btn ${filter === 'completed_renewal' ? 'active' : ''}" data-filter="completed_renewal" style="padding:6px 12px; font-size:0.8rem; font-weight:800; border-radius:20px; ${filter === 'completed_renewal' ? 'background:#ef4444;color:#fff;border-color:#ef4444;' : 'color:#ef4444;border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.06);'}">
+                🚨 بحاجة للتجديد (${completedSubsCount})
+              </button>
+            ` : ''}
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'groups' ? 'active' : ''}" data-filter="groups" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'groups' ? 'background:#6366f1;color:#fff;border-color:#6366f1;' : ''}">
               👥 مجموعات (${groupsCount})
             </button>

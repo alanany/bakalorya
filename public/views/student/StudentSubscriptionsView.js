@@ -128,37 +128,62 @@ export default class StudentSubscriptionsView {
           const remaining = sub.remainingCredits || 0;
           const total = sub.totalSessions || 8;
           const pct = Math.min(100, Math.round((used / total) * 100));
+          const isAllCompleted = (remaining === 0 && used > 0) || (total > 0 && used >= total);
+
+          const cardStyle = isAllCompleted
+            ? `border:2px solid #ef4444; background:linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.03)); box-shadow:0 4px 20px rgba(239,68,68,0.15);`
+            : `border:1px solid var(--border-color); background:var(--bg-card);`;
 
           return `
-            <div class="glass-card" style="padding:22px; position:relative; overflow:hidden; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="glass-card" style="padding:22px; position:relative; overflow:hidden; border-radius:20px; ${cardStyle} display:flex; flex-direction:column; justify-content:space-between;">
               <div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
                   <div>
-                    <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.75rem; border:1px solid rgba(99,102,241,0.2); margin-bottom:6px; display:inline-block; border-radius:10px; padding:2px 8px;">
-                      ${sub.plan?.name || 'باقة اشتراك شهري'}
-                    </span>
+                    ${isAllCompleted ? `
+                      <span class="badge" style="background:#ef4444; color:#fff; font-weight:800; font-size:0.75rem; border:none; margin-bottom:6px; display:inline-flex; align-items:center; gap:4px; border-radius:10px; padding:3px 10px; box-shadow:0 2px 6px rgba(239,68,68,0.35);">
+                        <i data-lucide="alert-octagon" style="width:13px;height:13px;"></i> 🚨 انتهت جميع الحصص
+                      </span>
+                    ` : `
+                      <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.75rem; border:1px solid rgba(99,102,241,0.2); margin-bottom:6px; display:inline-block; border-radius:10px; padding:2px 8px;">
+                        ${sub.plan?.name || 'باقة اشتراك شهري'}
+                      </span>
+                    `}
                     <h4 style="font-size:1.1rem; font-weight:900; margin:0; color:var(--text-main);">
                       الأستاذ: ${sub.teacher?.name || 'في انتظار التعيين'}
                     </h4>
                   </div>
                   <div style="text-align:end;">
-                    <span style="font-size:1.5rem; font-weight:900; color:var(--primary);">${remaining}</span>
+                    <span style="font-size:1.5rem; font-weight:900; color:${isAllCompleted ? '#ef4444' : 'var(--primary)'};">${remaining}</span>
                     <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:700;">حصص متبقية</span>
                   </div>
                 </div>
 
                 <!-- Progress Bar -->
-                <div style="background:var(--bg-app); border-radius:10px; height:10px; width:100%; overflow:hidden; margin-bottom:12px; border:1px solid var(--border-color);">
-                  <div style="background:linear-gradient(90deg, #6366f1, #10b981); height:100%; width:${pct}%; border-radius:10px; transition:width 0.5s ease;"></div>
+                <div style="background:var(--bg-app); border-radius:10px; height:10px; width:100%; overflow:hidden; margin-bottom:12px; border:1px solid ${isAllCompleted ? 'rgba(239,68,68,0.3)' : 'var(--border-color)'};">
+                  <div style="background:${isAllCompleted ? '#ef4444' : 'linear-gradient(90deg, #6366f1, #10b981)'}; height:100%; width:${pct}%; border-radius:10px; transition:width 0.5s ease;"></div>
                 </div>
                 
-                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:18px; font-weight:700;">
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:${isAllCompleted ? '#ef4444' : 'var(--text-muted)'}; margin-bottom:18px; font-weight:700;">
                   <span>تم استخدام ${used} من أصل ${total} حصص (${pct}%)</span>
                   <span>ينتهي: ${new Date(sub.endDate).toLocaleDateString("ar-EG")}</span>
                 </div>
               </div>
 
-              ${sub.status === "PENDING_PAYMENT"
+              ${isAllCompleted ? `
+                <div>
+                  <div style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:10px 14px; border-radius:12px; font-size:0.82rem; font-weight:800; text-align:center; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:6px;">
+                    <i data-lucide="bell-ring" style="width:16px;height:16px;"></i> انتهت كافة حصص هذه الباقة! يرجى التجديد للمتابعة.
+                  </div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a href="#subscription-plans" class="btn-primary" style="flex:1; justify-content:center; gap:8px; text-decoration:none; font-weight:800; font-size:0.88rem; padding:11px; border-radius:12px; background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-color:#ef4444; color:#fff; box-shadow:0 4px 14px rgba(239,68,68,0.35);">
+                      <i data-lucide="refresh-cw"></i> تجديد الاشتراك الآن 💳
+                    </a>
+                    <a href="#subscription-sessions?id=${sub.id}" class="btn-secondary" style="justify-content:center; gap:6px; text-decoration:none; font-weight:700; font-size:0.82rem; padding:11px 14px; border-radius:12px;" title="عرض سجل الحصص">
+                      <i data-lucide="calendar"></i> السجل
+                    </a>
+                  </div>
+                </div>
+              ` : (sub.status === "PENDING_PAYMENT"
                 ? `<div style="background:rgba(245,158,11,0.15); color:#f59e0b; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">⏳ 1️⃣ في انتظار تأكيد الدفع ورفع الإيصال</div>`
                 : sub.status === "TEACHER_ASSIGNMENT_PENDING"
                 ? `<div style="background:rgba(59,130,246,0.15); color:#3b82f6; padding:10px; border-radius:12px; font-size:0.8rem; font-weight:700; text-align:center;">⏳ 2️⃣ تم تأكيد الدفع - قيد تعيين المعلم المناسب</div>`
@@ -169,7 +194,7 @@ export default class StudentSubscriptionsView {
                        <i data-lucide="calendar"></i> عرض جدول وسجل الحصص
                      </a>
                    </div>`
-              }
+              )}
             </div>
           `;
         }).join("")}

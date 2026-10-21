@@ -2714,10 +2714,19 @@ export const AdminSessionsPage = {
       const dayName = daysArabic[d.getDay()];
       const dateText = `${dayName} ${d.getDate()} ${monthsArabic[d.getMonth()]} ${d.getFullYear()}`;
       let timeText = '';
-      try {
-        timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', timeZone: userTz });
-      } catch (e) {
-        timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      if (group && (group.scheduleTime || group.scheduleText)) {
+        let rawTime = group.scheduleTime;
+        if (!rawTime && group.scheduleText) {
+          const parts = group.scheduleText.split(/الساعة|•/);
+          rawTime = parts.length > 1 ? parts[1].trim() : group.scheduleText;
+        }
+        timeText = this.normalizeTimeToArabic(rawTime || "06:00 م");
+      } else {
+        try {
+          timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', timeZone: userTz });
+        } catch (e) {
+          timeText = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        }
       }
       return { date: dateText, time: timeText };
     };
@@ -2801,7 +2810,7 @@ export const AdminSessionsPage = {
                         </strong>
                         <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                           <span>📅 ${dt.date}</span>
-                          ${dt.time ? `<span>• ⏰ ${dt.time}</span> ${getTimezoneBadgeHTML(userTz)}` : ''}
+                          ${dt.time ? `<span>• ⏰ ${dt.time}</span> <span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px;">👥 توقيت المجموعة</span>` : ''}
                           <span>• ⏱️ ${s.duration || 60} دقيقة</span>
                         </div>
                       </div>
@@ -3655,7 +3664,7 @@ export const AdminSessionsPage = {
         const userTz = getUserTimezone();
         const teacherTz = sess.teacher?.timezone || null;
         const secondaryTz = (teacherTz && teacherTz !== userTz) ? teacherTz : (userTz !== "Asia/Riyadh" ? "Asia/Riyadh" : null);
-        const formatted = formatSessionDateTime(sess.scheduledAt, userTz, { secondaryTz });
+        const timeInfo = this.getSessionDisplayTime(sess, userTz, secondaryTz);
         const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
         const studentName = sess.student?.name || (sess.course ? "طلاب الدورة الجماعية" : "حصة خاصة");
         const sessTeacherId = sess.teacher?.id || sess.teacherId || sess.course?.teacher?.id;
@@ -3669,12 +3678,12 @@ export const AdminSessionsPage = {
         return `
                       <div style="background:var(--bg-app); border-radius:12px; padding:12px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                          ${formatted.badgeHTML}
+                          ${timeInfo.badgeHTML}
                           ${getStatusBadge(sess.status)}
                         </div>
                         <strong style="font-size:0.88rem; color:var(--text-main);">${sess.title || "حصة خاصة"}</strong>
                         <div style="font-size:0.78rem; color:var(--primary); font-weight:700;">
-                          ⏰ ${formatted.timeStr} ${formatted.secondaryTZHTML}
+                          ⏰ ${timeInfo.timeStr} ${timeInfo.secondaryTZHTML}
                         </div>
                         <div style="font-size:0.78rem; color:var(--text-muted);">
                           <div>👨‍🏫 ${teacherName}</div>
@@ -3751,6 +3760,7 @@ export const AdminSessionsPage = {
       const teacherTz = sess.teacher?.timezone || null;
       const secondaryTz = (teacherTz && teacherTz !== userTz) ? teacherTz : (userTz !== "Asia/Riyadh" ? "Asia/Riyadh" : null);
       const formatted = formatSessionDateTime(sess.scheduledAt, userTz, { secondaryTz });
+      const timeInfo = this.getSessionDisplayTime(sess, userTz, secondaryTz);
 
       let dateDisplay = "-";
       let timeDisplay = "";
@@ -3758,7 +3768,7 @@ export const AdminSessionsPage = {
         const d = new Date(sess.scheduledAt);
         const dayName = d.toLocaleDateString("ar-EG", { weekday: "long" }) || "";
         dateDisplay = `${dayName}، ${formatted.dateStr}`;
-        timeDisplay = formatted.timeStr;
+        timeDisplay = timeInfo.timeStr;
       }
 
       const teacherName = sess.teacher?.name || sess.course?.teacher?.name || "معلم المنصة";
@@ -3788,8 +3798,8 @@ export const AdminSessionsPage = {
                                 <i data-lucide="clock" style="width:12px; height:12px;"></i>
                                 <span>${timeDisplay}</span>
                               </span>
-                              ${formatted.badgeHTML}
-                              ${formatted.secondaryTZHTML}
+                              ${timeInfo.badgeHTML}
+                              ${timeInfo.secondaryTZHTML}
                               <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${sess.duration || 60} دقيقة)</span>
                             </div>
                           ` : `
@@ -6007,12 +6017,27 @@ export const AdminSessionsPage = {
       const schedDate = sess.scheduledAt ? new Date(sess.scheduledAt) : new Date();
       let dateStr = "";
       let timeStr = "";
-      try {
-        dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: userTz });
-        timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: userTz });
-      } catch (e) {
-        dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-        timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      const relatedGroup = this.resolveSessionGroup(sess);
+      if (relatedGroup && (relatedGroup.scheduleTime || relatedGroup.scheduleText)) {
+        let rawTime = relatedGroup.scheduleTime;
+        if (!rawTime && relatedGroup.scheduleText) {
+          const parts = relatedGroup.scheduleText.split(/الساعة|•/);
+          rawTime = parts.length > 1 ? parts[1].trim() : relatedGroup.scheduleText;
+        }
+        timeStr = this.normalizeTimeToArabic(rawTime || "06:00 م");
+        try {
+          dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: userTz });
+        } catch (e) {
+          dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        }
+      } else {
+        try {
+          dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: userTz });
+          timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: userTz });
+        } catch (e) {
+          dateStr = schedDate.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          timeStr = schedDate.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+        }
       }
       const title = sess.title || sess.course?.title || "حصة دراسية مباشرة";
 
@@ -6045,7 +6070,22 @@ export const AdminSessionsPage = {
 
     const { session, teacher, student, isGroup, students, groupBroadcastText } = reminderData;
     const countdown = getSessionCountdownInfo(session.scheduledAt, session.status);
-    const dateFormatted = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short', timeZone: userTz }) : '-';
+    const modalRelatedGroup = this.resolveSessionGroup(session);
+    let dateFormatted = "-";
+    if (session.scheduledAt) {
+      if (modalRelatedGroup && (modalRelatedGroup.scheduleTime || modalRelatedGroup.scheduleText)) {
+        const d = new Date(session.scheduledAt);
+        const dayStr = d.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: userTz });
+        let rawTime = modalRelatedGroup.scheduleTime;
+        if (!rawTime && modalRelatedGroup.scheduleText) {
+          const parts = modalRelatedGroup.scheduleText.split(/الساعة|•/);
+          rawTime = parts.length > 1 ? parts[1].trim() : modalRelatedGroup.scheduleText;
+        }
+        dateFormatted = `${dayStr} • الساعة ${this.normalizeTimeToArabic(rawTime || "06:00 م")} (توقيت المجموعة)`;
+      } else {
+        dateFormatted = new Date(session.scheduledAt).toLocaleString('ar-EG', { dateStyle: 'full', timeStyle: 'short', timeZone: userTz });
+      }
+    }
 
     const closeModal = () => {
       const modal = document.getElementById("session-whatsapp-modal");
@@ -6474,6 +6514,61 @@ export const AdminSessionsPage = {
       GRADE_12: "الصف الثالث الثانوي (Sec 3 / Entlq 3 / BAC)",
     };
     return map[gradeKey] || "المرحلة والصف الدراسي";
+  },
+
+  resolveSessionGroup(sess) {
+    if (!sess) return null;
+    if (sess.group && (sess.group.scheduleTime || sess.group.name)) {
+      if (!sess.group.scheduleTime && sess.group.id) {
+        const allGroups = this.allCourseGroups || this.allGroups || [];
+        const full = allGroups.find(g => String(g.id) === String(sess.group.id));
+        if (full) return full;
+      }
+      return sess.group;
+    }
+    const allGroups = this.allCourseGroups || this.allGroups || [];
+    const targetGroupId = sess.groupId || sess.group?.id;
+    if (targetGroupId) {
+      const found = allGroups.find(g => String(g.id) === String(targetGroupId));
+      if (found) return found;
+    }
+    if (sess.course?.id || sess.courseId) {
+      const cId = String(sess.course?.id || sess.courseId);
+      const found = allGroups.find(g => String(g.course?.id || g.courseId) === cId);
+      if (found) return found;
+    }
+    if (sess.title) {
+      const foundByName = allGroups.find(g => g.name && sess.title.includes(g.name));
+      if (foundByName) return foundByName;
+    }
+    return null;
+  },
+
+  getSessionDisplayTime(sess, userTz, secondaryTz) {
+    const group = this.resolveSessionGroup(sess);
+    if (group && (group.scheduleTime || group.scheduleText)) {
+      let rawTime = group.scheduleTime;
+      if (!rawTime && group.scheduleText) {
+        const parts = group.scheduleText.split(/الساعة|•/);
+        rawTime = parts.length > 1 ? parts[1].trim() : group.scheduleText;
+      }
+      const timeStr = this.normalizeTimeToArabic(rawTime || "06:00 م");
+      return {
+        isGroupTime: true,
+        group,
+        timeStr,
+        badgeHTML: `<span class="badge" style="background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px;">👥 توقيت المجموعة</span>`,
+        secondaryTZHTML: ""
+      };
+    }
+    const formatted = formatSessionDateTime(sess.scheduledAt, userTz, { secondaryTz });
+    return {
+      isGroupTime: false,
+      group: null,
+      timeStr: formatted.timeStr,
+      badgeHTML: formatted.badgeHTML,
+      secondaryTZHTML: formatted.secondaryTZHTML
+    };
   },
 
   normalizeTimeToArabic(timeStr) {

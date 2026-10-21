@@ -3795,6 +3795,15 @@ body.dark-theme .landing-scroll-ring-bg {
 }
 
 /* ── TESTIMONIALS SECTION ───────────────────────────────────── */
+@keyframes subRenewPulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.sub-renew-alert-pulse {
+  animation: subRenewPulse 2s infinite ease-in-out;
+}
+
 .landing-testimonials-section {
   position: relative;
   overflow: hidden;
