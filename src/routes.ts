@@ -179,6 +179,7 @@ router.get("/admin/all-groups", authMiddleware, requireRole(["admin", "superviso
 router.post("/admin/groups/:id/approve", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.approveGroup);
 router.post("/admin/groups/:id/reject", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.rejectGroup);
 router.post("/admin/groups/:id/add-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.addStudentToGroup);
+router.post("/admin/groups/:id/students/:studentId/record-installment", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.recordInstallmentPayment);
 router.post("/admin/groups/:id/remove-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.startTeachingAndGenerateSessions);
 router.post("/admin/groups/:id/renew-cycle", authMiddleware, requireRole(["admin", "supervisor", "teacher"]), CourseGroupController.renewGroupCycle);

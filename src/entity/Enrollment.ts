@@ -40,6 +40,28 @@ export class Enrollment {
   @JoinColumn()
   payment: Payment; // Linked payment/receipt for this enrollment
 
+  @Column({ type: "varchar", length: 50, default: "PAID" })
+  paymentStatus: "PAID" | "PARTIAL" | "UNPAID" | "EXEMPT";
+
+  @Column({ type: "float", default: 0 })
+  paidAmount: number;
+
+  @Column({ type: "float", default: 0 })
+  remainingAmount: number;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  dueDate: string | null;
+
+  @Column("simple-json", { nullable: true })
+  installmentHistory: Array<{
+    amount: number;
+    paidAt: string;
+    receiptUrl?: string;
+    provider?: string;
+    providerTransactionId?: string;
+    notes?: string;
+  }>;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -3926,8 +3926,14 @@ export const AdminSessionsPage = {
             name: e.student?.name || "طالب",
             email: e.student?.email || "",
             phone: e.student?.phone || e.payment?.providerTransactionId || "",
+            avatar: e.student?.avatar,
             status: e.status || "active",
             progress: e.progress || 0,
+            paymentStatus: e.paymentStatus || 'PAID',
+            paidAmount: e.paidAmount ?? (e.payment?.amount || 0),
+            remainingAmount: e.remainingAmount ?? 0,
+            dueDate: e.dueDate || null,
+            installmentHistory: e.installmentHistory || [],
             payment: e.payment,
             enrolledAt: e.createdAt
           }));
@@ -3948,8 +3954,14 @@ export const AdminSessionsPage = {
                 name: e.student?.name,
                 email: e.student?.email,
                 phone: e.student?.phone || e.payment?.providerTransactionId,
+                avatar: e.student?.avatar,
                 status: e.status,
                 progress: e.progress || 0,
+                paymentStatus: e.paymentStatus || 'PAID',
+                paidAmount: e.paidAmount ?? (e.payment?.amount || 0),
+                remainingAmount: e.remainingAmount ?? 0,
+                dueDate: e.dueDate || null,
+                installmentHistory: e.installmentHistory || [],
                 payment: e.payment,
                 enrolledAt: e.createdAt
               })).filter(s => s.studentId);
@@ -4110,13 +4122,70 @@ export const AdminSessionsPage = {
                     </select>
                   </div>
 
+                  <!-- Payment Plan Selector -->
+                  <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:12px 14px;">
+                    <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:8px; color:var(--text-main);">
+                      خطة السداد والدفع للطالب: <span style="color:#ef4444;">*</span>
+                    </label>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+                      <label id="plan-label-full" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--primary); background:rgba(139,92,246,0.08); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
+                        <input type="radio" name="add-student-plan" value="FULL" checked style="accent-color:var(--primary); cursor:pointer;">
+                        <span>🟢 سداد كامل (${groupPrice || 320} ج.م)</span>
+                      </label>
+                      <label id="plan-label-partial" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
+                        <input type="radio" name="add-student-plan" value="PARTIAL" style="accent-color:var(--primary); cursor:pointer;">
+                        <span>🟡 قسط أول / دفعة جزئية (نصف السعر)</span>
+                      </label>
+                      <label id="plan-label-discount" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
+                        <input type="radio" name="add-student-plan" value="DISCOUNT" style="accent-color:var(--primary); cursor:pointer;">
+                        <span>🟣 منحة / خصم معتمد كامل</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Partial Payment Notice & Calculations Box (Visible if PARTIAL) -->
+                  <div id="add-student-partial-box" style="display:none; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.35); border-radius:14px; padding:12px 14px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#d97706; font-size:0.84rem; font-weight:800;">
+                      <i data-lucide="alert-circle" style="width:16px; height:16px;"></i>
+                      <span>تفاصيل نظام التقسيط (دفعة أولى + موعد استحقاق المتبقي):</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; font-size:0.82rem;">
+                      <div style="background:var(--bg-card); padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.75rem;">سعر المجموعة الكلي:</span>
+                        <strong style="color:var(--text-main); font-size:0.95rem;">${groupPrice || 320} ج.م</strong>
+                        <input type="hidden" id="add-student-total-price" value="${groupPrice || 320}">
+                      </div>
+                      <div style="background:var(--bg-card); padding:8px 12px; border-radius:10px; border:1px solid rgba(245,158,11,0.4);">
+                        <span style="color:#d97706; display:block; font-size:0.75rem; font-weight:700;">المبلغ المتبقي (القسط الثاني):</span>
+                        <strong id="add-student-remaining-display" style="color:#d97706; font-size:1rem;">${Math.round((groupPrice || 320) / 2)} ج.م</strong>
+                        <input type="hidden" id="add-student-remaining-amount" value="${Math.round((groupPrice || 320) / 2)}">
+                      </div>
+                      <div>
+                        <label for="add-student-due-date" style="display:block; font-weight:800; color:var(--text-main); margin-bottom:4px; font-size:0.78rem;">
+                          موعد استحقاق القسط 2: <span style="color:#ef4444;">*</span>
+                        </label>
+                        <input type="date" id="add-student-due-date" value="${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}" class="form-input"
+                          style="width:100%; border-radius:10px; padding:6px 10px; font-size:0.82rem; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Discount Box (Visible if DISCOUNT) -->
+                  <div id="add-student-discount-box" style="display:none; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:14px; padding:12px 14px;">
+                    <label for="add-student-discount-reason" style="display:block; font-size:0.82rem; font-weight:800; color:var(--text-main); margin-bottom:4px;">
+                      سبب المنحة أو الخصم المعتمد: <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" id="add-student-discount-reason" placeholder="مثال: منحة تفوق دراسي معتمدة من الإدارة" class="form-input"
+                      style="width:100%; border-radius:10px; padding:8px 12px; font-size:0.85rem; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                  </div>
+
                   <!-- Financial Data Fields -->
                   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
                     <div>
                       <label for="add-student-amount" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-                        المبلغ المدفوع (EGP): <span style="color:#ef4444;">*</span>
+                        المبلغ المدفوع الآن (EGP): <span style="color:#ef4444;">*</span>
                       </label>
-                      <input type="number" id="add-student-amount" value="${groupPrice || 320}" min="1" step="0.5" required class="form-input" 
+                      <input type="number" id="add-student-amount" value="${groupPrice || 320}" min="0" step="0.5" required class="form-input" 
                         style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
                     </div>
 
@@ -4230,8 +4299,31 @@ export const AdminSessionsPage = {
                               </span>
                             `}
                           </div>
-                          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
-                            ${st.email || ''} ${st.enrolledAt ? `• تاريخ التسجيل: ${new Date(st.enrolledAt).toLocaleDateString('ar')}` : ''}
+
+                          <!-- Payment Status Badges & Due Date -->
+                          <div style="display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap;">
+                            ${st.paymentStatus === 'PARTIAL' ? `
+                              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); display:inline-flex; align-items:center; gap:3px;">
+                                ⚠️ قسط أول (متبقي: ${st.remainingAmount || 0} ج.م)
+                              </span>
+                              ${st.dueDate ? `
+                                <span style="font-size:0.72rem; font-weight:700; color:#b45309; display:inline-flex; align-items:center; gap:2px;">
+                                  ⏳ استحقاق: ${new Date(st.dueDate).toLocaleDateString('ar-EG')}
+                                </span>
+                              ` : ''}
+                            ` : st.paymentStatus === 'EXEMPT' ? `
+                              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(139,92,246,0.15); color:#8b5cf6; border:1px solid rgba(139,92,246,0.3);">
+                                🎓 منحة معتمدة
+                              </span>
+                            ` : `
+                              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.25);">
+                                💳 مسدد (${st.paidAmount || (st.payment?.amount || 0)} ج.م)
+                              </span>
+                            `}
+                          </div>
+
+                          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:3px;">
+                            ${st.email || ''} ${st.enrolledAt ? `• انضم: ${new Date(st.enrolledAt).toLocaleDateString('ar')}` : ''}
                           </div>
                         </div>
                       </div>
@@ -4239,6 +4331,37 @@ export const AdminSessionsPage = {
                       <!-- Right: Contact Methods & Actions -->
                       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-inline-start:auto;">
                         
+                        <!-- 2nd Installment Payment Button (if PARTIAL) -->
+                        ${st.paymentStatus === 'PARTIAL' ? `
+                          <button type="button" class="btn-primary admin-record-installment-btn" 
+                            data-student-id="${st.studentId}" 
+                            data-enrollment-id="${st.enrollmentId || ''}"
+                            style="font-size:0.76rem; padding:6px 12px; border-radius:12px; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; font-weight:800; display:inline-flex; align-items:center; gap:4px; color:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(245,158,11,0.25);"
+                            title="تسجيل سداد القسط الثاني المتبقي لهذا الطالب ورفع إيصاله">
+                            <i data-lucide="credit-card" style="width:13px; height:13px;"></i> سداد القسط الثاني 💳
+                          </button>
+
+                          ${rawPhone ? `
+                            <a href="https://wa.me/${cleanWa}?text=${encodeURIComponent(`مرحباً ${st.name || 'طالبنا العزيز'}، نود تذكيرك بموعد سداد القسط الثاني المتبقي وقدره (${st.remainingAmount || 0} ج.م) لمجموعتك الدراسية (${targetTitle}) مع الأستاذ ${teacherName}. تاريخ الاستحقاق: ${st.dueDate ? new Date(st.dueDate).toLocaleDateString('ar-EG') : 'قريباً'}. شاكرين ومقدرين لكم.`)}" 
+                               target="_blank" rel="noopener" 
+                               class="btn-secondary" 
+                               style="font-size:0.76rem; padding:6px 10px; border-radius:12px; border-color:#f59e0b; color:#d97706; background:rgba(245,158,11,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;"
+                               title="إرسال رسالة تذكير بالقسط المتبقي عبر واتساب">
+                              <i data-lucide="bell" style="width:12px; height:12px;"></i> تذكير بالقسط 📲
+                            </a>
+                          ` : ''}
+                        ` : ''}
+
+                        <!-- View Installment History Button (if has installments) -->
+                        ${st.installmentHistory && st.installmentHistory.length > 0 ? `
+                          <button type="button" class="btn-secondary admin-view-installment-history-btn"
+                            data-student-id="${st.studentId}"
+                            style="font-size:0.76rem; padding:6px 10px; border-radius:12px; border-color:#8b5cf6; color:#8b5cf6; background:rgba(139,92,246,0.08); font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"
+                            title="عرض سجل دفعات وأقساط الطالب والإيصالات">
+                            <i data-lucide="receipt" style="width:12px; height:12px;"></i> السجل (${st.installmentHistory.length}) 📜
+                          </button>
+                        ` : ''}
+
                         <!-- Receipt Badge if exists -->
                         ${st.payment?.receiptUrl ? `
                           <a href="${st.payment.receiptUrl}" target="_blank" rel="noopener" 
@@ -4364,6 +4487,79 @@ export const AdminSessionsPage = {
       }
     });
 
+    // Payment Plan Selector & Dynamic Calculations
+    const planRadios = container.querySelectorAll('input[name="add-student-plan"]');
+    const partialBox = document.getElementById("add-student-partial-box");
+    const discountBox = document.getElementById("add-student-discount-box");
+    const amountInput = document.getElementById("add-student-amount");
+    const remainingDisplay = document.getElementById("add-student-remaining-display");
+    const remainingHidden = document.getElementById("add-student-remaining-amount");
+    const fullTotalPrice = Number(groupPrice) || 320;
+
+    const updatePlanUI = () => {
+      const selectedPlan = container.querySelector('input[name="add-student-plan"]:checked')?.value || 'FULL';
+      
+      planRadios.forEach(radio => {
+        const label = radio.closest('label');
+        if (label) {
+          if (radio.checked) {
+            label.style.borderColor = 'var(--primary)';
+            label.style.background = 'rgba(139,92,246,0.08)';
+          } else {
+            label.style.borderColor = 'var(--border-color)';
+            label.style.background = 'var(--bg-card)';
+          }
+        }
+      });
+
+      if (selectedPlan === 'PARTIAL') {
+        if (partialBox) partialBox.style.display = 'block';
+        if (discountBox) discountBox.style.display = 'none';
+        const halfPrice = Math.round(fullTotalPrice / 2);
+        if (amountInput) {
+          amountInput.value = halfPrice;
+          amountInput.readOnly = false;
+        }
+        const rem = Math.max(0, fullTotalPrice - halfPrice);
+        if (remainingDisplay) remainingDisplay.textContent = `${rem} ج.م`;
+        if (remainingHidden) remainingHidden.value = rem;
+      } else if (selectedPlan === 'DISCOUNT') {
+        if (partialBox) partialBox.style.display = 'none';
+        if (discountBox) discountBox.style.display = 'block';
+        if (amountInput) {
+          amountInput.value = 0;
+          amountInput.readOnly = true;
+        }
+        if (remainingDisplay) remainingDisplay.textContent = '0 ج.م';
+        if (remainingHidden) remainingHidden.value = 0;
+      } else {
+        // FULL
+        if (partialBox) partialBox.style.display = 'none';
+        if (discountBox) discountBox.style.display = 'none';
+        if (amountInput) {
+          amountInput.value = fullTotalPrice;
+          amountInput.readOnly = false;
+        }
+        if (remainingDisplay) remainingDisplay.textContent = '0 ج.م';
+        if (remainingHidden) remainingHidden.value = 0;
+      }
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    planRadios.forEach(radio => {
+      radio.addEventListener('change', updatePlanUI);
+    });
+
+    amountInput?.addEventListener('input', () => {
+      const selectedPlan = container.querySelector('input[name="add-student-plan"]:checked')?.value || 'FULL';
+      if (selectedPlan === 'PARTIAL') {
+        const paidNow = parseFloat(amountInput.value) || 0;
+        const rem = Math.max(0, fullTotalPrice - paidNow);
+        if (remainingDisplay) remainingDisplay.textContent = `${rem} ج.م`;
+        if (remainingHidden) remainingHidden.value = rem;
+      }
+    });
+
     // 1. Add Student to Group
     document.getElementById("add-student-to-group-btn")?.addEventListener("click", async () => {
       const studentId = document.getElementById("select-new-group-student")?.value;
@@ -4372,7 +4568,12 @@ export const AdminSessionsPage = {
         return;
       }
 
-      const amountInput = document.getElementById("add-student-amount");
+      const selectedPlan = container.querySelector('input[name="add-student-plan"]:checked')?.value || 'FULL';
+      const totalPriceVal = document.getElementById("add-student-total-price")?.value || fullTotalPrice;
+      const remainingAmountVal = document.getElementById("add-student-remaining-amount")?.value || 0;
+      const dueDateVal = document.getElementById("add-student-due-date")?.value || null;
+      const discountReasonVal = document.getElementById("add-student-discount-reason")?.value?.trim() || null;
+
       const providerInput = document.getElementById("add-student-provider");
       const txIdInput = document.getElementById("add-student-txid");
       const notesInput = document.getElementById("add-student-notes");
@@ -4382,8 +4583,16 @@ export const AdminSessionsPage = {
       const txIdVal = txIdInput?.value?.trim();
       const notesVal = notesInput?.value?.trim();
 
-      if (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0) {
+      if (selectedPlan !== 'DISCOUNT' && (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0)) {
         showToast("يرجى إدخال المبلغ المالي المدفوع بشكل صحيح.", "warning");
+        return;
+      }
+      if (selectedPlan === 'PARTIAL' && !dueDateVal) {
+        showToast("يرجى تحديد موعد استحقاق القسط الثاني.", "warning");
+        return;
+      }
+      if (selectedPlan === 'DISCOUNT' && !discountReasonVal) {
+        showToast("يرجى إدخال سبب المنحة أو الخصم المعتمد للطالب.", "warning");
         return;
       }
       if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
@@ -4428,11 +4637,16 @@ export const AdminSessionsPage = {
             method: "POST",
             body: JSON.stringify({
               studentId,
-              amount: parseFloat(amountVal),
+              amount: parseFloat(amountVal || 0),
               provider: providerVal || undefined,
               providerTransactionId: txIdVal || undefined,
               receiptUrl: receiptUrl || undefined,
-              notes: notesVal || undefined
+              notes: notesVal || undefined,
+              paymentPlan: selectedPlan,
+              totalPrice: parseFloat(totalPriceVal),
+              remainingAmount: parseFloat(remainingAmountVal),
+              dueDate: dueDateVal || undefined,
+              discountReason: discountReasonVal || undefined
             })
           });
           showToast(res.message || "تمت إضافة الطالب للمجموعة ورفع الإيصال وتفعيل المقعد بنجاح! 🎉🧾", "success");
@@ -4501,6 +4715,349 @@ export const AdminSessionsPage = {
         }
       });
     });
+
+    // 4. Record 2nd Installment Modal
+    container.querySelectorAll(".admin-record-installment-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const stId = btn.getAttribute("data-student-id");
+        const studentData = students.find(s => String(s.studentId) === String(stId));
+        if (studentData) {
+          this.renderRecordInstallmentModal(dbGroupId, studentData, targetTitle, teacherName);
+        }
+      });
+    });
+
+    // 5. View Installment History Modal
+    container.querySelectorAll(".admin-view-installment-history-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const stId = btn.getAttribute("data-student-id");
+        const studentData = students.find(s => String(s.studentId) === String(stId));
+        if (studentData) {
+          this.renderInstallmentHistoryModal(studentData, targetTitle);
+        }
+      });
+    });
+  },
+
+  // ── Render Record 2nd Installment Modal ─────────────────
+  renderRecordInstallmentModal(groupId, studentData, groupTitle, teacherName) {
+    const existing = document.getElementById("admin-record-installment-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "admin-record-installment-overlay";
+    overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:100005; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Cairo',sans-serif;";
+
+    const remaining = Number(studentData.remainingAmount) || 0;
+    const paidSoFar = Number(studentData.paidAmount) || 0;
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; max-width:540px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; display:flex; flex-direction:column;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(139,92,246,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(245,158,11,0.2); color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="credit-card" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">تسجيل سداد القسط الثاني 💳</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">
+                الطالب: <strong>${studentData.name || 'طالب'}</strong> • ${groupTitle || 'المجموعة'}
+              </p>
+            </div>
+          </div>
+          <button type="button" id="close-record-installment-modal" style="background:transparent; border:none; color:var(--text-muted); font-size:1.3rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:75vh; overflow-y:auto;">
+          
+          <!-- Summary Cards -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:10px 14px; text-align:center;">
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block;">المسدد سابقاً</span>
+              <strong style="font-size:1.05rem; color:#10b981;">${paidSoFar} ج.م</strong>
+            </div>
+            <div style="background:rgba(245,158,11,0.08); border:1.5px solid rgba(245,158,11,0.35); border-radius:14px; padding:10px 14px; text-align:center;">
+              <span style="font-size:0.75rem; color:#d97706; display:block; font-weight:700;">المتبقي المستحق</span>
+              <strong style="font-size:1.1rem; color:#d97706;">${remaining} ج.م</strong>
+            </div>
+          </div>
+
+          <!-- Amount Input -->
+          <div>
+            <label for="installment-pay-amount" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+              المبلغ المدفوع الآن (EGP): <span style="color:#ef4444;">*</span>
+            </label>
+            <input type="number" id="installment-pay-amount" value="${remaining}" min="1" step="0.5" class="form-input" required
+              style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.9rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+          </div>
+
+          <!-- Provider & TxId -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label for="installment-pay-provider" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                طريقة التحويل: <span style="color:#ef4444;">*</span>
+              </label>
+              <select id="installment-pay-provider" class="form-select" style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                <option value="vodafone_cash">Vodafone Cash (فودافون كاش)</option>
+                <option value="instapay">InstaPay (إنستاباي)</option>
+                <option value="bank_transfer">تحويل بنكي (Bank Transfer)</option>
+                <option value="orange_cash">أورنج كاش (Orange Cash)</option>
+                <option value="etisalat_cash">اتصالات كاش (Etisalat Cash)</option>
+                <option value="cash">نقداً باليد (Cash)</option>
+                <option value="other">أخرى (Other)</option>
+              </select>
+            </div>
+            <div>
+              <label for="installment-pay-txid" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                رقم المحول / المعاملة:
+              </label>
+              <input type="text" id="installment-pay-txid" placeholder="010xxxxxxxx أو كود التحويل" class="form-input"
+                style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+            </div>
+          </div>
+
+          <!-- Receipt Upload -->
+          <div>
+            <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+              صورة إيصال التحويل الجديد: <span style="color:#ef4444;">*</span>
+            </label>
+            <div style="position:relative; border:2px dashed rgba(245,158,11,0.5); border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
+              <input type="file" id="installment-pay-receipt-file" accept="image/*" required
+                style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer;">
+              <div style="display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:0.82rem;">
+                <i data-lucide="upload-cloud" style="width:18px; height:18px; color:#d97706;"></i>
+                <span id="installment-file-label">انقر أو اسحب صورة إيصال القسط هنا (إلزامي 🧾)</span>
+              </div>
+            </div>
+            <div id="installment-preview-container" style="display:none; margin-top:8px; text-align:center;">
+              <img id="installment-preview-img" src="" style="max-height:110px; max-width:100%; border-radius:10px; border:1.5px solid var(--border-color); object-fit:contain; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label for="installment-pay-notes" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+              ملاحظات السداد:
+            </label>
+            <input type="text" id="installment-pay-notes" placeholder="مثال: سداد القسط الثاني والأخير" class="form-input"
+              style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" id="cancel-record-installment-btn" class="btn-secondary" style="padding:8px 18px; border-radius:12px; font-weight:800; font-size:0.85rem;">إلغاء</button>
+          <button type="button" id="confirm-record-installment-btn" class="btn-primary" 
+            style="padding:8px 22px; border-radius:12px; font-weight:900; font-size:0.85rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد سداد القسط ورفع الإيصال ✅
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeOverlay = () => { overlay.remove(); };
+    overlay.querySelector("#close-record-installment-modal")?.addEventListener("click", closeOverlay);
+    overlay.querySelector("#cancel-record-installment-btn")?.addEventListener("click", closeOverlay);
+
+    // File Preview
+    const fileInput = overlay.querySelector("#installment-pay-receipt-file");
+    const previewContainer = overlay.querySelector("#installment-preview-container");
+    const previewImg = overlay.querySelector("#installment-preview-img");
+    const fileLabel = overlay.querySelector("#installment-file-label");
+
+    fileInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        if (fileLabel) fileLabel.textContent = `تم اختيار: ${file.name}`;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (previewImg) previewImg.src = event.target.result;
+          if (previewContainer) previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        if (fileLabel) fileLabel.textContent = "انقر أو اسحب صورة إيصال القسط هنا (إلزامي 🧾)";
+        if (previewContainer) previewContainer.style.display = "none";
+      }
+    });
+
+    // Submit
+    const confirmBtn = overlay.querySelector("#confirm-record-installment-btn");
+    confirmBtn?.addEventListener("click", async () => {
+      const amountVal = overlay.querySelector("#installment-pay-amount")?.value;
+      const providerVal = overlay.querySelector("#installment-pay-provider")?.value;
+      const txIdVal = overlay.querySelector("#installment-pay-txid")?.value?.trim();
+      const notesVal = overlay.querySelector("#installment-pay-notes")?.value?.trim();
+
+      if (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0) {
+        showToast("يرجى إدخال المبلغ المدفوع بشكل صحيح.", "warning");
+        return;
+      }
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showToast("يرجى إرفاق صورة إيصال سداد القسط!", "warning");
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري رفع الإيصال... ⏳`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        const token = state.token || localStorage.getItem("token");
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          throw new Error("فشل رفع صورة إيصال الدفع.");
+        }
+        const uploadData = await uploadRes.json();
+        const receiptUrl = uploadData.url;
+
+        confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري تسجيل القسط... ⏳`;
+        if (window.lucide) window.lucide.createIcons();
+
+        const res = await apiFetch(`/admin/groups/${groupId}/students/${studentData.studentId}/record-installment`, {
+          method: "POST",
+          body: JSON.stringify({
+            amount: parseFloat(amountVal),
+            provider: providerVal || undefined,
+            providerTransactionId: txIdVal || undefined,
+            receiptUrl: receiptUrl,
+            notes: notesVal || undefined
+          })
+        });
+
+        showToast(res.message || "تم تسجيل سداد القسط بنجاح! 🎉", "success");
+        closeOverlay();
+        await this.loadAllData();
+        await this.renderGroupStudentsModal(groupId);
+        this.renderTab(this.activeTab);
+      } catch (err) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد سداد القسط ورفع الإيصال ✅`;
+        if (window.lucide) window.lucide.createIcons();
+        showToast(err.message || "فشل تسجيل سداد القسط.", "error");
+      }
+    });
+  },
+
+  // ── Render Installment History Modal ─────────────────
+  renderInstallmentHistoryModal(studentData, groupTitle) {
+    const existing = document.getElementById("admin-installment-history-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "admin-installment-history-overlay";
+    overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:100005; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Cairo',sans-serif;";
+
+    const history = studentData.installmentHistory || [];
+    const remaining = Number(studentData.remainingAmount) || 0;
+    const paid = Number(studentData.paidAmount) || (studentData.payment?.amount || 0);
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; max-width:600px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; display:flex; flex-direction:column;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(139,92,246,0.2); color:#8b5cf6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="receipt" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">سجل دفعات وأقساط الطالب 📜</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">
+                الطالب: <strong>${studentData.name || 'طالب'}</strong> • ${groupTitle || 'المجموعة'}
+              </p>
+            </div>
+          </div>
+          <button type="button" id="close-installment-history-modal" style="background:transparent; border:none; color:var(--text-muted); font-size:1.3rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:75vh; overflow-y:auto;">
+          
+          <!-- Summary Cards -->
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:8px 12px; text-align:center;">
+              <span style="font-size:0.72rem; color:var(--text-muted); display:block;">إجمالي المسدد</span>
+              <strong style="font-size:1rem; color:#10b981;">${paid} ج.م</strong>
+            </div>
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:8px 12px; text-align:center;">
+              <span style="font-size:0.72rem; color:var(--text-muted); display:block;">المتبقي</span>
+              <strong style="font-size:1rem; color:${remaining > 0 ? '#d97706' : '#10b981'};">${remaining} ج.م</strong>
+            </div>
+            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:8px 12px; text-align:center;">
+              <span style="font-size:0.72rem; color:var(--text-muted); display:block;">حالة السداد</span>
+              <strong style="font-size:0.85rem; color:${studentData.paymentStatus === 'PARTIAL' ? '#d97706' : '#10b981'};">
+                ${studentData.paymentStatus === 'PARTIAL' ? '⚠️ قسط جاري' : studentData.paymentStatus === 'EXEMPT' ? '🎓 منحة' : '✅ مسدد'}
+              </strong>
+            </div>
+          </div>
+
+          <!-- History List -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${history.length === 0 ? `
+              <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem; background:var(--bg-app); border-radius:12px;">
+                لا توجد سجلات دفع مسجلة لهذا الطالب بعد.
+              </div>
+            ` : history.map((item, idx) => `
+              <div style="padding:12px 14px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:800; font-size:0.85rem; color:var(--text-main);">الدفعة #${idx + 1}</span>
+                    <span style="font-size:0.78rem; font-weight:800; color:#10b981; background:rgba(16,185,129,0.1); padding:2px 8px; border-radius:6px;">
+                      ${item.amount} ج.م
+                    </span>
+                    <span style="font-size:0.74rem; color:var(--text-muted); background:var(--bg-card); padding:2px 6px; border-radius:6px; border:1px solid var(--border-color);">
+                      ${item.provider || 'تحويل'}
+                    </span>
+                  </div>
+                  <div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">
+                    ${item.paidAt ? new Date(item.paidAt).toLocaleString('ar-EG') : 'تاريخ غير محدد'}
+                    ${item.providerTransactionId ? ` • رقم العملية: ${item.providerTransactionId}` : ''}
+                    ${item.notes ? ` • ملاحظة: ${item.notes}` : ''}
+                  </div>
+                </div>
+
+                ${item.receiptUrl ? `
+                  <a href="${item.receiptUrl}" target="_blank" rel="noopener" 
+                     class="btn-secondary" 
+                     style="font-size:0.75rem; padding:5px 10px; border-radius:10px; border-color:#8b5cf6; color:#8b5cf6; background:rgba(139,92,246,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;">
+                    <i data-lucide="receipt" style="width:12px; height:12px;"></i> عرض الإيصال 🧾
+                  </a>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:12px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end;">
+          <button type="button" id="close-installment-history-btn" class="btn-secondary" style="padding:7px 20px; border-radius:12px; font-weight:800; font-size:0.85rem;">إغلاق</button>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeOverlay = () => { overlay.remove(); };
+    overlay.querySelector("#close-installment-history-modal")?.addEventListener("click", closeOverlay);
+    overlay.querySelector("#close-installment-history-btn")?.addEventListener("click", closeOverlay);
   },
 
   // ── Render Admin Complete Session & Credit Teacher Money Modal ─────────────────

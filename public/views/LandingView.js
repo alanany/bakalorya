@@ -22,14 +22,36 @@ export default class LandingView {
 
   async render() {
     this.container.innerHTML = `
-      <div style="background:var(--bg-app); min-height:100vh; width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box;">
+      <div class="landing-page-container" style="background:var(--bg-app); min-height:100vh; width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box;">
 
         <!-- TOP UTILITY BAR -->
-        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 20px; font-size:0.82rem; color:var(--text-muted); width:100%;">
-          <div style="width:100%; margin:0 auto; display:flex; gap:24px; align-items:center; font-weight:700;">
-            <span style="color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:4px; cursor:pointer;">للطلاب والمتفوقين</span>
-            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمعلمين والأساتذة</span>
-            <span style="cursor:pointer; opacity:0.8;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.8'">للمدارس والمؤسسات</span>
+        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.83rem; color:var(--text-muted); width:100%; box-sizing:border-box;">
+          <div style="width:100%; margin:0 auto; display:flex; gap:20px; align-items:center; font-weight:700; justify-content:space-between; flex-wrap:wrap;">
+            
+            <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+              <a href="#login" style="color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; border-bottom:2px solid var(--primary); padding-bottom:3px; font-weight:800; transition:all 0.2s;" title="تسجيل دخول الطلاب والمتفوقين">
+                <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i>
+                <span>للطلاب والمتفوقين</span>
+              </a>
+
+              <a href="#teacher-login" style="color:rgba(255,255,255,0.7); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding-bottom:3px; font-weight:700; transition:all 0.2s;" onmouseenter="this.style.color='#10b981'; this.style.opacity='1'" onmouseleave="this.style.color='rgba(255,255,255,0.7)'; this.style.opacity='0.9'" title="بوابة تسجيل دخول المعلمين والأساتذة">
+                <i data-lucide="user-check" style="width:14px; height:14px;"></i>
+                <span>للمعلمين والأساتذة</span>
+              </a>
+
+              <a href="#admin-login" style="color:rgba(255,255,255,0.7); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding-bottom:3px; font-weight:700; transition:all 0.2s;" onmouseenter="this.style.color='#8b5cf6'; this.style.opacity='1'" onmouseleave="this.style.color='rgba(255,255,255,0.7)'; this.style.opacity='0.9'" title="بوابة تسجيل دخول المدارس والمؤسسات والإدارة">
+                <i data-lucide="building-2" style="width:14px; height:14px;"></i>
+                <span>للمدارس والمؤسسات</span>
+              </a>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:16px; font-size:0.8rem;">
+              <a href="#parent-login" style="color:rgba(255,255,255,0.65); text-decoration:none; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseenter="this.style.color='#a78bfa'" onmouseleave="this.style.color='rgba(255,255,255,0.65)'" title="بوابة متابعة أولياء الأمور">
+                <i data-lucide="users" style="width:13px; height:13px;"></i>
+                <span>بوابة أولياء الأمور 👨‍👩‍👧</span>
+              </a>
+            </div>
+
           </div>
         </div>
 
@@ -50,7 +72,7 @@ export default class LandingView {
                 <p style="font-size:0.95rem; opacity:0.9; line-height:1.6; margin-bottom:24px;">
                   تعلم وتفوق مع أفضل الدورات والدروس المباشرة مع نخبة معلمي مصر و الوطن العربي.
                 </p>
-                <a href="#signup" class="btn-primary" style="background:#ffffff; color:#0056D2; padding:12px 28px; font-weight:800; font-size:0.95rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+                <a href="#signup" class="btn-primary hero-btn-white" style="background:#ffffff; color:#0056D2; padding:12px 28px; font-weight:800; font-size:0.95rem; border-radius:30px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
                   سجل مجاناً الآن <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
                 </a>
               </div>
@@ -99,7 +121,7 @@ export default class LandingView {
               <button class="quick-grade-btn" data-stage="PRIMARY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🎒 الابتدائية</button>
               <button class="quick-grade-btn" data-stage="AZHAR" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🕌 الأزهر</button>
             </div>
-            <button id="quick-grade-go-btn" style="padding:9px 22px; border-radius:20px; font-size:0.85rem; font-weight:900; background:linear-gradient(135deg,#0056D2 0%,#10b981 100%); color:#ffffff; border:none; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(0,86,210,0.3); transition:all 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">ابحث عن دورتي 🚀</button>
+            <button id="quick-grade-go-btn" style="padding:9px 22px; border-radius:20px; font-size:0.85rem; font-weight:900; background:linear-gradient(135deg,#0056D2 0%,#1e40af 100%); color:#ffffff; border:none; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(0,86,210,0.3); transition:all 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">ابحث عن دورتي 🚀</button>
           </div>
         </section>
 
@@ -156,7 +178,7 @@ export default class LandingView {
 
             <!-- Action Button -->
             <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px; min-width:240px;">
-              <button type="button" id="landing-free-trial-cta-btn" class="btn-primary" style="padding:15px 32px; font-weight:900; font-size:1.05rem; border-radius:30px; background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border:none; color:#ffffff; box-shadow:0 10px 28px rgba(0,86,210,0.3); cursor:pointer; display:inline-flex; align-items:center; gap:10px; transition:all 0.25s;" onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 14px 34px rgba(0,86,210,0.4)';" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 28px rgba(0,86,210,0.3)';">
+              <button type="button" id="landing-free-trial-cta-btn" class="btn-primary" style="padding:15px 32px; font-weight:900; font-size:1.05rem; border-radius:30px; background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); border:none; color:#ffffff; box-shadow:0 10px 28px rgba(0,86,210,0.3); cursor:pointer; display:inline-flex; align-items:center; gap:10px; transition:all 0.25s;" onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 14px 34px rgba(0,86,210,0.4)';" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 28px rgba(0,86,210,0.3)';">
                 <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
                 <span>حجز حصة تجريبية مجانية 🚀</span>
               </button>
@@ -219,7 +241,7 @@ export default class LandingView {
 
         <!-- SCREENSHOT 2: SECTION 1 (GRADIENT FEATURED CAREER BANNER DYNAMIC FROM DATABASE) -->
         <section style="width:100%; margin:0 auto; padding:16px 20px 28px 20px;">
-          <div style="background:linear-gradient(135deg, #0056D2 0%, #10b981 100%); border-radius:24px; padding:32px 24px; color:#ffffff; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,86,210,0.25);">
+          <div style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); border-radius:24px; padding:32px 24px; color:#ffffff; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,86,210,0.25);">
             
             <div class="gradient-banner-inner" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:16px;">
               <div style="max-width:440px;">
@@ -228,10 +250,10 @@ export default class LandingView {
               </div>
 
               <div id="featured-category-pills" style="display:flex; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.15); padding:6px; border-radius:30px; backdrop-filter:blur(10px);">
-                <button class="gradient-pill-btn active" data-cat="all" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:#000000; color:#ffffff; border:none; cursor:pointer;">📐 الرياضيات</button>
-                <button class="gradient-pill-btn" data-cat="فيزياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">⚡ الفيزياء</button>
-                <button class="gradient-pill-btn" data-cat="كيمياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">🧪 الكيمياء</button>
-                <button class="gradient-pill-btn" data-cat="علوم" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.85); color:#0056D2; border:none; cursor:pointer;">📖 العلوم واللغات</button>
+                <button class="gradient-pill-btn active" data-cat="all" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:#ffffff; color:#0056D2; border:none; cursor:pointer;">📐 الرياضيات</button>
+                <button class="gradient-pill-btn" data-cat="فيزياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.2); color:#ffffff; border:none; cursor:pointer;">⚡ الفيزياء</button>
+                <button class="gradient-pill-btn" data-cat="كيمياء" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.2); color:#ffffff; border:none; cursor:pointer;">🧪 الكيمياء</button>
+                <button class="gradient-pill-btn" data-cat="علوم" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:rgba(255,255,255,0.2); color:#ffffff; border:none; cursor:pointer;">📖 العلوم واللغات</button>
               </div>
             </div>
 
@@ -851,15 +873,15 @@ export default class LandingView {
         </section>
 
         <!-- CALL TO ACTION BANNER -->
-        <section class="cta-section" style="background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); color:#ffffff; padding:60px 20px; text-align:center;">
+        <section class="cta-section" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); color:#ffffff; padding:60px 20px; text-align:center;">
           <div style="max-width:850px; margin:0 auto;">
             <h2 style="font-size:2.4rem; font-weight:900; margin-bottom:16px; color:#ffffff;">جاهز للبدء وتحقيق هدفك في انطلق</h2>
             <p style="font-size:1.1rem; opacity:0.9; margin-bottom:32px; line-height:1.6;">انضم اليوم إلى آلاف الطلاب واستفد من أحدث الدورات التفاعلية والدروس المباشرة مع نخبة المعلمين.</p>
             <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-              <a href="#signup" class="btn-primary" style="background:#ffffff; color:var(--primary); padding:16px 36px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
+              <a href="#signup" class="btn-primary hero-btn-white" style="background:#ffffff; color:#0056D2; padding:16px 36px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
                 سجل حساب طالب مجاناً 🚀
               </a>
-              <a href="#login" class="btn-secondary" style="border-color:rgba(255,255,255,0.4); color:#ffffff; padding:16px 32px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
+              <a href="#login" class="btn-secondary" style="border-color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.12); color:#ffffff; padding:16px 32px; font-size:1.1rem; font-weight:800; border-radius:30px; text-decoration:none;">
                 تسجيل الدخول
               </a>
             </div>
@@ -919,18 +941,18 @@ export default class LandingView {
                     </a>
                   </li>
                   <li>
-                    <a href="#staff-login" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="shield-check" style="width:16px; height:16px;"></i> بوابة المعلمين والإدارة 🛡️
+                    <a href="#teacher-login" style="color:#10b981; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="user-check" style="width:16px; height:16px;"></i> بوابة المعلمين والأساتذة 👨‍🏫
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#admin-login" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="building-2" style="width:16px; height:16px;"></i> للمدارس والمؤسسات (لوحة الإدارة) 🏫
                     </a>
                   </li>
                   <li>
                     <a href="#teacher-apply" style="color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      👨‍🏫 انضم كمعلم أو محاضر
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#teacher-apply" style="color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      🏫 للمدارس والمؤسسات
+                      📝 انضم كمعلم أو محاضر
                     </a>
                   </li>
                   <li>
@@ -994,7 +1016,7 @@ export default class LandingView {
       </div>
 
       <!-- 📱 STICKY MOBILE CTA BAR -->
-      <div id="landing-sticky-mobile-cta" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9000; background:linear-gradient(90deg,#0056D2 0%,#4f46e5 100%); padding:12px 20px; box-shadow:0 -4px 24px rgba(0,86,210,0.35); align-items:center; justify-content:space-between; gap:12px;">
+      <div id="landing-sticky-mobile-cta" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9000; background:linear-gradient(90deg,#0056D2 0%,#1e40af 100%); padding:12px 20px; box-shadow:0 -4px 24px rgba(0,86,210,0.35); align-items:center; justify-content:space-between; gap:12px;">
         <div style="flex:1; min-width:0;">
           <div style="font-size:0.82rem; font-weight:900; color:#ffffff;">🚀 سجّل مجاناً الآن</div>
           <div style="font-size:0.72rem; color:rgba(255,255,255,0.8); font-weight:700;">انضم لآلاف الطلاب المتفوقين</div>
@@ -1501,7 +1523,7 @@ export default class LandingView {
       featuredPillsContainer.innerHTML = displayCats.map(cat => {
         const isActive = this.activeCategory === cat.value || (cat.value === "all" && this.activeCategory === "all");
         return `
-          <button class="gradient-pill-btn ${isActive ? 'active' : ''}" data-cat="${cat.value}" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:${isActive ? '#000000' : 'rgba(255,255,255,0.85)'}; color:${isActive ? '#ffffff' : '#0056D2'}; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+          <button class="gradient-pill-btn ${isActive ? 'active' : ''}" data-cat="${cat.value}" style="padding:6px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:${isActive ? '#ffffff' : 'rgba(255,255,255,0.2)'}; color:${isActive ? '#0056D2' : '#ffffff'}; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
             <i data-lucide="${cat.icon}" style="width:14px; height:14px;"></i>
             ${cat.name}
           </button>
@@ -1942,7 +1964,8 @@ export default class LandingView {
     openGroups.slice(0, 6).forEach(g => {
       const scheduleDisplay = g.scheduleText || (g.scheduleDays ? `${g.scheduleDays}${g.scheduleTime ? " " + g.scheduleTime : ""}` : "");
       const urgency    = g.availableSeats <= 3 ? "🔥" : g.availableSeats <= 7 ? "⚡" : "📚";
-      const seatsText  = `متبقي ${g.availableSeats} من ${g.maxStudents} مقعد`;
+      const seatsCountText = (g.availableSeats >= 3 && g.availableSeats <= 10) ? `${g.availableSeats} مقاعد` : `${g.availableSeats} مقعد`;
+      const seatsText  = `متبقي ${seatsCountText}`;
       const teacherText = g.teacherName ? ` مع أ/ ${g.teacherName}` : "";
       const schedText  = scheduleDisplay ? ` • ${scheduleDisplay}` : "";
       items.push({
@@ -2593,21 +2616,15 @@ export default class LandingView {
     container.className = "landing-scroll-toggle-container";
     container.innerHTML = `
       <span class="landing-scroll-tooltip" id="landing-scroll-tooltip">إلى أسفل الصفحة ⬇️</span>
-      <button id="landing-scroll-toggle-btn" class="landing-scroll-toggle-btn" type="button" aria-label="التمرير السريع" data-direction="down" title="الانتقال إلى أسفل الصفحة ⬇️">
+      <button id="landing-scroll-toggle-btn" class="landing-scroll-toggle-btn" type="button" aria-label="التمرير السريع" data-direction="down" title="الانتقال إلى أسفل الصفحة ⬇️" style="background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%);">
         <svg class="landing-scroll-progress-ring" viewBox="0 0 52 52">
-          <defs>
-            <linearGradient id="landingScrollGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#0056D2" />
-              <stop offset="100%" stop-color="#3b82f6" />
-            </linearGradient>
-          </defs>
-          <circle class="landing-scroll-ring-bg" cx="26" cy="26" r="22" />
-          <circle class="landing-scroll-ring-fill" id="landing-scroll-ring-fill" cx="26" cy="26" r="22" transform="rotate(-90 26 26)" />
+          <circle class="landing-scroll-ring-bg" cx="26" cy="26" r="22" stroke="rgba(255,255,255,0.25)" />
+          <circle class="landing-scroll-ring-fill" id="landing-scroll-ring-fill" cx="26" cy="26" r="22" stroke="#ffffff" transform="rotate(-90 26 26)" />
         </svg>
-        <div class="landing-scroll-icon-wrapper" id="landing-scroll-icon-wrapper">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"></line>
-            <polyline points="5 12 12 5 19 12"></polyline>
+        <div class="landing-scroll-icon-wrapper" id="landing-scroll-icon-wrapper" style="color:#ffffff;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="color:#ffffff;">
+            <line x1="12" y1="19" x2="12" y2="5" stroke="#ffffff"></line>
+            <polyline points="5 12 12 5 19 12" stroke="#ffffff"></polyline>
           </svg>
         </div>
       </button>

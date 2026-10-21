@@ -3,7 +3,9 @@ import { apiFetch, setAuth, state, t, renderPhoneInputGroup, renderEducationSele
 export default class AuthView {
   constructor(container, mode) {
     this.container = container;
-    this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
+    this.isTeacherMode = window.location.hash.includes("teacher-login");
+    this.isAdminMode = window.location.hash.includes("admin-login");
+    this.isStaffMode = window.location.hash.includes("staff-login") || this.isTeacherMode || this.isAdminMode;
     this.isParentMode = !this.isStaffMode && (mode === "parent" || window.location.hash.includes("parent-login"));
     this.isRegisterMode = !this.isStaffMode && !this.isParentMode && (mode === "signup" || window.location.hash.includes("signup"));
     this.showPassword = false;
@@ -11,7 +13,9 @@ export default class AuthView {
   }
 
   async render() {
-    this.isStaffMode = window.location.hash.includes("staff-login") || window.location.hash.includes("teacher-login") || window.location.hash.includes("admin-login");
+    this.isTeacherMode = window.location.hash.includes("teacher-login");
+    this.isAdminMode = window.location.hash.includes("admin-login");
+    this.isStaffMode = window.location.hash.includes("staff-login") || this.isTeacherMode || this.isAdminMode;
     this.isParentMode = !this.isStaffMode && window.location.hash.includes("parent-login");
     if (this.isStaffMode || this.isParentMode) {
       this.isRegisterMode = false;
@@ -25,21 +29,29 @@ export default class AuthView {
       return;
     }
 
-    const titleText = this.isStaffMode
-      ? "بوابة المعلمين والإدارة 🛡️"
-      : this.isParentMode
-        ? "بوابة أولياء الأمور 👨‍👩‍👧"
-        : this.isRegisterMode
-          ? "إنشاء حساب طالب جديد ✨"
-          : "تسجيل دخول الطلاب 👨‍🎓";
+    const titleText = this.isTeacherMode
+      ? "بوابة المعلمين والأساتذة 👨‍🏫"
+      : this.isAdminMode
+        ? "بوابة المدارس والمؤسسات والإدارة 🏫🛡️"
+        : this.isStaffMode
+          ? "بوابة المعلمين والإدارة 🛡️"
+          : this.isParentMode
+            ? "بوابة أولياء الأمور 👨‍👩‍👧"
+            : this.isRegisterMode
+              ? "إنشاء حساب طالب جديد ✨"
+              : "تسجيل دخول الطلاب 👨‍🎓";
 
-    const descText = this.isStaffMode
-      ? "تسجيل الدخول الموحد للأساتذة والمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
-      : this.isParentMode
-        ? "سجّل دخولك لمتابعة مستوى أبنائك، الحصص المباشرة، تقارير الحضور، والدرجات الدورية."
-        : this.isRegisterMode
-          ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
-          : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
+    const descText = this.isTeacherMode
+      ? "تسجيل دخول السادة المعلمين والأساتذة لإدارة الحصص، المجموعات التفاعلية، ومتابعة الطلاب."
+      : this.isAdminMode
+        ? "تسجيل دخول مدراء المدارس، المشرفين، وإدارة المنصة للتحكم الشامل ومتابعة التقارير المالية والإدارية."
+        : this.isStaffMode
+          ? "تسجيل الدخول الموحد للأساتذة والمعلمين والمشرفين لإدارة الكورسات والحصص ولوحة التحكم"
+          : this.isParentMode
+            ? "سجّل دخولك لمتابعة مستوى أبنائك، الحصص المباشرة، تقارير الحضور، والدرجات الدورية."
+            : this.isRegisterMode
+              ? "انضم الآن إلى أكاديمية انطلق التعليمية وابدأ رحلة التفوق"
+              : "مرحباً بك يا بطل! أدخل بريدك الإلكتروني وكلمة المرور لمتابعة دروسك وحصصك";
 
     this.container.innerHTML = `
       <div class="auth-page-wrapper">
@@ -124,10 +136,14 @@ export default class AuthView {
 
             <!-- Navigation Switcher Tabs -->
             ${this.isStaffMode ? `
-              <div class="auth-tabs-nav" style="grid-template-columns: 1fr;">
-                <button class="auth-tab-btn active" style="cursor:default;">
-                  <i data-lucide="shield-check" style="width:16px; height:16px; color:#10b981;"></i>
-                  <span>بوابة المعلمين والإدارة</span>
+              <div class="auth-tabs-nav" style="display:flex; gap:6px;">
+                <button id="tab-teacher" class="auth-tab-btn ${this.isTeacherMode || (!this.isAdminMode && !this.isTeacherMode) ? 'active' : ''}" style="flex:1; justify-content:center;">
+                  <i data-lucide="user-check" style="width:15px; height:15px; color:#10b981;"></i>
+                  <span>المعلمين والأساتذة</span>
+                </button>
+                <button id="tab-admin" class="auth-tab-btn ${this.isAdminMode ? 'active' : ''}" style="flex:1; justify-content:center;">
+                  <i data-lucide="building-2" style="width:15px; height:15px; color:#8b5cf6;"></i>
+                  <span>المدارس والإدارة</span>
                 </button>
               </div>
             ` : `
@@ -312,7 +328,7 @@ export default class AuthView {
           </div>
 
           <button type="submit" class="btn-primary auth-btn-submit" id="auth-submit-btn">
-            <span>${this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span>
+            <span>${this.isTeacherMode ? "دخول المعلمين والأساتذة 👨‍🏫" : this.isAdminMode ? "دخول الإدارة والمؤسسات 🏫" : this.isStaffMode ? "دخول المعلمين والإدارة 🛡️" : "تسجيل دخول الطالب 🚀"}</span>
             <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>
           </button>
         </form>
@@ -321,6 +337,23 @@ export default class AuthView {
   }
 
   bindEvents() {
+    const tabTeacher = document.getElementById("tab-teacher");
+    const tabAdmin = document.getElementById("tab-admin");
+
+    if (tabTeacher) {
+      tabTeacher.addEventListener("click", () => {
+        window.location.hash = "#teacher-login";
+        this.render();
+      });
+    }
+
+    if (tabAdmin) {
+      tabAdmin.addEventListener("click", () => {
+        window.location.hash = "#admin-login";
+        this.render();
+      });
+    }
+
     const tabLogin = document.getElementById("tab-login");
     const tabParent = document.getElementById("tab-parent");
     const tabSignup = document.getElementById("tab-signup");

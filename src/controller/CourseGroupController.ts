@@ -1112,10 +1112,16 @@ export class CourseGroupController {
             enrollmentId: e.id,
             studentId: e.student?.id || null,
             name: e.student?.name || "طالب",
+            avatar: e.student?.avatar || "",
             email: isAdmin ? (e.student?.email || "") : undefined,
             phone: isAdmin ? (e.student?.phone || e.payment?.providerTransactionId || "") : undefined,
             status: e.status,
             progress: e.progress || 0,
+            paymentStatus: e.paymentStatus || (e.payment?.status === "SUCCESS" ? "PAID" : "UNPAID"),
+            paidAmount: e.paidAmount || (e.payment?.amount || 0),
+            remainingAmount: e.remainingAmount || 0,
+            dueDate: e.dueDate || null,
+            installmentHistory: e.installmentHistory || [],
             payment: isAdmin && e.payment ? {
               id: e.payment.id,
               amount: e.payment.amount,
@@ -1331,6 +1337,11 @@ export class CourseGroupController {
       const { 
         studentId, 
         amount, 
+        totalPrice,
+        paymentPlan,
+        remainingAmount,
+        dueDate,
+        discountReason,
         provider, 
         providerTransactionId, 
         receiptUrl, 
@@ -1405,6 +1416,43 @@ export class CourseGroupController {
 
       enrollment.status = "active";
 
+      const paidAmount = (amount !== undefined && Number(amount) > 0) ? Number(amount) : 0;
+      const groupExpectedPrice = totalPrice 
+        ? Number(totalPrice) 
+        : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : (group.studentHourlyRate ? group.studentHourlyRate * 8 : 320)));
+
+      let remAmount = 0;
+      let finalPaymentStatus: "PAID" | "PARTIAL" | "EXEMPT" = "PAID";
+
+      if (paymentPlan === "PARTIAL") {
+        remAmount = remainingAmount !== undefined ? Number(remainingAmount) : Math.max(0, groupExpectedPrice - paidAmount);
+        finalPaymentStatus = remAmount > 0 ? "PARTIAL" : "PAID";
+      } else if (paymentPlan === "DISCOUNT") {
+        remAmount = 0;
+        finalPaymentStatus = "PAID";
+      } else {
+        // FULL
+        remAmount = 0;
+        finalPaymentStatus = "PAID";
+      }
+
+      enrollment.paymentStatus = finalPaymentStatus;
+      enrollment.paidAmount = paidAmount;
+      enrollment.remainingAmount = remAmount;
+      enrollment.dueDate = (finalPaymentStatus === "PARTIAL" && dueDate) ? String(dueDate) : null;
+
+      const initialHistoryItem = {
+        amount: paidAmount,
+        paidAt: new Date().toISOString(),
+        receiptUrl: receiptUrl || undefined,
+        provider: provider || "manual",
+        providerTransactionId: providerTransactionId || undefined,
+        notes: notes || (paymentPlan === "PARTIAL" 
+          ? `قسط أول / دفعة مقدمة (متبقي: ${remAmount} ج.م)` 
+          : (paymentPlan === "DISCOUNT" ? `خصم معتمد: ${discountReason || 'سداد معتمد'}` : "سداد اشتراك المجموعة"))
+      };
+      enrollment.installmentHistory = [initialHistoryItem];
+
       // Handle Payment Record (Mandatory for closed groups, optional if entered for open groups)
       const hasPaymentData = isClosed || !!receiptUrl || (amount !== undefined && Number(amount) > 0);
       if (hasPaymentData) {
@@ -1413,9 +1461,12 @@ export class CourseGroupController {
           payment = new Payment();
         }
 
-        const calculatedAmount = (amount !== undefined && Number(amount) > 0) 
-          ? Number(amount) 
-          : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : (group.studentHourlyRate ? group.studentHourlyRate * 8 : 320)));
+        const calculatedAmount = paidAmount > 0 ? paidAmount : groupExpectedPrice;
+        const defaultPaymentNotes = paymentPlan === "PARTIAL"
+          ? `قسط أول (${paidAmount} ج.م) - متبقي: ${remAmount} ج.م`
+          : (paymentPlan === "DISCOUNT"
+            ? `خصم معتمد: ${discountReason || 'سداد معتمد'}`
+            : (isClosed ? "إضافة استثنائية لمجموعة مغلقة مع إيصال معتمد بواسطة الإدارة" : "تسجيل بواسطة الإدارة"));
 
         payment.student = student;
         payment.amount = calculatedAmount;
@@ -1424,7 +1475,7 @@ export class CourseGroupController {
         payment.provider = provider || "manual";
         if (providerTransactionId !== undefined) payment.providerTransactionId = providerTransactionId;
         if (receiptUrl) payment.receiptUrl = receiptUrl;
-        payment.notes = notes || (isClosed ? "إضافة استثنائية لمجموعة مغلقة مع إيصال معتمد بواسطة الإدارة" : "تسجيل بواسطة الإدارة");
+        payment.notes = notes || defaultPaymentNotes;
         payment.status = "SUCCESS";
 
         const savedPayment = await paymentRepo.save(payment);
@@ -1676,6 +1727,109 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error removing student from group:", err);
       return res.status(500).json({ error: err.message || "فشل إزالة الطالب من المجموعة." });
+    }
+  }
+
+  // POST /admin/groups/:id/students/:studentId/record-installment
+  static async recordInstallmentPayment(req: AuthRequest, res: Response) {
+    try {
+      const { id, studentId } = req.params;
+      const { amount, provider, providerTransactionId, receiptUrl, notes } = req.body || {};
+
+      if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        return res.status(400).json({ error: "يلزم إدخال مبلغ القسط المسدد بشكل صحيح." });
+      }
+
+      if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
+        return res.status(400).json({ error: "يلزم إرفاق صورة إيصال سداد القسط المتبقي." });
+      }
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+
+      const group = await groupRepo.findOne({ where: { id } });
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { student: { id: studentId }, group: { id } },
+        relations: ["student", "payment", "group"]
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "الطالب غير مقيد في هذه المجموعة." });
+      }
+
+      const installmentNum = (enrollment.installmentHistory?.length || 0) + 1;
+      const addAmount = Number(amount);
+      const prevPaid = enrollment.paidAmount || (enrollment.payment?.amount || 0);
+      const prevRemaining = enrollment.remainingAmount || 0;
+      const newPaid = prevPaid + addAmount;
+      const newRemaining = Math.max(0, prevRemaining - addAmount);
+
+      enrollment.paidAmount = newPaid;
+      enrollment.remainingAmount = newRemaining;
+      if (newRemaining <= 0) {
+        enrollment.paymentStatus = "PAID";
+        enrollment.dueDate = null;
+      } else {
+        enrollment.paymentStatus = "PARTIAL";
+      }
+
+      const history = Array.isArray(enrollment.installmentHistory) ? [...enrollment.installmentHistory] : [];
+      history.push({
+        amount: addAmount,
+        paidAt: new Date().toISOString(),
+        receiptUrl,
+        provider: provider || "manual",
+        providerTransactionId,
+        notes: notes || `سداد القسط رقم ${installmentNum}`
+      });
+      enrollment.installmentHistory = history;
+
+      // Create Payment record for this installment
+      const payment = new Payment();
+      payment.student = enrollment.student;
+      payment.amount = addAmount;
+      payment.currency = "EGP";
+      payment.type = "GROUP_ENROLLMENT";
+      payment.provider = provider || "manual";
+      if (providerTransactionId) payment.providerTransactionId = providerTransactionId;
+      payment.receiptUrl = receiptUrl;
+      payment.notes = notes || `سداد قسط (${addAmount} ج.م) لمجموعة "${group.name}". متبقي: ${newRemaining} ج.م`;
+      payment.status = "SUCCESS";
+      payment.courseEnrollment = enrollment;
+
+      await paymentRepo.save(payment);
+      await enrollmentRepo.save(enrollment);
+
+      // Notify student
+      try {
+        await NotificationController.createNotification(
+          enrollment.student.id,
+          "تم تأكيد استلام سداد القسط بنجاح! 🧾🎉",
+          `تم توثيق واعتماد سداد مبلغ (${addAmount} ج.م) لمجموعة "${group.name}". ${newRemaining <= 0 ? "تهانينا! تم سداد كامل الرسوم بنجاح ✅" : `المتبقي: ${newRemaining} ج.م.`}`,
+          "success",
+          `/student/groups`
+        );
+      } catch (e) { }
+
+      return res.status(200).json({
+        message: newRemaining <= 0 ? "تم سداد كامل المبلغ واعتماد الإيصال بنجاح! 🎉✅" : `تم تسجيل سداد القسط (${addAmount} ج.م) بنجاح. المتبقي: ${newRemaining} ج.م.`,
+        enrollment: {
+          id: enrollment.id,
+          paymentStatus: enrollment.paymentStatus,
+          paidAmount: enrollment.paidAmount,
+          remainingAmount: enrollment.remainingAmount,
+          dueDate: enrollment.dueDate,
+          installmentHistory: enrollment.installmentHistory
+        }
+      });
+    } catch (err: any) {
+      console.error("Error in recordInstallmentPayment:", err);
+      return res.status(500).json({ error: "فشل تسجيل سداد القسط." });
     }
   }
 
