@@ -294,6 +294,9 @@ class SessionController {
                     minute: "2-digit"
                 });
             }
+            if (session.group?.scheduleTime) {
+                timeStr = session.group.scheduleTime;
+            }
             const sessionTitle = session.title || session.group?.name || session.course?.title || "حصة دراسية مباشرة";
             const studentOrGroupName = session.student?.name || session.group?.name || session.course?.title || "المجموعة الدراسية";
             // Teacher WhatsApp message

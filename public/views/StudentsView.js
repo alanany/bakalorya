@@ -132,8 +132,11 @@ export default class StudentsView {
 
     this.students.forEach(s => {
       if (s.phone) phoneCount++;
-      if (s.enrollments) {
-        activeEnrollments += s.enrollments.filter(e => e.status === "active").length;
+      if (s.enrollments && Array.isArray(s.enrollments)) {
+        activeEnrollments += s.enrollments.filter(e => {
+          const st = (e.status || 'active').toLowerCase();
+          return st === "active" || st === "confirmed";
+        }).length;
       }
     });
 
@@ -154,7 +157,10 @@ export default class StudentsView {
       const emailMatch = s.email?.toLowerCase().includes(q);
       const phoneMatch = s.phone?.toLowerCase().includes(q);
       const locationMatch = s.location?.toLowerCase().includes(q);
-      const courseMatch = s.enrollments?.some(e => e.course?.title?.toLowerCase().includes(q));
+      const courseMatch = s.enrollments?.some(e => 
+        e.course?.title?.toLowerCase().includes(q) ||
+        e.group?.name?.toLowerCase().includes(q)
+      );
       return nameMatch || emailMatch || phoneMatch || locationMatch || courseMatch;
     });
   }
@@ -217,13 +223,15 @@ export default class StudentsView {
     // Render course badges and toggle ban
     let coursesContent = '<span style="color:var(--text-muted); font-size:0.8rem;">غير مسجل بدورات</span>';
     if (student.enrollments && student.enrollments.length > 0) {
-      coursesContent = student.enrollments.map(enroll => {
-        if (!enroll || !enroll.course) return '';
-        const isBanned = enroll.status === "banned";
+      const renderedBadges = student.enrollments.map(enroll => {
+        if (!enroll) return '';
+        const courseTitle = enroll.course?.title || enroll.group?.name || 'دورة تعليمية';
+        const isBanned = (enroll.status || '').toLowerCase() === "banned";
+        const courseId = enroll.course?.id || enroll.group?.id || '';
         return `
           <div style="display:inline-flex; align-items:center; gap:8px; background:var(--bg-app); border:1px solid ${isBanned ? 'var(--error)' : 'var(--border-color)'}; padding:4px 10px; border-radius:20px; font-size:0.8rem; margin:2px 0;">
             <span style="font-weight:700; color:${isBanned ? 'var(--error)' : 'var(--text-main)'};">
-              📖 ${enroll.course.title}
+              📖 ${courseTitle}
             </span>
             ${isBanned ? `<span style="background:var(--error); color:#fff; font-size:0.68rem; padding:1px 6px; border-radius:10px;">محظور</span>` : ''}
             
@@ -232,14 +240,18 @@ export default class StudentsView {
                 <i data-lucide="${isBanned ? 'check-circle-2' : 'slash'}" style="width:14px; height:14px;"></i>
               </button>
               ${state.user?.role === 'admin' ? `
-                <button class="remove-enrollment-btn" data-student-id="${student.id}" data-course-id="${enroll.course.id}" style="background:none; border:none; cursor:pointer; color:var(--error); padding:2px;" title="إزالة من هذه الدورة">
+                <button class="remove-enrollment-btn" data-student-id="${student.id}" data-course-id="${courseId}" style="background:none; border:none; cursor:pointer; color:var(--error); padding:2px;" title="إزالة من هذه الدورة">
                   <i data-lucide="x-circle" style="width:14px; height:14px;"></i>
                 </button>
               ` : ''}
             </div>
           </div>
         `;
-      }).join("");
+      }).filter(Boolean);
+
+      if (renderedBadges.length > 0) {
+        coursesContent = renderedBadges.join("");
+      }
     }
 
     return `

@@ -204,6 +204,7 @@ router.get("/admin/all-groups", auth_1.authMiddleware, (0, auth_1.requireRole)([
 router.post("/admin/groups/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.approveGroup);
 router.post("/admin/groups/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.rejectGroup);
 router.post("/admin/groups/:id/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.addStudentToGroup);
+router.post("/admin/groups/:id/students/:studentId/record-installment", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.recordInstallmentPayment);
 router.post("/admin/groups/:id/remove-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.startTeachingAndGenerateSessions);
 router.post("/admin/groups/:id/renew-cycle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor", "teacher"]), CourseGroupController_1.CourseGroupController.renewGroupCycle);

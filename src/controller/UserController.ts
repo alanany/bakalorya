@@ -4,8 +4,11 @@ import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
 import { Enrollment } from "../entity/Enrollment";
 import { Course } from "../entity/Course";
+import { CourseGroup } from "../entity/CourseGroup";
 import { Session } from "../entity/Session";
 import { Subscription } from "../entity/Subscription";
+import { SessionAttendance } from "../entity/SessionAttendance";
+import { AssignmentSubmission } from "../entity/AssignmentSubmission";
 import { AuthRequest } from "../middleware/auth";
 import { 
   createWhatsAppNotificationPayload, 
@@ -70,70 +73,225 @@ export class UserController {
       const userRepo = AppDataSource.getRepository(User);
       const enrollRepo = AppDataSource.getRepository(Enrollment);
       const courseRepo = AppDataSource.getRepository(Course);
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
       const sessionRepo = AppDataSource.getRepository(Session);
       const subRepo = AppDataSource.getRepository(Subscription);
+      const attendanceRepo = AppDataSource.getRepository(SessionAttendance);
+      const submissionRepo = AppDataSource.getRepository(AssignmentSubmission);
 
-      // Fetch all students registered in platform
-      const allStudents = await userRepo.find({
-        where: { role: "student" },
-        select: ["id", "name", "email", "role", "avatar", "location", "education", "phone", "parentPhone", "notes", "status", "isBlocked", "createdAt"],
-        order: { createdAt: "DESC" }
-      });
-
-      // Fetch all enrollments with relations
+      // Fetch all enrollments with full relations
       const allEnrollments = await enrollRepo.find({
-        relations: ["student", "course"]
+        relations: [
+          "student",
+          "course",
+          "course.teacher",
+          "group",
+          "group.teacher",
+          "group.course",
+          "group.course.teacher"
+        ]
       });
 
-      let teacherCourseIds: string[] = [];
-      let teacherSessionStudentIds: Set<string> = new Set();
-      let teacherSubStudentIds: Set<string> = new Set();
+      const teacherCourseIds = new Set<string>();
+      const teacherGroupIds = new Set<string>();
+      const teacherSubStudentMap = new Map<string, string>(); // studentId -> plan/sub title
+      const teacherSessionStudentIds = new Set<string>();
+      const teacherEnrolledStudentIds = new Set<string>();
 
       if (req.user.role === "teacher") {
-        const teacherCourses = await courseRepo.find({
-          where: { teacher: { id: req.user.id } }
-        });
-        teacherCourseIds = teacherCourses.map(c => String(c.id));
+        const teacherId = String(req.user.id);
 
-        const teacherSessions = await sessionRepo.find({
-          where: { teacher: { id: req.user.id } },
-          relations: ["student"]
+        // 1. Courses taught by this teacher
+        const teacherCourses = await courseRepo
+          .createQueryBuilder("course")
+          .leftJoin("course.teacher", "teacher")
+          .where("teacher.id = :teacherId", { teacherId })
+          .getMany();
+        teacherCourses.forEach(c => teacherCourseIds.add(String(c.id)));
+
+        // 2. Groups taught by this teacher directly OR via course
+        const teacherGroups = await groupRepo
+          .createQueryBuilder("group")
+          .leftJoinAndSelect("group.course", "course")
+          .leftJoin("group.teacher", "teacher")
+          .leftJoin("course.teacher", "courseTeacher")
+          .where("teacher.id = :teacherId OR courseTeacher.id = :teacherId", { teacherId })
+          .getMany();
+
+        teacherGroups.forEach(g => {
+          teacherGroupIds.add(String(g.id));
+          if (g.course?.id) teacherCourseIds.add(String(g.course.id));
         });
+
+        // 3. Collect student IDs from enrollments belonging to this teacher
+        allEnrollments.forEach(e => {
+          if (!e.student?.id) return;
+          const matchesCourse = e.course && (
+            teacherCourseIds.has(String(e.course.id)) ||
+            (e.course.teacher && String(e.course.teacher.id) === teacherId)
+          );
+          const matchesGroup = e.group && (
+            teacherGroupIds.has(String(e.group.id)) ||
+            (e.group.teacher && String(e.group.teacher.id) === teacherId) ||
+            (e.group.course?.teacher && String(e.group.course.teacher.id) === teacherId)
+          );
+
+          if (matchesCourse || matchesGroup) {
+            teacherEnrolledStudentIds.add(String(e.student.id));
+          }
+        });
+
+        // 4. Subscriptions assigned to this teacher
+        const teacherSubs = await subRepo
+          .createQueryBuilder("sub")
+          .leftJoinAndSelect("sub.student", "student")
+          .leftJoinAndSelect("sub.plan", "plan")
+          .leftJoin("sub.teacher", "teacher")
+          .where("teacher.id = :teacherId", { teacherId })
+          .getMany();
+
+        teacherSubs.forEach(sub => {
+          if (sub.student?.id) {
+            const title = sub.plan?.name ? `اشتراك باقة: ${sub.plan.name}` : "اشتراك حصص بث مباشر وتدريب خاص 🎯";
+            teacherSubStudentMap.set(String(sub.student.id), title);
+          }
+        });
+
+        // 5. Sessions belonging to this teacher (1-on-1, subscription, group sessions)
+        const teacherSessions = await sessionRepo
+          .createQueryBuilder("session")
+          .leftJoinAndSelect("session.student", "student")
+          .leftJoinAndSelect("session.subscription", "subscription")
+          .leftJoinAndSelect("subscription.student", "subStudent")
+          .leftJoinAndSelect("session.group", "group")
+          .leftJoin("group.teacher", "groupTeacher")
+          .leftJoin("session.teacher", "teacher")
+          .leftJoin("session.course", "course")
+          .leftJoin("course.teacher", "courseTeacher")
+          .where("teacher.id = :teacherId OR groupTeacher.id = :teacherId OR courseTeacher.id = :teacherId", { teacherId })
+          .getMany();
+
         teacherSessions.forEach(s => {
           if (s.student?.id) teacherSessionStudentIds.add(String(s.student.id));
+          if (s.subscription?.student?.id) teacherSessionStudentIds.add(String(s.subscription.student.id));
         });
 
-        const teacherSubs = await subRepo.find({
-          where: { teacher: { id: req.user.id } },
-          relations: ["student", "plan"]
-        });
-        teacherSubs.forEach(sub => {
-          if (sub.student?.id) teacherSubStudentIds.add(String(sub.student.id));
-        });
+        // 6. Session attendances
+        try {
+          const attendances = await attendanceRepo
+            .createQueryBuilder("att")
+            .leftJoinAndSelect("att.session", "session")
+            .leftJoin("session.teacher", "teacher")
+            .leftJoin("session.group", "group")
+            .leftJoin("group.teacher", "groupTeacher")
+            .leftJoinAndSelect("att.user", "user")
+            .where("(teacher.id = :teacherId OR groupTeacher.id = :teacherId) AND user.role = 'student'", { teacherId })
+            .getMany();
+
+          attendances.forEach(a => {
+            if (a.user?.id) teacherSessionStudentIds.add(String(a.user.id));
+          });
+        } catch (attErr) {
+          console.warn("Attendance fetch error in getStudents:", attErr);
+        }
+
+        // 7. Assignment submissions
+        try {
+          const submissions = await submissionRepo
+            .createQueryBuilder("subm")
+            .leftJoinAndSelect("subm.assignment", "assignment")
+            .leftJoin("assignment.teacher", "teacher")
+            .leftJoinAndSelect("subm.student", "student")
+            .where("teacher.id = :teacherId", { teacherId })
+            .getMany();
+
+          submissions.forEach(sub => {
+            if (sub.student?.id) teacherSessionStudentIds.add(String(sub.student.id));
+          });
+        } catch (submErr) {
+          console.warn("Submissions fetch error in getStudents:", submErr);
+        }
       }
 
-      let resultStudents = allStudents.map(s => {
+      // Fetch students list
+      let candidateStudents: User[] = [];
+
+      if (req.user.role === "admin") {
+        candidateStudents = await userRepo
+          .createQueryBuilder("user")
+          .where("LOWER(user.role) = 'student' OR user.role IS NULL")
+          .orderBy("user.createdAt", "DESC")
+          .getMany();
+      } else {
+        // Teacher mode: union of all detected student IDs
+        const relevantStudentIds = new Set<string>([
+          ...teacherEnrolledStudentIds,
+          ...teacherSubStudentMap.keys(),
+          ...teacherSessionStudentIds
+        ]);
+
+        if (relevantStudentIds.size === 0) {
+          return res.json([]);
+        }
+
+        const idsArray = Array.from(relevantStudentIds);
+        candidateStudents = await userRepo
+          .createQueryBuilder("u")
+          .where("u.id IN (:...ids)", { ids: idsArray })
+          .orderBy("u.createdAt", "DESC")
+          .getMany();
+      }
+
+      const resultStudents = candidateStudents.map(s => {
+        const studentIdStr = String(s.id);
         const sEnrollments = allEnrollments
           .filter(e => {
-            if (!e.student || String(e.student.id) !== String(s.id)) return false;
+            if (!e.student || String(e.student.id) !== studentIdStr) return false;
             if (req.user?.role === "admin") return true;
-            return e.course && teacherCourseIds.includes(String(e.course.id));
-          })
-          .map(e => ({
-            id: e.id,
-            status: e.status,
-            course: e.course ? { id: e.course.id, title: e.course.title } : { id: "", title: "دورة تعليمية" }
-          }));
 
-        const isSessionStudent = teacherSessionStudentIds.has(String(s.id));
-        const isSubStudent = teacherSubStudentIds.has(String(s.id));
+            const matchesCourse = e.course && (
+              teacherCourseIds.has(String(e.course.id)) ||
+              (e.course.teacher && String(e.course.teacher.id) === String(req.user!.id))
+            );
+            const matchesGroup = e.group && (
+              teacherGroupIds.has(String(e.group.id)) ||
+              (e.group.teacher && String(e.group.teacher.id) === String(req.user!.id)) ||
+              (e.group.course?.teacher && String(e.group.course.teacher.id) === String(req.user!.id))
+            );
+
+            return matchesCourse || matchesGroup;
+          })
+          .map(e => {
+            let title = "دورة تعليمية";
+            let cId = e.course?.id || e.group?.id || "";
+
+            if (e.course?.title && e.group?.name) {
+              title = `${e.course.title} (${e.group.name})`;
+            } else if (e.group?.name) {
+              title = `مجموعة: ${e.group.name}`;
+            } else if (e.course?.title) {
+              title = e.course.title;
+            }
+
+            return {
+              id: e.id,
+              status: e.status || "active",
+              course: { id: cId, title },
+              group: e.group ? { id: e.group.id, name: e.group.name } : null
+            };
+          });
+
+        const isSessionStudent = teacherSessionStudentIds.has(studentIdStr);
+        const isSubStudent = teacherSubStudentMap.has(studentIdStr);
 
         // If student has a session or subscription with teacher, ensure they have at least 1 descriptor
         if (req.user?.role === "teacher" && sEnrollments.length === 0 && (isSessionStudent || isSubStudent)) {
+          const desc = teacherSubStudentMap.get(studentIdStr) || "اشتراك حصص بث مباشر وتدريب خاص 🎯";
           sEnrollments.push({
             id: `sub-${s.id}`,
             status: "active",
-            course: { id: "", title: "اشتراك حصص بث مباشر وتدريب خاص 🎯" }
+            course: { id: "", title: desc },
+            group: null
           });
         }
 
@@ -156,13 +314,6 @@ export class UserController {
         };
       });
 
-      if (req.user?.role === "teacher") {
-        // Return students enrolled in teacher's courses OR assigned via sessions/subscriptions
-        resultStudents = resultStudents.filter(s =>
-          (s.enrollments && s.enrollments.length > 0) || s.hasSessionAssignment
-        );
-      }
-
       return res.json(resultStudents);
     } catch (error) {
       console.error("Error fetching students:", error);
@@ -179,18 +330,22 @@ export class UserController {
       const { enrollmentId } = req.params;
       const { status } = req.body; // "active" or "banned"
 
-      const enrollmentRepository = AppDataSource.getRepository("Enrollment");
+      const enrollmentRepository = AppDataSource.getRepository(Enrollment);
       const enrollment = await enrollmentRepository.findOne({
         where: { id: enrollmentId },
-        relations: ["course", "course.teacher", "student"]
-      }) as any;
+        relations: ["course", "course.teacher", "group", "group.teacher", "student"]
+      });
 
       if (!enrollment) {
         return res.status(404).json({ error: "Enrollment not found" });
       }
 
-      if (req.user.role === "teacher" && enrollment.course.teacher.id !== req.user.id) {
-        return res.status(403).json({ error: "You do not teach this course" });
+      if (req.user.role === "teacher") {
+        const isCourseTeacher = enrollment.course?.teacher && String(enrollment.course.teacher.id) === String(req.user.id);
+        const isGroupTeacher = enrollment.group?.teacher && String(enrollment.group.teacher.id) === String(req.user.id);
+        if (!isCourseTeacher && !isGroupTeacher) {
+          return res.status(403).json({ error: "You do not teach this course or group" });
+        }
       }
 
       enrollment.status = status;
@@ -198,10 +353,12 @@ export class UserController {
 
       let whatsappNotification: any = null;
       if (status === "active" && enrollment.student?.phone) {
+        const title = enrollment.course?.title || enrollment.group?.name || "الدورة التعليمية";
+        const teacherName = enrollment.course?.teacher?.name || enrollment.group?.teacher?.name;
         const msg = buildEnrollmentAcceptedMessage(
           enrollment.student.name,
-          enrollment.course?.title || "الدورة التعليمية",
-          enrollment.course?.teacher?.name
+          title,
+          teacherName
         );
         whatsappNotification = createWhatsAppNotificationPayload(enrollment.student.phone, msg);
       }

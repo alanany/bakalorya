@@ -27,6 +27,11 @@ let Enrollment = class Enrollment {
     completedLessonObjectives; // { [lessonId: string]: string[] }
     activitySubmissions; // { [lessonId: string]: Array<{ id: string, fileName: string, fileUrl: string, uploadedAt: string }> }
     payment; // Linked payment/receipt for this enrollment
+    paymentStatus;
+    paidAmount;
+    remainingAmount;
+    dueDate;
+    installmentHistory;
     createdAt;
     updatedAt;
 };
@@ -76,6 +81,26 @@ __decorate([
     (0, typeorm_1.JoinColumn)(),
     __metadata("design:type", Payment_1.Payment)
 ], Enrollment.prototype, "payment", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", length: 50, default: "PAID" }),
+    __metadata("design:type", String)
+], Enrollment.prototype, "paymentStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "float", default: 0 }),
+    __metadata("design:type", Number)
+], Enrollment.prototype, "paidAmount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "float", default: 0 }),
+    __metadata("design:type", Number)
+], Enrollment.prototype, "remainingAmount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "dueDate", void 0);
+__decorate([
+    (0, typeorm_1.Column)("simple-json", { nullable: true }),
+    __metadata("design:type", Array)
+], Enrollment.prototype, "installmentHistory", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

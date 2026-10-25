@@ -64,8 +64,24 @@ export default class TeacherView {
       }
 
       const totalCourses = this.courses.length;
-      const upcomingSessions = this.sessions.filter(s => s.status === "scheduled").length;
-      const activeStudentsCount = students ? students.length : 0;
+      // Compute distinct active students across all teacher sources (users/students API, groups, subscriptions, private sessions)
+      const studentIdsSet = new Set();
+      if (Array.isArray(students)) {
+        students.forEach(s => { if (s && s.id) studentIdsSet.add(String(s.id)); });
+      }
+      (this.groups || []).forEach(g => {
+        if (Array.isArray(g.students)) {
+          g.students.forEach(st => { if (st && st.id) studentIdsSet.add(String(st.id)); });
+        }
+      });
+      (this.assignedSubscriptions || []).forEach(sub => {
+        if (sub.student?.id) studentIdsSet.add(String(sub.student.id));
+      });
+      (this.privateSessions || []).forEach(ps => {
+        if (ps.student?.id) studentIdsSet.add(String(ps.student.id));
+        if (ps.subscription?.student?.id) studentIdsSet.add(String(ps.subscription.student.id));
+      });
+      const activeStudentsCount = studentIdsSet.size > 0 ? studentIdsSet.size : (students ? students.length : 0);
       const filteredSessions = this.filterSessions(this.sessions);
       this.enrollmentRequests = requests || [];
       const pendingEarnings = earnings?.stats?.pendingAmount || 0;
