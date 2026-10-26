@@ -21,7 +21,7 @@ export class AssignmentController {
                 const enrollments = await enrollmentRepo.find({ where: { student: { id: userId } }, relations: ["course", "group"] });
                 const courseIds = enrollments.map(e => e.course?.id).filter(Boolean);
                 const groupIds = enrollments.map(e => e.group?.id).filter(Boolean);
-                
+
                 if (courseIds.length === 0) return res.json([]);
 
                 // Fetch assignments for enrolled courses with student's submissions
@@ -113,7 +113,7 @@ export class AssignmentController {
                     .leftJoinAndSelect("assignment.course", "course")
                     .leftJoinAndSelect("assignment.lesson", "lesson")
                     .leftJoinAndSelect("assignment.group", "group");
-                
+
                 if (user.role === 'teacher') {
                     query = query
                         .leftJoin("course.teacher", "courseTeacher")
@@ -147,7 +147,7 @@ export class AssignmentController {
             const { title, description, type, questions, dueDate, courseId, lessonId, groupId } = req.body;
             const courseRepo = AppDataSource.getRepository(Course);
             const course = await courseRepo.findOne({ where: { id: courseId } });
-            
+
             if (!course) return res.status(404).json({ error: "Course not found" });
 
             const assignment = new Assignment();
@@ -208,24 +208,24 @@ export class AssignmentController {
 
             // Notify enrolled students
             try {
-              const enrollments = await AppDataSource.getRepository(Enrollment).find({
-                where: { course: { id: courseId }, status: "active" },
-                relations: ["student"]
-              });
-              const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("ar-EG") : null;
-              for (const enr of enrollments) {
-                if (enr.student) {
-                  await NotificationController.createNotification(
-                    enr.student.id,
-                    `واجب دراسي جديد 📝`,
-                    `تم إضافة واجب جديد بعنوان "${title}" في دورة "${course.title}". ${dueDateStr ? 'موعد التسليم: ' + dueDateStr : ''}`,
-                    "info",
-                    "#assignments"
-                  );
+                const enrollments = await AppDataSource.getRepository(Enrollment).find({
+                    where: { course: { id: courseId }, status: "active" },
+                    relations: ["student"]
+                });
+                const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("ar-EG") : null;
+                for (const enr of enrollments) {
+                    if (enr.student) {
+                        await NotificationController.createNotification(
+                            enr.student.id,
+                            `واجب دراسي جديد 📝`,
+                            `تم إضافة واجب جديد بعنوان "${title}" في دورة "${course.title}". ${dueDateStr ? 'موعد التسليم: ' + dueDateStr : ''}`,
+                            "info",
+                            "#assignments"
+                        );
+                    }
                 }
-              }
             } catch (notifErr) {
-              console.error("فشل إشعار الطلاب بواجب جديد:", notifErr);
+                console.error("فشل إشعار الطلاب بواجب جديد:", notifErr);
             }
 
             res.status(201).json(assignment);
@@ -292,9 +292,9 @@ export class AssignmentController {
                         // Automated grading
                         const correctOptions = qDef?.options?.filter((o: any) => o.isCorrect) || [];
                         const correctIds = correctOptions.map((o: any) => String(o.id));
-                        
+
                         // Check if single or multiple selected
-                        const selectedIds = ans.selectedOptionIds && Array.isArray(ans.selectedOptionIds) 
+                        const selectedIds = ans.selectedOptionIds && Array.isArray(ans.selectedOptionIds)
                             ? ans.selectedOptionIds.map(String)
                             : ans.selectedOptionId ? [String(ans.selectedOptionId)] : [];
 
@@ -362,19 +362,19 @@ export class AssignmentController {
 
             // Notify teacher about new submission
             try {
-              const teacherId = assignment.group?.teacher?.id || assignment.course?.teacher?.id;
-              if (teacherId) {
-                const student = await AppDataSource.getRepository(User).findOneBy({ id: userId });
-                await NotificationController.createNotification(
-                  teacherId,
-                  `تسليم واجب جديد 📬`,
-                  `سلّم الطالب "${student?.name || 'طالب'}" واجب "${assignment.title}" ${isLate ? '(تسليم متأخر)' : ''}.`,
-                  "info",
-                  assignment.group ? `#group/${assignment.group.id}` : "#assignments"
-                );
-              }
+                const teacherId = assignment.group?.teacher?.id || assignment.course?.teacher?.id;
+                if (teacherId) {
+                    const student = await AppDataSource.getRepository(User).findOneBy({ id: userId });
+                    await NotificationController.createNotification(
+                        teacherId,
+                        `تسليم واجب جديد 📬`,
+                        `سلّم الطالب "${student?.name || 'طالب'}" واجب "${assignment.title}" ${isLate ? '(تسليم متأخر)' : ''}.`,
+                        "info",
+                        assignment.group ? `#group/${assignment.group.id}` : "#assignments"
+                    );
+                }
             } catch (notifErr) {
-              console.error("فشل إشعار المعلم بتسليم الواجب:", notifErr);
+                console.error("فشل إشعار المعلم بتسليم الواجب:", notifErr);
             }
 
             res.status(201).json(submission);
@@ -447,7 +447,7 @@ export class AssignmentController {
                 });
 
                 const submittedStudentIds = new Set(submissions.map(s => s.student?.id).filter(Boolean));
-                
+
                 const delivered = submissions.map(s => ({
                     id: s.id,
                     status: s.status,
@@ -619,13 +619,13 @@ export class AssignmentController {
             // If publishing (status === 'graded'), notify student immediately!
             if (targetStatus === "graded" && submission.student) {
                 try {
-                    const gradeStr = submission.grade !== null && submission.grade !== undefined 
+                    const gradeStr = submission.grade !== null && submission.grade !== undefined
                         ? `${submission.grade}${submission.assignment?.totalPoints ? ` من ${submission.assignment.totalPoints}` : ''}`
                         : '';
                     const percentStr = submission.percentage !== null && submission.percentage !== undefined
                         ? ` (${submission.percentage}%)`
                         : '';
-                    
+
                     await NotificationController.createNotification(
                         submission.student.id,
                         `تم تقييم ونشر نتيجة واجبك! 🏆`,
