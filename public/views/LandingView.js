@@ -1014,16 +1014,6 @@ export default class LandingView {
         </footer>
 
       </div>
-
-      <!-- 📱 STICKY MOBILE CTA BAR -->
-      <div id="landing-sticky-mobile-cta" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9000; background:linear-gradient(90deg,#0056D2 0%,#1e40af 100%); padding:12px 20px; box-shadow:0 -4px 24px rgba(0,86,210,0.35); align-items:center; justify-content:space-between; gap:12px;">
-        <div style="flex:1; min-width:0;">
-          <div style="font-size:0.82rem; font-weight:900; color:#ffffff;">🚀 سجّل مجاناً الآن</div>
-          <div style="font-size:0.72rem; color:rgba(255,255,255,0.8); font-weight:700;">انضم لآلاف الطلاب المتفوقين</div>
-        </div>
-        <a href="#signup" style="flex-shrink:0; background:#ffffff; color:#0056D2; font-weight:900; font-size:0.9rem; padding:10px 22px; border-radius:20px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">ابدأ مجاناً →</a>
-        <button id="landing-sticky-close-btn" style="flex-shrink:0; background:rgba(255,255,255,0.2); border:none; color:#fff; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center;">✕</button>
-      </div>
     `;
 
     if (window.lucide) window.lucide.createIcons();
@@ -1854,7 +1844,6 @@ export default class LandingView {
     this.initFreeTrialSection();
     this.initScrollToggleButton();
     this.initLiveNowStrip();
-    this.initStickyMobileCTA();
     this.initTestimonialsCarousel();
     this.initCountUpOnScroll();
   }
@@ -2025,42 +2014,6 @@ export default class LandingView {
     void track.offsetWidth; // force reflow
     const speed = Math.max(30, baseList.length * 6); // smooth comfortable reading speed (6s per item)
     track.style.animation = `liveStripScroll ${speed}s linear infinite`;
-  }
-
-  initStickyMobileCTA() {
-    const bar = document.getElementById("landing-sticky-mobile-cta");
-    const closeBtn = document.getElementById("landing-sticky-close-btn");
-    if (!bar) return;
-
-    const isMobile = () => window.innerWidth < 768;
-    let dismissed = false;
-
-    const checkVisibility = () => {
-      if (dismissed || !isMobile()) {
-        bar.style.display = "none";
-        return;
-      }
-      const scrolled = window.scrollY > 300;
-      bar.style.display = scrolled ? "flex" : "none";
-    };
-
-    const scrollHandler = () => checkVisibility();
-    window.addEventListener("scroll", scrollHandler, { passive: true });
-    window.addEventListener("resize", checkVisibility);
-    checkVisibility();
-
-    closeBtn?.addEventListener("click", () => {
-      dismissed = true;
-      bar.style.display = "none";
-    });
-
-    // Cleanup
-    const prevCleanup = this.scrollToggleCleanup;
-    this.scrollToggleCleanup = () => {
-      if (prevCleanup) prevCleanup();
-      window.removeEventListener("scroll", scrollHandler);
-      window.removeEventListener("resize", checkVisibility);
-    };
   }
 
   initTestimonialsCarousel() {
@@ -2714,8 +2667,5 @@ export default class LandingView {
       this.chartInstance.destroy();
       this.chartInstance = null;
     }
-    // Remove sticky mobile CTA if still present
-    const stickyBar = document.getElementById("landing-sticky-mobile-cta");
-    if (stickyBar) stickyBar.remove();
   }
 }

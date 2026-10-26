@@ -3885,11 +3885,6 @@ body.dark-theme .landing-scroll-ring-bg {
   border-color: rgba(99, 102, 241, 0.45);
 }
 
-/* ── STICKY MOBILE CTA ───────────────────────────────────────── */
-#landing-sticky-mobile-cta {
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-}
-
 /* ── QUICK GRADE FILTER RESPONSIVE ──────────────────────────── */
 @media (max-width: 640px) {
   #quick-grade-filter {
