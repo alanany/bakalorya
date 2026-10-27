@@ -57,6 +57,9 @@ export class User {
   meetingLink: string;
 
   @Column({ nullable: true })
+  videoUrl: string; // Teacher introductory/promo video
+
+  @Column({ nullable: true })
   customCategories: string;
 
   @Column({ nullable: true })

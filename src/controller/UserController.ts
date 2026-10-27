@@ -42,13 +42,13 @@ export class UserController {
           { id, role: "teacher" },
           { id, role: "admin" }
         ],
-        select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "createdAt"]
+        select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "videoUrl", "createdAt"]
       });
 
       if (!teacher) {
         teacher = await userRepository.findOne({
           where: { id },
-          select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "createdAt"]
+          select: ["id", "name", "email", "role", "avatar", "education", "location", "phone", "meetingLink", "customCategories", "teacherCapabilities", "videoUrl", "createdAt"]
         });
       }
 
@@ -402,6 +402,7 @@ export class UserController {
       if (location !== undefined) user.location = location;
       if (customCategories !== undefined) user.customCategories = customCategories;
       if (avatar !== undefined) user.avatar = avatar;
+      if (req.body.videoUrl !== undefined) user.videoUrl = req.body.videoUrl ? req.body.videoUrl.trim() : null;
 
       await userRepository.save(user);
 
@@ -411,6 +412,66 @@ export class UserController {
     } catch (error) {
       console.error("Error updating profile:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // Update teacher introductory video URL
+  static async updateTeacherVideo(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { videoUrl } = req.body;
+      const userRepo = AppDataSource.getRepository(User);
+
+      const isOwner = req.user && String(req.user.id) === String(id);
+      const isAdmin = req.user && req.user.role === "admin";
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك بتعديل هذا الفيديو." });
+      }
+
+      const teacher = await userRepo.findOneBy({ id });
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم غير موجود." });
+      }
+
+      teacher.videoUrl = videoUrl ? videoUrl.trim() : null;
+      await userRepo.save(teacher);
+
+      return res.json({ success: true, videoUrl: teacher.videoUrl });
+    } catch (error) {
+      console.error("Error updating teacher video:", error);
+      return res.status(500).json({ error: "فشل تحديث رابط الفيديو." });
+    }
+  }
+
+  // Upload video file directly for teacher (Admin or Teacher)
+  static async uploadTeacherVideo(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const userRepo = AppDataSource.getRepository(User);
+
+      const isOwner = req.user && String(req.user.id) === String(id);
+      const isAdmin = req.user && req.user.role === "admin";
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "غير مصرح لك برفع فيديو لهذا المعلم." });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "لم يتم استلام أي ملف فيديو. الرجاء اختيار ملف بصيغة MP4 أو WebM." });
+      }
+
+      const teacher = await userRepo.findOneBy({ id });
+      if (!teacher) {
+        return res.status(404).json({ error: "المعلم غير موجود." });
+      }
+
+      const videoUrl = `/uploads/${req.file.filename}`;
+      teacher.videoUrl = videoUrl;
+      await userRepo.save(teacher);
+
+      return res.json({ success: true, videoUrl: teacher.videoUrl });
+    } catch (error) {
+      console.error("Error uploading teacher video:", error);
+      return res.status(500).json({ error: "فشل رفع ملف الفيديو." });
     }
   }
 

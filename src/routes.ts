@@ -58,6 +58,28 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 } // 20MB max file size
 });
 
+const videoUpload = multer({
+  storage,
+  limits: { fileSize: 250 * 1024 * 1024 } // 250MB max video file size
+});
+
+const uploadSingleVideo = (req: any, res: any, next: any) => {
+  videoUpload.fields([{ name: "video", maxCount: 1 }, { name: "file", maxCount: 1 }])(req, res, (err: any) => {
+    if (err) {
+      console.error("Video upload error:", err);
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `حجم أو نوع ملف الفيديو غير مدعوم: ${err.message}` });
+      }
+      return res.status(500).json({ error: err.message || "فشل رفع الفيديو إلى السيرفر." });
+    }
+    if (req.files) {
+      if (req.files.video && req.files.video[0]) req.file = req.files.video[0];
+      else if (req.files.file && req.files.file[0]) req.file = req.files.file[0];
+    }
+    next();
+  });
+};
+
 const uploadSingleFile = (req: any, res: any, next: any) => {
   upload.single("file")(req, res, (err: any) => {
     if (err) {
@@ -292,6 +314,8 @@ router.delete("/reviews/:id", authMiddleware, ReviewController.delete);
 router.post("/teacher-applications", sensitiveActionLimiter, concurrencyLock, TeacherApplicationController.apply);
 router.get("/teachers", UserController.getTeachers);
 router.get("/teachers/:id", UserController.getTeacherById);
+router.patch("/teachers/:id/video", authMiddleware, UserController.updateTeacherVideo);
+router.post("/teachers/:id/video/upload", authMiddleware, uploadSingleVideo, UserController.uploadTeacherVideo);
 router.get("/teachers/:id/groups", optionalAuthMiddleware, CourseGroupController.getTeacherGroups);
 router.patch("/users/me", authMiddleware, UserController.updateProfile);
 router.post("/users/request-phone-change", authMiddleware, UserController.requestPhoneChange);
