@@ -1372,7 +1372,9 @@ export const AdminSessionsPage = {
         submitBtn.innerText = "جاري الإضافة والجدولة...";
       }
 
-      const sessionsPerMonth = checkedDays.length > 0 ? (checkedDays.length * 4) : (totalSessions <= 6 ? totalSessions : 8);
+      const sessionsPerMonth = (totalSessions > 0 && totalSessions <= 8)
+        ? totalSessions
+        : (checkedDays.length > 0 ? Math.min(totalSessions, checkedDays.length * 4) : Math.min(totalSessions, 8));
 
       try {
         const newGroup = await apiFetch("/groups", {
@@ -1685,7 +1687,9 @@ export const AdminSessionsPage = {
         submitBtn.innerText = "جاري الحفظ...";
       }
 
-      const sessionsPerMonth = checkedDays.length > 0 ? (checkedDays.length * 4) : (totalSessions <= 6 ? totalSessions : 8);
+      const sessionsPerMonth = (totalSessions > 0 && totalSessions <= 8)
+        ? totalSessions
+        : (checkedDays.length > 0 ? Math.min(totalSessions, checkedDays.length * 4) : Math.min(totalSessions, 8));
 
       try {
         await apiFetch(`/groups/${group.id}`, {
@@ -3276,7 +3280,7 @@ export const AdminSessionsPage = {
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                   الاشتراك الشهري للطالب (ج.م.): <span style="color:#ef4444;">*</span>
                 </label>
-                <input type="number" id="approve-group-monthly-price" value="${group.monthlyPrice || (initialStudentRate * 8)}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; font-size:0.95rem; box-sizing:border-box;">
+                <input type="number" id="approve-group-monthly-price" value="${group.monthlyPrice && group.monthlyPrice !== initialStudentRate * 8 ? group.monthlyPrice : (initialStudentRate * ((initialSessions > 0 && initialSessions <= 8) ? initialSessions : (initialDays.length > 0 ? Math.min(initialSessions, initialDays.length * 4) : Math.min(initialSessions, 8))))}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; font-size:0.95rem; box-sizing:border-box;">
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
@@ -3344,8 +3348,11 @@ export const AdminSessionsPage = {
       }
 
       const monthlyInput = wrapper.querySelector("#approve-group-monthly-price");
+      const computedSessionsInCycle = (totalSessionsVal > 0 && totalSessionsVal <= 8)
+        ? totalSessionsVal
+        : (checkedDays.length > 0 ? Math.min(totalSessionsVal, checkedDays.length * 4) : Math.min(totalSessionsVal, 8));
       if (monthlyInput && !monthlyInput.dataset.userEdited) {
-        monthlyInput.value = studentRateVal * 8;
+        monthlyInput.value = studentRateVal * computedSessionsInCycle;
       }
 
       const summaryStudent = wrapper.querySelector("#summary-student-total");
@@ -3413,10 +3420,13 @@ export const AdminSessionsPage = {
       const maxStudents = parseInt(wrapper.querySelector("#approve-group-max-students")?.value, 10) || 25;
       const studentHourlyRate = parseFloat(wrapper.querySelector("#approve-group-student-rate")?.value) || 50;
       const teacherHourlyRate = parseFloat(wrapper.querySelector("#approve-group-teacher-rate")?.value) || 120;
-      const monthlyPrice = parseFloat(wrapper.querySelector("#approve-group-monthly-price")?.value) || (studentHourlyRate * 8);
+      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='approve-group-days']:checked")).map(cb => cb.value);
+      const computedSessionsInCycle = (totalSessions > 0 && totalSessions <= 8)
+        ? totalSessions
+        : (checkedDays.length > 0 ? Math.min(totalSessions, checkedDays.length * 4) : Math.min(totalSessions, 8));
+      const monthlyPrice = parseFloat(wrapper.querySelector("#approve-group-monthly-price")?.value) || (studentHourlyRate * computedSessionsInCycle);
       const platformCommissionPercent = parseFloat(wrapper.querySelector("#approve-group-commission")?.value) || 50;
 
-      const checkedDays = Array.from(wrapper.querySelectorAll("input[name='approve-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
       const scheduleText = `${scheduleDays} الساعة ${scheduleTime}`;
 
@@ -3888,6 +3898,7 @@ export const AdminSessionsPage = {
     let groupPrice = 320;
     let groupEntity = null;
     let courseEntity = null;
+    let totalSessionsCount = 8;
 
     try {
       // 1. Try to fetch official roster from backend endpoint
@@ -3901,7 +3912,20 @@ export const AdminSessionsPage = {
         teacherName = rosterRes.group?.teacher?.name || "معلم المنصة";
         maxSeats = rosterRes.group?.maxStudents || 25;
         groupStatus = rosterRes.group?.status || "OPEN";
-        groupPrice = rosterRes.group?.monthlyPrice || (rosterRes.group?.sessionPrice ? rosterRes.group.sessionPrice * 8 : (rosterRes.group?.studentHourlyRate ? rosterRes.group.studentHourlyRate * 8 : 320));
+
+        const grp = rosterRes.group;
+        const cachedGroup = (this.allCourseGroups || []).find(g => String(g.id) === String(groupIdOrSessionId));
+        const rawSessions = grp?.totalSessions || cachedGroup?.totalSessions;
+        const unitRate = grp?.sessionPrice || grp?.studentHourlyRate || cachedGroup?.sessionPrice || cachedGroup?.studentHourlyRate || 40;
+        totalSessionsCount = (rawSessions && rawSessions > 0) ? (rawSessions <= 8 ? rawSessions : Math.min(rawSessions, 8)) : 8;
+
+        let resolvedPrice = grp?.monthlyPrice;
+        if (unitRate > 0 && (!resolvedPrice || (resolvedPrice === unitRate * 8 && totalSessionsCount !== 8))) {
+          resolvedPrice = unitRate * totalSessionsCount;
+        } else if (!resolvedPrice) {
+          resolvedPrice = unitRate * totalSessionsCount;
+        }
+        groupPrice = resolvedPrice || 320;
         students = rosterRes.students || [];
       } else {
         // 2. Fallback: match from local cache
@@ -3914,7 +3938,18 @@ export const AdminSessionsPage = {
           teacherName = matchedGroup.teacher?.name || matchedGroup.course?.teacher?.name || "معلم المنصة";
           maxSeats = matchedGroup.maxStudents || 25;
           groupStatus = matchedGroup.status || "OPEN";
-          groupPrice = matchedGroup.monthlyPrice || (matchedGroup.sessionPrice ? matchedGroup.sessionPrice * 8 : (matchedGroup.studentHourlyRate ? matchedGroup.studentHourlyRate * 8 : 320));
+
+          const rawSessions = matchedGroup.totalSessions;
+          const unitRate = matchedGroup.sessionPrice || matchedGroup.studentHourlyRate || 40;
+          totalSessionsCount = (rawSessions && rawSessions > 0) ? (rawSessions <= 8 ? rawSessions : Math.min(rawSessions, 8)) : 8;
+
+          let resolvedPrice = matchedGroup.monthlyPrice;
+          if (unitRate > 0 && (!resolvedPrice || (resolvedPrice === unitRate * 8 && totalSessionsCount !== 8))) {
+            resolvedPrice = unitRate * totalSessionsCount;
+          } else if (!resolvedPrice) {
+            resolvedPrice = unitRate * totalSessionsCount;
+          }
+          groupPrice = resolvedPrice || 320;
 
           const groupEnrollments = (this.allEnrollments || []).filter(e =>
             e.group && String(e.group.id) === String(groupIdOrSessionId)
@@ -4130,11 +4165,11 @@ export const AdminSessionsPage = {
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
                       <label id="plan-label-full" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--primary); background:rgba(139,92,246,0.08); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
                         <input type="radio" name="add-student-plan" value="FULL" checked style="accent-color:var(--primary); cursor:pointer;">
-                        <span>🟢 سداد كامل (${groupPrice || 320} ج.م)</span>
+                        <span>🟢 سداد كامل (${groupPrice || 320} ج.م - ${totalSessionsCount} حصص)</span>
                       </label>
                       <label id="plan-label-partial" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
                         <input type="radio" name="add-student-plan" value="PARTIAL" style="accent-color:var(--primary); cursor:pointer;">
-                        <span>🟡 قسط أول / دفعة جزئية (نصف السعر)</span>
+                        <span>🟡 قسط أول / دفعة جزئية (نصف السعر: ${Math.round((groupPrice || 320) / 2)} ج.م)</span>
                       </label>
                       <label id="plan-label-discount" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
                         <input type="radio" name="add-student-plan" value="DISCOUNT" style="accent-color:var(--primary); cursor:pointer;">
@@ -4151,7 +4186,7 @@ export const AdminSessionsPage = {
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; font-size:0.82rem;">
                       <div style="background:var(--bg-card); padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
-                        <span style="color:var(--text-muted); display:block; font-size:0.75rem;">سعر المجموعة الكلي:</span>
+                        <span style="color:var(--text-muted); display:block; font-size:0.75rem;">سعر المجموعة الكلي (${totalSessionsCount} حصص):</span>
                         <strong style="color:var(--text-main); font-size:0.95rem;">${groupPrice || 320} ج.م</strong>
                         <input type="hidden" id="add-student-total-price" value="${groupPrice || 320}">
                       </div>

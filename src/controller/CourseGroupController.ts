@@ -63,16 +63,18 @@ export class CourseGroupController {
       const daysCount = matchedDays.length;
 
       let sessionsPerMonth = 8;
-      if (daysCount > 0) {
-        sessionsPerMonth = daysCount * 4;
-      } else if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 6) {
+      if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 8) {
         sessionsPerMonth = group.totalSessions;
+      } else if (daysCount > 0) {
+        sessionsPerMonth = group.totalSessions ? Math.min(group.totalSessions, daysCount * 4) : daysCount * 4;
+      } else if (group.totalSessions && group.totalSessions > 0) {
+        sessionsPerMonth = Math.min(group.totalSessions, 8);
       }
 
       const sessionPrice = group.sessionPrice || group.studentHourlyRate || (group.monthlyPrice > 0 ? Math.round(group.monthlyPrice / sessionsPerMonth) : 40);
 
       let groupPrice = group.monthlyPrice;
-      if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions === 4 && groupPrice === sessionPrice * 8))) {
+      if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions && group.totalSessions <= 8 && group.totalSessions !== 8 && groupPrice === sessionPrice * 8))) {
         groupPrice = sessionPrice * sessionsPerMonth;
         groupRepo.update(group.id, { monthlyPrice: groupPrice }).catch(() => {});
       } else if (!groupPrice) {
@@ -169,15 +171,17 @@ export class CourseGroupController {
         const daysCount = matchedDays.length;
 
         let sessionsPerMonth = 8;
-        if (daysCount > 0) {
-          sessionsPerMonth = daysCount * 4;
-        } else if (g.totalSessions && g.totalSessions > 0 && g.totalSessions <= 6) {
+        if (g.totalSessions && g.totalSessions > 0 && g.totalSessions <= 8) {
           sessionsPerMonth = g.totalSessions;
+        } else if (daysCount > 0) {
+          sessionsPerMonth = g.totalSessions ? Math.min(g.totalSessions, daysCount * 4) : daysCount * 4;
+        } else if (g.totalSessions && g.totalSessions > 0) {
+          sessionsPerMonth = Math.min(g.totalSessions, 8);
         }
 
         const sessionPrice = g.sessionPrice || g.studentHourlyRate || (g.monthlyPrice > 0 ? Math.round(g.monthlyPrice / sessionsPerMonth) : 40);
         let groupPrice = g.monthlyPrice;
-        if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (g.totalSessions === 4 && groupPrice === sessionPrice * 8))) {
+        if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (g.totalSessions && g.totalSessions <= 8 && g.totalSessions !== 8 && groupPrice === sessionPrice * 8))) {
           groupPrice = sessionPrice * sessionsPerMonth;
           groupRepo.update(g.id, { monthlyPrice: groupPrice }).catch(() => {});
         } else if (!groupPrice) {
@@ -339,14 +343,16 @@ export class CourseGroupController {
       const matchedDays = arabicDays.filter(day => scheduleDaysStr.includes(day));
       const parsedTotalSessions = totalSessions ? parseInt(totalSessions, 10) : 24;
       let calculatedSessionsPerMonth = 8;
-      if (matchedDays.length > 0) {
-        calculatedSessionsPerMonth = matchedDays.length * 4;
-      } else if (parsedTotalSessions > 0 && parsedTotalSessions <= 6) {
+      if (parsedTotalSessions > 0 && parsedTotalSessions <= 8) {
         calculatedSessionsPerMonth = parsedTotalSessions;
+      } else if (matchedDays.length > 0) {
+        calculatedSessionsPerMonth = parsedTotalSessions > 0 ? Math.min(parsedTotalSessions, matchedDays.length * 4) : matchedDays.length * 4;
+      } else if (parsedTotalSessions > 0) {
+        calculatedSessionsPerMonth = Math.min(parsedTotalSessions, 8);
       }
 
       let parsedMonthlyPrice = monthlyPrice !== undefined ? parseFloat(monthlyPrice) : (parsedSessionPrice * calculatedSessionsPerMonth);
-      if (monthlyPrice !== undefined && parsedSessionPrice > 0 && (parsedMonthlyPrice === parsedSessionPrice * 8 && calculatedSessionsPerMonth !== 8)) {
+      if (parsedSessionPrice > 0 && (parsedMonthlyPrice === parsedSessionPrice * 8 && calculatedSessionsPerMonth !== 8)) {
         parsedMonthlyPrice = parsedSessionPrice * calculatedSessionsPerMonth;
       }
 
@@ -611,10 +617,12 @@ export class CourseGroupController {
       const targetTotalSessions = totalSessions !== undefined ? parseInt(totalSessions, 10) : (group.totalSessions || 24);
 
       let calculatedSessionsPerMonth = 8;
-      if (matchedDays.length > 0) {
-        calculatedSessionsPerMonth = matchedDays.length * 4;
-      } else if (targetTotalSessions > 0 && targetTotalSessions <= 6) {
+      if (targetTotalSessions > 0 && targetTotalSessions <= 8) {
         calculatedSessionsPerMonth = targetTotalSessions;
+      } else if (matchedDays.length > 0) {
+        calculatedSessionsPerMonth = targetTotalSessions > 0 ? Math.min(targetTotalSessions, matchedDays.length * 4) : matchedDays.length * 4;
+      } else if (targetTotalSessions > 0) {
+        calculatedSessionsPerMonth = Math.min(targetTotalSessions, 8);
       }
 
       if (monthlyPrice !== undefined) {
@@ -742,10 +750,12 @@ export class CourseGroupController {
       const targetTotalSessions = group.totalSessions || 24;
 
       let calculatedSessionsPerMonth = 8;
-      if (matchedDays.length > 0) {
-        calculatedSessionsPerMonth = matchedDays.length * 4;
-      } else if (targetTotalSessions > 0 && targetTotalSessions <= 6) {
+      if (targetTotalSessions > 0 && targetTotalSessions <= 8) {
         calculatedSessionsPerMonth = targetTotalSessions;
+      } else if (matchedDays.length > 0) {
+        calculatedSessionsPerMonth = targetTotalSessions > 0 ? Math.min(targetTotalSessions, matchedDays.length * 4) : matchedDays.length * 4;
+      } else if (targetTotalSessions > 0) {
+        calculatedSessionsPerMonth = Math.min(targetTotalSessions, 8);
       }
 
       if (monthlyPrice !== undefined) {
@@ -1096,6 +1106,7 @@ export class CourseGroupController {
           monthlyPrice: group.monthlyPrice,
           sessionPrice: group.sessionPrice,
           studentHourlyRate: group.studentHourlyRate,
+          totalSessions: group.totalSessions || 24,
           teacher: group.teacher || group.course?.teacher || null,
           course: group.course ? {
             id: group.course.id,
@@ -1417,9 +1428,21 @@ export class CourseGroupController {
       enrollment.status = "active";
 
       const paidAmount = (amount !== undefined && Number(amount) > 0) ? Number(amount) : 0;
+      const unitPrice = group.sessionPrice || group.studentHourlyRate || 40;
+      const effectiveSessions = (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 8)
+        ? group.totalSessions
+        : (group.totalSessions && group.totalSessions < 8 ? group.totalSessions : 8);
+
+      let calculatedDefaultPrice = group.monthlyPrice;
+      if (unitPrice > 0 && (!calculatedDefaultPrice || (calculatedDefaultPrice === unitPrice * 8 && effectiveSessions !== 8))) {
+        calculatedDefaultPrice = unitPrice * effectiveSessions;
+      } else if (!calculatedDefaultPrice) {
+        calculatedDefaultPrice = unitPrice * effectiveSessions;
+      }
+
       const groupExpectedPrice = totalPrice 
         ? Number(totalPrice) 
-        : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : (group.studentHourlyRate ? group.studentHourlyRate * 8 : 320)));
+        : (calculatedDefaultPrice || (unitPrice * effectiveSessions) || 320);
 
       let remAmount = 0;
       let finalPaymentStatus: "PAID" | "PARTIAL" | "EXEMPT" = "PAID";
@@ -2279,9 +2302,21 @@ export class CourseGroupController {
         return res.status(403).json({ error: "أنت لست مسجلاً في هذه المجموعة الدراسية." });
       }
 
+      const unitPrice = group.sessionPrice || group.studentHourlyRate || 40;
+      const effectiveSessions = (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 8)
+        ? group.totalSessions
+        : (group.totalSessions && group.totalSessions < 8 ? group.totalSessions : 8);
+
+      let calculatedDefaultPrice = group.monthlyPrice;
+      if (unitPrice > 0 && (!calculatedDefaultPrice || (calculatedDefaultPrice === unitPrice * 8 && effectiveSessions !== 8))) {
+        calculatedDefaultPrice = unitPrice * effectiveSessions;
+      } else if (!calculatedDefaultPrice) {
+        calculatedDefaultPrice = unitPrice * effectiveSessions;
+      }
+
       const calculatedAmount = (amount !== undefined && Number(amount) > 0)
         ? Number(amount)
-        : (group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320));
+        : (calculatedDefaultPrice || (unitPrice * effectiveSessions) || 320);
 
       const payment = new Payment();
       payment.student = student;

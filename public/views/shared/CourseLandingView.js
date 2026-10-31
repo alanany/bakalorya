@@ -134,10 +134,12 @@ export default class CourseLandingView {
 
       const totalSessions = selectedGroup?.totalSessions || 24;
       let sessionsPerMonth = 8;
-      if (daysCount > 0) {
-        sessionsPerMonth = daysCount * 4;
-      } else if (totalSessions > 0 && totalSessions <= 6) {
+      if (totalSessions > 0 && totalSessions <= 8) {
         sessionsPerMonth = totalSessions;
+      } else if (daysCount > 0) {
+        sessionsPerMonth = Math.min(totalSessions, daysCount * 4);
+      } else if (totalSessions > 0) {
+        sessionsPerMonth = Math.min(totalSessions, 8);
       }
 
       const sessionDuration = selectedGroup?.sessionDuration || 60;
@@ -146,7 +148,7 @@ export default class CourseLandingView {
       const availableSeats = selectedGroup?.availableSeats !== undefined ? selectedGroup.availableSeats : Math.max(0, maxSeats - enrolledCount);
       const sessionPrice = selectedGroup?.studentHourlyRate || selectedGroup?.sessionPrice || 40;
       let monthlyPrice = selectedGroup?.monthlyPrice || (sessionPrice * sessionsPerMonth);
-      if (sessionPrice > 0 && (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8)) {
+      if (sessionPrice > 0 && ((monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (totalSessions <= 8 && totalSessions !== 8 && monthlyPrice === sessionPrice * 8))) {
         monthlyPrice = sessionPrice * sessionsPerMonth;
       }
       const startDateText = selectedGroup?.startDate ? formatArabicDate(selectedGroup.startDate) : "الأحد 13 سبتمبر 2026";
@@ -452,15 +454,17 @@ export default class CourseLandingView {
 
         const totalSessions = selectedGroup.totalSessions || 24;
         let sessionsPerMonth = 8;
-        if (daysCount > 0) {
-          sessionsPerMonth = daysCount * 4;
-        } else if (totalSessions > 0 && totalSessions <= 6) {
+        if (totalSessions > 0 && totalSessions <= 8) {
           sessionsPerMonth = totalSessions;
+        } else if (daysCount > 0) {
+          sessionsPerMonth = Math.min(totalSessions, daysCount * 4);
+        } else if (totalSessions > 0) {
+          sessionsPerMonth = Math.min(totalSessions, 8);
         }
 
         const sessionPrice = selectedGroup.studentHourlyRate || selectedGroup.sessionPrice || 40;
         let monthlyPrice = selectedGroup.monthlyPrice || (sessionPrice * sessionsPerMonth);
-        if (sessionPrice > 0 && (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8)) {
+        if (sessionPrice > 0 && ((monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (totalSessions <= 8 && totalSessions !== 8 && monthlyPrice === sessionPrice * 8))) {
           monthlyPrice = sessionPrice * sessionsPerMonth;
         }
 

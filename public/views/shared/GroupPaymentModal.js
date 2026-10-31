@@ -56,10 +56,12 @@ export function openGroupPaymentModal(options) {
 
   let sessionsPerMonth = rawSessionsPerMonth;
   if (!sessionsPerMonth) {
-    if (daysCount > 0) {
-      sessionsPerMonth = daysCount * 4;
-    } else if (totalSessions && totalSessions > 0 && totalSessions <= 6) {
+    if (totalSessions && totalSessions > 0 && totalSessions <= 8) {
       sessionsPerMonth = totalSessions;
+    } else if (daysCount > 0) {
+      sessionsPerMonth = totalSessions ? Math.min(totalSessions, daysCount * 4) : daysCount * 4;
+    } else if (totalSessions && totalSessions > 0) {
+      sessionsPerMonth = Math.min(totalSessions, 8);
     } else {
       sessionsPerMonth = 8;
     }
@@ -69,7 +71,7 @@ export function openGroupPaymentModal(options) {
   let monthlyPrice = rawMonthlyPrice !== undefined ? Number(rawMonthlyPrice) : 0;
 
   if (sessionPrice > 0) {
-    if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+    if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (totalSessions && totalSessions <= 8 && totalSessions !== 8 && monthlyPrice === sessionPrice * 8)) {
       monthlyPrice = sessionPrice * sessionsPerMonth;
     }
   } else if (!monthlyPrice) {

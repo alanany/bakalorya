@@ -831,17 +831,19 @@ export default class SubjectGroupsView {
       const daysCount = matchedDays.length;
       
       let sessionsPerMonth = 8;
-      if (daysCount > 0) {
-        sessionsPerMonth = daysCount * 4;
-      } else if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 6) {
+      if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 8) {
         sessionsPerMonth = group.totalSessions;
+      } else if (daysCount > 0) {
+        sessionsPerMonth = group.totalSessions ? Math.min(group.totalSessions, daysCount * 4) : daysCount * 4;
+      } else if (group.totalSessions && group.totalSessions > 0) {
+        sessionsPerMonth = Math.min(group.totalSessions, 8);
       }
 
       let sessionPrice = group.sessionPrice || group.studentHourlyRate || 0;
       let monthlyPrice = group.monthlyPrice || group.price || 0;
 
       if (sessionPrice > 0) {
-        if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+        if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions && group.totalSessions <= 8 && group.totalSessions !== 8 && monthlyPrice === sessionPrice * 8)) {
           monthlyPrice = sessionPrice * sessionsPerMonth;
         }
       } else if (monthlyPrice > 0) {
@@ -1210,16 +1212,18 @@ export default class SubjectGroupsView {
         const daysCount = matchedDays.length;
         
         let sessionsPerMonth = 8;
-        if (daysCount > 0) {
-          sessionsPerMonth = daysCount * 4;
-        } else if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 6) {
+        if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 8) {
           sessionsPerMonth = groupObj.totalSessions;
+        } else if (daysCount > 0) {
+          sessionsPerMonth = groupObj.totalSessions ? Math.min(groupObj.totalSessions, daysCount * 4) : daysCount * 4;
+        } else if (groupObj.totalSessions && groupObj.totalSessions > 0) {
+          sessionsPerMonth = Math.min(groupObj.totalSessions, 8);
         }
 
         const sessionPrice = groupObj.sessionPrice || groupObj.studentHourlyRate || 40;
         let monthlyPrice = groupObj.monthlyPrice || groupObj.price || 0;
         if (sessionPrice > 0) {
-          if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+          if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions && groupObj.totalSessions <= 8 && groupObj.totalSessions !== 8 && monthlyPrice === sessionPrice * 8)) {
             monthlyPrice = sessionPrice * sessionsPerMonth;
           }
         } else if (!monthlyPrice) {
@@ -1280,16 +1284,18 @@ export default class SubjectGroupsView {
           const daysCount = matchedDays.length;
           
           let sessionsPerMonth = 8;
-          if (daysCount > 0) {
-            sessionsPerMonth = daysCount * 4;
-          } else if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 6) {
+          if (groupObj.totalSessions && groupObj.totalSessions > 0 && groupObj.totalSessions <= 8) {
             sessionsPerMonth = groupObj.totalSessions;
+          } else if (daysCount > 0) {
+            sessionsPerMonth = groupObj.totalSessions ? Math.min(groupObj.totalSessions, daysCount * 4) : daysCount * 4;
+          } else if (groupObj.totalSessions && groupObj.totalSessions > 0) {
+            sessionsPerMonth = Math.min(groupObj.totalSessions, 8);
           }
 
           const sessionPrice = groupObj.sessionPrice || groupObj.studentHourlyRate || 40;
           let monthlyPrice = groupObj.monthlyPrice || groupObj.price || 0;
           if (sessionPrice > 0) {
-            if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions === 4 && monthlyPrice === sessionPrice * 8)) {
+            if (!monthlyPrice || (monthlyPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (groupObj.totalSessions && groupObj.totalSessions <= 8 && groupObj.totalSessions !== 8 && monthlyPrice === sessionPrice * 8)) {
               monthlyPrice = sessionPrice * sessionsPerMonth;
             }
           } else if (!monthlyPrice) {

@@ -862,16 +862,18 @@ export class CurriculumController {
         const daysCount = matchedDays.length;
 
         let sessionsPerMonth = 8;
-        if (daysCount > 0) {
-          sessionsPerMonth = daysCount * 4;
-        } else if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 6) {
+        if (group.totalSessions && group.totalSessions > 0 && group.totalSessions <= 8) {
           sessionsPerMonth = group.totalSessions;
+        } else if (daysCount > 0) {
+          sessionsPerMonth = group.totalSessions ? Math.min(group.totalSessions, daysCount * 4) : daysCount * 4;
+        } else if (group.totalSessions && group.totalSessions > 0) {
+          sessionsPerMonth = Math.min(group.totalSessions, 8);
         }
 
         const sessionPrice = group.sessionPrice || group.studentHourlyRate || (group.monthlyPrice > 0 ? Math.round(group.monthlyPrice / sessionsPerMonth) : 40);
 
         let groupPrice = group.monthlyPrice;
-        if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions === 4 && groupPrice === sessionPrice * 8))) {
+        if (sessionPrice > 0 && (!groupPrice || (groupPrice === sessionPrice * 8 && sessionsPerMonth !== 8) || (group.totalSessions && group.totalSessions <= 8 && group.totalSessions !== 8 && groupPrice === sessionPrice * 8))) {
           groupPrice = sessionPrice * sessionsPerMonth;
           groupRepo.update(group.id, { monthlyPrice: groupPrice }).catch(() => {});
         } else if (!groupPrice) {
