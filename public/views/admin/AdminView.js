@@ -1513,6 +1513,16 @@ export default class AdminView {
       });
     });
 
+    // Admin WhatsApp Session Report Modal (After completion or from sessions list)
+    this.container.querySelectorAll(".admin-session-report-whatsapp-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        if (sessionId && typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({ sessionId });
+        }
+      });
+    });
+
     // Admin Reassign Teacher to Session
     this.container.querySelectorAll(".admin-reassign-teacher-btn").forEach(btn => {
       btn.addEventListener("click", () => {

@@ -157,7 +157,97 @@ export class SessionBookingController {
     }
   }
 
-  // Teacher marks session as COMPLETED -> Consumes 1 credit from ledger & creates TeacherEarning
+  // Helper: Retrieve enrolled students and their parent contact information for a session
+  static async getEnrolledStudentsForSession(session: Session) {
+    let enrolledStudents: any[] = [];
+    if (session.group?.id || session.course?.id) {
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const filterWhere: any = { status: "active" };
+      if (session.group?.id) {
+        filterWhere.group = { id: session.group.id };
+      } else if (session.course?.id) {
+        filterWhere.course = { id: session.course.id };
+      }
+      const enrollments = await enrollmentRepo.find({
+        where: filterWhere,
+        relations: ["student"]
+      });
+      enrolledStudents = enrollments
+        .map(e => ({
+          id: e.student?.id,
+          name: e.student?.name || "طالب",
+          phone: e.student?.phone || "",
+          parentPhone: e.student?.parentPhone || "",
+          email: e.student?.email || ""
+        }))
+        .filter(s => s.id);
+    } else if (session.student) {
+      enrolledStudents = [{
+        id: session.student.id,
+        name: session.student.name || "طالب",
+        phone: session.student.phone || "",
+        parentPhone: session.student.parentPhone || "",
+        email: session.student.email || ""
+      }];
+    }
+    return enrolledStudents;
+  }
+
+  // Helper: compute session sequence number and total group/subscription sessions
+  static async getSessionSequenceInfo(session: Session) {
+    let sessionNumber: number | null = null;
+    let totalSessions: number | null = session.group?.totalSessions || session.subscription?.totalSessions || null;
+
+    try {
+      const sessionRepository = AppDataSource.getRepository(Session);
+      if (session.group?.id) {
+        let groupTotal = session.group.totalSessions;
+        if (!groupTotal) {
+          const groupRepo = AppDataSource.getRepository(CourseGroup);
+          const grp = await groupRepo.findOne({ where: { id: session.group.id } });
+          if (grp?.totalSessions) groupTotal = grp.totalSessions;
+        }
+        const groupSessions = await sessionRepository.find({
+          where: { group: { id: session.group.id } },
+          order: { scheduledAt: "ASC" }
+        });
+        const index = groupSessions.findIndex(s => s.id === session.id);
+        if (index !== -1) {
+          sessionNumber = index + 1;
+        }
+        totalSessions = groupTotal || (groupSessions.length > 0 ? groupSessions.length : 8);
+      } else if (session.subscription?.id) {
+        let subTotal = session.subscription.totalSessions;
+        if (!subTotal) {
+          const subRepo = AppDataSource.getRepository(Subscription);
+          const sub = await subRepo.findOne({ where: { id: session.subscription.id } });
+          if (sub?.totalSessions) subTotal = sub.totalSessions;
+        }
+        const subSessions = await sessionRepository.find({
+          where: { subscription: { id: session.subscription.id } },
+          order: { scheduledAt: "ASC" }
+        });
+        const index = subSessions.findIndex(s => s.id === session.id);
+        if (index !== -1) {
+          sessionNumber = index + 1;
+        }
+        totalSessions = subTotal || (subSessions.length > 0 ? subSessions.length : 8);
+      }
+
+      if (!sessionNumber && session.title) {
+        const m = session.title.match(/(?:الحصة|حصة)\s*#?\s*(\d+)/i);
+        if (m && m[1]) {
+          sessionNumber = parseInt(m[1], 10);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not calculate session sequence info:", e);
+    }
+
+    return { sessionNumber, totalSessions };
+  }
+
+  // Teacher or Admin marks session as COMPLETED -> Consumes 1 credit from ledger & creates TeacherEarning
   static async completeSession(req: AuthRequest, res: Response) {
     const { id } = req.params;
     const { topic, whatWasCovered, studentPerformance, homework, teacherNotes } = req.body;
@@ -170,7 +260,7 @@ export class SessionBookingController {
 
       const session = await sessionRepository.findOne({
         where: { id },
-        relations: ["teacher", "student", "subscription", "group", "course", "group.teacher"]
+        relations: ["teacher", "student", "subscription", "group", "course", "group.teacher", "group.course", "course.teacher"]
       });
 
       if (!session) return res.status(404).json({ error: "الحصة غير موجودة." });
@@ -190,7 +280,19 @@ export class SessionBookingController {
         if (homework !== undefined) session.homework = homework;
         if (teacherNotes !== undefined) session.teacherNotes = teacherNotes;
         await sessionRepository.save(session);
-        return res.status(200).json({ message: "تم تحديث ملخص الحصة بنجاح ✅", session });
+        const { sessionNumber, totalSessions } = await SessionBookingController.getSessionSequenceInfo(session);
+        const enrolledStudents = await SessionBookingController.getEnrolledStudentsForSession(session);
+        return res.status(200).json({
+          message: "تم تحديث ملخص الحصة بنجاح ✅",
+          session: {
+            ...session,
+            sessionNumber,
+            totalSessions
+          },
+          sessionNumber,
+          totalSessions,
+          enrolledStudents
+        });
       }
 
       // Ensure teacher attendance is recorded as PRESENT upon completing the session
@@ -281,9 +383,19 @@ export class SessionBookingController {
         }
       }
 
+      const { sessionNumber, totalSessions } = await SessionBookingController.getSessionSequenceInfo(session);
+      const enrolledStudents = await SessionBookingController.getEnrolledStudentsForSession(session);
+
       return res.status(200).json({
         message: "تم إتمام الحصة بنجاح واحتساب مستحقات المعلم وإضافتها لمحفظته! ✅",
-        session,
+        session: {
+          ...session,
+          sessionNumber,
+          totalSessions
+        },
+        sessionNumber,
+        totalSessions,
+        enrolledStudents,
         earning,
         calculatedEarning,
         hourlyRate
@@ -291,6 +403,65 @@ export class SessionBookingController {
     } catch (err) {
       console.error("Complete session error:", err);
       return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  // Get full session report data including teacher and enrolled students for WhatsApp report dispatch
+  static async getSessionReportData(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const sessionRepository = AppDataSource.getRepository(Session);
+      const session = await sessionRepository.findOne({
+        where: { id },
+        relations: [
+          "teacher",
+          "student",
+          "subscription",
+          "group",
+          "group.teacher",
+          "group.course",
+          "course",
+          "course.teacher",
+          "course.grade",
+          "course.subject"
+        ]
+      });
+
+      if (!session) return res.status(404).json({ error: "الحصة غير موجودة." });
+
+      const teacher = session.teacher || session.group?.teacher || session.course?.teacher;
+      const isTeacher = teacher && teacher.id === req.user!.id;
+      const isAdmin = req.user!.role === "admin";
+      const isStudent = session.student?.id === req.user!.id;
+
+      if (!isTeacher && !isAdmin && !isStudent) {
+        return res.status(403).json({ error: "غير مصرح لك بالوصول لتقرير هذه الحصة." });
+      }
+
+      const { sessionNumber, totalSessions } = await SessionBookingController.getSessionSequenceInfo(session);
+      const enrolledStudents = await SessionBookingController.getEnrolledStudentsForSession(session);
+
+      return res.status(200).json({
+        session: {
+          ...session,
+          sessionNumber,
+          totalSessions
+        },
+        sessionNumber,
+        totalSessions,
+        teacher: {
+          id: teacher?.id,
+          name: teacher?.name || "معلم المنصة",
+          phone: teacher?.phone || ""
+        },
+        group: session.group ? { id: session.group.id, name: session.group.name, totalSessions } : null,
+        course: session.course ? { id: session.course.id, title: session.course.title } : null,
+        enrolledStudents,
+        isGroup: !!session.group || (!session.student && !!session.course)
+      });
+    } catch (err) {
+      console.error("Get session report data error:", err);
+      return res.status(500).json({ error: "فشل استخراج بيانات تقرير الحصة." });
     }
   }
 

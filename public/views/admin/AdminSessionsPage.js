@@ -2844,6 +2844,9 @@ export const AdminSessionsPage = {
                         <span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; padding:3px 10px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;">
                           <i data-lucide="check-circle" style="width:12px; height:12px;"></i> ✓ مكتملة
                         </span>
+                        <button class="btn-secondary admin-session-report-whatsapp-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:3px;" title="إرسال تقرير الحصة المعتمد عبر واتساب">
+                          <i data-lucide="message-circle" style="width:11px; height:11px;"></i> تقرير واتساب 📲
+                        </button>
                         <button class="btn-secondary admin-revert-session-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:#d97706; border-color:#f59e0b; background:rgba(245,158,11,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:3px;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من محفظة المعلم">
                           <i data-lucide="rotate-ccw" style="width:11px; height:11px;"></i> تراجع لمجدولة ↩️
                         </button>
@@ -2992,6 +2995,15 @@ export const AdminSessionsPage = {
         const sessionId = btn.getAttribute("data-id");
         if (sessionId) {
           this.renderSessionWhatsAppModal(sessionId);
+        }
+      });
+    });
+
+    wrapper.querySelectorAll(".admin-session-report-whatsapp-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sessionId = btn.getAttribute("data-id");
+        if (sessionId && typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({ sessionId });
         }
       });
     });
@@ -3715,6 +3727,9 @@ export const AdminSessionsPage = {
                             <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.75rem; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:4px;">
                               <i data-lucide="check-circle" style="width:12px;height:12px;"></i> مكتملة
                             </span>
+                            <button class="btn-secondary admin-session-report-whatsapp-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إرسال تقرير الحصة المعتمد عبر واتساب">
+                              <i data-lucide="message-circle" style="width:11px; height:11px;"></i> تقرير واتساب 📲
+                            </button>
                             <button class="btn-secondary admin-revert-session-btn" data-id="${sess.id}" style="font-size:0.72rem; padding:4px 8px; color:#d97706; border-color:#f59e0b; background:rgba(245,158,11,0.08); font-weight:800; border-radius:8px; display:inline-flex; align-items:center; gap:3px; cursor:pointer;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من محفظة المعلم">
                               <i data-lucide="rotate-ccw" style="width:11px;height:11px;"></i> تراجع لمجدولة ↩️
                             </button>
@@ -3825,6 +3840,9 @@ export const AdminSessionsPage = {
                               <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.8rem; padding:6px 14px; border-radius:20px; display:inline-flex; align-items:center; gap:5px;">
                                 <i data-lucide="check-circle" style="width:14px;height:14px;"></i> مكتملة
                               </span>
+                              <button class="btn-secondary admin-session-report-whatsapp-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.08); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="إرسال تقرير الحصة المعتمد عبر واتساب">
+                                <i data-lucide="message-circle" style="width:12px; height:12px;"></i> تقرير واتساب 📲
+                              </button>
                               <button class="btn-secondary admin-revert-session-btn" data-id="${sess.id}" style="font-size:0.75rem; padding:5px 10px; border-color:#f59e0b; color:#d97706; background:rgba(245,158,11,0.08); font-weight:800; border-radius:10px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="إلغاء إتمام الحصة وإعادتها لمجدولة وحذف الأجر من رصيد المعلم">
                                 <i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> تراجع لمجدولة ↩️
                               </button>
@@ -5283,6 +5301,15 @@ export const AdminSessionsPage = {
           onCompletedCallback();
         } else {
           this.renderTab(this.activeTab || "sessions");
+        }
+
+        // Open Academy WhatsApp Report Dispatch Modal
+        if (typeof window.openWhatsAppSessionReportModal === "function") {
+          window.openWhatsAppSessionReportModal({
+            sessionId,
+            session: res.session,
+            enrolledStudents: res.enrolledStudents
+          });
         }
       } catch (err) {
         showToast(err.message || "فشل إتمام الحصة وحساب الأرباح.", "error");

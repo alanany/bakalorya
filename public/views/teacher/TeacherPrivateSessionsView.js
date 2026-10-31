@@ -138,8 +138,18 @@ export default class TeacherPrivateSessionsView {
 
     const actionButtons = (s) => {
         const st = (s.status || '').toLowerCase();
-        const isCompleted = st === 'completed' || st.includes('cancel');
-        if (isCompleted) return '<span style="color:var(--text-muted); font-size:0.8rem; font-weight:700;">تم الإنتهاء والتوثيق ✅</span>';
+        const isCompleted = st === 'completed';
+        if (isCompleted) {
+          return `
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="color:#10b981; font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.1); padding:4px 8px; border-radius:8px;">مكتملة وموثقة ✅</span>
+              <button class="btn-secondary teacher-whatsapp-report-btn" data-id="${s.id}" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إرسال تقرير الحصة المعتمد لولي الأمر عبر واتساب">
+                <i data-lucide="message-circle" style="width:12px; height:12px;"></i> تقرير واتساب 📲
+              </button>
+            </div>
+          `;
+        }
+        if (st.includes('cancel')) return '<span style="color:var(--text-muted); font-size:0.8rem; font-weight:700;">ملغاة ❌</span>';
 
         const date = new Date(s.scheduledAt);
         const sessionTime = date.getTime();
@@ -334,6 +344,16 @@ export default class TeacherPrivateSessionsView {
       });
     });
 
+    // View / Dispatch WhatsApp Report for completed sessions
+    this.container.querySelectorAll(".teacher-whatsapp-report-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        if (typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({ sessionId: id });
+        }
+      });
+    });
+
     // Check-in / confirm attendance button
     this.container.querySelectorAll(".session-checkin-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
@@ -468,7 +488,16 @@ export default class TeacherPrivateSessionsView {
         });
         if (res.message) showToast(res.message, "success");
         closeModal();
-        await this.render();
+        if (typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({
+            sessionId,
+            session: res.session,
+            enrolledStudents: res.enrolledStudents,
+            onClose: () => this.render()
+          });
+        } else {
+          await this.render();
+        }
       } catch (err) {
         showToast(err.message || "فشل إنهاء الجلسة وحفظ التقرير", "error");
       }

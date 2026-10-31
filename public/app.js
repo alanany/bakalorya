@@ -559,7 +559,20 @@ export function showEndSessionReportModal(sessionId, onSuccess) {
         });
         showToast(res.message || "تم إتمام الحصة بنجاح وخصم الرصيد وإيداع المستحقات! ✅", "success");
         closeModal();
-        if (typeof onSuccess === 'function') {
+        if (typeof openWhatsAppSessionReportModal === 'function') {
+          openWhatsAppSessionReportModal({
+            sessionId,
+            session: res.session,
+            enrolledStudents: res.enrolledStudents,
+            onClose: () => {
+              if (typeof onSuccess === 'function') {
+                onSuccess();
+              } else {
+                window.location.reload();
+              }
+            }
+          });
+        } else if (typeof onSuccess === 'function') {
           onSuccess();
         } else {
           window.location.reload();
@@ -699,8 +712,12 @@ export function showStudentSessionReportModal(session) {
       </div>
 
       <!-- Footer -->
-      <div style="padding:14px 24px; border-top:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:flex-end; flex-shrink:0;">
-        <button id="ok-btn-${modalId}" class="btn-primary" style="padding:8px 24px; border-radius:12px; font-weight:800; font-size:0.85rem;">
+      <div style="padding:14px 24px; border-top:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; gap:10px;">
+        <button id="wa-share-report-btn" class="btn-primary" style="padding:8px 18px; border-radius:12px; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #25D366, #128C7E); border:none; display:inline-flex; align-items:center; gap:6px; color:#fff; cursor:pointer; box-shadow:0 4px 12px rgba(37,211,102,0.35);">
+          <i data-lucide="message-circle" style="width:16px; height:16px;"></i>
+          <span>مشاركة التقرير عبر واتساب 📲</span>
+        </button>
+        <button id="ok-btn-${modalId}" class="btn-secondary" style="padding:8px 24px; border-radius:12px; font-weight:800; font-size:0.85rem;">
           إغلاق النافذة
         </button>
       </div>
@@ -714,11 +731,458 @@ export function showStudentSessionReportModal(session) {
   const closeModal = () => overlay.remove();
   overlay.querySelector(`#close-${modalId}`)?.addEventListener('click', closeModal);
   overlay.querySelector(`#ok-btn-${modalId}`)?.addEventListener('click', closeModal);
+  overlay.querySelector('#wa-share-report-btn')?.addEventListener('click', () => {
+    openWhatsAppSessionReportModal({ sessionId: session.id, session });
+  });
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
   });
 }
 window.showStudentSessionReportModal = showStudentSessionReportModal;
+
+/**
+ * Build clean, simple academy WhatsApp report text.
+ */
+export function formatAcademyWhatsAppReport(session, options = {}) {
+  const { studentName, targetType = 'general' } = options;
+  const teacherName = session?.teacher?.name || session?.group?.teacher?.name || session?.course?.teacher?.name || 'معلم المادة';
+  const subjectTitle = session?.course?.title || session?.group?.name || session?.title || 'الحصة الدراسية';
+  
+  const schedDate = session?.scheduledAt ? new Date(session.scheduledAt) : new Date();
+  let dateStr = '';
+  let timeStr = '';
+  try {
+    dateStr = schedDate.toLocaleDateString('ar-EG', { weekday: 'long', month: 'short', day: 'numeric' });
+    timeStr = schedDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    dateStr = schedDate.toLocaleDateString();
+    timeStr = schedDate.toLocaleTimeString();
+  }
+
+  const perfMap = {
+    'Excellent': 'ممتاز 🌟',
+    'ممتاز': 'ممتاز 🌟',
+    'Good': 'جيد جداً 👍',
+    'جيد جداً': 'جيد جداً 👍',
+    'Average': 'متوسط ⚖️',
+    'متوسط': 'متوسط ⚖️',
+    'Needs Improvement': 'يحتاج متابعة ⚠️',
+    'يحتاج إلى متابعة وتحسين': 'يحتاج متابعة ⚠️',
+    'يحتاج تدريب': 'يحتاج تدريب ومتابعة ⚠️'
+  };
+
+  const perfText = perfMap[session?.studentPerformance] || session?.studentPerformance || 'جيد جداً 👍';
+  const topicText = session?.topic ? session.topic.trim() : '';
+  const coveredText = session?.whatWasCovered ? session.whatWasCovered.trim() : (topicText || 'تم إنجاز المقرر المطلوب');
+  const homeworkText = session?.homework && session.homework.trim() ? session.homework.trim() : '';
+  const notesText = session?.teacherNotes && session.teacherNotes.trim() ? session.teacherNotes.trim() : '';
+
+  // Determine session sequence and total group / subscription sessions
+  let sessionNum = options?.sessionNumber ?? session?.sessionNumber ?? null;
+  const totalSess = options?.totalSessions ?? session?.totalSessions ?? session?.group?.totalSessions ?? session?.subscription?.totalSessions ?? null;
+  if (!sessionNum && session?.title) {
+    const m = session.title.match(/(?:الحصة|حصة)\s*#?\s*(\d+)/i);
+    if (m && m[1]) sessionNum = parseInt(m[1], 10);
+  }
+
+  let sessionCountLine = '';
+  if (sessionNum && totalSess) {
+    sessionCountLine = `🔢 *الحصة:* الحصة ${sessionNum} من أصل ${totalSess} حصص\n`;
+  } else if (sessionNum) {
+    sessionCountLine = `🔢 *الحصة:* الحصة رقم ${sessionNum}\n`;
+  } else if (totalSess) {
+    sessionCountLine = `🔢 *إجمالي الحصص:* ${totalSess} حصص\n`;
+  }
+
+  if (targetType === 'parent' && studentName) {
+    return (
+`🎓 *تقرير حصة - منصة انطلق*
+─────────────────
+📚 *المادة:* ${subjectTitle}
+👨‍🏫 *المعلم:* أ. ${teacherName}
+👤 *الطالب:* ${studentName}
+${sessionCountLine}📅 *الموعد:* ${dateStr} (${timeStr})
+
+📖 *ما تم شرحه:*
+${coveredText}
+
+🌟 *مستوى التفاعل:* ${perfText}
+${homeworkText ? `📝 *الواجب:* ${homeworkText}\n` : ''}${notesText ? `💡 *ملاحظات:* ${notesText}\n` : ''}─────────────────
+🔗 www.entlqedu.com`
+    );
+  }
+
+  // General / Group Broadcast Report
+  const groupOrStudent = session?.group?.name || (studentName ? `الطالب: ${studentName}` : (session?.student?.name ? `الطالب: ${session.student.name}` : 'المجموعة الدراسية'));
+
+  return (
+`🎓 *تقرير حصة - منصة انطلق*
+─────────────────
+📚 *المادة:* ${subjectTitle}
+👨‍🏫 *المعلم:* أ. ${teacherName}
+👥 *المجموعة:* ${groupOrStudent}
+${sessionCountLine}📅 *الموعد:* ${dateStr} (${timeStr})
+
+📖 *ما تم شرحه:*
+${coveredText}
+
+🌟 *المستوى العام:* ${perfText}
+${homeworkText ? `📝 *الواجب:* ${homeworkText}\n` : ''}${notesText ? `💡 *ملاحظات:* ${notesText}\n` : ''}─────────────────
+🔗 www.entlqedu.com`
+  );
+}
+window.formatAcademyWhatsAppReport = formatAcademyWhatsAppReport;
+
+/**
+ * Open prestigious academy-grade WhatsApp Session Report modal.
+ */
+export async function openWhatsAppSessionReportModal({ sessionId, session, enrolledStudents, onClose }) {
+  const modalId = 'whatsapp-session-report-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = modalId;
+  overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.72); backdrop-filter:blur(8px); z-index:10005; display:flex; align-items:center; justify-content:center; padding:16px;';
+
+  overlay.innerHTML = `
+    <div class="modal-content" style="max-width:760px; width:100%; border-radius:24px; border:1px solid var(--border-color); padding:40px 24px; background:var(--bg-card); text-align:center;">
+      <div class="spinner" style="width:36px; height:36px; margin:0 auto 16px;"></div>
+      <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:var(--text-main);">جاري تجهيز تقرير واتساب الأكاديمي... 📲</h3>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons();
+
+  let currentSession = session ? { ...session } : null;
+  let students = enrolledStudents ? [...enrolledStudents] : [];
+
+  const sId = sessionId || currentSession?.id;
+  if (sId && (!currentSession || !currentSession.topic || students.length === 0 || !currentSession.sessionNumber)) {
+    try {
+      const res = await apiFetch(`/sessions/${sId}/report-data`);
+      if (res.session) {
+        currentSession = {
+          ...res.session,
+          ...(currentSession || {}),
+          sessionNumber: res.sessionNumber || res.session?.sessionNumber || currentSession?.sessionNumber,
+          totalSessions: res.totalSessions || res.session?.totalSessions || currentSession?.totalSessions
+        };
+      }
+      if (res.enrolledStudents && students.length === 0) students = res.enrolledStudents;
+      if (res.teacher && !currentSession.teacher) currentSession.teacher = res.teacher;
+      if (res.group && !currentSession.group) currentSession.group = res.group;
+      if (res.course && !currentSession.course) currentSession.course = res.course;
+    } catch (e) {
+      console.warn("Could not fetch additional report-data:", e);
+    }
+  }
+
+  // Fallback if still single student on session
+  if (students.length === 0 && currentSession?.student) {
+    students = [{
+      id: currentSession.student.id,
+      name: currentSession.student.name || "طالب",
+      phone: currentSession.student.phone || "",
+      parentPhone: currentSession.student.parentPhone || ""
+    }];
+  }
+
+  const isGroup = !!currentSession?.group || students.length > 1;
+  let currentTargetType = isGroup ? 'group' : 'parent';
+  let selectedStudentId = students[0]?.id || null;
+
+  const renderContent = () => {
+    const activeStudent = students.find(s => String(s.id) === String(selectedStudentId)) || students[0] || null;
+    const activeStudentName = activeStudent ? activeStudent.name : null;
+
+    const sessionNum = currentSession?.sessionNumber || null;
+    const totalSess = currentSession?.totalSessions || currentSession?.group?.totalSessions || currentSession?.subscription?.totalSessions || null;
+
+    const reportText = formatAcademyWhatsAppReport(currentSession, {
+      studentName: activeStudentName,
+      targetType: currentTargetType,
+      sessionNumber: sessionNum,
+      totalSessions: totalSess
+    });
+
+    const groupTitle = currentSession?.group?.name || currentSession?.course?.title || currentSession?.title || 'المجموعة الدراسية';
+    const teacherName = currentSession?.teacher?.name || currentSession?.group?.teacher?.name || 'المعلم';
+    const sessionCountBadge = (sessionNum && totalSess)
+      ? ` • الحصة ${sessionNum} من ${totalSess}`
+      : (sessionNum ? ` • الحصة رقم ${sessionNum}` : (totalSess ? ` • (${totalSess} حصص)` : ''));
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:820px; width:100%; border-radius:24px; border:1px solid var(--border-color); padding:0; background:var(--bg-card); overflow:hidden; box-shadow:0 30px 70px rgba(0,0,0,0.55); max-height:92vh; display:flex; flex-direction:column;">
+        
+        <!-- Header -->
+        <div style="padding:20px 26px; background:linear-gradient(135deg, rgba(37,211,102,0.14), rgba(16,185,129,0.08)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:48px; height:48px; border-radius:16px; background:rgba(37,211,102,0.18); color:#25D366; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 12px rgba(37,211,102,0.25);">
+              <i data-lucide="message-square-share" style="width:26px; height:26px;"></i>
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <h3 style="font-size:1.25rem; font-weight:900; margin:0; color:var(--text-main);">إرسال تقرير الحصة عبر واتساب 📲</h3>
+                <span style="font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.25);">معتمد وأكاديمي ✨</span>
+              </div>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin:3px 0 0 0;">${groupTitle} • المعلم المشرف: أ. ${teacherName}${sessionCountBadge}</p>
+            </div>
+          </div>
+          <button id="close-${modalId}" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted); font-size:1.4rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:22px 26px; overflow-y:auto; display:flex; flex-direction:column; gap:20px; background:var(--bg-app);">
+          
+          <!-- Audience / Template Mode Switcher -->
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); padding:6px; border-radius:16px; border:1px solid var(--border-color); flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; gap:6px; flex:1; min-width:280px;">
+              <button type="button" id="tab-parent-mode" class="${currentTargetType === 'parent' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; padding:8px 12px; font-size:0.82rem; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:6px; ${currentTargetType === 'parent' ? 'background:linear-gradient(135deg, #10b981, #059669); border:none;' : ''}">
+                <i data-lucide="user-check" style="width:15px; height:15px;"></i>
+                <span>تقرير مخصص لولي الأمر والطالب 👨‍👩‍👦</span>
+              </button>
+              <button type="button" id="tab-group-mode" class="${currentTargetType === 'group' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; padding:8px 12px; font-size:0.82rem; font-weight:800; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:6px; ${currentTargetType === 'group' ? 'background:linear-gradient(135deg, #10b981, #059669); border:none;' : ''}">
+                <i data-lucide="users" style="width:15px; height:15px;"></i>
+                <span>تقرير عام لمجموعة الحصة (Group Chat) 📢</span>
+              </button>
+            </div>
+            ${currentTargetType === 'parent' && students.length > 1 ? `
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.78rem; font-weight:800; color:var(--text-muted);">تخصيص للطالب:</label>
+                <select id="select-active-student" class="form-input" style="padding:6px 10px; font-size:0.8rem; border-radius:10px; max-width:180px;">
+                  ${students.map(s => `<option value="${s.id}" ${String(s.id) === String(selectedStudentId) ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- WhatsApp Chat Preview Box -->
+          <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:16px; position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="font-size:0.82rem; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                <i data-lucide="smartphone" style="width:14px; height:14px; color:#25D366;"></i> معاينة رسالة الواتساب الجاهزة للإرسال:
+              </div>
+              <button id="copy-report-text-btn" class="btn-secondary" style="padding:5px 12px; font-size:0.78rem; font-weight:800; border-radius:10px; border-color:#25D366; color:#25D366; background:rgba(37,211,102,0.08); display:inline-flex; align-items:center; gap:5px; cursor:pointer;" title="نسخ نص التقرير بالكامل">
+                <i data-lucide="copy" style="width:13px; height:13px;"></i>
+                <span>نسخ نص التقرير 📋</span>
+              </button>
+            </div>
+            
+            <div id="wa-preview-box" style="background:rgba(37,211,102,0.04); border:1px solid rgba(37,211,102,0.22); border-radius:14px; padding:16px; font-family:'Cairo', sans-serif; font-size:0.88rem; line-height:1.75; color:var(--text-main); white-space:pre-wrap; max-height:220px; overflow-y:auto; user-select:all; border-left:4px solid #25D366;">
+${reportText}
+            </div>
+          </div>
+
+          <!-- Direct Send Actions -->
+          <div>
+            <div style="font-size:0.88rem; font-weight:900; color:var(--text-main); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="send" style="width:16px; height:16px; color:#25D366;"></i> خيارات الإرسال المباشر عبر واتساب:
+            </div>
+
+            <!-- Group broadcast action (if applicable) -->
+            ${isGroup ? `
+              <div style="background:linear-gradient(135deg, rgba(37,211,102,0.1), rgba(16,185,129,0.04)); border:1.5px solid rgba(37,211,102,0.3); border-radius:16px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:0.92rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="users" style="width:16px; height:16px; color:#25D366;"></i> مشاركة التقرير في مجموعة واتساب الحصة (Group)
+                  </div>
+                  <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">يفتح واتساب لتحديد جروب الفصل أو أولياء الأمور وإرسال التقرير المعتمد مباشرة</div>
+                </div>
+                <a href="https://wa.me/?text=${encodeURIComponent(formatAcademyWhatsAppReport(currentSession, { targetType: 'group', sessionNumber: sessionNum, totalSessions: totalSess }))}" target="_blank" class="btn-primary" style="background:linear-gradient(135deg, #25D366, #128C7E); border:none; padding:8px 18px; font-size:0.82rem; font-weight:900; border-radius:12px; display:inline-flex; align-items:center; gap:6px; color:#fff; text-decoration:none; box-shadow:0 4px 14px rgba(37,211,102,0.35);">
+                  <i data-lucide="share-2" style="width:15px; height:15px;"></i>
+                  <span>فتح واتساب للمجموعة 📢</span>
+                </a>
+              </div>
+            ` : ''}
+
+            <!-- Enrolled Students & Parents Quick Send Cards -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">
+                ${students.length > 1 ? `قائمة الطلاب وأولياء الأمور (${students.length} طلاب):` : `بيانات الطالب وولي الأمر:`}
+              </div>
+
+              ${students.length === 0 ? `
+                <div style="padding:16px; border-radius:14px; background:var(--bg-card); border:1px dashed var(--border-color); text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                  لا توجد أرقام هواتف مسجلة للطلاب في هذه الحصة. يمكنك نسخ نص التقرير أعلاه ومشاركته يدوياً.
+                </div>
+              ` : students.map(st => {
+                const cleanPhone = st.phone ? getCleanWhatsAppNumber(st.phone) : '';
+                const cleanParentPhone = st.parentPhone ? getCleanWhatsAppNumber(st.parentPhone) : '';
+
+                const studentMsg = formatAcademyWhatsAppReport(currentSession, {
+                  studentName: st.name,
+                  targetType: 'parent',
+                  sessionNumber: sessionNum,
+                  totalSessions: totalSess
+                });
+
+                return `
+                  <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <div style="width:38px; height:38px; border-radius:12px; background:rgba(99,102,241,0.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.9rem;">
+                        ${(st.name || 'ط')[0]}
+                      </div>
+                      <div>
+                        <div style="font-size:0.9rem; font-weight:800; color:var(--text-main);">${st.name || 'طالب'}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); display:flex; gap:8px; margin-top:2px;">
+                          <span>📱 هاتف الطالب: ${st.phone || 'غير مسجل'}</span>
+                          ${st.parentPhone ? `<span>• 👨‍👩‍👦 ولي الأمر: ${st.parentPhone}</span>` : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                      ${cleanPhone ? `
+                        <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(studentMsg)}" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; font-weight:800; border-radius:10px; border-color:#25D366; color:#25D366; background:rgba(37,211,102,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:5px;" title="إرسال التقرير لهاتف الطالب على واتساب">
+                          <i data-lucide="message-circle" style="width:13px; height:13px;"></i>
+                          <span>واتساب الطالب</span>
+                        </a>
+                      ` : ''}
+
+                      ${cleanParentPhone ? `
+                        <a href="https://wa.me/${cleanParentPhone}?text=${encodeURIComponent(studentMsg)}" target="_blank" class="btn-primary" style="padding:6px 14px; font-size:0.78rem; font-weight:800; border-radius:10px; background:linear-gradient(135deg, #25D366, #128C7E); border:none; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(37,211,102,0.3);" title="إرسال التقرير المعتمد لولي الأمر على واتساب">
+                          <i data-lucide="message-circle" style="width:13px; height:13px;"></i>
+                          <span>واتساب ولي الأمر 👨‍👩‍👦</span>
+                        </a>
+                      ` : ''}
+
+                      ${!cleanPhone && !cleanParentPhone ? `
+                        <div style="display:flex; align-items:center; gap:6px;">
+                          <input type="tel" class="form-input custom-wa-input-${st.id}" placeholder="أدخل رقم الواتساب..." style="padding:5px 8px; font-size:0.75rem; width:130px; border-radius:8px;">
+                          <button type="button" class="btn-primary send-custom-wa-btn" data-student-id="${st.id}" data-student-name="${st.name}" style="padding:5px 10px; font-size:0.75rem; font-weight:800; background:#25D366; border:none; border-radius:8px; color:#fff; cursor:pointer;">
+                            إرسال 📲
+                          </button>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Custom Send Row for Any Other Number -->
+            <div style="margin-top:14px; padding:12px 16px; border-radius:14px; background:var(--bg-card); border:1px dashed var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <div style="font-size:0.8rem; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                <i data-lucide="phone" style="width:14px; height:14px; color:var(--primary);"></i> إرسال التقرير لرقم هاتف مخصص آخر:
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="tel" id="custom-extra-phone-input" class="form-input" placeholder="مثال: 01012345678 أو 9665..." style="padding:6px 10px; font-size:0.8rem; width:170px; border-radius:8px;">
+                <button type="button" id="send-custom-extra-phone-btn" class="btn-primary" style="padding:6px 14px; font-size:0.8rem; font-weight:800; background:linear-gradient(135deg,#25D366,#128C7E); border:none; border-radius:8px; color:#fff; cursor:pointer;">
+                  إرسال الآن 📲
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 26px; border-top:1px solid var(--border-color); background:var(--bg-card); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+          <div style="font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="check-check" style="width:14px; height:14px; color:#10b981;"></i> تم حفظ التقرير واعتماده رسمياً في سجل المنصة
+          </div>
+          <button id="ok-done-btn-${modalId}" class="btn-primary" style="padding:8px 24px; border-radius:12px; font-weight:800; font-size:0.85rem;">
+            تم، إغلاق النافذة
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => {
+      overlay.remove();
+      if (typeof onClose === 'function') onClose();
+    };
+
+    overlay.querySelector(`#close-${modalId}`)?.addEventListener('click', closeModal);
+    overlay.querySelector(`#ok-done-btn-${modalId}`)?.addEventListener('click', closeModal);
+
+    // Switch modes
+    overlay.querySelector('#tab-parent-mode')?.addEventListener('click', () => {
+      currentTargetType = 'parent';
+      renderContent();
+    });
+    overlay.querySelector('#tab-group-mode')?.addEventListener('click', () => {
+      currentTargetType = 'group';
+      renderContent();
+    });
+
+    // Select active student dropdown
+    overlay.querySelector('#select-active-student')?.addEventListener('change', (e) => {
+      selectedStudentId = e.target.value;
+      renderContent();
+    });
+
+    // Copy report text button
+    overlay.querySelector('#copy-report-text-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      try {
+        await navigator.clipboard.writeText(reportText);
+        btn.innerHTML = `<i data-lucide="check" style="width:13px; height:13px;"></i> <span>تم النسخ بنجاح! ✅</span>`;
+        btn.style.color = '#10b981';
+        btn.style.borderColor = '#10b981';
+        if (window.lucide) window.lucide.createIcons();
+        showToast('تم نسخ نص التقرير بالكامل إلى الحافظة! 📋✨', 'success');
+        setTimeout(() => {
+          btn.innerHTML = `<i data-lucide="copy" style="width:13px; height:13px;"></i> <span>نسخ نص التقرير 📋</span>`;
+          btn.style.color = '#25D366';
+          btn.style.borderColor = '#25D366';
+          if (window.lucide) window.lucide.createIcons();
+        }, 2500);
+      } catch (err) {
+        showToast('فشل النسخ التلقائي، يرجى التحديد والنسخ يدوياً.', 'error');
+      }
+    });
+
+    // Custom prompt inputs for students without phones
+    overlay.querySelectorAll('.send-custom-wa-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const studentIdAttr = btn.getAttribute('data-student-id');
+        const sName = btn.getAttribute('data-student-name') || '';
+        const input = overlay.querySelector(`.custom-wa-input-${studentIdAttr}`);
+        const raw = input?.value?.trim();
+        if (!raw) {
+          showToast('يرجى إدخال رقم الهاتف أولاً', 'warning');
+          return;
+        }
+        const clean = getCleanWhatsAppNumber(raw);
+        const msg = formatAcademyWhatsAppReport(currentSession, {
+          studentName: sName,
+          targetType: 'parent',
+          sessionNumber: sessionNum,
+          totalSessions: totalSess
+        });
+        window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
+      });
+    });
+
+    // Extra custom phone button
+    overlay.querySelector('#send-custom-extra-phone-btn')?.addEventListener('click', () => {
+      const input = overlay.querySelector('#custom-extra-phone-input');
+      const raw = input?.value?.trim();
+      if (!raw) {
+        showToast('يرجى إدخال رقم الهاتف المراد الإرسال إليه', 'warning');
+        return;
+      }
+      const clean = getCleanWhatsAppNumber(raw);
+      const msg = formatAcademyWhatsAppReport(currentSession, {
+        studentName: activeStudentName,
+        targetType: currentTargetType,
+        sessionNumber: sessionNum,
+        totalSessions: totalSess
+      });
+      window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
+    });
+  };
+
+  renderContent();
+}
+window.openWhatsAppSessionReportModal = openWhatsAppSessionReportModal;
 
 /**
  * Validate that a session scheduled date is at least 1 hour in the future.

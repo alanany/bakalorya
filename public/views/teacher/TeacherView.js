@@ -847,9 +847,14 @@ export default class TeacherView {
             </button>
           </div>
         </div>` : session.status === 'COMPLETED' ? `
-        <div style="margin-top:10px; padding:10px; background:rgba(16,185,129,0.05); border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
-          ${session.topic ? `<div style="font-size:0.8rem;"><strong>الموضوع:</strong> ${session.topic}</div>` : ''}
-          ${session.homework ? `<div style="font-size:0.8rem;"><strong>الواجب:</strong> ${session.homework}</div>` : ''}
+        <div style="margin-top:10px; padding:10px; background:rgba(16,185,129,0.05); border-radius:10px; border:1px solid rgba(16,185,129,0.2); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            ${session.topic ? `<div style="font-size:0.8rem;"><strong>الموضوع:</strong> ${session.topic}</div>` : ''}
+            ${session.homework ? `<div style="font-size:0.8rem;"><strong>الواجب:</strong> ${session.homework}</div>` : ''}
+          </div>
+          <button class="btn-secondary teacher-wa-report-direct-btn" data-id="${session.id}" style="padding:4px 10px; font-size:0.75rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إرسال تقرير الحصة المعتمد عبر واتساب">
+            <i data-lucide="message-circle" style="width:12px; height:12px;"></i> تقرير واتساب 📲
+          </button>
         </div>` : ''}
       </div>
     `;
@@ -990,8 +995,13 @@ export default class TeacherView {
     let actionHtml = "";
     if (isCompleted) {
       actionHtml = `
-        <div style="font-size:0.73rem; color:#10b981; font-weight:800; background:rgba(16,185,129,0.08); padding:5px 8px; border-radius:8px; text-align:center; display:flex; align-items:center; justify-content:center; gap:4px;">
-          <i data-lucide="check-circle-2" style="width:12px;height:12px;"></i> تم إنهاء الحصة واحتساب الرصيد ✅
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+          <div style="font-size:0.73rem; color:#10b981; font-weight:800; background:rgba(16,185,129,0.08); padding:5px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="check-circle-2" style="width:12px;height:12px;"></i> موثقة ✅
+          </div>
+          <button class="btn-secondary teacher-wa-report-direct-btn" data-id="${session.id}" style="padding:4px 9px; font-size:0.74rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="إرسال تقرير الحصة المعتمد عبر واتساب">
+            <i data-lucide="message-circle" style="width:12px; height:12px;"></i> تقرير واتساب 📲
+          </button>
         </div>
       `;
     } else if (isLive) {
@@ -1229,6 +1239,15 @@ export default class TeacherView {
         const id = e.currentTarget.getAttribute("data-id");
         if (typeof window.showEndSessionReportModal === 'function') {
           window.showEndSessionReportModal(id, () => this.render());
+        }
+      });
+    });
+
+    document.querySelectorAll(".teacher-wa-report-direct-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id && typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({ sessionId: id });
         }
       });
     });
@@ -1762,13 +1781,22 @@ export default class TeacherView {
       btn.disabled = true;
       btn.textContent = 'جاري الحفظ...';
       try {
-        await apiFetch(`/sessions/${id}/complete`, {
+        const res = await apiFetch(`/sessions/${id}/complete`, {
           method: 'POST',
           body: JSON.stringify({ topic, whatWasCovered, studentPerformance, homework, teacherNotes })
         });
         showToast('🎉 تم إكمال الحصة وتسجيل التقرير بنجاح!', 'success');
         completeModal.style.display = 'none';
-        await this.render();
+        if (typeof window.openWhatsAppSessionReportModal === 'function') {
+          window.openWhatsAppSessionReportModal({
+            sessionId: id,
+            session: res?.session,
+            enrolledStudents: res?.enrolledStudents,
+            onClose: () => this.render()
+          });
+        } else {
+          await this.render();
+        }
       } catch (err) {
         showToast(err.message || 'تعذر إكمال الحصة.', 'error');
         btn.disabled = false;
