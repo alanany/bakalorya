@@ -12,6 +12,7 @@ import { AdminPlansPage } from './AdminPlansPage.js';
 import { AdminSettingsPage } from './AdminSettingsPage.js';
 import { AdminCurriculumPage } from './AdminCurriculumPage.js';
 import { AdminBlogsPage } from './AdminBlogsPage.js';
+import { AdminMarketingPage } from './AdminMarketingPage.js';
 import { AdminStudentDetailsPage } from './AdminStudentDetailsPage.js';
 import { AdminTeacherDetailsPage } from './AdminTeacherDetailsPage.js';
 
@@ -442,6 +443,11 @@ export default class AdminView {
               📰 إدارة المدونة والمقالات
               <span class="admin-nav-badge" id="admin-badge-blogs" style="background:#ec4899; color:#fff;">0</span>
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "marketing" ? "active" : ""}" data-tab="marketing">
+              <i data-lucide="megaphone"></i>
+              🎯 الحملات والتسويق الإعلاني
+              <span class="admin-nav-badge" id="admin-badge-marketing" style="background:#ec4899; color:#fff;">0</span>
+            </button>
 
             <div class="admin-nav-section">إدارة الأعضاء</div>
             <button class="admin-nav-btn ${this.activeTab === "teachers" ? "active" : ""}" data-tab="teachers">
@@ -589,6 +595,7 @@ export default class AdminView {
     const pendingStudentPayments = (earningsData.payments || []).filter(p => p.status === "PENDING").length;
     el("admin-badge-teacher-payouts", pendingTeacherPayouts > 0 ? `${pendingTeacherPayouts} معلق` : (earningsData.earnings || []).length);
     el("admin-badge-student-billings", pendingStudentPayments > 0 ? `${pendingStudentPayments} معلق` : (earningsData.payments || []).length);
+    el("admin-badge-marketing", (this.marketingCampaignsData?.campaigns || []).length);
   }
 
 
@@ -612,7 +619,8 @@ export default class AdminView {
         apiFetch("/admin/blogs").catch(() => []),
         apiFetch("/admin/parents").catch(() => []),
         apiFetch("/admin/supervisors").catch(() => []),
-        apiFetch("/curriculum/grades").catch(() => [])
+        apiFetch("/curriculum/grades").catch(() => []),
+        apiFetch("/admin/marketing-campaigns").catch(() => ({ campaigns: [], summary: {} }))
       ]);
       this.stats = stats || {};
       this.allMembers = members || [];
@@ -632,6 +640,10 @@ export default class AdminView {
       this.allParents = parents || [];
       this.allSupervisors = supervisors || [];
       this.allGrades = allGrades || [];
+      this.marketingCampaignsData = (arguments[0] && false) ? null : arguments[0]; // will set below
+      // Set marketing campaigns
+      const marketingData = await apiFetch("/admin/marketing-campaigns").catch(() => ({ campaigns: [], summary: {} }));
+      this.marketingCampaignsData = marketingData;
       if (settings) {
         this.platformSettings = settings;
         state.platformSettings = { ...state.platformSettings, ...settings };
@@ -734,6 +746,7 @@ export default class AdminView {
     earnings: { heading: "💰 المدفوعات والمستحقات", sub: "متابعة إيرادات المنصة ومستحقات المعلمين" },
     plans: { heading: "✨ خطط وباقات الاشتراكات (Subscription Plans & Quota)", sub: "إدارة وتعديل أسعار الباقات، عدد الحصص (Quota)، وتخصيص الباقات لكل كورس" },
     blogs: { heading: "📰 إدارة المدونة والمقالات", sub: "مراجعة واعتماد أو رفض مقالات المعلمين، ونشر مقالات جديدة كمسؤول" },
+    marketing: { heading: "🎯 إدارة وتتبع الحملات التسويقية والإعلانات", sub: "متابعة الميزانيات المصروفة على فيسبوك وإنستغرام وتيك توك، واحتساب العائد الإعلاني (ROAS) وتكلفة الطالب (CAC) وصافي الأرباح بدقة" },
     settings: { heading: "⚙️ إعدادات المنصة ورقم الواتساب", sub: "إدارة رقم الواتساب الرسمي، أرقام الدعم الهاتفي، والبريد الإلكتروني للواجهة الرئيسية" },
   };
 
@@ -830,6 +843,10 @@ export default class AdminView {
     else if (tab === "blogs") {
       content.innerHTML = this.renderBlogsTab();
       this.bindBlogsEvents?.();
+    }
+    else if (tab === "marketing") {
+      content.innerHTML = this.renderMarketingTab();
+      this.bindMarketingEvents?.();
     }
     else if (tab === "settings") {
       content.innerHTML = this.renderSettingsTab();
@@ -3072,4 +3089,5 @@ Object.assign(AdminView.prototype, AdminReportsPage);
 Object.assign(AdminView.prototype, AdminEarningsPage);
 Object.assign(AdminView.prototype, AdminPlansPage);
 Object.assign(AdminView.prototype, AdminBlogsPage);
+Object.assign(AdminView.prototype, AdminMarketingPage);
 Object.assign(AdminView.prototype, AdminSettingsPage);

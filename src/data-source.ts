@@ -33,6 +33,7 @@ import { Grade } from "./entity/Grade";
 import { Subject } from "./entity/Subject";
 import { CourseGroup } from "./entity/CourseGroup";
 import { ParentStudentLink } from "./entity/ParentStudentLink";
+import { MarketingCampaign } from "./entity/MarketingCampaign";
 
 export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
@@ -41,7 +42,7 @@ export const allEntities = [
   QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
   SessionCreditLedger, TeacherAvailability, SessionAttendance,
   TeacherEarning, Payment, AuditLog, PlatformSetting,
-  Grade, Subject, CourseGroup, ParentStudentLink
+  Grade, Subject, CourseGroup, ParentStudentLink, MarketingCampaign
 ];
 
 export function getDataSourceOptions(): DataSourceOptions {

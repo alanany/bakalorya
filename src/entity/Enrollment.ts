@@ -3,6 +3,7 @@ import { User } from "./User";
 import { Course } from "./Course";
 import { Payment } from "./Payment";
 import { CourseGroup } from "./CourseGroup";
+import { MarketingCampaign } from "./MarketingCampaign";
 
 @Entity()
 export class Enrollment {
@@ -17,6 +18,9 @@ export class Enrollment {
 
   @ManyToOne(() => CourseGroup, group => group.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" })
   group: CourseGroup | null;
+
+  @ManyToOne(() => MarketingCampaign, campaign => campaign.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" })
+  campaign: MarketingCampaign | null;
 
   @Column({ default: 0 })
   progress: number; // 0 to 100

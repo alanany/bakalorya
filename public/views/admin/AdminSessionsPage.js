@@ -3917,8 +3917,15 @@ export const AdminSessionsPage = {
     let groupEntity = null;
     let courseEntity = null;
     let totalSessionsCount = 8;
+    let activeCampaigns = [];
 
     try {
+      // 0. Fetch active marketing campaigns for attribution selector
+      try {
+        const campRes = await apiFetch("/admin/marketing-campaigns/active").catch(() => null);
+        if (campRes && campRes.campaigns) activeCampaigns = campRes.campaigns;
+      } catch (_) {}
+
       // 1. Try to fetch official roster from backend endpoint
       const rosterRes = await apiFetch(`/groups/${groupIdOrSessionId}/roster`).catch(() => null);
 
@@ -4266,6 +4273,29 @@ export const AdminSessionsPage = {
                     </div>
                   </div>
 
+                  <!-- Marketing Campaign Attribution Selector -->
+                  <div style="background:linear-gradient(135deg, rgba(236,72,153,0.06), rgba(139,92,246,0.04)); border:1.5px solid rgba(236,72,153,0.25); border-radius:14px; padding:12px 14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                      <label for="add-student-campaign-id" style="font-size:0.83rem; font-weight:800; color:var(--text-main); margin:0; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="megaphone" style="width:16px; height:16px; color:#ec4899;"></i>
+                        <span>🎯 الحملة الإعلانية / مصدر الطالب (Marketing Campaign):</span>
+                      </label>
+                      <button type="button" id="quick-create-campaign-btn" class="btn-secondary" style="font-size:0.75rem; padding:4px 10px; border-radius:10px; font-weight:800; cursor:pointer; color:#ec4899; border-color:rgba(236,72,153,0.35); background:rgba(236,72,153,0.08); display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="plus-circle" style="width:13px; height:13px;"></i> إنشاء حملة إعلانية جديدة سريعاً 🚀
+                      </button>
+                    </div>
+                    <select id="add-student-campaign-id" class="form-select" style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                      <option value="">-- تسجيل مباشر / بدون إعلان (Organic) --</option>
+                      ${activeCampaigns.map(c => {
+                        const platEmoji = c.platform === 'facebook' ? '📘' : (c.platform === 'instagram' ? '📸' : (c.platform === 'tiktok' ? '🎵' : (c.platform === 'google_ads' ? '🔍' : '📢')));
+                        return `<option value="${c.id}">${platEmoji} [${c.platform.toUpperCase()}] ${c.name} — (المصروف: ${c.adSpend} ${c.currency || 'ج.م'})</option>`;
+                      }).join('')}
+                    </select>
+                    <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+                      💡 سيتم احتساب رسوم اشتراك الطالب كإيراد مباشر لهذه الحملة وحساب العائد الإعلاني (ROAS) تلقائياً.
+                    </div>
+                  </div>
+
                   <!-- Receipt Upload & Notes Grid -->
                   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; align-items:start;">
                     <div>
@@ -4373,6 +4403,11 @@ export const AdminSessionsPage = {
                                 💳 مسدد (${st.paidAmount || (st.payment?.amount || 0)} ج.م)
                               </span>
                             `}
+                            ${st.campaign ? `
+                              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(236,72,153,0.12); color:#ec4899; border:1px solid rgba(236,72,153,0.3); display:inline-flex; align-items:center; gap:3px;">
+                                🎯 [${st.campaign.platform?.toUpperCase()}] ${st.campaign.name}
+                              </span>
+                            ` : ''}
                           </div>
 
                           <div style="font-size:0.78rem; color:var(--text-muted); margin-top:3px;">
@@ -4613,6 +4648,105 @@ export const AdminSessionsPage = {
       }
     });
 
+    // Quick Create Campaign Button in Add Student Form
+    container.querySelector("#quick-create-campaign-btn")?.addEventListener("click", () => {
+      const modalId = "quick-create-campaign-modal";
+      const existing = document.getElementById(modalId);
+      if (existing) existing.remove();
+
+      const modalHtml = `
+        <div class="modal-overlay" id="${modalId}" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:100005;">
+          <div class="modal-content" style="max-width:480px; width:92%; border-radius:20px; padding:24px; background:var(--bg-card); border:1px solid var(--border-color); box-shadow:0 20px 40px rgba(0,0,0,0.4);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <h3 style="margin:0; font-size:1.15rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <i data-lucide="megaphone" style="width:20px; height:20px; color:#ec4899;"></i> إنشاء حملة تسويقية جديدة 🚀
+              </h3>
+              <button type="button" id="close-quick-campaign-modal" style="background:none; border:none; font-size:1.4rem; color:var(--text-muted); cursor:pointer;">&times;</button>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">اسم الحملة: <span style="color:#ef4444;">*</span></label>
+                <input type="text" id="quick-camp-name" placeholder="مثال: حملة مراجعات أكتوبر - فيسبوك" class="form-input" style="width:100%; border-radius:10px; padding:9px 12px; font-size:0.85rem;" required>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">المنصة الإعلانية:</label>
+                  <select id="quick-camp-platform" class="form-select" style="width:100%; border-radius:10px; padding:9px 10px; font-size:0.85rem;">
+                    <option value="facebook">📘 Facebook</option>
+                    <option value="instagram">📸 Instagram</option>
+                    <option value="tiktok">🎵 TikTok</option>
+                    <option value="google_ads">🔍 Google Ads</option>
+                    <option value="snapchat">👻 Snapchat</option>
+                    <option value="whatsapp">💬 WhatsApp</option>
+                    <option value="other">📢 أخرى</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">المصروف الإعلاني (ج.م):</label>
+                  <input type="number" id="quick-camp-spend" placeholder="0" min="0" step="50" class="form-input" style="width:100%; border-radius:10px; padding:9px 12px; font-size:0.85rem;">
+                </div>
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">ملاحظات / الجمهور المستهدف:</label>
+                <input type="text" id="quick-camp-notes" placeholder="مثال: طلاب أولى ثانوي ليدز واتساب" class="form-input" style="width:100%; border-radius:10px; padding:9px 12px; font-size:0.85rem;">
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+                <button type="button" id="cancel-quick-campaign-btn" class="btn-secondary" style="padding:8px 16px; border-radius:10px; font-size:0.84rem;">إلغاء</button>
+                <button type="button" id="save-quick-campaign-btn" class="btn-primary" style="padding:8px 20px; border-radius:10px; font-size:0.84rem; font-weight:800; background:linear-gradient(135deg, #ec4899, #8b5cf6); border:none; color:#fff;">حفظ واختيار الحملة ✅</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const div = document.createElement("div");
+      div.id = "quick-campaign-modal-wrapper";
+      div.innerHTML = modalHtml;
+      document.body.appendChild(div);
+      if (window.lucide) window.lucide.createIcons();
+
+      const closeQuick = () => div.remove();
+      div.querySelector("#close-quick-campaign-modal")?.addEventListener("click", closeQuick);
+      div.querySelector("#cancel-quick-campaign-btn")?.addEventListener("click", closeQuick);
+
+      div.querySelector("#save-quick-campaign-btn")?.addEventListener("click", async () => {
+        const name = div.querySelector("#quick-camp-name")?.value?.trim();
+        const platform = div.querySelector("#quick-camp-platform")?.value;
+        const adSpend = parseFloat(div.querySelector("#quick-camp-spend")?.value) || 0;
+        const notes = div.querySelector("#quick-camp-notes")?.value?.trim();
+
+        if (!name) {
+          showToast("يرجى كتابة اسم الحملة التسويقية.", "warning");
+          return;
+        }
+
+        try {
+          const res = await apiFetch("/admin/marketing-campaigns", {
+            method: "POST",
+            body: JSON.stringify({ name, platform, adSpend, notes })
+          });
+          showToast("تم إنشاء الحملة بنجاح وتعيينها! 🎯", "success");
+          closeQuick();
+
+          // Add to select and select it
+          const select = document.getElementById("add-student-campaign-id");
+          if (select && res.campaign) {
+            const opt = document.createElement("option");
+            opt.value = res.campaign.id;
+            opt.textContent = `[${res.campaign.platform.toUpperCase()}] ${res.campaign.name} — (${res.campaign.adSpend} ج.م)`;
+            opt.selected = true;
+            select.appendChild(opt);
+          }
+        } catch (err) {
+          showToast(err.message || "فشل إنشاء الحملة", "error");
+        }
+      });
+    });
+
     // 1. Add Student to Group
     document.getElementById("add-student-to-group-btn")?.addEventListener("click", async () => {
       const studentId = document.getElementById("select-new-group-student")?.value;
@@ -4699,7 +4833,8 @@ export const AdminSessionsPage = {
               totalPrice: parseFloat(totalPriceVal),
               remainingAmount: parseFloat(remainingAmountVal),
               dueDate: dueDateVal || undefined,
-              discountReason: discountReasonVal || undefined
+              discountReason: discountReasonVal || undefined,
+              campaignId: document.getElementById("add-student-campaign-id")?.value || undefined
             })
           });
           showToast(res.message || "تمت إضافة الطالب للمجموعة ورفع الإيصال وتفعيل المقعد بنجاح! 🎉🧾", "success");

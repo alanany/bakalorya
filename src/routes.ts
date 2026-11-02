@@ -25,6 +25,7 @@ import { CurriculumController } from "./controller/CurriculumController";
 import { CourseGroupController } from "./controller/CourseGroupController";
 import { ParentController } from "./controller/ParentController";
 import { AdminStudentController } from "./controller/AdminStudentController";
+import { MarketingCampaignController } from "./controller/MarketingCampaignController";
 import { authMiddleware, optionalAuthMiddleware, requireRole, requireCapability } from "./middleware/auth";
 import { authRateLimiter, sensitiveActionLimiter } from "./middleware/rateLimiter";
 import { concurrencyLock } from "./middleware/concurrencyLock";
@@ -205,6 +206,15 @@ router.post("/admin/groups/:id/students/:studentId/record-installment", authMidd
 router.post("/admin/groups/:id/remove-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.startTeachingAndGenerateSessions);
 router.post("/admin/groups/:id/renew-cycle", authMiddleware, requireRole(["admin", "supervisor", "teacher"]), CourseGroupController.renewGroupCycle);
+
+// Marketing Campaigns & Ad Spend Tracking (Admin)
+router.get("/admin/marketing-campaigns", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.getCampaigns);
+router.get("/admin/marketing-campaigns/active", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.getActiveCampaigns);
+router.get("/admin/marketing-campaigns/:id", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.getCampaignDetails);
+router.post("/admin/marketing-campaigns", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.createCampaign);
+router.put("/admin/marketing-campaigns/:id", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.updateCampaign);
+router.post("/admin/marketing-campaigns/:id/add-spend", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.addCampaignSpend);
+router.delete("/admin/marketing-campaigns/:id", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.deleteCampaign);
 
 // Admin Teacher Management
 router.post("/admin/teachers/invite", authMiddleware, requireRole(["admin"]), AdminTeacherController.inviteTeacher);

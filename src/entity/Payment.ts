@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Up
 import { User } from "./User";
 import { Enrollment } from "./Enrollment";
 import { Subscription } from "./Subscription";
+import { MarketingCampaign } from "./MarketingCampaign";
 
 @Entity()
 export class Payment {
@@ -25,6 +26,9 @@ export class Payment {
 
   @ManyToOne(() => Subscription, { nullable: true, onDelete: "SET NULL" })
   subscription: Subscription;
+
+  @ManyToOne(() => MarketingCampaign, campaign => campaign.payments, { nullable: true, onDelete: "SET NULL" })
+  campaign: MarketingCampaign | null;
 
   @Column({ default: "manual" })
   provider: string;

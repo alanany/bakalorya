@@ -15,6 +15,7 @@ import { AssignmentSubmission } from "../entity/AssignmentSubmission";
 import { SessionAttendance } from "../entity/SessionAttendance";
 import { Lesson } from "../entity/Lesson";
 import { ParentStudentLink } from "../entity/ParentStudentLink";
+import { MarketingCampaign } from "../entity/MarketingCampaign";
 import { NotificationController } from "./NotificationController";
 import { AuthRequest } from "../middleware/auth";
 import { IsNull } from "typeorm";
@@ -1092,7 +1093,7 @@ export class CourseGroupController {
 
       const enrollments = await enrollmentRepo.find({
         where: { group: { id } },
-        relations: ["student", "payment"],
+        relations: ["student", "payment", "campaign"],
         order: { createdAt: "ASC" }
       });
 
@@ -1142,6 +1143,11 @@ export class CourseGroupController {
               providerTransactionId: e.payment.providerTransactionId,
               receiptUrl: e.payment.receiptUrl,
               notes: e.payment.notes
+            } : null,
+            campaign: e.campaign ? {
+              id: e.campaign.id,
+              name: e.campaign.name,
+              platform: e.campaign.platform
             } : null,
             enrolledAt: e.createdAt
           };
@@ -1356,7 +1362,8 @@ export class CourseGroupController {
         provider, 
         providerTransactionId, 
         receiptUrl, 
-        notes 
+        notes,
+        campaignId
       } = req.body;
 
       if (!studentId) {
@@ -1404,8 +1411,19 @@ export class CourseGroupController {
 
       let enrollment = await enrollmentRepo.findOne({
         where: { student: { id: studentId }, group: { id } },
-        relations: ["student", "payment", "group", "course"]
+        relations: ["student", "payment", "group", "course", "campaign"]
       });
+
+      // Fetch marketing campaign if provided
+      let marketingCampaign: MarketingCampaign | null = null;
+      if (campaignId) {
+        try {
+          const campRepo = AppDataSource.getRepository(MarketingCampaign);
+          marketingCampaign = await campRepo.findOne({ where: { id: campaignId } });
+        } catch (cErr) {
+          console.warn("Could not find marketing campaign:", cErr);
+        }
+      }
 
       // If student is not already active in this group, enforce or adjust capacity
       if (!enrollment || enrollment.status !== "active") {
@@ -1463,6 +1481,9 @@ export class CourseGroupController {
       enrollment.paidAmount = paidAmount;
       enrollment.remainingAmount = remAmount;
       enrollment.dueDate = (finalPaymentStatus === "PARTIAL" && dueDate) ? String(dueDate) : null;
+      if (marketingCampaign) {
+        enrollment.campaign = marketingCampaign;
+      }
 
       const initialHistoryItem = {
         amount: paidAmount,
@@ -1496,6 +1517,7 @@ export class CourseGroupController {
         payment.currency = "EGP";
         payment.type = "GROUP_ENROLLMENT";
         payment.provider = provider || "manual";
+        if (marketingCampaign) payment.campaign = marketingCampaign;
         if (providerTransactionId !== undefined) payment.providerTransactionId = providerTransactionId;
         if (receiptUrl) payment.receiptUrl = receiptUrl;
         payment.notes = notes || defaultPaymentNotes;
