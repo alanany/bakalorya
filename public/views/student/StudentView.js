@@ -910,106 +910,203 @@ export default class StudentView {
           <!-- Left Column (Main Track) -->
           <div style="display:flex; flex-direction:column; gap:32px;">
             
-            <!-- Section: Education Subjects and Groups for Your Grade -->
-            <div id="student-recommended-courses-section">
-              <style>
-                .creative-grade-subject-card:hover {
-                  transform: translateY(-4px);
-                  box-shadow: 0 10px 24px rgba(0,0,0,0.08) !important;
-                  border-color: rgba(99,102,241,0.4) !important;
-                }
-                .suggested-groups-scroll-container {
-                  display: flex;
-                  gap: 20px;
-                  overflow-x: auto;
-                  padding: 12px 28px 24px 28px;
-                  scroll-snap-type: x mandatory;
-                  scroll-padding: 0 28px;
-                  scroll-behavior: smooth;
-                  -webkit-overflow-scrolling: touch;
-                }
-                .suggested-groups-scroll-container::-webkit-scrollbar {
-                  height: 6px;
-                }
-                .suggested-groups-scroll-container::-webkit-scrollbar-track {
-                  background: rgba(0,0,0,0.04);
-                  border-radius: 10px;
-                  margin: 0 28px;
-                }
-                .suggested-groups-scroll-container::-webkit-scrollbar-thumb {
-                  background: rgba(99,102,241,0.22);
-                  border-radius: 10px;
-                }
-                .suggested-groups-scroll-container::-webkit-scrollbar-thumb:hover {
-                  background: var(--primary);
-                }
-                .suggested-group-card {
-                  position: relative;
-                  overflow: hidden;
-                  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                .suggested-group-card:hover {
-                  transform: translateY(-6px);
-                  box-shadow: 0 18px 36px -8px rgba(99,102,241,0.18), 0 6px 16px -4px rgba(0,0,0,0.08) !important;
-                  border-color: rgba(99,102,241,0.45) !important;
-                }
-                .suggested-group-card:hover .suggested-card-cta-btn {
-                  box-shadow: 0 6px 18px rgba(79,70,229,0.4) !important;
-                }
-                .suggested-carousel-arrow {
-                  position: absolute;
-                  top: 50%;
-                  transform: translateY(-50%);
-                  z-index: 10;
-                  width: 40px;
-                  height: 40px;
-                  border-radius: 50%;
-                  border: 1.5px solid var(--border-color);
-                  background: var(--bg-card);
-                  color: var(--text-main);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  cursor: pointer;
-                  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
-                  backdrop-filter: blur(12px);
-                  -webkit-backdrop-filter: blur(12px);
-                  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                .suggested-carousel-arrow.right {
-                  right: 2px;
-                }
-                .suggested-carousel-arrow.left {
-                  left: 2px;
-                }
-                .suggested-carousel-arrow:hover {
-                  background: var(--primary) !important;
-                  color: #ffffff !important;
-                  border-color: var(--primary) !important;
-                  box-shadow: 0 6px 22px rgba(99,102,241,0.45) !important;
-                  transform: translateY(-50%) scale(1.1) !important;
-                }
-                .suggested-carousel-arrow:active {
-                  transform: translateY(-50%) scale(0.95) !important;
-                }
-                @media (max-width: 640px) {
-                  .suggested-groups-scroll-container {
-                    padding: 10px 16px 20px 16px;
-                    gap: 14px;
-                    scroll-padding: 0 16px;
-                  }
-                  .suggested-carousel-arrow.right { right: 0px; width: 34px; height: 34px; }
-                  .suggested-carousel-arrow.left { left: 0px; width: 34px; height: 34px; }
-                }
-              </style>
-             
+            <!-- Section: Student's Active Groups & Cohorts (أفواج ومجموعاتي الدراسية) -->
+            <div id="student-active-groups-section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.12)); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i data-lucide="layers" style="width:20px; height:20px;"></i>
+                  </div>
+                  <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">
+                        أفواج ومجموعاتي الدراسية
+                      </h3>
+                      <span class="badge" style="font-size:0.75rem; padding:2px 8px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--primary); font-weight:800;">
+                        ${recentGroups.length} مجموعات
+                      </span>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:0.8rem; margin:2px 0 0 0;">
+                      مجموعاتك التعليمية المباشرة مع المعلمين المعتمدين وبنوك الشروحات
+                    </p>
+                  </div>
+                </div>
 
-          <!-- Right Column (Sidebar Academic Profile, Reports & Shortcuts) -->
+                <a href="#student-groups" class="btn-secondary" style="font-size:0.8rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:12px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15);">
+                  <span>عرض الكل (${recentGroups.length})</span>
+                  <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
+                </a>
+              </div>
+
+              ${recentGroups.length === 0 ? `
+                <div class="glass-card" style="text-align:center; padding:36px 20px; border-radius:20px; color:var(--text-muted); border:1px dashed var(--border-color); background:var(--bg-card);">
+                  <div style="width:52px; height:52px; border-radius:16px; background:rgba(99,102,241,0.08); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                    <i data-lucide="users" style="width:26px; height:26px;"></i>
+                  </div>
+                  <h4 style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0 0 6px;">لا توجد مجموعات مسجلة حالياً</h4>
+                  <p style="font-size:0.82rem; max-width:400px; margin:0 auto 16px; line-height:1.5;">
+                    انضم الآن إلى أقوى الأفواج والمجموعات أو اشترك في باقات فصول صفك في القائمة الجانبية للتفاعل المباشر.
+                  </p>
+                  <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                    <a href="#courses" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:8px 20px; border-radius:20px; font-size:0.82rem; font-weight:800; text-decoration:none;">
+                      <i data-lucide="compass" style="width:14px; height:14px;"></i> استعراض المناهج الدراسية
+                    </a>
+                  </div>
+                </div>
+              ` : `
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px;">
+                  ${recentGroups.slice(0, 6).map((g, idx) => {
+                    const teacherAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(g.teacher?.name || 'teacher')}`;
+                    const groupLink = g.id ? `#group/${g.id}` : '#student-groups';
+                    const nextFmt = g.nextSession ? formatSessionDateTime(g.nextSession.scheduledAt, null, {}) : null;
+
+                    const gradients = [
+                      'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                      'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)',
+                      'linear-gradient(135deg, #d97706 0%, #ea580c 100%)',
+                      'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)'
+                    ];
+                    const grad = gradients[idx % gradients.length];
+
+                    return `
+                      <div class="glass-card" style="border-radius:18px; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); display:flex; flex-direction:column; box-shadow:0 4px 18px rgba(0,0,0,0.03); transition:transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+                        <!-- Top Chromatic Strip -->
+                        <div style="height:4px; width:100%; background:${grad};"></div>
+
+                        <!-- Card Header -->
+                        <div style="padding:14px 16px 12px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                          <div style="flex:1; min-width:0;">
+                            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+                              <span style="font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(99,102,241,0.1); color:var(--primary); display:inline-block;">
+                                ${g.courseTitle || 'مجموعة دراسية'}
+                              </span>
+                              ${g.gradeName ? `<span style="font-size:0.68rem; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(16,185,129,0.1); color:#10b981;">${g.gradeName}</span>` : ''}
+                            </div>
+                            <h4 style="font-size:0.98rem; font-weight:800; color:var(--text-main); margin:0; line-height:1.3; cursor:pointer;" onclick="window.location.hash='${groupLink}'">
+                              👥 ${g.title}
+                            </h4>
+                          </div>
+
+                          ${g.liveSession ? `
+                            <span style="padding:3px 8px; border-radius:12px; font-size:0.68rem; font-weight:900; background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.35); display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+                              <span style="width:5px; height:5px; border-radius:50%; background:#ef4444;"></span>
+                              مباشر الآن
+                            </span>
+                          ` : `
+                            <span style="padding:3px 8px; border-radius:10px; font-size:0.68rem; font-weight:800; background:rgba(16,185,129,0.1); color:#10b981; white-space:nowrap;">
+                              نشطة ⚡
+                            </span>
+                          `}
+                        </div>
+
+                        <!-- Card Body -->
+                        <div style="padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:10px;">
+                          <!-- Teacher Info -->
+                          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:var(--bg-app); border:1px solid var(--border-color);">
+                            <img src="${teacherAvatar}" alt="${g.teacher?.name || ''}" style="width:32px; height:32px; border-radius:10px; object-fit:cover; border:1px solid rgba(99,102,241,0.25);">
+                            <div style="flex:1; min-width:0;">
+                              <div style="font-size:0.82rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${g.teacher?.name || 'الأستاذ'}
+                              </div>
+                              <div style="font-size:0.7rem; color:var(--text-muted);">معلم المجموعة الأكاديمي</div>
+                            </div>
+                          </div>
+
+                          <!-- Schedule -->
+                          ${g.scheduleText ? `
+                            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                              <i data-lucide="calendar" style="width:13px; height:13px; color:var(--primary); flex-shrink:0;"></i>
+                              <span style="line-height:1.4;">${g.scheduleText}</span>
+                            </div>
+                          ` : ''}
+
+                          ${nextFmt ? `
+                            <div style="padding:8px 10px; border-radius:10px; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:space-between; gap:4px; font-size:0.74rem;">
+                              <span style="color:var(--primary); font-weight:800;">الحصة القادمة:</span>
+                              <span style="color:var(--text-main); font-weight:800;">${nextFmt.dateStr} • ${nextFmt.timeStr}</span>
+                            </div>
+                          ` : ''}
+
+                          <!-- Action Button -->
+                          <div style="margin-top:auto; padding-top:6px; display:flex; gap:8px; align-items:center;">
+                            <a href="${groupLink}" class="btn-primary"
+                              style="flex:1; padding:9px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                              <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
+                              <span>دخول قاعة المجموعة 🚀</span>
+                            </a>
+
+                            ${(g.liveSession && g.meetingLink) ? `
+                              <a href="${g.meetingLink}" target="_blank" rel="noopener" class="btn-primary"
+                                style="padding:9px 12px; border-radius:10px; font-size:0.8rem; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:5px; flex-shrink:0;">
+                                <i data-lucide="video" style="width:14px; height:14px;"></i>
+                                <span>بث حي 🔴</span>
+                              </a>
+                            ` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+
+          </div>
+
+          <!-- Right Column (Sidebar Academic Profile, Shortcuts & Tips) -->
           <div style="display:flex; flex-direction:column; gap:24px;">
 
+            <!-- 🎒 Dedicated Classes Banner linking to Single Page #student-classes -->
+            <a href="#student-classes" class="glass-card" style="padding:20px; border-radius:24px; border:1.5px solid rgba(99,102,241,0.25); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(168,85,247,0.04)); text-decoration:none; display:flex; justify-content:space-between; align-items:center; gap:14px; transition:all 0.2s; box-shadow:0 6px 24px rgba(0,0,0,0.03);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='none';">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg, #4f46e5, #7c3aed); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; box-shadow:0 6px 16px rgba(99,102,241,0.3);">
+                  🎒
+                </div>
+                <div>
+                  <div style="font-size:0.98rem; font-weight:800; color:var(--text-main); margin-bottom:3px; display:flex; align-items:center; gap:6px;">
+                    <span>فصول وباقات صفي</span>
+                    <span style="font-size:0.68rem; font-weight:900; background:rgba(99,102,241,0.12); color:var(--primary); padding:1px 6px; border-radius:6px;">شامل</span>
+                  </div>
+                  <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
+                    استعراض باقات المنهج الشاملة لصفك ➔
+                  </p>
+                </div>
+              </div>
+              <i data-lucide="arrow-left" style="width:16px; height:16px; color:var(--primary); flex-shrink:0;"></i>
+            </a>
 
-            
-         
+            <!-- Quick Learning Hub & Shortcuts -->
+            <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+              <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="compass" style="width:18px; height:18px; color:var(--primary);"></i>
+                أدوات الوصول السريع ⚡
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <a href="#student-classes" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="backpack" style="width:14px;height:14px;color:var(--primary);"></i> فصول صفي 🎒
+                </a>
+                <a href="#schedule" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="calendar" style="width:14px;height:14px;color:var(--primary);"></i> الجدول الدراسي
+                </a>
+                <a href="#student-groups" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="users" style="width:14px;height:14px;color:#f59e0b;"></i> مجموعاتي
+                </a>
+                <a href="#student-subscriptions" class="btn-secondary" style="padding:10px; font-size:0.8rem; font-weight:700; border-radius:12px; text-decoration:none; justify-content:center; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="sparkles" style="width:14px;height:14px;color:#10b981;"></i> باقاتي
+                </a>
+              </div>
+            </div>
+
+            <!-- Quick Study Tips / Motivation Widget -->
+            <div class="glass-card" style="padding:20px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; color:#f59e0b;">
+                <i data-lucide="lightbulb" style="width:20px; height:20px;"></i>
+                <h4 style="font-size:0.95rem; font-weight:800; margin:0; color:var(--text-main);">نصيحة اليوم للتفوق</h4>
+              </div>
+              <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.6; margin:0;">
+                💡 <strong>قاعدة الـ 25 دقيقة:</strong> ركز في درس واحد لمدة 25 دقيقة متواصلة بدون أي مشتتات، ثم خذ استراحة 5 دقائق لتثبيت المعلومات بأعلى كفاءة.
+              </p>
+            </div>
 
           </div>
 

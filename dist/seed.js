@@ -109,7 +109,8 @@ async function seed() {
             email: "teacher@bakalorya.com",
             password: passwordHash,
             role: "teacher",
-            avatar: "assets/logo.png"
+            avatar: "assets/logo.png",
+            videoUrl: "https://www.youtube.com/watch?v=im1YjIuVN6A"
         });
         await userRepository.save(teacher);
         const admin = userRepository.create({

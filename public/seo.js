@@ -61,6 +61,13 @@ export const SEO_CONFIG = {
     type: "article",
     isPublic: true
   },
+  "#class-details": {
+    title: "تفاصيل الفصل الدراسي والباقة التعليمية | منصة انطلق",
+    description: "استعرض تفاصيل الفصل الدراسي وجدول الحصص الأسبوعي والمواد المقررة والمميزات واشترك الآن في الباقة التعليمية الشاملة على منصة انطلق.",
+    keywords: "فصل دراسي, باقة مجمعة, جدول الحصص, منصة انطلق, باقات الفصول, تعليم تفاعلي",
+    type: "article",
+    isPublic: true
+  },
   "#about": {
     title: "عن منصة انطلق | رؤيتنا في ريادة التعليم التفاعلي",
     description: "تعرف على رسالة ورؤية منصة انطلق في تمكين الطلاب والمعلمين في مصر والوطن العربي من خلال تجربة تعليمية ذكية، تفاعلية، وشاملة.",
@@ -155,17 +162,22 @@ export function applyPageSEO(routeBase, routeParam = null) {
     const finalTitle = config.title || "منصة انطلق | بوابة التعليم الإلكتروني التفاعلي";
     document.title = finalTitle;
 
-    // Helper to safely set meta attribute
+    // Helper: set or create a meta element safely
     const setMeta = (selector, attr, value) => {
       if (!value) return;
       let el = document.querySelector(selector);
-      if (el) {
-        el.setAttribute(attr, value);
+      if (!el) {
+        // Create the element if it doesn't exist in index.html
+        el = document.createElement("meta");
+        const match = selector.match(/\[([\w:]+)="([^"]+)"\]/);
+        if (match) el.setAttribute(match[1], match[2]);
+        document.head.appendChild(el);
       }
+      el.setAttribute(attr, value);
     };
 
     // 2. Standard Meta Tags
-    setMeta('meta[name="title"]', 'content', finalTitle);
+    setMeta('meta[name="title"]',       'content', finalTitle);
     setMeta('meta[name="description"]', 'content', config.description || SEO_CONFIG["#landing"].description);
     if (config.keywords) {
       setMeta('meta[name="keywords"]', 'content', config.keywords);
@@ -177,25 +189,25 @@ export function applyPageSEO(routeBase, routeParam = null) {
       : "noindex, nofollow";
     setMeta('meta[name="robots"]', 'content', robotsContent);
 
-    // 4. Canonical URL & OpenGraph URL
-    const currentUrl = `${BASE_URL}/${window.location.hash || ""}`;
+    // 4. Canonical URL — SPAs use BASE_URL only; hash fragments are ignored by crawlers
+    const currentUrl = BASE_URL;
     const canonicalLink = document.querySelector('link[rel="canonical"]');
     if (canonicalLink) {
       canonicalLink.setAttribute("href", currentUrl);
     }
 
     // 5. OpenGraph Tags
-    setMeta('meta[property="og:title"]', 'content', finalTitle);
+    setMeta('meta[property="og:title"]',       'content', finalTitle);
     setMeta('meta[property="og:description"]', 'content', config.description || SEO_CONFIG["#landing"].description);
-    setMeta('meta[property="og:url"]', 'content', currentUrl);
-    setMeta('meta[property="og:type"]', 'content', config.type || "website");
-    setMeta('meta[property="og:image"]', 'content', config.image || DEFAULT_OG_IMAGE);
+    setMeta('meta[property="og:url"]',         'content', currentUrl);
+    setMeta('meta[property="og:type"]',        'content', config.type || "website");
+    setMeta('meta[property="og:image"]',       'content', config.image || DEFAULT_OG_IMAGE);
 
     // 6. Twitter Card Tags
-    setMeta('meta[name="twitter:title"]', 'content', finalTitle);
+    setMeta('meta[name="twitter:title"]',       'content', finalTitle);
     setMeta('meta[name="twitter:description"]', 'content', config.description || SEO_CONFIG["#landing"].description);
-    setMeta('meta[name="twitter:url"]', 'content', currentUrl);
-    setMeta('meta[name="twitter:image"]', 'content', config.image || DEFAULT_OG_IMAGE);
+    setMeta('meta[name="twitter:url"]',         'content', currentUrl);
+    setMeta('meta[name="twitter:image"]',       'content', config.image || DEFAULT_OG_IMAGE);
 
     // 7. Dynamic Breadcrumb Schema for SEO rich results
     updateBreadcrumbSchema(cleanRoute, finalTitle);

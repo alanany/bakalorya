@@ -39,7 +39,7 @@ export class CourseGroup {
   meetingLink: string; // Zoom / Google Meet link
 
   @Column({ default: "OPEN" })
-  status: "OPEN" | "FULL" | "CLOSED" | "IN_PROGRESS" | "PENDING_APPROVAL" | "REJECTED";
+  status: "OPEN" | "FULL" | "CLOSED" | "IN_PROGRESS" | "PENDING_APPROVAL" | "REJECTED" | "FINISHED";
 
   @Column({ type: "date", nullable: true })
   startDate: Date | null;
@@ -70,6 +70,15 @@ export class CourseGroup {
 
   @Column({ type: "float", default: 50 })
   platformCommissionPercent: number; // نسبة أرباح وتشغيل المنصة
+
+  @Column({ default: false })
+  isFeatured: boolean; // عرض كمجموعة مميزة في واجهة الفصول بالصفحة الرئيسية
+
+  @Column({ nullable: true })
+  packageLabel: string; // e.g. "فصل المتفوقين (باقة مجمعة)"
+
+  @Column({ nullable: true })
+  packageBadge: string; // e.g. "متاح للاشتراك"
 
   @OneToMany(() => Enrollment, enrollment => enrollment.group)
   enrollments: Enrollment[];

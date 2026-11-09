@@ -145,6 +145,25 @@ export const AdminSessionsPage = {
       const availableSeats = cg.availableSeats !== undefined ? cg.availableSeats : Math.max(0, maxSeats - enrolledCount);
       const isFull = cg.isFull || enrolledCount >= maxSeats;
 
+      // Resolve clean scheduleDays and scheduleTime
+      let groupScheduleDays = cg.scheduleDays || "";
+      let groupScheduleTime = cg.scheduleTime || "";
+
+      if (!groupScheduleTime && cg.scheduleText) {
+        const parts = cg.scheduleText.split(/الساعة|•/);
+        if (parts.length > 1) {
+          groupScheduleTime = parts[1].trim();
+        }
+      }
+      if (!groupScheduleDays && cg.scheduleText) {
+        const parts = cg.scheduleText.split(/الساعة|•/);
+        groupScheduleDays = parts[0].trim();
+      }
+      if (!groupScheduleDays) groupScheduleDays = "الأحد، الثلاثاء";
+      if (!groupScheduleTime) groupScheduleTime = "6:00م";
+
+      const formattedScheduleTime = this.normalizeTimeToArabic ? this.normalizeTimeToArabic(groupScheduleTime) : groupScheduleTime;
+
       return {
         id: cg.id,
         isDbGroup: true,
@@ -165,9 +184,10 @@ export const AdminSessionsPage = {
         teacher: cg.teacher || courseObj.teacher,
         teacherName,
         teacherAvatar,
-        scheduleText: cg.scheduleText || `${cg.scheduleDays || "الأحد والثلاثاء"} ${cg.scheduleTime || "6:00م"}`,
-        scheduleDays: cg.scheduleDays || "الأحد، الثلاثاء",
-        scheduleTime: cg.scheduleTime || "6:00م",
+        scheduleText: cg.scheduleText || `${groupScheduleDays} الساعة ${formattedScheduleTime}`,
+        scheduleDays: groupScheduleDays,
+        scheduleTime: groupScheduleTime,
+        formattedScheduleTime,
         startDate: cg.startDate,
         endDate: cg.endDate,
         totalSessions: cg.totalSessions || 24,
@@ -189,8 +209,9 @@ export const AdminSessionsPage = {
     const totalStudentsInGroups = groupsList.reduce((acc, g) => acc + g.enrolledCount, 0);
     const totalGroupsCount = groupsList.length;
     const openGroupsCount = groupsList.filter(g => g.status === 'OPEN').length;
-    const inProgressGroupsCount = groupsList.filter(g => g.status === 'IN_PROGRESS' || g.status === 'CLOSED').length;
-    const fullGroupsCount = groupsList.filter(g => g.isFull).length;
+    const inProgressGroupsCount = groupsList.filter(g => (g.status === 'IN_PROGRESS' || g.status === 'CLOSED') && g.status !== 'FINISHED' && g.status !== 'finished').length;
+    const fullGroupsCount = groupsList.filter(g => g.isFull && g.status !== 'FINISHED' && g.status !== 'finished').length;
+    const finishedGroupsCount = groupsList.filter(g => g.status === 'FINISHED' || g.status === 'finished').length;
     const pendingGroupsCount = (this.pendingCourseGroups || []).length;
 
     // Apply Filters
@@ -211,9 +232,11 @@ export const AdminSessionsPage = {
       if (statusFilter === 'open') {
         if (grp.status !== 'OPEN') return false;
       } else if (statusFilter === 'in_progress') {
-        if (grp.status !== 'IN_PROGRESS' && grp.status !== 'CLOSED') return false;
+        if ((grp.status !== 'IN_PROGRESS' && grp.status !== 'CLOSED') || grp.status === 'FINISHED' || grp.status === 'finished') return false;
       } else if (statusFilter === 'full') {
-        if (!grp.isFull) return false;
+        if (!grp.isFull || grp.status === 'FINISHED' || grp.status === 'finished') return false;
+      } else if (statusFilter === 'finished') {
+        if (grp.status !== 'FINISHED' && grp.status !== 'finished') return false;
       }
 
       // 3. Grade Filter (Filters by grade showing all groups of that grade across all subjects)
@@ -467,9 +490,14 @@ export const AdminSessionsPage = {
                         ` : ''}
                       </div>
                       <h4 style="margin:0 0 4px 0; font-size:1.05rem; font-weight:900; color:var(--text-main);">👥 ${pg.name}</h4>
-                      <div style="font-size:0.82rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap;">
+                      <div style="font-size:0.82rem; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                         <span>المعلم: <strong style="color:var(--text-main);">${teacherName}</strong></span>
-                        <span>الجدول: <span style="color:#e51d74; font-weight:800;">${pg.scheduleText}</span></span>
+                        <span style="display:inline-flex; align-items:center; gap:4px; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.06); padding:3px 8px; border-radius:8px; border:1px solid rgba(229,29,116,0.18);">
+                          <i data-lucide="calendar" style="width:13px; height:13px;"></i> ${pg.scheduleDays || pg.scheduleText || 'الأحد، الثلاثاء'}
+                        </span>
+                        <span style="display:inline-flex; align-items:center; gap:4px; font-weight:800; color:#0284c7; background:rgba(2,132,199,0.08); padding:3px 8px; border-radius:8px; border:1px solid rgba(2,132,199,0.22);">
+                          <i data-lucide="clock" style="width:13px; height:13px;"></i> ${this.normalizeTimeToArabic ? this.normalizeTimeToArabic(pg.scheduleTime) : (pg.scheduleTime || '06:00 م')}
+                        </span>
                       </div>
                     </div>
 
@@ -489,171 +517,128 @@ export const AdminSessionsPage = {
           </div>
         ` : ''}
 
-        <!-- Comprehensive Filters Toolbar -->
-        <div class="glass-card" style="padding:18px 20px; border-radius:20px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:14px; margin-bottom:22px; background:var(--bg-card);">
+        <!-- 🌟 Simple Clean Filters Toolbar 🌟 -->
+        <div class="glass-card" style="padding:16px 18px; border-radius:18px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:12px; margin-bottom:20px; background:var(--bg-card); box-shadow:0 4px 14px rgba(0,0,0,0.02);">
           
-          <!-- Status Filter Tabs -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <span style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin-inline-end:4px;">
-                <i data-lucide="filter" style="width:14px; height:14px; display:inline-block; vertical-align:middle;"></i> تصفية المجموعات:
-              </span>
+          <!-- Top Row: Status Tabs & Reset -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
               <button class="filter-tab-btn admin-group-filter-tab-btn ${(this.adminGroupFilterStatus || 'all') === 'all' ? 'active' : ''}" data-filter="all"
-                style="padding:6px 14px; border-radius:18px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:${(this.adminGroupFilterStatus || 'all') === 'all' ? '#8b5cf6' : 'var(--bg-app)'}; color:${(this.adminGroupFilterStatus || 'all') === 'all' ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${(this.adminGroupFilterStatus || 'all') === 'all' ? 'var(--primary)' : 'var(--border-color)'}; background:${(this.adminGroupFilterStatus || 'all') === 'all' ? 'var(--primary)' : 'var(--bg-app)'}; color:${(this.adminGroupFilterStatus || 'all') === 'all' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
                 الكل (${totalGroupsCount})
               </button>
               <button class="filter-tab-btn admin-group-filter-tab-btn ${this.adminGroupFilterStatus === 'open' ? 'active' : ''}" data-filter="open"
-                style="padding:6px 14px; border-radius:18px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:${this.adminGroupFilterStatus === 'open' ? '#10b981' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'open' ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupFilterStatus === 'open' ? '#10b981' : 'var(--border-color)'}; background:${this.adminGroupFilterStatus === 'open' ? '#10b981' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'open' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
                 🟢 متاحة للتسجيل (${openGroupsCount})
               </button>
               <button class="filter-tab-btn admin-group-filter-tab-btn ${this.adminGroupFilterStatus === 'in_progress' ? 'active' : ''}" data-filter="in_progress"
-                style="padding:6px 14px; border-radius:18px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:${this.adminGroupFilterStatus === 'in_progress' ? '#6366f1' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'in_progress' ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupFilterStatus === 'in_progress' ? '#6366f1' : 'var(--border-color)'}; background:${this.adminGroupFilterStatus === 'in_progress' ? '#6366f1' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'in_progress' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
                 🔒 بدأت الدراسة (${inProgressGroupsCount})
               </button>
               <button class="filter-tab-btn admin-group-filter-tab-btn ${this.adminGroupFilterStatus === 'full' ? 'active' : ''}" data-filter="full"
-                style="padding:6px 14px; border-radius:18px; font-size:0.8rem; font-weight:800; border:1px solid var(--border-color); background:${this.adminGroupFilterStatus === 'full' ? '#ef4444' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'full' ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupFilterStatus === 'full' ? '#ef4444' : 'var(--border-color)'}; background:${this.adminGroupFilterStatus === 'full' ? '#ef4444' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'full' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
                 مكتملة المقاعد (${fullGroupsCount})
+              </button>
+              <button class="filter-tab-btn admin-group-filter-tab-btn ${this.adminGroupFilterStatus === 'finished' ? 'active' : ''}" data-filter="finished"
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupFilterStatus === 'finished' ? '#64748b' : 'var(--border-color)'}; background:${this.adminGroupFilterStatus === 'finished' ? '#64748b' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'finished' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
+                🏁 منتهية (${finishedGroupsCount})
               </button>
             </div>
 
             ${hasActiveFilters ? `
-              <button id="admin-reset-group-filters-btn" style="background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.25); border-radius:20px; padding:5px 12px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-                <i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i> إعادة ضبط الفلاتر
+              <button id="admin-reset-group-filters-btn" style="background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.25); border-radius:12px; padding:6px 14px; font-size:0.78rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
+                <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> إعادة ضبط الفلاتر
               </button>
             ` : ''}
           </div>
 
-          <!-- Quick Grade Filter Chips Bar (Direct one-click filtering for Grade 4 & other grades) -->
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-bottom:6px; border-bottom:1px dashed var(--border-color);">
-            <span style="font-size:0.78rem; font-weight:800; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px; margin-inline-end:4px;">
-              <i data-lucide="graduation-cap" style="width:14px; height:14px; color:var(--primary);"></i> تصفية سريعة بالصف:
-            </span>
-            <button class="filter-tab-btn admin-group-grade-chip-btn ${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? 'active' : ''}" data-grade="all"
-              style="padding:4px 12px; border-radius:14px; font-size:0.76rem; font-weight:800; border:1px solid var(--border-color); background:${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? 'var(--primary)' : 'var(--bg-app)'}; color:${(!this.adminGroupGradeFilter || this.adminGroupGradeFilter === 'all') ? '#fff' : 'var(--text-muted)'}; cursor:pointer;">
-              جميع الصفوف
-            </button>
-            ${availableGrades.slice(0, 10).map(g => {
-              const isSelected = selectedGrade && (String(selectedGrade.id) === String(g.id) || selectedGrade.order === g.order);
-              const isGrade4 = g.order === 4 || (g.code === 'PRI_4') || (g.name && g.name.includes('الرابع'));
-              return `
-                <button class="filter-tab-btn admin-group-grade-chip-btn ${isSelected ? 'active' : ''}" data-grade="${g.id}"
-                  style="padding:4px 12px; border-radius:14px; font-size:0.76rem; font-weight:800; border:1.5px solid ${isSelected ? 'var(--primary)' : isGrade4 ? '#6366f1' : 'var(--border-color)'}; background:${isSelected ? 'var(--primary)' : isGrade4 ? 'rgba(99,102,241,0.1)' : 'var(--bg-app)'}; color:${isSelected ? '#fff' : isGrade4 ? 'var(--primary)' : 'var(--text-main)'}; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-                  ${isGrade4 ? '🌟 ' : ''}${g.name} ${isGrade4 ? '<b>(Grade 4)</b>' : ''}
-                </button>
-              `;
-            }).join('')}
-          </div>
-
-          <!-- Secondary Filters: Search, Grade, Course, Teacher, Sort -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <!-- Bottom Row: Search & Dropdown Filters -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             
             <!-- Search Box -->
-            <div style="position:relative; flex:1; min-width:220px; max-width:320px;">
+            <div style="position:relative; flex:1.4; min-width:220px;">
               <input type="text" id="admin-groups-search-input" value="${this.adminGroupSearchQuery || ''}" placeholder="ابحث باسم المجموعة، المادة، أو المعلم..."
-                style="width:100%; padding:9px 14px 9px 36px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; outline:none; box-sizing:border-box;">
+                style="width:100%; padding:9px 12px 9px 36px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.85rem; font-family:'Cairo',sans-serif; outline:none; box-sizing:border-box;">
               <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
             </div>
 
-            <!-- Select Dropdowns -->
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <!-- 🎒 Grade Filter Dropdown -->
+            <select id="admin-groups-grade-filter"
+              style="flex:1; min-width:180px; padding:9px 12px; border-radius:12px; border:1px solid ${isGradeSelected ? 'var(--primary)' : 'var(--border-color)'}; background:${isGradeSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-app)'}; color:var(--text-main); font-size:0.82rem; font-weight:800; font-family:'Cairo',sans-serif; outline:none; cursor:pointer; box-sizing:border-box;">
+              <option value="all" ${!isGradeSelected ? 'selected' : ''}>🎒 جميع الصفوف والمراحل (${totalGroupsCount})</option>
               
-              <!-- 🎓 Grade Filter Dropdown -->
-              <select id="admin-groups-grade-filter"
-                style="padding:8px 12px; border-radius:12px; border:1.5px solid ${isGradeSelected ? 'var(--primary)' : 'var(--border-color)'}; background:${isGradeSelected ? 'rgba(99,102,241,0.08)' : 'var(--bg-app)'}; color:var(--text-main); font-size:0.82rem; font-weight:800; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
-                <option value="all" ${!isGradeSelected ? 'selected' : ''}>🎒 جميع الصفوف والمراحل (${totalGroupsCount})</option>
-                
-                <optgroup label="── المراحل التعليمية الكاملة ──">
-                  <option value="STAGE_PRIMARY" ${this.adminGroupGradeFilter === 'STAGE_PRIMARY' ? 'selected' : ''}>🌱 المرحلة الابتدائية (الصفوف 1 - 6)</option>
-                  <option value="STAGE_PREPARATORY" ${this.adminGroupGradeFilter === 'STAGE_PREPARATORY' ? 'selected' : ''}>📘 المرحلة الإعدادية (الصفوف 7 - 9)</option>
-                  <option value="STAGE_SECONDARY" ${this.adminGroupGradeFilter === 'STAGE_SECONDARY' ? 'selected' : ''}>🎓 المرحلة الثانوية (الصفوف 10 - 12)</option>
+              <optgroup label="── المراحل التعليمية الكاملة ──">
+                <option value="STAGE_PRIMARY" ${this.adminGroupGradeFilter === 'STAGE_PRIMARY' ? 'selected' : ''}>🌱 المرحلة الابتدائية (الصفوف 1 - 6)</option>
+                <option value="STAGE_PREPARATORY" ${this.adminGroupGradeFilter === 'STAGE_PREPARATORY' ? 'selected' : ''}>📘 المرحلة الإعدادية (الصفوف 7 - 9)</option>
+                <option value="STAGE_SECONDARY" ${this.adminGroupGradeFilter === 'STAGE_SECONDARY' ? 'selected' : ''}>🎓 المرحلة الثانوية (الصفوف 10 - 12)</option>
+              </optgroup>
+
+              ${primaryGrades.length > 0 ? `
+                <optgroup label="── المرحلة الابتدائية ──">
+                  ${primaryGrades.map(g => {
+                    const isG4 = g.order === 4 || g.code === 'PRI_4';
+                    const isSel = selectedGrade && String(selectedGrade.id) === String(g.id);
+                    return `<option value="${g.id}" ${isSel ? 'selected' : ''}>${isG4 ? '⭐ ' : ''}${g.name} (${g.nameEn || ('Grade ' + g.order)})${isG4 ? ' - Grade 4' : ''}</option>`;
+                  }).join('')}
                 </optgroup>
+              ` : ''}
 
-                ${primaryGrades.length > 0 ? `
-                  <optgroup label="── المرحلة الابتدائية (Primary) ──">
-                    ${primaryGrades.map(g => {
-                      const isG4 = g.order === 4 || g.code === 'PRI_4';
-                      const isSel = selectedGrade && String(selectedGrade.id) === String(g.id);
-                      return `<option value="${g.id}" ${isSel ? 'selected' : ''}>${isG4 ? '⭐ ' : ''}${g.name} (${g.nameEn || ('Grade ' + g.order)})${isG4 ? ' - Grade 4' : ''}</option>`;
-                    }).join('')}
-                  </optgroup>
-                ` : ''}
+              ${prepGrades.length > 0 ? `
+                <optgroup label="── المرحلة الإعدادية ──">
+                  ${prepGrades.map(g => `
+                    <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
+                      ${g.name} (${g.nameEn || ('Grade ' + g.order)})
+                    </option>
+                  `).join('')}
+                </optgroup>
+              ` : ''}
 
-                ${prepGrades.length > 0 ? `
-                  <optgroup label="── المرحلة الإعدادية (Preparatory) ──">
-                    ${prepGrades.map(g => `
-                      <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
-                        ${g.name} (${g.nameEn || ('Grade ' + g.order)})
-                      </option>
-                    `).join('')}
-                  </optgroup>
-                ` : ''}
+              ${secondaryGrades.length > 0 ? `
+                <optgroup label="── المرحلة الثانوية والبكالوريا ──">
+                  ${secondaryGrades.map(g => `
+                    <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
+                      ${g.name} (${g.nameEn || ('Grade ' + g.order)})
+                    </option>
+                  `).join('')}
+                </optgroup>
+              ` : ''}
+            </select>
 
-                ${secondaryGrades.length > 0 ? `
-                  <optgroup label="── المرحلة الثانوية والبكالوريا ──">
-                    ${secondaryGrades.map(g => `
-                      <option value="${g.id}" ${selectedGrade && String(selectedGrade.id) === String(g.id) ? 'selected' : ''}>
-                        ${g.name} (${g.nameEn || ('Grade ' + g.order)})
-                      </option>
-                    `).join('')}
-                  </optgroup>
-                ` : ''}
-              </select>
-
-              <!-- 📚 Course Filter (Shows all subjects of the grade if grade is selected) -->
-              <select id="admin-groups-course-filter"
-                style="padding:8px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
-                <option value="all" ${(this.adminGroupCourseFilter || 'all') === 'all' ? 'selected' : ''}>
-                  ${isGradeSelected ? `📚 جميع مواد وكورسات ${selectedGrade?.name || 'الصف'} (${dropdownCourseList.length})` : `📚 جميع الكورسات والمواد (${allCourses.length})`}
+            <!-- 📚 Course Filter -->
+            <select id="admin-groups-course-filter"
+              style="flex:1; min-width:170px; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer; box-sizing:border-box;">
+              <option value="all" ${(this.adminGroupCourseFilter || 'all') === 'all' ? 'selected' : ''}>
+                ${isGradeSelected ? `📚 جميع مواد ${selectedGrade?.name || 'الصف'} (${dropdownCourseList.length})` : `📚 جميع الكورسات والمواد (${allCourses.length})`}
+              </option>
+              ${dropdownCourseList.map(c => `
+                <option value="${c.id}" ${String(this.adminGroupCourseFilter) === String(c.id) ? 'selected' : ''}>
+                  ${c.title} ${c.grade ? `(${c.grade.name})` : ''}
                 </option>
-                ${dropdownCourseList.map(c => `
-                  <option value="${c.id}" ${String(this.adminGroupCourseFilter) === String(c.id) ? 'selected' : ''}>
-                    ${c.title} ${c.grade ? `(${c.grade.name})` : ''}
-                  </option>
-                `).join('')}
-              </select>
+              `).join('')}
+            </select>
 
-              <!-- Teacher Filter -->
-              <select id="admin-groups-teacher-filter"
-                style="padding:8px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
-                <option value="all" ${(this.adminGroupTeacherFilter || 'all') === 'all' ? 'selected' : ''}>👨‍🏫 جميع المعلمين (${allTeachers.length})</option>
-                ${allTeachers.map(t => `
-                  <option value="${t.id}" ${String(this.adminGroupTeacherFilter) === String(t.id) ? 'selected' : ''}>
-                    ${t.name}
-                  </option>
-                `).join('')}
-              </select>
+            <!-- 👨‍🏫 Teacher Filter -->
+            <select id="admin-groups-teacher-filter"
+              style="flex:1; min-width:150px; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer; box-sizing:border-box;">
+              <option value="all" ${(this.adminGroupTeacherFilter || 'all') === 'all' ? 'selected' : ''}>👨‍🏫 جميع المعلمين (${allTeachers.length})</option>
+              ${allTeachers.map(t => `
+                <option value="${t.id}" ${String(this.adminGroupTeacherFilter) === String(t.id) ? 'selected' : ''}>
+                  ${t.name}
+                </option>
+              `).join('')}
+            </select>
 
-              <!-- Sort Dropdown -->
-              <select id="admin-groups-sort"
-                style="padding:8px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer;">
-                <option value="newest" ${(this.adminGroupSort || 'newest') === 'newest' ? 'selected' : ''}>⏱️ الأحدث إضافة</option>
-                <option value="oldest" ${this.adminGroupSort === 'oldest' ? 'selected' : ''}>📅 الأقدم</option>
-                <option value="most_students" ${this.adminGroupSort === 'most_students' ? 'selected' : ''}>👥 الأكثر طلاباً</option>
-                <option value="highest_student_rate" ${this.adminGroupSort === 'highest_student_rate' ? 'selected' : ''}>💰 سعر ساعة الطالب (الأعلى)</option>
-                <option value="lowest_student_rate" ${this.adminGroupSort === 'lowest_student_rate' ? 'selected' : ''}>💵 سعر ساعة الطالب (الأقل)</option>
-              </select>
-
-            </div>
+            <!-- ⏱️ Sort Dropdown -->
+            <select id="admin-groups-sort"
+              style="min-width:140px; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.82rem; font-weight:700; font-family:'Cairo',sans-serif; outline:none; cursor:pointer; box-sizing:border-box;">
+              <option value="newest" ${(this.adminGroupSort || 'newest') === 'newest' ? 'selected' : ''}>⏱️ الأحدث إضافة</option>
+              <option value="oldest" ${this.adminGroupSort === 'oldest' ? 'selected' : ''}>📅 الأقدم</option>
+              <option value="most_students" ${this.adminGroupSort === 'most_students' ? 'selected' : ''}>👥 الأكثر طلاباً</option>
+              <option value="highest_student_rate" ${this.adminGroupSort === 'highest_student_rate' ? 'selected' : ''}>💰 سعر ساعة الطالب (الأعلى)</option>
+              <option value="lowest_student_rate" ${this.adminGroupSort === 'lowest_student_rate' ? 'selected' : ''}>💵 سعر ساعة الطالب (الأقل)</option>
+            </select>
 
           </div>
-
-          <!-- Active Grade Filter Info Banner -->
-          ${isGradeSelected ? `
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:9px 16px; border-radius:14px; background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08)); border:1.5px solid rgba(99,102,241,0.25);">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; background:var(--primary); color:#fff; font-size:0.75rem;">
-                  <i data-lucide="check" style="width:14px; height:14px;"></i>
-                </span>
-                <span style="font-size:0.84rem; font-weight:800; color:var(--text-main);">
-                  تصفية نشطة: عرض جميع مجموعات <strong style="color:var(--primary); font-size:0.9rem;">${selectedGradeLabel}</strong> بكافة المواد الدراسية (${filteredGroups.length} مجموعة)
-                </span>
-              </div>
-              <button onclick="if(window.adminViewInstance) window.adminViewInstance.setGroupGradeFilter('all')" 
-                style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#ef4444; border-radius:10px; padding:4px 10px; font-size:0.75rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-                <i data-lucide="x" style="width:13px; height:13px;"></i> إلغاء تصفية الصف
-              </button>
-            </div>
-          ` : ''}
 
         </div>
 
@@ -700,13 +685,14 @@ export const AdminSessionsPage = {
       const startDateText = grp.startDate ? formatArabicDate(grp.startDate) : "13 سبتمبر 2026";
       const endDateText = grp.endDate ? formatArabicDate(grp.endDate) : "2 ديسمبر 2026";
       const capPct = Math.min(100, Math.round((grp.enrolledCount / grp.maxSeats) * 100));
-      const isClosedOrTeaching = (grp.status === 'CLOSED' || grp.status === 'IN_PROGRESS');
-      const isFull = grp.isFull || (grp.availableSeats <= 0);
+      const isFinished = (grp.status === 'FINISHED' || grp.status === 'finished');
+      const isClosedOrTeaching = !isFinished && (grp.status === 'CLOSED' || grp.status === 'IN_PROGRESS');
+      const isFull = !isFinished && (grp.isFull || (grp.availableSeats <= 0));
       const totalFee = (grp.studentHourlyRate || 0) * (grp.totalSessions || 24);
       const teacherTotal = (grp.teacherHourlyRate || 0) * (grp.totalSessions || 24);
 
       // Status Border Color
-      const accentColor = isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : grp.status === 'PENDING_APPROVAL' ? '#f59e0b' : '#10b981';
+      const accentColor = isFinished ? '#64748b' : isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : grp.status === 'PENDING_APPROVAL' ? '#f59e0b' : '#10b981';
 
       return `
                 <div class="glass-card group-accordion-item" data-group-id="${grp.id}" 
@@ -745,8 +731,8 @@ export const AdminSessionsPage = {
                       </div>
                     </div>
 
-                    <!-- Center 1: Teacher & Schedule -->
-                    <div style="display:flex; align-items:center; gap:14px; flex:1.2; min-width:220px; flex-wrap:wrap;">
+                    <!-- Center 1: Teacher & Schedule (Days + Time) -->
+                    <div style="display:flex; align-items:center; gap:8px; flex:1.3; min-width:240px; flex-wrap:wrap;">
                       <div style="display:flex; align-items:center; gap:8px;">
                         <img src="${(grp.teacherAvatar && !grp.teacherAvatar.includes('dicebear.com')) ? grp.teacherAvatar : 'assets/logo.png'}" 
                              onerror="this.src='assets/logo.png'"
@@ -754,8 +740,15 @@ export const AdminSessionsPage = {
                              style="width:32px; height:32px; border-radius:50%; object-fit:cover; background:var(--bg-app); border:1.5px solid var(--border-color); flex-shrink:0;">
                         <span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${grp.teacherName}</span>
                       </div>
-                      <span style="font-size:0.8rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.06); padding:4px 10px; border-radius:10px; display:inline-flex; align-items:center; gap:5px;">
-                        <i data-lucide="calendar" style="width:13px; height:13px;"></i> ${grp.scheduleText}
+                      
+                      <!-- Days Badge -->
+                      <span style="font-size:0.78rem; font-weight:800; color:#e51d74; background:rgba(229,29,116,0.06); border:1px solid rgba(229,29,116,0.18); padding:4px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;" title="أيام الحصص">
+                        <i data-lucide="calendar" style="width:13px; height:13px;"></i> ${grp.scheduleDays}
+                      </span>
+
+                      <!-- Time Badge (Time of Group) -->
+                      <span style="font-size:0.78rem; font-weight:900; color:#0284c7; background:rgba(2,132,199,0.08); border:1px solid rgba(2,132,199,0.22); padding:4px 9px; border-radius:10px; display:inline-flex; align-items:center; gap:4px; box-shadow:0 1px 3px rgba(2,132,199,0.06);" title="توقيت الحصة المباشرة">
+                        <i data-lucide="clock" style="width:13px; height:13px;"></i> ${grp.formattedScheduleTime || grp.scheduleTime}
                       </span>
                     </div>
 
@@ -777,6 +770,10 @@ export const AdminSessionsPage = {
                       ${grp.status === 'PENDING_APPROVAL' ? `
                         <span style="font-size:0.75rem; font-weight:900; padding:4px 10px; border-radius:12px; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); display:inline-flex; align-items:center; gap:4px;">
                           ⏳ قيد المراجعة
+                        </span>
+                      ` : isFinished ? `
+                        <span style="font-size:0.75rem; font-weight:900; padding:4px 11px; border-radius:12px; background:rgba(100,116,139,0.15); color:#475569; border:1px solid rgba(100,116,139,0.35); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(100,116,139,0.12);">
+                          <i data-lucide="check-check" style="width:12px; height:12px;"></i> منتهية 🏁
                         </span>
                       ` : isClosedOrTeaching ? `
                         <span style="font-size:0.75rem; font-weight:900; padding:4px 11px; border-radius:12px; background:rgba(99,102,241,0.15); color:#6366f1; border:1px solid rgba(99,102,241,0.35); display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(99,102,241,0.18);">
@@ -813,6 +810,13 @@ export const AdminSessionsPage = {
                         <div style="display:flex; justify-content:space-between;">
                           <span style="color:var(--text-muted);">الفترة الزمنية:</span>
                           <strong style="color:var(--text-main);">من ${startDateText} إلى ${endDateText}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <span style="color:var(--text-muted);">أيام وموعد الحصص:</span>
+                          <strong style="color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                            <span>🗓️ ${grp.scheduleDays}</span>
+                            <span style="color:#0284c7; font-weight:800; background:rgba(2,132,199,0.08); padding:2px 8px; border-radius:6px; border:1px solid rgba(2,132,199,0.2);">⏰ ${grp.formattedScheduleTime || grp.scheduleTime}</span>
+                          </strong>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                           <span style="color:var(--text-muted);">إجمالي الحصص:</span>
@@ -895,12 +899,26 @@ export const AdminSessionsPage = {
                             style="padding:8px 14px; font-size:0.8rem; font-weight:800; color:#6366f1; border-color:#6366f1; background:rgba(99,102,241,0.08); border-radius:12px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
                             <i data-lucide="lock" style="width:13px; height:13px;"></i> إغلاق وبدء التدريس 🔒
                           </button>
+                        ` : isFinished ? `
+                          <button type="button" class="btn-secondary admin-toggle-group-status-btn" data-id="${grp.id}" data-action="open"
+                            style="padding:8px 14px; font-size:0.8rem; font-weight:800; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); border-radius:12px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;"
+                            title="إعادة تنشيط وفتح المجموعة للتسجيل">
+                            <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> إعادة فتح للتسجيل 🔄
+                          </button>
                         ` : `
                           <button type="button" class="btn-secondary admin-toggle-group-status-btn" data-id="${grp.id}" data-action="open"
                             style="padding:8px 14px; font-size:0.8rem; font-weight:800; color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.08); border-radius:12px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
                             <i data-lucide="unlock" style="width:13px; height:13px;"></i> إعادة فتح للتسجيل 🔓
                           </button>
                         `}
+
+                        ${!isFinished ? `
+                          <button type="button" class="btn-secondary admin-finish-group-btn" data-id="${grp.id}" data-name="${grp.title}"
+                            style="padding:8px 14px; font-size:0.8rem; font-weight:800; border-radius:12px; color:#475569; border-color:rgba(100,116,139,0.4); background:rgba(100,116,139,0.1); display:inline-flex; align-items:center; gap:5px; cursor:pointer;"
+                            title="إنهاء المجموعة الدراسية وتغيير حالتها إلى منتهية">
+                            <i data-lucide="flag" style="width:13px; height:13px;"></i> إنهاء المجموعة 🏁
+                          </button>
+                        ` : ''}
 
                         <button type="button" class="btn-secondary admin-edit-group-btn" data-id="${grp.id}"
                           style="padding:8px 14px; font-size:0.8rem; font-weight:800; border-radius:12px; color:#8b5cf6; border-color:rgba(139,92,246,0.4); background:rgba(139,92,246,0.08); display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
@@ -1427,20 +1445,46 @@ export const AdminSessionsPage = {
     });
   },
 
-  // ── Render Edit Group Modal (Admin Full Control) ──────────────────────────────
-  renderEditGroupModal(group) {
+  // ── Render Edit Group Modal (Admin Full Control - Same as Add Dialog) ──────────
+  async renderEditGroupModal(group) {
     document.querySelectorAll("#admin-edit-group-modal-wrapper").forEach(el => el.remove());
     const container = document.getElementById("admin-edit-group-modal-container") || document.body;
     const teachers = (this.allMembers || []).filter(m => m.role === 'teacher' || m.role === 'instructor');
 
-    const teacherOptions = teachers.map(t => `
-      <option value="${t.id}" ${group.teacher && String(group.teacher.id) === String(t.id) ? 'selected' : ''}>
-        ${t.name} (${t.email || t.phone || 'معلم'})
-      </option>
-    `).join('');
+    let allGrades = [];
+    try {
+      allGrades = await apiFetch("/curriculum/grades");
+    } catch (e) {
+      console.error("Failed to load curriculum grades:", e);
+    }
+
+    const currentGradeId = group.gradeId || group.course?.grade?.id || group.grade?.id || "";
+    const currentSubjectId = group.subjectId || group.course?.subject?.id || group.subject?.id || "";
+
+    const matchedGradeObj = allGrades.find(g => 
+      (currentGradeId && String(g.id) === String(currentGradeId)) ||
+      (g.name && (group.gradeName || '').includes(g.name)) ||
+      (g.code && group.gradeCode && String(g.code).toLowerCase() === String(group.gradeCode).toLowerCase())
+    ) || null;
+
+    const currentStage = matchedGradeObj?.stage || group.gradeStage || group.course?.grade?.stage || "SECONDARY";
+    const initialGradeId = matchedGradeObj?.id || currentGradeId;
+
+    const teacherOptions = teachers.map(t => {
+      const isSelected = (group.teacher && String(group.teacher.id) === String(t.id)) ||
+        (group.course?.teacher && String(group.course.teacher.id) === String(t.id));
+      return `
+        <option value="${t.id}" data-link="${t.meetingLink || ''}" data-rate="${t.hourlyRate || 100}" ${isSelected ? 'selected' : ''}>
+          ${t.name} (${t.phone || t.email || 'معلم'})
+        </option>
+      `;
+    }).join('');
 
     const daysList = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
-    const currentDaysStr = group.scheduleDays || "";
+    const currentDaysStr = group.scheduleDays || group.scheduleText || "";
+    const startDateVal = group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const initialDays = daysList.filter(d => currentDaysStr.includes(d));
+    const initialEndDate = group.endDate ? new Date(group.endDate).toISOString().slice(0, 10) : (this.computeGroupEndDate(startDateVal, group.totalSessions || 24, initialDays) || startDateVal);
 
     const wrapper = document.createElement("div");
     wrapper.id = "admin-edit-group-modal-wrapper";
@@ -1456,7 +1500,7 @@ export const AdminSessionsPage = {
                 تعديل بيانات المجموعة الدراسية بالكامل ✏️
               </h3>
               <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
-                تحكم في اسم المجموعة، المعلم المشرف، المواعيد، الأسعار، السعة، والحالة قبل إغلاقها أو بدء الدراسة.
+                حدد المرحلة والمادة، المعلم المشرف، المواعيد، الأسعار، السعة، والحالة للمجموعة.
               </p>
             </div>
             <button id="close-admin-edit-group-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">
@@ -1466,12 +1510,42 @@ export const AdminSessionsPage = {
 
           <form id="admin-edit-group-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
             
+            <!-- Stage, Grade, Subject -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  المرحلة التعليمية: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="edit-group-stage" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="PRIMARY" ${currentStage === 'PRIMARY' ? 'selected' : ''}>🎒 الابتدائية</option>
+                  <option value="PREPARATORY" ${currentStage === 'PREPARATORY' ? 'selected' : ''}>📚 الإعدادية</option>
+                  <option value="SECONDARY" ${currentStage === 'SECONDARY' ? 'selected' : ''}>🎓 الثانوية العامة</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  الصف الدراسي: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="edit-group-grade" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="">-- جاري التحميل... --</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  المادة الدراسية: <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="edit-group-subject" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+                  <option value="">-- اختر الصف أولاً --</option>
+                </select>
+              </div>
+            </div>
+
             <!-- Group Name -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                 اسم المجموعة: <span style="color:#ef4444;">*</span>
               </label>
-              <input type="text" id="edit-group-name" value="${group.name || group.title || ''}" required class="form-input"
+              <input type="text" id="edit-group-name" value="${group.name || group.title || ''}" placeholder="اسم المجموعة..." required class="form-input"
                 style="width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-size:0.9rem; font-family:'Cairo',sans-serif; box-sizing:border-box;">
             </div>
 
@@ -1482,6 +1556,7 @@ export const AdminSessionsPage = {
                   المعلم المشرف: <span style="color:#ef4444;">*</span>
                 </label>
                 <select id="edit-group-teacher" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif;">
+                  <option value="">-- اختر المعلم المسؤول --</option>
                   ${teacherOptions || `<option value="">معلم المنصة الافتراضي</option>`}
                 </select>
               </div>
@@ -1496,6 +1571,7 @@ export const AdminSessionsPage = {
                   <option value="CLOSED" ${group.status === 'CLOSED' ? 'selected' : ''}>🔒 مغلقة للتسجيل</option>
                   <option value="FULL" ${group.status === 'FULL' ? 'selected' : ''}>🔴 مكتملة العدد</option>
                   <option value="PENDING_APPROVAL" ${group.status === 'PENDING_APPROVAL' ? 'selected' : ''}>⏳ قيد المراجعة والاعتماد</option>
+                  <option value="FINISHED" ${(group.status === 'FINISHED' || group.status === 'finished') ? 'selected' : ''}>🏁 منتهية (مكتملة ومغلقة)</option>
                 </select>
               </div>
             </div>
@@ -1541,13 +1617,13 @@ export const AdminSessionsPage = {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">تاريخ البدء:</label>
-                <input type="date" id="edit-group-start-date" value="${group.startDate ? new Date(group.startDate).toISOString().slice(0, 10) : '2026-09-13'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+                <input type="date" id="edit-group-start-date" value="${startDateVal}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
               <div>
                 <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                   تاريخ الانتهاء: <span style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">(محسوب تلقائياً ⚡)</span>
                 </label>
-                <input type="date" id="edit-group-end-date" value="${group.endDate ? new Date(group.endDate).toISOString().slice(0, 10) : '2026-12-02'}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
+                <input type="date" id="edit-group-end-date" value="${initialEndDate}" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
             </div>
 
@@ -1584,7 +1660,7 @@ export const AdminSessionsPage = {
             <!-- Group Description / Summary -->
             <div>
               <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">محتوى أو ملخص المجموعة والخطة الدراسية (Course Details & Summary):</label>
-              <textarea id="edit-group-description" rows="3" class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; line-height:1.5; resize:vertical; box-sizing:border-box;">${group.description || ''}</textarea>
+              <textarea id="edit-group-description" rows="3" placeholder="اكتب نبذة أو ملخصاً عن الموضوعات التي سيتم تغطيتها ومواعيد المراجعات واختبارات المتابعة..." class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; line-height:1.5; resize:vertical; box-sizing:border-box;">${group.description || ''}</textarea>
             </div>
 
             <!-- Submit Buttons -->
@@ -1610,32 +1686,41 @@ export const AdminSessionsPage = {
     wrapper.querySelector("#close-admin-edit-group-modal")?.addEventListener("click", closeModal);
     wrapper.querySelector("#cancel-admin-edit-group-btn")?.addEventListener("click", closeModal);
 
-    const editStartDateInput = wrapper.querySelector("#edit-group-start-date");
-    const editTotalSessionsInput = wrapper.querySelector("#edit-group-total-sessions");
-    const editEndDateInput = wrapper.querySelector("#edit-group-end-date");
+    // Curriculum & Inputs Handling
+    const stageSelect = wrapper.querySelector("#edit-group-stage");
+    const gradeSelect = wrapper.querySelector("#edit-group-grade");
+    const subjectSelect = wrapper.querySelector("#edit-group-subject");
+    const nameInput = wrapper.querySelector("#edit-group-name");
+    const teacherSelect = wrapper.querySelector("#edit-group-teacher");
+    const teacherRateInput = wrapper.querySelector("#edit-group-teacher-rate");
+    const meetingLinkInput = wrapper.querySelector("#edit-group-meeting-link");
+    const startDateInput = wrapper.querySelector("#edit-group-start-date");
+    const totalSessionsInput = wrapper.querySelector("#edit-group-total-sessions");
+    const endDateInput = wrapper.querySelector("#edit-group-end-date");
 
-    const updateEditAutoEndDate = () => {
-      const sDate = editStartDateInput?.value;
-      const tSessions = parseInt(editTotalSessionsInput?.value, 10) || 0;
+    // Dynamic auto-calculation of End Date from Start Date, Total Sessions, and Days
+    const updateAutoEndDate = () => {
+      const sDate = startDateInput?.value;
+      const tSessions = parseInt(totalSessionsInput?.value, 10) || 0;
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='edit-group-days']:checked")).map(cb => cb.value);
       if (sDate && tSessions > 0) {
         const computed = this.computeGroupEndDate(sDate, tSessions, checkedDays);
-        if (computed && editEndDateInput) {
-          editEndDateInput.value = computed;
+        if (computed && endDateInput) {
+          endDateInput.value = computed;
         }
       }
     };
 
-    editStartDateInput?.addEventListener("change", updateEditAutoEndDate);
-    editStartDateInput?.addEventListener("input", updateEditAutoEndDate);
-    editTotalSessionsInput?.addEventListener("input", updateEditAutoEndDate);
-    editTotalSessionsInput?.addEventListener("change", updateEditAutoEndDate);
+    startDateInput?.addEventListener("change", updateAutoEndDate);
+    startDateInput?.addEventListener("input", updateAutoEndDate);
+    totalSessionsInput?.addEventListener("input", updateAutoEndDate);
+    totalSessionsInput?.addEventListener("change", updateAutoEndDate);
     wrapper.querySelectorAll("input[name='edit-group-days']").forEach(cb => {
-      cb.addEventListener("change", updateEditAutoEndDate);
+      cb.addEventListener("change", updateAutoEndDate);
     });
 
     if (!group.endDate) {
-      updateEditAutoEndDate();
+      updateAutoEndDate();
     }
 
     // Sync edit-group-time select and time picker
@@ -1661,21 +1746,87 @@ export const AdminSessionsPage = {
       }
     });
 
+    teacherSelect?.addEventListener("change", () => {
+      const selectedOpt = teacherSelect.options[teacherSelect.selectedIndex];
+      if (selectedOpt && selectedOpt.value) {
+        const tLink = selectedOpt.getAttribute("data-link");
+        const tRate = selectedOpt.getAttribute("data-rate");
+        if (tLink && (!meetingLinkInput.value || meetingLinkInput.value.trim() === "")) {
+          meetingLinkInput.value = tLink;
+        }
+        if (tRate && teacherRateInput) {
+          teacherRateInput.value = tRate;
+        }
+      }
+    });
+
+    const updateStageUI = (stage, targetGradeId, targetSubjectId) => {
+      const stageGrades = allGrades.filter(g => g.stage === stage);
+      if (stageGrades.length === 0) {
+        if (gradeSelect) gradeSelect.innerHTML = `<option value="">لا توجد صفوف مسجلة</option>`;
+        if (subjectSelect) subjectSelect.innerHTML = `<option value="">-- اختر الصف أولاً --</option>`;
+        return;
+      }
+
+      if (gradeSelect) {
+        gradeSelect.innerHTML = stageGrades.map(g => {
+          const isSel = targetGradeId ? String(g.id) === String(targetGradeId) : false;
+          return `<option value="${g.id}" ${isSel ? 'selected' : ''}>${g.name}</option>`;
+        }).join('');
+        const activeGradeId = gradeSelect.value;
+        updateSubjectsUI(activeGradeId, targetSubjectId);
+      }
+    };
+
+    const updateSubjectsUI = (gradeId, targetSubjectId) => {
+      const selectedGrade = allGrades.find(g => String(g.id) === String(gradeId));
+      const subjects = selectedGrade?.subjects || [];
+      if (!subjectSelect) return;
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = `<option value="">لا توجد مواد مسجلة</option>`;
+        return;
+      }
+
+      subjectSelect.innerHTML = subjects.map(s => {
+        const isSel = targetSubjectId ? String(s.id) === String(targetSubjectId) : false;
+        return `
+          <option value="${s.id}" data-name="${s.name}" ${isSel ? 'selected' : ''}>
+            ${s.name} ${s.isLanguageTrack ? '(لغات 🌐)' : '(عام 🇪🇬)'}
+          </option>
+        `;
+      }).join('');
+    };
+
+    stageSelect?.addEventListener("change", (e) => {
+      updateStageUI(e.target.value);
+    });
+
+    gradeSelect?.addEventListener("change", (e) => {
+      updateSubjectsUI(e.target.value);
+    });
+
+    // Initialize with group's stage, grade, subject
+    updateStageUI(currentStage, initialGradeId, currentSubjectId);
+
+    // Form submission
     wrapper.querySelector("#admin-edit-group-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = wrapper.querySelector("#edit-group-name")?.value.trim();
-      const teacherId = wrapper.querySelector("#edit-group-teacher")?.value;
-      const status = wrapper.querySelector("#edit-group-status")?.value;
+      const gradeId = gradeSelect?.value || null;
+      const subjectId = subjectSelect?.value || null;
+      const name = nameInput?.value?.trim();
+      const teacherId = teacherSelect?.value || null;
+      const status = wrapper.querySelector("#edit-group-status")?.value || "OPEN";
       const duration = parseInt(wrapper.querySelector("#edit-group-duration")?.value, 10) || 60;
-      const scheduleTime = wrapper.querySelector("#edit-group-time")?.value.trim() || "6:00م";
-      const startDate = wrapper.querySelector("#edit-group-start-date")?.value || null;
-      const endDate = wrapper.querySelector("#edit-group-end-date")?.value || null;
-      const totalSessions = parseInt(wrapper.querySelector("#edit-group-total-sessions")?.value, 10) || 24;
+      const scheduleTime = editTimeSelect?.value?.trim() || "6:00م";
+      const startDate = startDateInput?.value || null;
+      const endDate = endDateInput?.value || null;
+      const totalSessions = parseInt(totalSessionsInput?.value, 10) || 24;
       const maxStudents = parseInt(wrapper.querySelector("#edit-group-max-students")?.value, 10) || 25;
       const studentHourlyRate = parseFloat(wrapper.querySelector("#edit-group-student-rate")?.value) || 40;
-      const teacherHourlyRate = parseFloat(wrapper.querySelector("#edit-group-teacher-rate")?.value) || 100;
-      const meetingLink = wrapper.querySelector("#edit-group-meeting-link")?.value.trim() || null;
-      const description = wrapper.querySelector("#edit-group-description")?.value.trim() || "";
+      const teacherHourlyRate = parseFloat(teacherRateInput?.value) || 100;
+      const meetingLink = meetingLinkInput?.value?.trim() || null;
+      const description = wrapper.querySelector("#edit-group-description")?.value?.trim() || "";
 
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='edit-group-days']:checked")).map(cb => cb.value);
       const scheduleDays = checkedDays.join("، ") || "الأحد، الثلاثاء";
@@ -1695,6 +1846,8 @@ export const AdminSessionsPage = {
         await apiFetch(`/groups/${group.id}`, {
           method: "PUT",
           body: JSON.stringify({
+            gradeId,
+            subjectId,
             name,
             description,
             teacherId,
@@ -2018,12 +2171,32 @@ export const AdminSessionsPage = {
       }
     } catch (_) {}
 
-    const previousSessionCount = existingSessions.length || (group.totalSessions || 0);
+    const now = new Date();
+    const completedSessions = existingSessions.filter(s => s.status === 'COMPLETED' || s.completedAt != null || (new Date(s.scheduledAt) < now));
+    const upcomingSessions = existingSessions.filter(s => (s.status === 'SCHEDULED' || s.status === 'scheduled') && new Date(s.scheduledAt) >= now);
+    const completedCount = completedSessions.length;
+    const upcomingCount = upcomingSessions.length;
+    const totalExistingSessions = existingSessions.length;
+    const previousSessionCount = totalExistingSessions;
     const lastSession = existingSessions[existingSessions.length - 1];
 
+    const formatLocalDate = (d) => {
+      if (!d || isNaN(new Date(d).getTime())) return "";
+      const dateObj = new Date(d);
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
     const dayIndexMap = {
-      'الأحد': 0, 'الاثنين': 1, 'الإثنين': 1, 'الثلاثاء': 2,
-      'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6
+      'الأحد': 0, 'الاحد': 0, 'Sunday': 0, 'sun': 0,
+      'الاثنين': 1, 'الإثنين': 1, 'اثنين': 1, 'Monday': 1, 'mon': 1,
+      'الثلاثاء': 2, 'ثلاثاء': 2, 'Tuesday': 2, 'tue': 2,
+      'الأربعاء': 3, 'الاربعاء': 3, 'اربعاء': 3, 'Wednesday': 3, 'wed': 3,
+      'الخميس': 4, 'خميس': 4, 'Thursday': 4, 'thu': 4,
+      'الجمعة': 5, 'جمعة': 5, 'Friday': 5, 'fri': 5,
+      'السبت': 6, 'سبت': 6, 'Saturday': 6, 'sat': 6
     };
     const daysArabic = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const monthsArabic = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -2033,6 +2206,10 @@ export const AdminSessionsPage = {
       if (currentDaysStr.includes(day)) return true;
       if (day === 'الاثنين' && currentDaysStr.includes('الإثنين')) return true;
       if (day === 'الإثنين' && currentDaysStr.includes('الاثنين')) return true;
+      if (day === 'الأحد' && currentDaysStr.includes('الاحد')) return true;
+      if (day === 'الاحد' && currentDaysStr.includes('الأحد')) return true;
+      if (day === 'الأربعاء' && currentDaysStr.includes('الاربعاء')) return true;
+      if (day === 'الاربعاء' && currentDaysStr.includes('الأربعاء')) return true;
       return false;
     };
     const hasAnyMatched = daysList.some(d => isDaySelected(d));
@@ -2049,14 +2226,17 @@ export const AdminSessionsPage = {
     } else {
       defaultStartDateObj.setDate(defaultStartDateObj.getDate() + 1);
     }
-    const defaultStartDate = defaultStartDateObj.toISOString().slice(0, 10);
+    const defaultStartDate = formatLocalDate(defaultStartDateObj);
     const defaultMeetingLink = group.meetingLink || "";
-    const defaultMonthlyPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : 320);
+    const defaultStudentRate = (group.studentHourlyRate !== undefined && group.studentHourlyRate !== null && Number(group.studentHourlyRate) > 0)
+      ? Number(group.studentHourlyRate)
+      : (group.sessionPrice || (group.monthlyPrice ? Math.round(group.monthlyPrice / 8) : 40));
+    const defaultMonthlyPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * 8 : defaultStudentRate * 8);
     const defaultTeacherHourlyRate = (group.teacherHourlyRate !== undefined && group.teacherHourlyRate !== null && Number(group.teacherHourlyRate) > 0)
       ? Number(group.teacherHourlyRate)
       : (group.teacher?.hourlyRate || 100);
 
-    const generatePreview = (startDateVal, countVal, daysStr, timeStr) => {
+    const generatePreview = (startDateVal, countVal, daysStr, timeStr, startNumberVal) => {
       const daysArr = (daysStr !== undefined ? daysStr : scheduleDaysStr)
         .split(/[,،]+/)
         .map(d => d.trim())
@@ -2083,22 +2263,31 @@ export const AdminSessionsPage = {
         min = parseInt(parts[1], 10) || 0;
       }
 
-      let curr = new Date(startDateVal || new Date());
-      curr.setHours(hour, min, 0, 0);
+      let curr;
+      if (typeof startDateVal === 'string' && startDateVal.includes('-')) {
+        const [sy, sm, sd] = startDateVal.split('-').map(Number);
+        curr = new Date(sy, sm - 1, sd, hour, min, 0, 0);
+      } else {
+        curr = new Date(startDateVal || new Date());
+        curr.setHours(hour, min, 0, 0);
+      }
 
       const list = [];
       let count = 0;
       let safety = 0;
       const targetCount = parseInt(countVal, 10) || 8;
+      const startNum = (startNumberVal !== undefined && !isNaN(parseInt(startNumberVal, 10)) && parseInt(startNumberVal, 10) > 0)
+        ? parseInt(startNumberVal, 10)
+        : (previousSessionCount + 1);
 
       while (count < targetCount && safety < 1000) {
         safety++;
         if (targetDays.length === 0 || targetDays.includes(curr.getDay())) {
+          const sessionNum = startNum + count;
           count++;
           const d = new Date(curr);
           const dayName = daysArabic[d.getDay()];
           const dateFormatted = `${dayName} ${d.getDate()} ${monthsArabic[d.getMonth()]} ${d.getFullYear()}`;
-          const sessionNum = previousSessionCount + count;
 
           list.push({
             sessionNumber: sessionNum,
@@ -2116,7 +2305,7 @@ export const AdminSessionsPage = {
 
     const initialDays = daysList.filter(d => (hasAnyMatched ? isDaySelected(d) : (d === "الأحد" || d === "الثلاثاء")));
     const initialDaysStr = initialDays.join("، ");
-    let previewList = generatePreview(defaultStartDate, 8, initialDaysStr, scheduleTimeStr);
+    let previewList = generatePreview(defaultStartDate, 8, initialDaysStr, scheduleTimeStr, previousSessionCount + 1);
     const teacherName = group.teacher?.name || group.course?.teacher?.name || "معلم المنصة";
     const enrolledStudentsCount = group.enrolledCount || (group.students ? group.students.length : 0);
 
@@ -2166,8 +2355,8 @@ export const AdminSessionsPage = {
             <button id="close-renew-cycle-modal" style="background:var(--bg-app); border:1px solid var(--border-color); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-main); font-size:1.2rem;">&times;</button>
           </div>
 
-          <!-- Group Info Strip -->
-          <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:12px 16px; display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; font-size:0.82rem;">
+          <!-- Group Info Strip (Accurate breakdown of sessions) -->
+          <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:12px 16px; display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; font-size:0.82rem;">
             <div>
               <span style="color:var(--text-muted); display:block;">المجموعة:</span>
               <strong style="color:var(--text-main);">${group.name || group.title}</strong>
@@ -2177,14 +2366,34 @@ export const AdminSessionsPage = {
               <strong style="color:var(--primary);">${teacherName}</strong>
             </div>
             <div>
-              <span style="color:var(--text-muted); display:block;">الحصص السابقة:</span>
-              <strong style="color:#8b5cf6;">${previousSessionCount} حصة مجدولة</strong>
+              <span style="color:var(--text-muted); display:block;">الحصص السابقة (المنتهية):</span>
+              <strong style="color:#10b981;">✓ ${completedCount} حصة سابقة</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted); display:block;">الحصص القادمة المتبقية:</span>
+              <strong style="color:#f59e0b;">⏳ ${upcomingCount} حصة مجدولة</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted); display:block;">إجمالي الحصص الحالية:</span>
+              <strong style="color:#8b5cf6;">📅 ${totalExistingSessions} حصة</strong>
             </div>
             <div>
               <span style="color:var(--text-muted); display:block;">الطلاب المقيدون:</span>
-              <strong style="color:#10b981;">👥 ${enrolledStudentsCount} طالب مسجل</strong>
+              <strong style="color:#0284c7;">👥 ${enrolledStudentsCount} طالب مسجل</strong>
             </div>
           </div>
+
+          ${totalExistingSessions > (group.totalSessions || 0) && (group.totalSessions > 0) ? `
+            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:12px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.78rem;">
+              <div style="display:flex; align-items:center; gap:6px; color:#d97706;">
+                <i data-lucide="alert-triangle" style="width:14px; height:14px; flex-shrink:0;"></i>
+                <span>تنبيه: يوجد (${totalExistingSessions}) حصة بالجدول الفعلي بينما إجمالي حصص المجموعة المعتمد هو (${group.totalSessions}) حصة. يمكنك مراجعة جدول الحصص أو حذف الحصص الزائدة.</span>
+              </div>
+              <button type="button" id="renew-modal-open-sessions-btn" class="btn-secondary" style="font-size:0.74rem; padding:4px 10px; border-radius:8px; border-color:#d97706; color:#d97706; cursor:pointer; white-space:nowrap; font-weight:800;">
+                جدول الحصص 📅
+              </button>
+            </div>
+          ` : ''}
 
           <!-- Form -->
           <form id="renew-group-cycle-form" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-inline-end:4px;">
@@ -2204,8 +2413,24 @@ export const AdminSessionsPage = {
                 style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; box-sizing:border-box;">
             </div>
 
-            <!-- Row: Start Date & Cycle Title -->
+            <!-- Row: Start Number & Start Date -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                  ترقيم أول حصة جديدة يبدأ من: <span style="color:#8b5cf6;">*</span>
+                </label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <input type="number" id="renew-cycle-start-number" value="${previousSessionCount + 1}" min="1" max="500" required class="form-input"
+                    style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-weight:800; box-sizing:border-box;">
+                  <button type="button" id="preset-start-number-next" class="btn-secondary" style="font-size:0.74rem; padding:8px 10px; border-radius:10px; white-space:nowrap; cursor:pointer;" title="متابعة الترقيم الإجمالي من آخر حصة">
+                    تلقائي (${previousSessionCount + 1})
+                  </button>
+                  <button type="button" id="preset-start-number-one" class="btn-secondary" style="font-size:0.74rem; padding:8px 10px; border-radius:10px; white-space:nowrap; cursor:pointer;" title="بدء ترقيم الدورة الجديدة من 1">
+                    حصة 1
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
                   تاريخ بداية أول حصة في الدورة الجديدة: <span style="color:#ef4444;">*</span>
@@ -2213,14 +2438,15 @@ export const AdminSessionsPage = {
                 <input type="date" id="renew-cycle-start-date" value="${defaultStartDate}" required class="form-input"
                   style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
               </div>
+            </div>
 
-              <div>
-                <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
-                  عنوان / مسمى الدورة (اختياري):
-                </label>
-                <input type="text" id="renew-cycle-title" placeholder="مثال: الشهر الثاني / المراجعة النهائية" class="form-input"
-                  style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
-              </div>
+            <!-- Title of Cycle -->
+            <div>
+              <label style="display:block; font-size:0.84rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+                عنوان / مسمى الدورة (اختياري):
+              </label>
+              <input type="text" id="renew-cycle-title" placeholder="مثال: الشهر الثاني / المراجعة النهائية" class="form-input"
+                style="width:100%; padding:9px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
             </div>
 
             <!-- Schedule Days (Checkboxes like Create Group) -->
@@ -2260,62 +2486,15 @@ export const AdminSessionsPage = {
               </div>
             </div>
 
-            <!-- Financial Section: Student Price & Teacher Rate & Profit Estimation -->
-            <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="font-size:0.86rem; font-weight:900; color:var(--text-main); display:flex; align-items:center; gap:6px; margin:0;">
-                  <i data-lucide="coins" style="width:16px; height:16px; color:#10b981;"></i>
-                  التسعير والماليات للدورة الجديدة (الطلاب والمعلم) 💳
-                </label>
-                <span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-weight:800; font-size:0.73rem; padding:2px 8px; border-radius:8px;">
-                  حسابات الأرباح المباشرة ⚡
-                </span>
+            <!-- Pricing: Student Rate & Teacher Hourly Rate -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">سعر ساعة الطالب (ج.م.):</label>
+                <input type="number" id="renew-cycle-student-rate" value="${defaultStudentRate}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-main); box-sizing:border-box;">
               </div>
-
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <!-- Student Price -->
-                <div>
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <label for="renew-cycle-price" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
-                      سعر الدورة للطالب (ج.م): <span style="color:#ef4444;">*</span>
-                    </label>
-                    <span id="renew-per-session-price-label" style="font-size:0.72rem; color:var(--primary); font-weight:700;">
-                      (~${Math.round(defaultMonthlyPrice / 8)} ج.م/حصة)
-                    </span>
-                  </div>
-                  <input type="number" id="renew-cycle-price" value="${defaultMonthlyPrice}" min="0" step="10" required class="form-input"
-                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box;">
-                </div>
-
-                <!-- Teacher Hourly Rate -->
-                <div>
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <label for="renew-cycle-teacher-rate" style="font-size:0.82rem; font-weight:800; color:var(--text-main); margin:0;">
-                      أجر المعلم في الساعة (ج.م): <span style="color:#ef4444;">*</span>
-                    </label>
-                    <span id="renew-teacher-total-payout-label" style="font-size:0.72rem; color:#8b5cf6; font-weight:700;">
-                      (إجمالي: ${Math.round(defaultTeacherHourlyRate * 8 * (duration / 60))} ج.م)
-                    </span>
-                  </div>
-                  <input type="number" id="renew-cycle-teacher-rate" value="${defaultTeacherHourlyRate}" min="0" step="10" required class="form-input"
-                    style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-main); font-family:'Cairo',sans-serif; font-size:0.88rem; font-weight:800; box-sizing:border-box;">
-                </div>
-              </div>
-
-              <!-- Live Profit Margin Calculator Strip -->
-              <div id="renew-financial-summary-strip" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; padding:10px 12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color); font-size:0.78rem;">
-                <div>
-                  <span style="color:var(--text-muted); display:block; font-weight:700;">إجمالي إيراد الطلاب:</span>
-                  <strong id="renew-calc-student-revenue" style="color:#10b981; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
-                </div>
-                <div>
-                  <span style="color:var(--text-muted); display:block; font-weight:700;">استحقاق المعلم:</span>
-                  <strong id="renew-calc-teacher-cost" style="color:#ef4444; font-size:0.92rem; font-weight:900;">0 ج.م</strong>
-                </div>
-                <div>
-                  <span style="color:var(--text-muted); display:block; font-weight:700;">صافي ربح المنصة:</span>
-                  <strong id="renew-calc-net-profit" style="color:#6366f1; font-size:0.95rem; font-weight:900;">0 ج.م</strong>
-                </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:6px; color:#10b981;">أجر المعلم بالساعة (ج.م.):</label>
+                <input type="number" id="renew-cycle-teacher-rate" value="${defaultTeacherHourlyRate}" min="0" required class="form-input" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid #10b981; background:var(--bg-app); color:#10b981; font-weight:800; box-sizing:border-box;">
               </div>
             </div>
 
@@ -2449,43 +2628,9 @@ export const AdminSessionsPage = {
       updateFinancials();
     };
 
-    // Live update financials (Student revenue, teacher payout, net margin)
+    // Live update financials
     const updateFinancials = () => {
-      const studentPrice = parseFloat(wrapper.querySelector("#renew-cycle-price")?.value) || 0;
-      const teacherRate = parseFloat(wrapper.querySelector("#renew-cycle-teacher-rate")?.value) || 0;
-      const countVal = parseInt(wrapper.querySelector("#renew-cycle-sessions-count")?.value, 10) || 8;
-      const checkedStudents = wrapper.querySelectorAll(".renew-student-checkbox:checked").length;
-
-      // Update per-session price label
-      const perSessionLabel = wrapper.querySelector("#renew-per-session-price-label");
-      if (perSessionLabel) {
-        const perSession = countVal > 0 ? Math.round((studentPrice / countVal) * 10) / 10 : 0;
-        perSessionLabel.textContent = `(~${perSession} ج.م/حصة)`;
-      }
-
-      // Update teacher payout label
-      const totalHours = countVal * (duration / 60);
-      const teacherTotalPayout = Math.round(totalHours * teacherRate);
-      const teacherPayoutLabel = wrapper.querySelector("#renew-teacher-total-payout-label");
-      if (teacherPayoutLabel) {
-        teacherPayoutLabel.textContent = `(إجمالي: ${teacherTotalPayout.toLocaleString()} ج.م)`;
-      }
-
-      // Update summary strip
-      const totalStudentRevenue = Math.round(checkedStudents * studentPrice);
-      const netProfit = totalStudentRevenue - teacherTotalPayout;
-
-      const revEl = wrapper.querySelector("#renew-calc-student-revenue");
-      if (revEl) revEl.textContent = `${totalStudentRevenue.toLocaleString()} ج.م (${checkedStudents} طالب)`;
-
-      const costEl = wrapper.querySelector("#renew-calc-teacher-cost");
-      if (costEl) costEl.textContent = `${teacherTotalPayout.toLocaleString()} ج.م (${totalHours} س)`;
-
-      const profitEl = wrapper.querySelector("#renew-calc-net-profit");
-      if (profitEl) {
-        profitEl.textContent = `${netProfit > 0 ? '+' : ''}${netProfit.toLocaleString()} ج.م`;
-        profitEl.style.color = netProfit >= 0 ? '#6366f1' : '#ef4444';
-      }
+      // Kept clean and minimal matching Add / Edit Group design
     };
 
     wrapper.querySelectorAll(".renew-student-checkbox").forEach(cb => {
@@ -2509,27 +2654,28 @@ export const AdminSessionsPage = {
 
     // Live update preview helper
     const updatePreview = () => {
-      const countVal = document.getElementById("renew-cycle-sessions-count")?.value || 8;
-      const startDateVal = document.getElementById("renew-cycle-start-date")?.value || defaultStartDate;
+      const countVal = wrapper.querySelector("#renew-cycle-sessions-count")?.value || 8;
+      const startDateVal = wrapper.querySelector("#renew-cycle-start-date")?.value || defaultStartDate;
       const daysVal = getSelectedDays();
-      const timeVal = document.getElementById("renew-cycle-time")?.value || scheduleTimeStr;
+      const timeVal = wrapper.querySelector("#renew-cycle-time")?.value || scheduleTimeStr;
+      const startNumVal = wrapper.querySelector("#renew-cycle-start-number")?.value;
 
-      previewList = generatePreview(startDateVal, countVal, daysVal, timeVal);
-      const container = document.getElementById("renew-sessions-preview-container");
+      previewList = generatePreview(startDateVal, countVal, daysVal, timeVal, startNumVal);
+      const container = wrapper.querySelector("#renew-sessions-preview-container");
       if (container) {
         container.innerHTML = renderPreviewHTML(previewList);
         if (window.lucide) window.lucide.createIcons();
       }
-      const countLabel = document.getElementById("renew-preview-count-label");
+      const countLabel = wrapper.querySelector("#renew-preview-count-label");
       if (countLabel) countLabel.textContent = previewList.length;
 
-      const rangeLabel = document.getElementById("renew-sessions-date-range-label");
+      const rangeLabel = wrapper.querySelector("#renew-sessions-date-range-label");
       if (rangeLabel && previewList.length > 0) {
         rangeLabel.textContent = `من ${previewList[0]?.dateFormatted || ''} إلى ${previewList[previewList.length - 1]?.dateFormatted || ''}`;
       } else if (rangeLabel) {
         rangeLabel.textContent = "يرجى تحديد أيام الحصص لمعاينة المواعيد";
       }
-      const submitLabel = document.getElementById("submit-renew-btn-label");
+      const submitLabel = wrapper.querySelector("#submit-renew-btn-label");
       if (submitLabel) submitLabel.textContent = `تأكيد تجديد الدورة وجدولة (+${countVal} حصص) 🔄🚀`;
 
       updateFinancials();
@@ -2550,7 +2696,7 @@ export const AdminSessionsPage = {
         btn.style.border = "1px solid var(--primary)";
 
         const count = btn.getAttribute("data-count");
-        const countInput = document.getElementById("renew-cycle-sessions-count");
+        const countInput = wrapper.querySelector("#renew-cycle-sessions-count");
         if (countInput) countInput.value = count;
         updatePreview();
       });
@@ -2560,6 +2706,26 @@ export const AdminSessionsPage = {
     wrapper.querySelectorAll("input[name='renew-cycle-days']").forEach(cb => {
       cb.addEventListener("change", updatePreview);
     });
+
+    // Start number buttons & input
+    wrapper.querySelector("#renew-modal-open-sessions-btn")?.addEventListener("click", () => {
+      closeModal();
+      this.renderGroupSessionsViewModal(group.id);
+    });
+
+    wrapper.querySelector("#preset-start-number-next")?.addEventListener("click", () => {
+      const input = wrapper.querySelector("#renew-cycle-start-number");
+      if (input) input.value = previousSessionCount + 1;
+      updatePreview();
+    });
+
+    wrapper.querySelector("#preset-start-number-one")?.addEventListener("click", () => {
+      const input = wrapper.querySelector("#renew-cycle-start-number");
+      if (input) input.value = 1;
+      updatePreview();
+    });
+
+    wrapper.querySelector("#renew-cycle-start-number")?.addEventListener("input", updatePreview);
 
     // Sync renew-cycle-time select and time picker
     const renewTimeSelect = wrapper.querySelector("#renew-cycle-time");
@@ -2586,24 +2752,24 @@ export const AdminSessionsPage = {
       }
     });
 
-    document.getElementById("renew-cycle-sessions-count")?.addEventListener("input", updatePreview);
-    document.getElementById("renew-cycle-start-date")?.addEventListener("change", updatePreview);
-    document.getElementById("renew-cycle-price")?.addEventListener("input", updateFinancials);
-    document.getElementById("renew-cycle-teacher-rate")?.addEventListener("input", updateFinancials);
+    wrapper.querySelector("#renew-cycle-sessions-count")?.addEventListener("input", updatePreview);
+    wrapper.querySelector("#renew-cycle-start-date")?.addEventListener("change", updatePreview);
+    wrapper.querySelector("#renew-cycle-student-rate")?.addEventListener("input", updateFinancials);
+    wrapper.querySelector("#renew-cycle-teacher-rate")?.addEventListener("input", updateFinancials);
 
     // Initial calculation of financials
     updateFinancials();
 
     // Form Submit
-    document.getElementById("renew-group-cycle-form")?.addEventListener("submit", async (e) => {
+    wrapper.querySelector("#renew-group-cycle-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const submitBtn = document.getElementById("submit-renew-cycle-btn");
+      const submitBtn = wrapper.querySelector("#submit-renew-cycle-btn");
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = `<span>جاري تجديد الدورة وجدولة الحصص... ⏳</span>`;
       }
 
-      const additionalSessionsVal = document.getElementById("renew-cycle-sessions-count")?.value || 8;
+      const additionalSessionsVal = parseInt(wrapper.querySelector("#renew-cycle-sessions-count")?.value, 10) || 8;
       const checkedDays = Array.from(wrapper.querySelectorAll("input[name='renew-cycle-days']:checked")).map(cb => cb.value);
       if (checkedDays.length === 0) {
         showToast("يرجى اختيار يوم واحد على الأقل من أيام الحصص الأسبوعية.", "warning");
@@ -2614,14 +2780,17 @@ export const AdminSessionsPage = {
         return;
       }
 
-      const startDateVal = document.getElementById("renew-cycle-start-date")?.value;
-      const cycleTitleVal = document.getElementById("renew-cycle-title")?.value?.trim() || "";
+      const startDateVal = wrapper.querySelector("#renew-cycle-start-date")?.value;
+      const cycleTitleVal = wrapper.querySelector("#renew-cycle-title")?.value?.trim() || "";
       const scheduleDaysVal = checkedDays.join("، ");
-      const scheduleTimeVal = document.getElementById("renew-cycle-time")?.value?.trim() || null;
-      const monthlyPriceVal = document.getElementById("renew-cycle-price")?.value || null;
-      const teacherHourlyRateVal = document.getElementById("renew-cycle-teacher-rate")?.value || null;
-      const meetingLinkVal = document.getElementById("renew-cycle-meeting-link")?.value?.trim() || null;
-      const notifyStudentsVal = document.getElementById("renew-cycle-notify")?.checked !== false;
+      const scheduleTimeVal = wrapper.querySelector("#renew-cycle-time")?.value?.trim() || null;
+      const studentHourlyRateVal = parseFloat(wrapper.querySelector("#renew-cycle-student-rate")?.value) || 0;
+      const teacherHourlyRateVal = parseFloat(wrapper.querySelector("#renew-cycle-teacher-rate")?.value) || 0;
+      const hoursPerSession = duration > 0 ? duration / 60 : 1;
+      const sessionPriceVal = Math.round(studentHourlyRateVal * hoursPerSession);
+      const monthlyPriceVal = Math.round(sessionPriceVal * additionalSessionsVal);
+      const meetingLinkVal = wrapper.querySelector("#renew-cycle-meeting-link")?.value?.trim() || null;
+      const notifyStudentsVal = wrapper.querySelector("#renew-cycle-notify")?.checked !== false;
 
       const studentCheckboxes = wrapper.querySelectorAll(".renew-student-checkbox");
       let studentIdsToKeep = undefined;
@@ -2636,10 +2805,14 @@ export const AdminSessionsPage = {
           method: "POST",
           body: JSON.stringify({
             additionalSessions: additionalSessionsVal,
+            sessionsList: previewList,
             startDate: startDateVal,
             cycleTitle: cycleTitleVal,
             scheduleDays: scheduleDaysVal,
             scheduleTime: scheduleTimeVal,
+            sessionDuration: duration,
+            studentHourlyRate: studentHourlyRateVal,
+            sessionPrice: sessionPriceVal,
             monthlyPrice: monthlyPriceVal,
             teacherHourlyRate: teacherHourlyRateVal,
             meetingLink: meetingLinkVal,
@@ -2650,8 +2823,9 @@ export const AdminSessionsPage = {
 
         showToast(res.message || "تم تجديد دورة المجموعة وجدولة الحصص بنجاح! 🔄🎉", "success");
         closeModal();
-        await this.loadAllData();
-        this.renderTab("groups");
+        const refreshTarget = this.loadAllData ? this : window.adminViewInstance;
+        if (refreshTarget && refreshTarget.loadAllData) await refreshTarget.loadAllData();
+        if (refreshTarget && refreshTarget.renderTab) refreshTarget.renderTab("groups");
       } catch (err) {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -2781,6 +2955,20 @@ export const AdminSessionsPage = {
             </div>
           </div>
 
+          <!-- Extra Sessions Banner with Trim Button -->
+          ${group?.totalSessions && sessions.length > group.totalSessions ? `
+            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:14px; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:8px; color:#ef4444; font-size:0.82rem; font-weight:800;">
+                <i data-lucide="alert-triangle" style="width:16px; height:16px; flex-shrink:0;"></i>
+                <span>يوجد (${sessions.length - group.totalSessions}) حصص مجدولة زائدة عن إجمالي حصص المجموعة المعتمد (${group.totalSessions} حصة).</span>
+              </div>
+              <button type="button" id="admin-trim-extra-sessions-btn" class="btn-secondary"
+                style="font-size:0.8rem; font-weight:900; padding:6px 14px; border-radius:10px; color:#ef4444; border-color:rgba(239,68,68,0.4); background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(239,68,68,0.15);">
+                <i data-lucide="scissors" style="width:13px; height:13px;"></i> حذف الحصص الزائدة والإبقاء على (${group.totalSessions}) حصة ✂️
+              </button>
+            </div>
+          ` : ''}
+
           <!-- Sessions List Container -->
           <div style="flex:1; max-height:55vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-inline-end:4px;">
             ${sessions.length === 0 ? `
@@ -2865,6 +3053,9 @@ export const AdminSessionsPage = {
                             <i data-lucide="video" style="width:12px; height:12px;"></i> Google Meet 🎥
                           </button>
                         ` : ''}
+                        <button class="btn-secondary admin-delete-session-btn" data-id="${s.id}" data-group-id="${groupId}" style="padding:5px 10px; font-size:0.74rem; font-weight:800; border-radius:10px; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="حذف هذه الحصة المجدولة نهائياً من الجدول">
+                          <i data-lucide="trash-2" style="width:12px; height:12px;"></i> حذف 🗑️
+                        </button>
                       `}
                     </div>
 
@@ -3004,6 +3195,56 @@ export const AdminSessionsPage = {
         const sessionId = btn.getAttribute("data-id");
         if (sessionId && typeof window.openWhatsAppSessionReportModal === 'function') {
           window.openWhatsAppSessionReportModal({ sessionId });
+        }
+      });
+    });
+
+    // Admin Trim Extra Sessions
+    wrapper.querySelector("#admin-trim-extra-sessions-btn")?.addEventListener("click", async () => {
+      const keep = group.totalSessions || 11;
+      const confirmed = await confirmDialog({
+        title: `حذف الحصص الزائدة عن (${keep}) حصة ✂️`,
+        message: `هل أنت متأكد من حذف الحصص الزائدة في نهاية الجدول والإبقاء على أول (${keep}) حصة فقط؟ لن يتم حذف أي حصة مكتملة.`,
+        confirmText: "نعم، حذف الحصص الزائدة",
+        danger: true
+      });
+      if (!confirmed) return;
+      try {
+        const res = await apiFetch(`/admin/groups/${groupId}/trim-sessions`, {
+          method: "POST",
+          body: JSON.stringify({ keepCount: keep })
+        });
+        showToast(res.message || "تم حذف الحصص الزائدة بنجاح! ✅", "success");
+        if (this.loadAllData) await this.loadAllData();
+        this.renderGroupSessionsViewModal(groupId);
+        if (this.renderTab) this.renderTab("groups");
+      } catch (err) {
+        showToast(err.message || "فشل حذف الحصص الزائدة.", "error");
+      }
+    });
+
+    // Admin Delete Single Scheduled Session
+    wrapper.querySelectorAll(".admin-delete-session-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const sId = btn.getAttribute("data-id");
+        const gId = btn.getAttribute("data-group-id") || groupId;
+        const confirmed = await confirmDialog({
+          title: "حذف الحصة المجدولة 🗑️",
+          message: "هل أنت متأكد من حذف هذه الحصة المجدولة من جدول المجموعة نهائياً؟",
+          confirmText: "نعم، حذف الحصة",
+          danger: true
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/groups/${gId}/sessions/${sId}`, { method: "DELETE" });
+          showToast(res.message || "تم حذف الحصة بنجاح وتحديث إجمالي الحصص! ✅", "success");
+          if (this.loadAllData) await this.loadAllData();
+          this.renderGroupSessionsViewModal(groupId);
+          if (this.renderTab) this.renderTab("groups");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل حذف الحصة.", "error");
         }
       });
     });
@@ -3991,7 +4232,9 @@ export const AdminSessionsPage = {
             progress: e.progress || 0,
             paymentStatus: e.paymentStatus || 'PAID',
             paidAmount: e.paidAmount ?? (e.payment?.amount || 0),
-            remainingAmount: e.remainingAmount ?? 0,
+            remainingAmount: (e.remainingAmount !== undefined && e.remainingAmount !== null && Number(e.remainingAmount) > 0)
+              ? Number(e.remainingAmount)
+              : (e.paymentStatus === 'UNPAID' ? groupPrice : 0),
             dueDate: e.dueDate || null,
             installmentHistory: e.installmentHistory || [],
             payment: e.payment,
@@ -4019,7 +4262,9 @@ export const AdminSessionsPage = {
                 progress: e.progress || 0,
                 paymentStatus: e.paymentStatus || 'PAID',
                 paidAmount: e.paidAmount ?? (e.payment?.amount || 0),
-                remainingAmount: e.remainingAmount ?? 0,
+                remainingAmount: (e.remainingAmount !== undefined && e.remainingAmount !== null && Number(e.remainingAmount) > 0)
+                  ? Number(e.remainingAmount)
+                  : (e.paymentStatus === 'UNPAID' ? groupPrice : 0),
                 dueDate: e.dueDate || null,
                 installmentHistory: e.installmentHistory || [],
                 payment: e.payment,
@@ -4196,11 +4441,39 @@ export const AdminSessionsPage = {
                         <input type="radio" name="add-student-plan" value="PARTIAL" style="accent-color:var(--primary); cursor:pointer;">
                         <span>🟡 قسط أول / دفعة جزئية (نصف السعر: ${Math.round((groupPrice || 320) / 2)} ج.م)</span>
                       </label>
+                      <label id="plan-label-unpaid" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
+                        <input type="radio" name="add-student-plan" value="UNPAID" style="accent-color:var(--primary); cursor:pointer;">
+                        <span>🔵 لم يسدد بعد / سيدفع لاحقاً (مستحق: ${groupPrice || 320} ج.م)</span>
+                      </label>
                       <label id="plan-label-discount" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1.5px solid var(--border-color); background:var(--bg-card); cursor:pointer; font-size:0.83rem; font-weight:700; color:var(--text-main);">
                         <input type="radio" name="add-student-plan" value="DISCOUNT" style="accent-color:var(--primary); cursor:pointer;">
                         <span>🟣 منحة / خصم معتمد كامل</span>
                       </label>
                     </div>
+                  </div>
+
+                  <!-- Unpaid / Future Payment Box (Visible if UNPAID) -->
+                  <div id="add-student-unpaid-box" style="display:none; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.35); border-radius:14px; padding:12px 14px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#2563eb; font-size:0.84rem; font-weight:800;">
+                      <i data-lucide="clock" style="width:16px; height:16px;"></i>
+                      <span>تسكين الطالب بدون سداد فوري (سداد لاحق):</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; font-size:0.82rem;">
+                      <div style="background:var(--bg-card); padding:8px 12px; border-radius:10px; border:1px solid var(--border-color);">
+                        <span style="color:var(--text-muted); display:block; font-size:0.75rem;">المبلغ المطلوب سداده لاحقاً:</span>
+                        <strong style="color:#2563eb; font-size:1rem;">${groupPrice || 320} ج.م</strong>
+                      </div>
+                      <div>
+                        <label for="add-student-unpaid-due-date" style="display:block; font-weight:800; color:var(--text-main); margin-bottom:4px; font-size:0.78rem;">
+                          موعد السداد المتوقع / المستحق:
+                        </label>
+                        <input type="date" id="add-student-unpaid-due-date" value="${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}" class="form-input"
+                          style="width:100%; border-radius:10px; padding:6px 10px; font-size:0.82rem; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+                      </div>
+                    </div>
+                    <p style="margin:8px 0 0 0; font-size:0.78rem; color:var(--text-muted);">
+                      💡 سيتم تفعيل مقعد الطالب فوراً، ويمكنك تسجيل السداد أو تعديل حالته إلى (مسدد) في أي وقت لاحقاً. لا يلزم إرفاق إيصال دفع الآن.
+                    </p>
                   </div>
 
                   <!-- Partial Payment Notice & Calculations Box (Visible if PARTIAL) -->
@@ -4385,7 +4658,16 @@ export const AdminSessionsPage = {
 
                           <!-- Payment Status Badges & Due Date -->
                           <div style="display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap;">
-                            ${st.paymentStatus === 'PARTIAL' ? `
+                            ${st.paymentStatus === 'UNPAID' ? `
+                              <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(239,68,68,0.12); color:#dc2626; border:1px solid rgba(239,68,68,0.3); display:inline-flex; align-items:center; gap:3px;">
+                                🔴 لم يسدد بعد (مستحق: ${st.remainingAmount || groupPrice} ج.م)
+                              </span>
+                              ${st.dueDate ? `
+                                <span style="font-size:0.72rem; font-weight:700; color:#dc2626; display:inline-flex; align-items:center; gap:2px;">
+                                  ⏳ موعد السداد: ${new Date(st.dueDate).toLocaleDateString('ar-EG')}
+                                </span>
+                              ` : ''}
+                            ` : st.paymentStatus === 'PARTIAL' ? `
                               <span style="font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.35); display:inline-flex; align-items:center; gap:3px;">
                                 ⚠️ قسط أول (متبقي: ${st.remainingAmount || 0} ج.م)
                               </span>
@@ -4419,8 +4701,26 @@ export const AdminSessionsPage = {
                       <!-- Right: Contact Methods & Actions -->
                       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-inline-start:auto;">
                         
-                        <!-- 2nd Installment Payment Button (if PARTIAL) -->
-                        ${st.paymentStatus === 'PARTIAL' ? `
+                        <!-- Payment Actions: if UNPAID or PARTIAL -->
+                        ${st.paymentStatus === 'UNPAID' ? `
+                          <button type="button" class="btn-primary admin-record-installment-btn" 
+                            data-student-id="${st.studentId}" 
+                            data-enrollment-id="${st.enrollmentId || ''}"
+                            style="font-size:0.76rem; padding:6px 12px; border-radius:12px; background:linear-gradient(135deg, #10b981, #059669); border:none; font-weight:800; display:inline-flex; align-items:center; gap:4px; color:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.25);"
+                            title="تسجيل سداد رسوم الطالب وتحديث حالته إلى مسدد">
+                            <i data-lucide="credit-card" style="width:13px; height:13px;"></i> تسجيل السداد 💳
+                          </button>
+
+                          ${rawPhone ? `
+                            <a href="https://wa.me/${cleanWa}?text=${encodeURIComponent(`مرحباً ${st.name || 'طالبنا العزيز'}، نود تذكيرك بسداد رسوم اشتراك مجموعتك الدراسية (${targetTitle}) مع الأستاذ ${teacherName} وقدرها (${st.remainingAmount || groupPrice} ج.م).${st.dueDate ? ` موعد السداد: ${new Date(st.dueDate).toLocaleDateString('ar-EG')}.` : ''} شاكرين ومقدرين لكم.`)}" 
+                               target="_blank" rel="noopener" 
+                               class="btn-secondary" 
+                               style="font-size:0.76rem; padding:6px 10px; border-radius:12px; border-color:#dc2626; color:#dc2626; background:rgba(239,68,68,0.08); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;"
+                               title="إرسال تذكير بالسداد عبر واتساب">
+                              <i data-lucide="bell" style="width:12px; height:12px;"></i> تذكير بالسداد 📲
+                            </a>
+                          ` : ''}
+                        ` : st.paymentStatus === 'PARTIAL' ? `
                           <button type="button" class="btn-primary admin-record-installment-btn" 
                             data-student-id="${st.studentId}" 
                             data-enrollment-id="${st.enrollmentId || ''}"
@@ -4439,6 +4739,15 @@ export const AdminSessionsPage = {
                             </a>
                           ` : ''}
                         ` : ''}
+
+                        <!-- Quick Change Payment Status Button (For all students) -->
+                        <button type="button" class="btn-secondary admin-change-payment-status-btn"
+                          data-student-id="${st.studentId}"
+                          data-enrollment-id="${st.enrollmentId || ''}"
+                          style="font-size:0.76rem; padding:6px 10px; border-radius:12px; border-color:var(--border-color); color:var(--text-main); background:var(--bg-card); font-weight:800; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"
+                          title="تعديل حالة السداد يدوياً (مسدد / لم يسدد / قسط / منحة)">
+                          <i data-lucide="sliders" style="width:12px; height:12px; color:var(--primary);"></i> تعديل الحالة
+                        </button>
 
                         <!-- View Installment History Button (if has installments) -->
                         ${st.installmentHistory && st.installmentHistory.length > 0 ? `
@@ -4579,6 +4888,7 @@ export const AdminSessionsPage = {
     const planRadios = container.querySelectorAll('input[name="add-student-plan"]');
     const partialBox = document.getElementById("add-student-partial-box");
     const discountBox = document.getElementById("add-student-discount-box");
+    const unpaidBox = document.getElementById("add-student-unpaid-box");
     const amountInput = document.getElementById("add-student-amount");
     const remainingDisplay = document.getElementById("add-student-remaining-display");
     const remainingHidden = document.getElementById("add-student-remaining-amount");
@@ -4600,9 +4910,22 @@ export const AdminSessionsPage = {
         }
       });
 
-      if (selectedPlan === 'PARTIAL') {
+      if (selectedPlan === 'UNPAID') {
+        if (partialBox) partialBox.style.display = 'none';
+        if (discountBox) discountBox.style.display = 'none';
+        if (unpaidBox) unpaidBox.style.display = 'block';
+        if (amountInput) {
+          amountInput.value = 0;
+          amountInput.readOnly = true;
+        }
+        if (remainingDisplay) remainingDisplay.textContent = `${fullTotalPrice} ج.م`;
+        if (remainingHidden) remainingHidden.value = fullTotalPrice;
+        if (fileInput) fileInput.required = false;
+        if (fileLabel) fileLabel.textContent = "صورة الإيصال (اختياري - لم يسدد بعد)";
+      } else if (selectedPlan === 'PARTIAL') {
         if (partialBox) partialBox.style.display = 'block';
         if (discountBox) discountBox.style.display = 'none';
+        if (unpaidBox) unpaidBox.style.display = 'none';
         const halfPrice = Math.round(fullTotalPrice / 2);
         if (amountInput) {
           amountInput.value = halfPrice;
@@ -4611,25 +4934,33 @@ export const AdminSessionsPage = {
         const rem = Math.max(0, fullTotalPrice - halfPrice);
         if (remainingDisplay) remainingDisplay.textContent = `${rem} ج.م`;
         if (remainingHidden) remainingHidden.value = rem;
+        if (fileInput) fileInput.required = true;
+        if (fileLabel) fileLabel.textContent = "انقر أو اسحب صورة إيصال القسط هنا (مطلوبة 🧾)";
       } else if (selectedPlan === 'DISCOUNT') {
         if (partialBox) partialBox.style.display = 'none';
         if (discountBox) discountBox.style.display = 'block';
+        if (unpaidBox) unpaidBox.style.display = 'none';
         if (amountInput) {
           amountInput.value = 0;
           amountInput.readOnly = true;
         }
         if (remainingDisplay) remainingDisplay.textContent = '0 ج.م';
         if (remainingHidden) remainingHidden.value = 0;
+        if (fileInput) fileInput.required = false;
+        if (fileLabel) fileLabel.textContent = "صورة خطاب/مستند الخصم (اختياري)";
       } else {
         // FULL
         if (partialBox) partialBox.style.display = 'none';
         if (discountBox) discountBox.style.display = 'none';
+        if (unpaidBox) unpaidBox.style.display = 'none';
         if (amountInput) {
           amountInput.value = fullTotalPrice;
           amountInput.readOnly = false;
         }
         if (remainingDisplay) remainingDisplay.textContent = '0 ج.م';
         if (remainingHidden) remainingHidden.value = 0;
+        if (fileInput) fileInput.required = true;
+        if (fileLabel) fileLabel.textContent = "انقر أو اسحب صورة الإيصال هنا (مطلوبة 🧾)";
       }
       if (window.lucide) window.lucide.createIcons();
     };
@@ -4757,20 +5088,24 @@ export const AdminSessionsPage = {
 
       const selectedPlan = container.querySelector('input[name="add-student-plan"]:checked')?.value || 'FULL';
       const totalPriceVal = document.getElementById("add-student-total-price")?.value || fullTotalPrice;
-      const remainingAmountVal = document.getElementById("add-student-remaining-amount")?.value || 0;
-      const dueDateVal = document.getElementById("add-student-due-date")?.value || null;
+      const unpaidDueDateVal = document.getElementById("add-student-unpaid-due-date")?.value || null;
+      const partialDueDateVal = document.getElementById("add-student-due-date")?.value || null;
+      const dueDateVal = selectedPlan === 'UNPAID' ? unpaidDueDateVal : (selectedPlan === 'PARTIAL' ? partialDueDateVal : null);
+      const remainingAmountVal = selectedPlan === 'UNPAID'
+        ? fullTotalPrice
+        : (document.getElementById("add-student-remaining-amount")?.value || 0);
       const discountReasonVal = document.getElementById("add-student-discount-reason")?.value?.trim() || null;
 
       const providerInput = document.getElementById("add-student-provider");
       const txIdInput = document.getElementById("add-student-txid");
       const notesInput = document.getElementById("add-student-notes");
 
-      const amountVal = amountInput?.value;
+      const amountVal = selectedPlan === 'UNPAID' ? 0 : amountInput?.value;
       const providerVal = providerInput?.value;
       const txIdVal = txIdInput?.value?.trim();
       const notesVal = notesInput?.value?.trim();
 
-      if (selectedPlan !== 'DISCOUNT' && (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0)) {
+      if (selectedPlan !== 'UNPAID' && selectedPlan !== 'DISCOUNT' && (!amountVal || isNaN(parseFloat(amountVal)) || parseFloat(amountVal) <= 0)) {
         showToast("يرجى إدخال المبلغ المالي المدفوع بشكل صحيح.", "warning");
         return;
       }
@@ -4782,7 +5117,7 @@ export const AdminSessionsPage = {
         showToast("يرجى إدخال سبب المنحة أو الخصم المعتمد للطالب.", "warning");
         return;
       }
-      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      if (selectedPlan !== 'UNPAID' && selectedPlan !== 'DISCOUNT' && (!fileInput || !fileInput.files || fileInput.files.length === 0)) {
         showToast("يرجى إرفاق ورفع صورة إيصال التحويل / السداد لإتمام تسكين الطالب!", "warning");
         return;
       }
@@ -4910,7 +5245,7 @@ export const AdminSessionsPage = {
         const stId = btn.getAttribute("data-student-id");
         const studentData = students.find(s => String(s.studentId) === String(stId));
         if (studentData) {
-          this.renderRecordInstallmentModal(dbGroupId, studentData, targetTitle, teacherName);
+          this.renderRecordInstallmentModal(dbGroupId, studentData, targetTitle, teacherName, groupPrice);
         }
       });
     });
@@ -4925,10 +5260,21 @@ export const AdminSessionsPage = {
         }
       });
     });
+
+    // 6. Quick Change Payment Status Modal
+    container.querySelectorAll(".admin-change-payment-status-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const stId = btn.getAttribute("data-student-id");
+        const studentData = students.find(s => String(s.studentId) === String(stId));
+        if (studentData) {
+          this.renderChangePaymentStatusModal(dbGroupId, studentData, targetTitle, groupPrice);
+        }
+      });
+    });
   },
 
-  // ── Render Record 2nd Installment Modal ─────────────────
-  renderRecordInstallmentModal(groupId, studentData, groupTitle, teacherName) {
+  // ── Render Record 2nd Installment / Unpaid Payment Modal ─────────────────
+  renderRecordInstallmentModal(groupId, studentData, groupTitle, teacherName, groupPrice = 320) {
     const existing = document.getElementById("admin-record-installment-overlay");
     if (existing) existing.remove();
 
@@ -4936,20 +5282,25 @@ export const AdminSessionsPage = {
     overlay.id = "admin-record-installment-overlay";
     overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:100005; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Cairo',sans-serif;";
 
-    const remaining = Number(studentData.remainingAmount) || 0;
+    const isUnpaid = studentData.paymentStatus === 'UNPAID';
+    const remaining = Number(studentData.remainingAmount) > 0 
+      ? Number(studentData.remainingAmount) 
+      : (isUnpaid ? (Number(groupPrice) || 320) : 0);
     const paidSoFar = Number(studentData.paidAmount) || 0;
 
     overlay.innerHTML = `
       <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; max-width:540px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; display:flex; flex-direction:column;">
         
         <!-- Header -->
-        <div style="padding:18px 24px; background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(139,92,246,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+        <div style="padding:18px 24px; background:linear-gradient(135deg, ${isUnpaid ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'}, rgba(139,92,246,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:40px; height:40px; border-radius:12px; background:rgba(245,158,11,0.2); color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="credit-card" style="width:20px; height:20px;"></i>
+            <div style="width:40px; height:40px; border-radius:12px; background:${isUnpaid ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color:${isUnpaid ? '#10b981' : '#d97706'}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="${isUnpaid ? 'check-circle' : 'credit-card'}" style="width:20px; height:20px;"></i>
             </div>
             <div>
-              <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">تسجيل سداد القسط الثاني 💳</h3>
+              <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">
+                ${isUnpaid ? 'تسجيل سداد رسوم الطالب وتفعيل المقعد 💳' : 'تسجيل سداد القسط الثاني 💳'}
+              </h3>
               <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">
                 الطالب: <strong>${studentData.name || 'طالب'}</strong> • ${groupTitle || 'المجموعة'}
               </p>
@@ -4967,9 +5318,9 @@ export const AdminSessionsPage = {
               <span style="font-size:0.75rem; color:var(--text-muted); display:block;">المسدد سابقاً</span>
               <strong style="font-size:1.05rem; color:#10b981;">${paidSoFar} ج.م</strong>
             </div>
-            <div style="background:rgba(245,158,11,0.08); border:1.5px solid rgba(245,158,11,0.35); border-radius:14px; padding:10px 14px; text-align:center;">
-              <span style="font-size:0.75rem; color:#d97706; display:block; font-weight:700;">المتبقي المستحق</span>
-              <strong style="font-size:1.1rem; color:#d97706;">${remaining} ج.م</strong>
+            <div style="background:${isUnpaid ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'}; border:1.5px solid ${isUnpaid ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}; border-radius:14px; padding:10px 14px; text-align:center;">
+              <span style="font-size:0.75rem; color:${isUnpaid ? '#dc2626' : '#d97706'}; display:block; font-weight:700;">المتبقي المستحق</span>
+              <strong style="font-size:1.1rem; color:${isUnpaid ? '#dc2626' : '#d97706'};">${remaining} ج.م</strong>
             </div>
           </div>
 
@@ -5010,14 +5361,14 @@ export const AdminSessionsPage = {
           <!-- Receipt Upload -->
           <div>
             <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
-              صورة إيصال التحويل الجديد: <span style="color:#ef4444;">*</span>
+              صورة إيصال التحويل / السداد: <span id="installment-receipt-required-star" style="color:#ef4444;">*</span>
             </label>
-            <div style="position:relative; border:2px dashed rgba(245,158,11,0.5); border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
-              <input type="file" id="installment-pay-receipt-file" accept="image/*" required
+            <div style="position:relative; border:2px dashed ${isUnpaid ? 'rgba(16,185,129,0.5)' : 'rgba(245,158,11,0.5)'}; border-radius:14px; padding:12px; text-align:center; background:var(--bg-app); cursor:pointer;">
+              <input type="file" id="installment-pay-receipt-file" accept="image/*"
                 style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer;">
               <div style="display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:0.82rem;">
-                <i data-lucide="upload-cloud" style="width:18px; height:18px; color:#d97706;"></i>
-                <span id="installment-file-label">انقر أو اسحب صورة إيصال القسط هنا (إلزامي 🧾)</span>
+                <i data-lucide="upload-cloud" style="width:18px; height:18px; color:${isUnpaid ? '#10b981' : '#d97706'};"></i>
+                <span id="installment-file-label">انقر أو اسحب صورة إيصال السداد هنا (إلزامي 🧾)</span>
               </div>
             </div>
             <div id="installment-preview-container" style="display:none; margin-top:8px; text-align:center;">
@@ -5030,7 +5381,7 @@ export const AdminSessionsPage = {
             <label for="installment-pay-notes" style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
               ملاحظات السداد:
             </label>
-            <input type="text" id="installment-pay-notes" placeholder="مثال: سداد القسط الثاني والأخير" class="form-input"
+            <input type="text" id="installment-pay-notes" placeholder="${isUnpaid ? 'مثال: سداد كامل الرسوم المستحقة وتفعيل المقعد' : 'مثال: سداد القسط الثاني والأخير'}" class="form-input"
               style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
           </div>
 
@@ -5040,8 +5391,9 @@ export const AdminSessionsPage = {
         <div style="padding:14px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
           <button type="button" id="cancel-record-installment-btn" class="btn-secondary" style="padding:8px 18px; border-radius:12px; font-weight:800; font-size:0.85rem;">إلغاء</button>
           <button type="button" id="confirm-record-installment-btn" class="btn-primary" 
-            style="padding:8px 22px; border-radius:12px; font-weight:900; font-size:0.85rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-            <i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد سداد القسط ورفع الإيصال ✅
+            style="padding:8px 22px; border-radius:12px; font-weight:900; font-size:0.85rem; background:linear-gradient(135deg, ${isUnpaid ? '#10b981, #059669' : '#f59e0b, #d97706'}); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <i data-lucide="check-circle" style="width:16px; height:16px;"></i>
+            ${isUnpaid ? 'تأكيد تسجيل السداد وتحديث الحالة لمسدد ✅' : 'تأكيد سداد القسط ورفع الإيصال ✅'}
           </button>
         </div>
 
@@ -5055,12 +5407,25 @@ export const AdminSessionsPage = {
     overlay.querySelector("#close-record-installment-modal")?.addEventListener("click", closeOverlay);
     overlay.querySelector("#cancel-record-installment-btn")?.addEventListener("click", closeOverlay);
 
-    // File Preview
+    // Provider change dynamic check for cash
+    const providerSelect = overlay.querySelector("#installment-pay-provider");
+    const receiptStar = overlay.querySelector("#installment-receipt-required-star");
     const fileInput = overlay.querySelector("#installment-pay-receipt-file");
     const previewContainer = overlay.querySelector("#installment-preview-container");
     const previewImg = overlay.querySelector("#installment-preview-img");
     const fileLabel = overlay.querySelector("#installment-file-label");
 
+    providerSelect?.addEventListener("change", () => {
+      const isCash = providerSelect.value === 'cash';
+      if (receiptStar) receiptStar.style.display = isCash ? 'none' : 'inline';
+      if (!fileInput.files || fileInput.files.length === 0) {
+        if (fileLabel) {
+          fileLabel.textContent = isCash ? 'صورة الإيصال (اختياري عند السداد نقداً)' : 'انقر أو اسحب صورة إيصال السداد هنا (إلزامي 🧾)';
+        }
+      }
+    });
+
+    // File Preview
     fileInput?.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -5072,7 +5437,8 @@ export const AdminSessionsPage = {
         };
         reader.readAsDataURL(file);
       } else {
-        if (fileLabel) fileLabel.textContent = "انقر أو اسحب صورة إيصال القسط هنا (إلزامي 🧾)";
+        const isCash = providerSelect?.value === 'cash';
+        if (fileLabel) fileLabel.textContent = isCash ? 'صورة الإيصال (اختياري عند السداد نقداً)' : 'انقر أو اسحب صورة إيصال السداد هنا (إلزامي 🧾)';
         if (previewContainer) previewContainer.style.display = "none";
       }
     });
@@ -5089,31 +5455,37 @@ export const AdminSessionsPage = {
         showToast("يرجى إدخال المبلغ المدفوع بشكل صحيح.", "warning");
         return;
       }
-      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        showToast("يرجى إرفاق صورة إيصال سداد القسط!", "warning");
+      const isCash = providerVal === 'cash';
+      if (!isCash && (!fileInput || !fileInput.files || fileInput.files.length === 0)) {
+        showToast("يرجى إرفاق صورة إيصال سداد المبلغ!", "warning");
         return;
       }
 
       confirmBtn.disabled = true;
-      confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري رفع الإيصال... ⏳`;
+      confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري المعالجة... ⏳`;
       if (window.lucide) window.lucide.createIcons();
 
       try {
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-        const token = state.token || localStorage.getItem("token");
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
-        if (!uploadRes.ok) {
-          throw new Error("فشل رفع صورة إيصال الدفع.");
+        let receiptUrl = null;
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+          confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري رفع صورة الإيصال... ⏳`;
+          if (window.lucide) window.lucide.createIcons();
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (!uploadRes.ok) {
+            throw new Error("فشل رفع صورة إيصال الدفع.");
+          }
+          const uploadData = await uploadRes.json();
+          receiptUrl = uploadData.url;
         }
-        const uploadData = await uploadRes.json();
-        const receiptUrl = uploadData.url;
 
-        confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري تسجيل القسط... ⏳`;
+        confirmBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري تسجيل السداد واعتماد المقعد... ⏳`;
         if (window.lucide) window.lucide.createIcons();
 
         const res = await apiFetch(`/admin/groups/${groupId}/students/${studentData.studentId}/record-installment`, {
@@ -5122,21 +5494,21 @@ export const AdminSessionsPage = {
             amount: parseFloat(amountVal),
             provider: providerVal || undefined,
             providerTransactionId: txIdVal || undefined,
-            receiptUrl: receiptUrl,
+            receiptUrl: receiptUrl || undefined,
             notes: notesVal || undefined
           })
         });
 
-        showToast(res.message || "تم تسجيل سداد القسط بنجاح! 🎉", "success");
+        showToast(res.message || "تم تسجيل السداد وتحديث حالة الطالب بنجاح! 🎉✅", "success");
         closeOverlay();
         await this.loadAllData();
         await this.renderGroupStudentsModal(groupId);
         this.renderTab(this.activeTab);
       } catch (err) {
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> تأكيد سداد القسط ورفع الإيصال ✅`;
+        confirmBtn.innerHTML = `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> ${isUnpaid ? 'تأكيد تسجيل السداد وتحديث الحالة لمسدد ✅' : 'تأكيد سداد القسط ورفع الإيصال ✅'}`;
         if (window.lucide) window.lucide.createIcons();
-        showToast(err.message || "فشل تسجيل سداد القسط.", "error");
+        showToast(err.message || "فشل تسجيل السداد.", "error");
       }
     });
   },
@@ -5188,8 +5560,8 @@ export const AdminSessionsPage = {
             </div>
             <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:12px; padding:8px 12px; text-align:center;">
               <span style="font-size:0.72rem; color:var(--text-muted); display:block;">حالة السداد</span>
-              <strong style="font-size:0.85rem; color:${studentData.paymentStatus === 'PARTIAL' ? '#d97706' : '#10b981'};">
-                ${studentData.paymentStatus === 'PARTIAL' ? '⚠️ قسط جاري' : studentData.paymentStatus === 'EXEMPT' ? '🎓 منحة' : '✅ مسدد'}
+              <strong style="font-size:0.85rem; color:${studentData.paymentStatus === 'PARTIAL' ? '#d97706' : studentData.paymentStatus === 'UNPAID' ? '#ef4444' : '#10b981'};">
+                ${studentData.paymentStatus === 'PARTIAL' ? '⚠️ قسط جاري' : studentData.paymentStatus === 'UNPAID' ? '🔴 لم يسدد بعد' : studentData.paymentStatus === 'EXEMPT' ? '🎓 منحة' : '✅ مسدد'}
               </strong>
             </div>
           </div>
@@ -5246,6 +5618,255 @@ export const AdminSessionsPage = {
     const closeOverlay = () => { overlay.remove(); };
     overlay.querySelector("#close-installment-history-modal")?.addEventListener("click", closeOverlay);
     overlay.querySelector("#close-installment-history-btn")?.addEventListener("click", closeOverlay);
+  },
+
+  // ── Render Change Payment Status Modal ─────────────────
+  renderChangePaymentStatusModal(groupId, studentData, groupTitle, defaultGroupPrice = 320) {
+    const existing = document.getElementById("admin-change-payment-status-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "admin-change-payment-status-overlay";
+    overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:100005; display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Cairo',sans-serif;";
+
+    const currentStatus = studentData.paymentStatus || 'PAID';
+    const totalCoursePrice = Number(studentData.totalPrice) || Number(defaultGroupPrice) || 320;
+    const currentPaid = Number(studentData.paidAmount) || 0;
+    const currentRemaining = Number(studentData.remainingAmount) > 0 
+      ? Number(studentData.remainingAmount) 
+      : (currentStatus === 'UNPAID' ? totalCoursePrice : 0);
+    const currentDueDate = studentData.dueDate ? new Date(studentData.dueDate).toISOString().split('T')[0] : '';
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:24px; max-width:540px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; display:flex; flex-direction:column;">
+        
+        <!-- Header -->
+        <div style="padding:18px 24px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(99,102,241,0.2); color:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="sliders" style="width:20px; height:20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size:1.1rem; font-weight:900; margin:0 0 2px 0; color:var(--text-main);">تعديل حالة السداد يدوياً ⚙️</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">
+                الطالب: <strong>${studentData.name || 'طالب'}</strong> • ${groupTitle || 'المجموعة'}
+              </p>
+            </div>
+          </div>
+          <button type="button" id="close-change-payment-status-modal" style="background:transparent; border:none; color:var(--text-muted); font-size:1.3rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:75vh; overflow-y:auto;">
+          
+          <!-- Current Status Overview -->
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-app); border:1px solid var(--border-color); border-radius:14px; padding:12px 16px;">
+            <div>
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block;">الحالة الحالية للطالب</span>
+              <strong style="font-size:0.95rem; color:var(--text-main);">
+                ${currentStatus === 'UNPAID' ? '🔴 لم يسدد بعد / سيدفع لاحقاً' : 
+                  currentStatus === 'PARTIAL' ? '⚠️ سداد بالتقسيط (قسط جاري)' : 
+                  currentStatus === 'EXEMPT' ? '🎓 منحة / معفى من المصروفات' : 
+                  '✅ مسدد بالكامل'}
+              </strong>
+            </div>
+            <div style="text-align:inline-end;">
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block;">إجمالي سعر المجموعة</span>
+              <strong style="font-size:1rem; color:var(--primary);">${totalCoursePrice} ج.م</strong>
+            </div>
+          </div>
+
+          <!-- New Status Selector -->
+          <div>
+            <label style="display:block; font-size:0.83rem; font-weight:800; margin-bottom:6px; color:var(--text-main);">
+              اختر حالة السداد الجديدة: <span style="color:#ef4444;">*</span>
+            </label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              
+              <label class="status-choice-label" data-status="PAID" style="display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid ${currentStatus === 'PAID' ? '#10b981' : 'var(--border-color)'}; background:${currentStatus === 'PAID' ? 'rgba(16,185,129,0.08)' : 'var(--bg-app)'}; border-radius:12px; cursor:pointer;">
+                <input type="radio" name="new-payment-status" value="PAID" ${currentStatus === 'PAID' ? 'checked' : ''} style="accent-color:#10b981;">
+                <div>
+                  <strong style="display:block; font-size:0.82rem; color:#10b981;">✅ مسدد بالكامل</strong>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">سدد كامل القيمة (${totalCoursePrice} ج.م)</span>
+                </div>
+              </label>
+
+              <label class="status-choice-label" data-status="UNPAID" style="display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid ${currentStatus === 'UNPAID' ? '#ef4444' : 'var(--border-color)'}; background:${currentStatus === 'UNPAID' ? 'rgba(239,68,68,0.08)' : 'var(--bg-app)'}; border-radius:12px; cursor:pointer;">
+                <input type="radio" name="new-payment-status" value="UNPAID" ${currentStatus === 'UNPAID' ? 'checked' : ''} style="accent-color:#ef4444;">
+                <div>
+                  <strong style="display:block; font-size:0.82rem; color:#ef4444;">🔴 لم يسدد بعد</strong>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">سيدفع لاحقاً (مستحق كامل)</span>
+                </div>
+              </label>
+
+              <label class="status-choice-label" data-status="PARTIAL" style="display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid ${currentStatus === 'PARTIAL' ? '#f59e0b' : 'var(--border-color)'}; background:${currentStatus === 'PARTIAL' ? 'rgba(245,158,11,0.08)' : 'var(--bg-app)'}; border-radius:12px; cursor:pointer;">
+                <input type="radio" name="new-payment-status" value="PARTIAL" ${currentStatus === 'PARTIAL' ? 'checked' : ''} style="accent-color:#f59e0b;">
+                <div>
+                  <strong style="display:block; font-size:0.82rem; color:#f59e0b;">⚠️ سداد بالتقسيط</strong>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">سدد دفعة أولى ومتبقي قسط</span>
+                </div>
+              </label>
+
+              <label class="status-choice-label" data-status="EXEMPT" style="display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid ${currentStatus === 'EXEMPT' ? '#8b5cf6' : 'var(--border-color)'}; background:${currentStatus === 'EXEMPT' ? 'rgba(139,92,246,0.08)' : 'var(--bg-app)'}; border-radius:12px; cursor:pointer;">
+                <input type="radio" name="new-payment-status" value="EXEMPT" ${currentStatus === 'EXEMPT' ? 'checked' : ''} style="accent-color:#8b5cf6;">
+                <div>
+                  <strong style="display:block; font-size:0.82rem; color:#8b5cf6;">🎓 منحة / معفى</strong>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">إعفاء كامل مجاني من المصروفات</span>
+                </div>
+              </label>
+
+            </div>
+          </div>
+
+          <!-- Financial Breakdown Fields -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label for="change-status-paid-amount" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                المبلغ المسدد (ج.م): <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="number" id="change-status-paid-amount" value="${currentStatus === 'UNPAID' ? 0 : (currentPaid || totalCoursePrice)}" min="0" step="1" class="form-input"
+                style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+            </div>
+
+            <div>
+              <label for="change-status-remaining-amount" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+                المبلغ المتبقي المستحق (ج.م): <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="number" id="change-status-remaining-amount" value="${currentRemaining}" min="0" step="1" class="form-input"
+                style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.88rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+            </div>
+          </div>
+
+          <!-- Due Date Field (For UNPAID or PARTIAL) -->
+          <div id="change-status-due-date-container" style="display:${currentStatus === 'UNPAID' || currentStatus === 'PARTIAL' ? 'block' : 'none'};">
+            <label for="change-status-due-date" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+              تاريخ استحقاق السداد الموعود:
+            </label>
+            <input type="date" id="change-status-due-date" value="${currentDueDate}" class="form-input"
+              style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+          </div>
+
+          <!-- Notes / Reason -->
+          <div>
+            <label for="change-status-notes" style="display:block; font-size:0.82rem; font-weight:800; margin-bottom:4px; color:var(--text-main);">
+              سبب التعديل أو ملاحظات الإدارة:
+            </label>
+            <input type="text" id="change-status-notes" placeholder="مثال: تم السداد نقداً باليد أو تم منحه مهلة..." class="form-input"
+              style="width:100%; border-radius:12px; padding:9px 12px; font-size:0.85rem; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-main); box-sizing:border-box;">
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" id="cancel-change-payment-status-btn" class="btn-secondary" style="padding:8px 18px; border-radius:12px; font-weight:800; font-size:0.85rem;">إلغاء</button>
+          <button type="button" id="save-change-payment-status-btn" class="btn-primary" 
+            style="padding:8px 22px; border-radius:12px; font-weight:900; font-size:0.85rem; background:linear-gradient(135deg, var(--primary), #8b5cf6); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <i data-lucide="check-circle" style="width:16px; height:16px;"></i> حفظ وتحديث حالة الطالب ✅
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeOverlay = () => { overlay.remove(); };
+    overlay.querySelector("#close-change-payment-status-modal")?.addEventListener("click", closeOverlay);
+    overlay.querySelector("#cancel-change-payment-status-btn")?.addEventListener("click", closeOverlay);
+
+    const paidInput = overlay.querySelector("#change-status-paid-amount");
+    const remInput = overlay.querySelector("#change-status-remaining-amount");
+    const dueDateContainer = overlay.querySelector("#change-status-due-date-container");
+    const statusRadios = overlay.querySelectorAll('input[name="new-payment-status"]');
+
+    const updateStatusUI = () => {
+      const selected = overlay.querySelector('input[name="new-payment-status"]:checked')?.value || 'PAID';
+      
+      statusRadios.forEach(r => {
+        const lbl = r.closest('.status-choice-label');
+        if (lbl) {
+          const val = r.value;
+          const color = val === 'PAID' ? '#10b981' : val === 'UNPAID' ? '#ef4444' : val === 'PARTIAL' ? '#f59e0b' : '#8b5cf6';
+          if (r.checked) {
+            lbl.style.borderColor = color;
+            lbl.style.background = val === 'PAID' ? 'rgba(16,185,129,0.08)' : val === 'UNPAID' ? 'rgba(239,68,68,0.08)' : val === 'PARTIAL' ? 'rgba(245,158,11,0.08)' : 'rgba(139,92,246,0.08)';
+          } else {
+            lbl.style.borderColor = 'var(--border-color)';
+            lbl.style.background = 'var(--bg-app)';
+          }
+        }
+      });
+
+      if (selected === 'PAID') {
+        if (paidInput) paidInput.value = totalCoursePrice;
+        if (remInput) remInput.value = 0;
+        if (dueDateContainer) dueDateContainer.style.display = 'none';
+      } else if (selected === 'UNPAID') {
+        if (paidInput) paidInput.value = 0;
+        if (remInput) remInput.value = totalCoursePrice;
+        if (dueDateContainer) dueDateContainer.style.display = 'block';
+      } else if (selected === 'PARTIAL') {
+        const half = Math.round(totalCoursePrice / 2);
+        if (paidInput) paidInput.value = half;
+        if (remInput) remInput.value = Math.max(0, totalCoursePrice - half);
+        if (dueDateContainer) dueDateContainer.style.display = 'block';
+      } else if (selected === 'EXEMPT') {
+        if (paidInput) paidInput.value = 0;
+        if (remInput) remInput.value = 0;
+        if (dueDateContainer) dueDateContainer.style.display = 'none';
+      }
+    };
+
+    statusRadios.forEach(r => {
+      r.addEventListener('change', updateStatusUI);
+    });
+
+    paidInput?.addEventListener('input', () => {
+      const selected = overlay.querySelector('input[name="new-payment-status"]:checked')?.value;
+      if (selected === 'PARTIAL') {
+        const p = parseFloat(paidInput.value) || 0;
+        if (remInput) remInput.value = Math.max(0, totalCoursePrice - p);
+      }
+    });
+
+    const saveBtn = overlay.querySelector("#save-change-payment-status-btn");
+    saveBtn?.addEventListener("click", async () => {
+      const selectedStatus = overlay.querySelector('input[name="new-payment-status"]:checked')?.value || 'PAID';
+      const paidVal = parseFloat(paidInput?.value) || 0;
+      const remVal = parseFloat(remInput?.value) || 0;
+      const dueDateVal = overlay.querySelector('#change-status-due-date')?.value || null;
+      const notesVal = overlay.querySelector('#change-status-notes')?.value?.trim() || '';
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<i data-lucide="loader-2" style="width:16px; height:16px; animation:spin 1s linear infinite;"></i> جاري حفظ التعديل... ⏳`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const res = await apiFetch(`/admin/groups/${groupId}/students/${studentData.studentId}/update-payment-status`, {
+          method: "POST",
+          body: JSON.stringify({
+            paymentStatus: selectedStatus,
+            paidAmount: paidVal,
+            remainingAmount: remVal,
+            dueDate: (selectedStatus === 'PARTIAL' || selectedStatus === 'UNPAID') ? dueDateVal : null,
+            notes: notesVal
+          })
+        });
+
+        showToast(res.message || "تم تحديث حالة السداد للطالب بنجاح! ✅", "success");
+        closeOverlay();
+        await this.loadAllData();
+        await this.renderGroupStudentsModal(groupId);
+        this.renderTab(this.activeTab);
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `<i data-lucide="check-circle" style="width:16px; height:16px;"></i> حفظ وتحديث حالة الطالب ✅`;
+        if (window.lucide) window.lucide.createIcons();
+        showToast(err.message || "فشل تحديث حالة السداد للطالب.", "error");
+      }
+    });
   },
 
   // ── Render Admin Complete Session & Credit Teacher Money Modal ─────────────────

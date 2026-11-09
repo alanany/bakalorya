@@ -1500,7 +1500,18 @@ export class AdminController {
     try {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
       const enrollments = await enrollmentRepo.find({
-        relations: ["student", "course", "course.teacher", "group", "group.teacher", "group.course", "payment"],
+        relations: [
+          "student",
+          "course",
+          "course.teacher",
+          "group",
+          "group.teacher",
+          "group.course",
+          "payment",
+          "classPackage",
+          "classPackage.grade",
+          "classPackage.linkedGroups"
+        ],
         order: { createdAt: "DESC" }
       });
 

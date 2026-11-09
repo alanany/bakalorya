@@ -1,10 +1,16 @@
 import { Request, Response } from "express";
+import { In, IsNull } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { Grade } from "../entity/Grade";
 import { Subject } from "../entity/Subject";
 import { Course } from "../entity/Course";
 import { CourseGroup } from "../entity/CourseGroup";
 import { Enrollment } from "../entity/Enrollment";
+import { ClassPackage } from "../entity/ClassPackage";
+import { User } from "../entity/User";
+import { Payment } from "../entity/Payment";
+import { NotificationController } from "./NotificationController";
+import { AuthRequest } from "../middleware/auth";
 
 // Egyptian Curriculum Data Structure from Nagwa Egypt
 export const EGYPTIAN_CURRICULUM_DATA = [
@@ -319,8 +325,14 @@ export class CurriculumController {
 
       const queryBuilder = gradeRepo.createQueryBuilder("grade")
         .leftJoinAndSelect("grade.subjects", "subject")
+        .leftJoinAndSelect("grade.classPackages", "classPackage")
+        .leftJoinAndSelect("classPackage.linkedGroups", "classGroup")
+        .leftJoinAndSelect("classGroup.teacher", "groupTeacher")
+        .leftJoinAndSelect("classGroup.course", "groupCourse")
+        .leftJoinAndSelect("groupCourse.subject", "courseSubject")
         .orderBy("grade.order", "ASC")
-        .addOrderBy("subject.name", "ASC");
+        .addOrderBy("subject.name", "ASC")
+        .addOrderBy("classPackage.order", "ASC");
 
       if (stage) {
         queryBuilder.where("grade.stage = :stage", { stage: stage.toUpperCase() });
@@ -978,6 +990,1032 @@ export class CurriculumController {
     } catch (err: any) {
       console.error("Error in getSubjectGroups:", err);
       return res.status(500).json({ error: "Failed to fetch subject groups: " + (err?.message || "") });
+    }
+  }
+
+  // ============================================================
+  // Class Packages (فصول وباقات الصفحة الرئيسية والصف)
+  // ============================================================
+
+  // GET /curriculum/classes — Public list of active class packages
+  static async getClasses(req: Request, res: Response) {
+    try {
+      const { gradeId, stage } = req.query;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+
+      const baseWhere: any = {};
+      if (gradeId) {
+        baseWhere.grade = { id: String(gradeId) };
+      }
+      if (stage) {
+        baseWhere.grade = { stage: String(stage).toUpperCase() as any };
+      }
+
+      // Return classes that are active (isActive = true or isActive IS NULL)
+      const classes = await classRepo.find({
+        where: [
+          { ...baseWhere, isActive: true },
+          { ...baseWhere, isActive: IsNull() }
+        ],
+        relations: [
+          "grade",
+          "linkedGroups",
+          "linkedGroups.teacher",
+          "linkedGroups.course",
+          "linkedGroups.course.subject"
+        ],
+        order: { order: "ASC", createdAt: "ASC" }
+      });
+      return res.status(200).json(classes);
+    } catch (err: any) {
+      console.error("Error in getClasses:", err);
+      return res.status(500).json({ error: "Failed to fetch classes." });
+    }
+  }
+
+  // GET /curriculum/classes/:id — Public single class details
+  static async getClassById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+
+      const pkg = await classRepo.findOne({
+        where: { id },
+        relations: [
+          "grade",
+          "linkedGroups",
+          "linkedGroups.teacher",
+          "linkedGroups.course",
+          "linkedGroups.course.subject",
+          "linkedGroups.sessions"
+        ]
+      });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "فصل/باقة غير موجودة." });
+      }
+
+      return res.status(200).json(pkg);
+    } catch (err: any) {
+      console.error("Error in getClassById:", err);
+      return res.status(500).json({ error: "Failed to fetch class details." });
+    }
+  }
+
+  // GET /admin/curriculum/classes — Admin list ALL packages across all grades
+  static async getAllAdminClasses(req: Request, res: Response) {
+    try {
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const classes = await classRepo.find({
+        relations: [
+          "grade",
+          "linkedGroups",
+          "linkedGroups.teacher",
+          "linkedGroups.course",
+          "linkedGroups.course.subject"
+        ],
+        order: { order: "ASC", createdAt: "ASC" }
+      });
+      return res.status(200).json(classes);
+    } catch (err: any) {
+      console.error("Error in getAllAdminClasses:", err);
+      return res.status(500).json({ error: "Failed to fetch all admin classes." });
+    }
+  }
+
+  // GET /admin/curriculum/grades/:gradeId/classes — Admin list all packages for a grade
+  static async getAdminClasses(req: Request, res: Response) {
+    try {
+      const { gradeId } = req.params;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+
+      const classes = await classRepo.find({
+        where: { grade: { id: gradeId } },
+        relations: [
+          "grade",
+          "linkedGroups",
+          "linkedGroups.teacher",
+          "linkedGroups.course",
+          "linkedGroups.course.subject"
+        ],
+        order: { order: "ASC", createdAt: "ASC" }
+      });
+
+      return res.status(200).json(classes);
+    } catch (err: any) {
+      console.error("Error in getAdminClasses:", err);
+      return res.status(500).json({ error: "Failed to fetch admin classes." });
+    }
+  }
+
+  // POST /admin/curriculum/grades/:gradeId/classes — Admin create class package
+  static async createClassPackage(req: Request, res: Response) {
+    try {
+      const { gradeId } = req.params;
+      const {
+        name,
+        badge,
+        lessonsCount,
+        theme,
+        price,
+        priceEg,
+        description,
+        features,
+        subjects,
+        weeklySchedule,
+        linkedGroupId,
+        groupIds,
+        order,
+        isActive
+      } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "اسم الفصل أو الباقة مطلوب." });
+      }
+
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const grade = await gradeRepo.findOneBy({ id: gradeId });
+      if (!grade) {
+        return res.status(404).json({ error: "الصف الدراسي غير موجود." });
+      }
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      let linkedGroups: CourseGroup[] = [];
+
+      // Link multiple CourseGroups if groupIds provided
+      if (Array.isArray(groupIds) && groupIds.length > 0) {
+        linkedGroups = await groupRepo.find({
+          where: { id: In(groupIds) },
+          relations: ["teacher", "course", "course.subject"]
+        });
+      } else if (linkedGroupId) {
+        const singleGroup = await groupRepo.findOne({
+          where: { id: linkedGroupId },
+          relations: ["teacher", "course", "course.subject"]
+        });
+        if (singleGroup) linkedGroups = [singleGroup];
+      }
+
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = new ClassPackage();
+      pkg.name = name.trim();
+      pkg.badge = badge?.trim() || null;
+      pkg.theme = ["blue", "green", "purple", "amber"].includes(theme) ? theme : "blue";
+      pkg.price = price?.trim() || null;
+      pkg.priceEg = priceEg?.trim() || null;
+      pkg.description = description?.trim() || null;
+      pkg.features = Array.isArray(features) ? features : [];
+      pkg.grade = grade;
+      pkg.linkedGroups = linkedGroups;
+      pkg.linkedGroup = linkedGroups[0] || null;
+      pkg.order = Number(order) || 0;
+      pkg.isActive = isActive !== undefined ? Boolean(isActive) : true;
+
+      // Auto-derive subjects from linked groups if not provided
+      if ((!subjects || !Array.isArray(subjects) || subjects.length === 0) && linkedGroups.length > 0) {
+        pkg.subjects = linkedGroups.map(g => ({
+          name: g.course?.subject?.name || g.name,
+          icon: g.course?.subject?.icon || "📖",
+          time: `${g.scheduleDays || ''} ${g.scheduleTime || ''}`.trim() || g.scheduleText || "مواعيد منتظمة",
+          teacherName: g.teacher?.name || g.course?.teacher?.name || "معلم معتمد"
+        }));
+      } else {
+        pkg.subjects = Array.isArray(subjects) ? subjects : [];
+      }
+
+      // Auto-calculate lessons count if not provided
+      if (lessonsCount && lessonsCount.trim()) {
+        pkg.lessonsCount = lessonsCount.trim();
+      } else if (linkedGroups.length > 0) {
+        const total = linkedGroups.reduce((sum, g) => sum + (g.totalSessions || 8), 0);
+        pkg.lessonsCount = `عدد الحصص: ${total} حصة`;
+      } else {
+        pkg.lessonsCount = "عدد الحصص: 64 حصة";
+      }
+
+      pkg.weeklySchedule = Array.isArray(weeklySchedule) ? weeklySchedule : [];
+
+      const saved = await classRepo.save(pkg);
+      return res.status(201).json(saved);
+    } catch (err: any) {
+      console.error("Error in createClassPackage:", err);
+      return res.status(500).json({ error: "Failed to create class package." });
+    }
+  }
+
+  // PUT /admin/curriculum/classes/:id — Admin update class package
+  static async updateClassPackage(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = await classRepo.findOne({
+        where: { id },
+        relations: ["grade", "linkedGroups", "linkedGroups.teacher", "linkedGroups.course"]
+      });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "الباقة غير موجودة." });
+      }
+
+      const {
+        name,
+        badge,
+        lessonsCount,
+        theme,
+        price,
+        priceEg,
+        description,
+        features,
+        subjects,
+        weeklySchedule,
+        linkedGroupId,
+        groupIds,
+        order,
+        isActive
+      } = req.body;
+
+      if (name !== undefined) pkg.name = name.trim();
+      if (badge !== undefined) pkg.badge = badge ? badge.trim() : null;
+      if (lessonsCount !== undefined) pkg.lessonsCount = lessonsCount.trim();
+      if (theme !== undefined && ["blue", "green", "purple", "amber"].includes(theme)) pkg.theme = theme;
+      if (price !== undefined) pkg.price = price ? price.trim() : null;
+      if (priceEg !== undefined) pkg.priceEg = priceEg ? priceEg.trim() : null;
+      if (description !== undefined) pkg.description = description ? description.trim() : null;
+      if (features !== undefined && Array.isArray(features)) pkg.features = features;
+      if (subjects !== undefined && Array.isArray(subjects)) pkg.subjects = subjects;
+      if (weeklySchedule !== undefined && Array.isArray(weeklySchedule)) pkg.weeklySchedule = weeklySchedule;
+      if (order !== undefined) pkg.order = Number(order);
+      if (isActive !== undefined) pkg.isActive = Boolean(isActive);
+
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      if (Array.isArray(groupIds)) {
+        if (groupIds.length > 0) {
+          pkg.linkedGroups = await groupRepo.find({
+            where: { id: In(groupIds) },
+            relations: ["teacher", "course", "course.subject"]
+          });
+          pkg.linkedGroup = pkg.linkedGroups[0] || null;
+        } else {
+          pkg.linkedGroups = [];
+          pkg.linkedGroup = null;
+        }
+      } else if (linkedGroupId !== undefined) {
+        if (!linkedGroupId) {
+          pkg.linkedGroup = null;
+        } else {
+          const grp = await groupRepo.findOne({
+            where: { id: linkedGroupId },
+            relations: ["teacher", "course", "course.subject"]
+          });
+          if (grp) {
+            pkg.linkedGroup = grp;
+            if (!pkg.linkedGroups || pkg.linkedGroups.length === 0) {
+              pkg.linkedGroups = [grp];
+            }
+          }
+        }
+      }
+
+      const updated = await classRepo.save(pkg);
+      return res.status(200).json(updated);
+    } catch (err: any) {
+      console.error("Error in updateClassPackage:", err);
+      return res.status(500).json({ error: "Failed to update class package." });
+    }
+  }
+
+  // DELETE /admin/curriculum/classes/:id — Admin delete class package
+  static async deleteClassPackage(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = await classRepo.findOneBy({ id });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "الباقة غير موجودة." });
+      }
+
+      await classRepo.remove(pkg);
+      return res.status(200).json({ message: "تم حذف الباقة بنجاح." });
+    } catch (err: any) {
+      console.error("Error in deleteClassPackage:", err);
+      return res.status(500).json({ error: "Failed to delete class package." });
+    }
+  }
+
+  // PATCH /admin/curriculum/classes/:id/toggle — Admin toggle visibility
+  static async toggleClassVisibility(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = await classRepo.findOneBy({ id });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "الباقة غير موجودة." });
+      }
+
+      pkg.isActive = !pkg.isActive;
+      await classRepo.save(pkg);
+      return res.status(200).json({ message: "تم تغيير حالة ظهور الباقة.", isActive: pkg.isActive });
+    } catch (err: any) {
+      console.error("Error in toggleClassVisibility:", err);
+      return res.status(500).json({ error: "Failed to toggle visibility." });
+    }
+  }
+
+  // POST /admin/curriculum/grades/:gradeId/classes/seed-defaults — Generate 3 preset packages
+  static async seedDefaultClasses(req: Request, res: Response) {
+    try {
+      const { gradeId } = req.params;
+      const gradeRepo = AppDataSource.getRepository(Grade);
+      const grade = await gradeRepo.findOneBy({ id: gradeId });
+
+      if (!grade) {
+        return res.status(404).json({ error: "الصف الدراسي غير موجود." });
+      }
+
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const existing = await classRepo.count({ where: { grade: { id: gradeId } } });
+      if (existing > 0 && req.query.force !== "true") {
+        return res.status(400).json({ error: "هذا الصف يحتوي بالفعل على باقات مضافة." });
+      }
+
+      const isSec = grade.stage === "SECONDARY";
+      const isMid = grade.stage === "PREPARATORY";
+
+      const packagesData = [
+        {
+          name: "فصل المتفوقين (باقة مجمعة)",
+          badge: "متاح للاشتراك",
+          lessonsCount: "عدد الحصص: 64 حصة",
+          theme: "blue" as const,
+          price: isSec ? "800 ريال / شهرياً  •  800 جنيه / شهرياً" : (isMid ? "600 ريال / شهرياً  •  600 جنيه / شهرياً" : "500 ريال / شهرياً  •  500 جنيه / شهرياً"),
+          priceEg: isSec ? "800 جنيه" : (isMid ? "600 جنيه" : "500 جنيه"),
+          description: `باقة "فصل المتفوقين" هي الخيار الأقوى للطلاب الطامحين للمراكز الأولى، وتشمل جميع المواد المقررة ومتابعة أسبوعية واختبارات قياس مستوى دورية.`,
+          features: [
+            "جميع المواد والمجموعات في باقة واحدة",
+            "شرح مبسط وتفاعلي من أفضل المعلمين المعتمدين",
+            "حصص تفاعلية مباشرة (64 حصة) طوال الفصل",
+            "متابعة مستمرة وتواصل مباشر مع ولي الأمر",
+            "بنك أسئلة وتدريبات تفاعلية ومراجعات ليلة الامتحان"
+          ],
+          subjects: isSec ? [
+            { name: "الفيزياء", icon: "⚡", time: "الأحد والثلاثاء - 5:00 مساءً", teacherName: "أ. محمد عبد المعبود" },
+            { name: "الكيمياء", icon: "🧪", time: "الاثنين والأربعاء - 6:00 مساءً", teacherName: "أ. إيهاب سعيد" },
+            { name: "الأحياء / الجيولوجيا", icon: "🧬", time: "السبت والخميس - 7:00 مساءً", teacherName: "د. أحمد الجوهري" },
+            { name: "الرياضيات واللغة العربية", icon: "📐", time: "الأحد والأربعاء - 8:00 مساءً", teacherName: "أ. رضا الفاروق" }
+          ] : (isMid ? [
+            { name: "اللغة العربية", icon: "📙", time: "الأحد والثلاثاء - 5:00 مساءً", teacherName: "أ. محمد علي" },
+            { name: "اللغة الإنجليزية", icon: "🔤", time: "الاثنين والأربعاء - 6:00 مساءً", teacherName: "أ. تامر رأفت" },
+            { name: "الرياضيات", icon: "➕", time: "السبت والخميس - 7:00 مساءً", teacherName: "أ. أحمد سعيد" },
+            { name: "العلوم والدراسات", icon: "🧪", time: "الأحد والأربعاء - 8:00 مساءً", teacherName: "أ. سامح عبد الله" }
+          ] : [
+            { name: "اللغة العربية", icon: "📙", time: "الأحد والثلاثاء - 5:00 مساءً", teacherName: "أ. محمد علي" },
+            { name: "اللغة الإنجليزية", icon: "🔤", time: "الاثنين والأربعاء - 6:00 مساءً", teacherName: "أ. تامر رأفت" },
+            { name: "الرياضيات", icon: "➕", time: "السبت والخميس - 7:00 مساءً", teacherName: "أ. أحمد سعيد" },
+            { name: "العلوم", icon: "🧪", time: "الأحد والأربعاء - 8:00 مساءً", teacherName: "أ. سامح عبد الله" }
+          ]),
+          weeklySchedule: [
+            { day: "السبت", items: [{ subject: "الرياضيات", time: "7:00 - 8:00 مساءً" }] },
+            { day: "الأحد", items: [{ subject: "اللغة العربية", time: "5:00 - 6:00 م" }, { subject: "العلوم", time: "8:00 - 9:00 م" }] },
+            { day: "الاثنين", items: [{ subject: "اللغة الإنجليزية", time: "6:00 - 7:00 مساءً" }] },
+            { day: "الثلاثاء", items: [{ subject: "اللغة العربية", time: "5:00 - 6:00 مساءً" }] },
+            { day: "الأربعاء", items: [{ subject: "اللغة الإنجليزية", time: "6:00 - 7:00 م" }, { subject: "العلوم", time: "8:00 - 9:00 م" }] },
+            { day: "الخميس", items: [{ subject: "الرياضيات", time: "7:00 - 8:00 مساءً" }] }
+          ],
+          order: 1
+        },
+        {
+          name: "فصل التأسيس (باقة مصغرة)",
+          badge: "الأكثر طلباً",
+          lessonsCount: "عدد الحصص: 32 حصة",
+          theme: "green" as const,
+          price: isSec ? "450 ريال / شهرياً  •  450 جنيه / شهرياً" : (isMid ? "300 ريال / شهرياً  •  300 جنيه / شهرياً" : "300 ريال / شهرياً  •  300 جنيه / شهرياً"),
+          priceEg: isSec ? "450 جنيه" : (isMid ? "300 جنيه" : "300 جنيه"),
+          description: `باقة تأسيسية تركز على المواد المحورية ومعالجة الصعوبات الفردية للطالب لضمان التأسيس المتين وبناء الثقة في التحصيل.`,
+          features: [
+            "تركيز مكثف على المواد المحورية الأساسية",
+            "مجموعات صغيرة تفاعلية",
+            "معالجة فورية لصعوبات التعلم والتأسيس",
+            "تقارير دورية لمتابعة التطور التحصيلي"
+          ],
+          subjects: isSec ? [
+            { name: "المواد الأساسية المشتركة", icon: "📙", time: "السبت والخميس - 4:00 مساءً", teacherName: "أ. محمود رجب" },
+            { name: "الرياضيات التخصصية", icon: "➕", time: "الأحد والثلاثاء - 6:00 مساءً", teacherName: "أ. أحمد عصام" }
+          ] : [
+            { name: "اللغة العربية", icon: "📙", time: "السبت والخميس - 4:00 مساءً", teacherName: "أ. محمد علي" },
+            { name: "الرياضيات", icon: "➕", time: "الأحد والثلاثاء - 6:00 مساءً", teacherName: "أ. أحمد سعيد" }
+          ],
+          weeklySchedule: [
+            { day: "السبت", items: [{ subject: "المادة الأساسية 1", time: "4:00 - 5:30 م" }] },
+            { day: "الأحد", items: [{ subject: "الرياضيات", time: "6:00 - 7:30 م" }] },
+            { day: "الثلاثاء", items: [{ subject: "الرياضيات", time: "6:00 - 7:30 م" }] },
+            { day: "الخميس", items: [{ subject: "المادة الأساسية 1", time: "4:00 - 5:30 م" }] }
+          ],
+          order: 2
+        },
+        {
+          name: "فصل اللغات (باقة اللغات والعلوم المترجمة)",
+          badge: "مسار اللغات",
+          lessonsCount: "عدد الحصص: 48 حصة",
+          theme: "purple" as const,
+          price: isSec ? "900 ريال / شهرياً  •  900 جنيه / شهرياً" : (isMid ? "700 ريال / شهرياً  •  700 جنيه / شهرياً" : "550 ريال / شهرياً  •  550 جنيه / شهرياً"),
+          priceEg: isSec ? "900 جنيه" : (isMid ? "700 جنيه" : "550 جنيه"),
+          description: `باقة متخصصة لطلاب مدارس اللغات والمدارس التجريبية تقدم شروحات متقنة باللغة الإنجليزية للمواد العلمية والمتقدمة.`,
+          features: [
+            "تدريس باللغة الإنجليزية من معلمين معتمدين ذوي خبرة",
+            "تغطية مناهج Connect Plus و Math و Science",
+            "حل بنوك الأسئلة وامتحانات المدارس التجريبية واللغات",
+            "متابعة دورية تفاعلية مستمرة"
+          ],
+          subjects: isSec ? [
+            { name: "English High Level", icon: "🇬🇧", time: "الاثنين والأربعاء - 5:00 مساءً", teacherName: "Mr. Tamer Raafat" },
+            { name: "Pure & Applied Math", icon: "📐", time: "السبت والخميس - 8:00 مساءً", teacherName: "Eng. Ahmed Saeed" },
+            { name: "Physics & Chemistry", icon: "🔬", time: "الأحد والأربعاء - 7:00 مساءً", teacherName: "Dr. Sameh Abdullah" }
+          ] : [
+            { name: "English", icon: "🇬🇧", time: "الاثنين والأربعاء - 5:00 مساءً", teacherName: "Mr. Tamer Raafat" },
+            { name: "Mathematics (EN)", icon: "📐", time: "السبت والخميس - 8:00 مساءً", teacherName: "Eng. Ahmed Saeed" },
+            { name: "Science (EN)", icon: "🔬", time: "الأحد والأربعاء - 7:00 مساءً", teacherName: "Dr. Sameh Abdullah" }
+          ],
+          weeklySchedule: [
+            { day: "السبت", items: [{ subject: "Mathematics", time: "8:00 - 9:30 م" }] },
+            { day: "الأحد", items: [{ subject: "Science", time: "7:00 - 8:30 م" }] },
+            { day: "الاثنين", items: [{ subject: "English", time: "5:00 - 6:30 م" }] },
+            { day: "الأربعاء", items: [{ subject: "English", time: "5:00 - 6:30 م" }, { subject: "Science", time: "7:00 - 8:30 م" }] },
+            { day: "الخميس", items: [{ subject: "Mathematics", time: "8:00 - 9:30 م" }] }
+          ],
+          order: 3
+        }
+      ];
+
+      const created: ClassPackage[] = [];
+      for (const item of packagesData) {
+        const pkg = new ClassPackage();
+        pkg.name = item.name;
+        pkg.badge = item.badge;
+        pkg.lessonsCount = item.lessonsCount;
+        pkg.theme = item.theme;
+        pkg.price = item.price;
+        pkg.priceEg = item.priceEg;
+        pkg.description = item.description;
+        pkg.features = item.features;
+        pkg.subjects = item.subjects;
+        pkg.weeklySchedule = item.weeklySchedule;
+        pkg.grade = grade;
+        pkg.order = item.order;
+        pkg.isActive = true;
+        created.push(await classRepo.save(pkg));
+      }
+
+      return res.status(201).json({ message: "تم توليد الباقات النموذجية بنجاح.", packages: created });
+    } catch (err: any) {
+      console.error("Error in seedDefaultClasses:", err);
+      return res.status(500).json({ error: "Failed to seed default classes." });
+    }
+  }
+
+  // POST /admin/curriculum/classes/:id/enroll-student
+  // Tiers / bundles enrollment: Student pays for the class package, system automatically enrolls them into ALL linked groups of the class!
+  static async enrollStudentInClass(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { 
+        studentId, 
+        amount, 
+        paymentPlan, 
+        receiptUrl, 
+        notes, 
+        provider, 
+        providerTransactionId 
+      } = req.body;
+
+      if (!studentId) {
+        return res.status(400).json({ error: "معرف الطالب مطلوب (studentId)." });
+      }
+
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = await classRepo.findOne({
+        where: { id },
+        relations: [
+          "grade", 
+          "linkedGroups", 
+          "linkedGroups.teacher", 
+          "linkedGroups.course",
+          "linkedGroups.course.teacher"
+        ]
+      });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "الفصل أو الباقة غير موجودة." });
+      }
+
+      const userRepo = AppDataSource.getRepository(User);
+      const student = await userRepo.findOneBy({ id: studentId });
+      if (!student) {
+        return res.status(404).json({ error: "الطالب غير موجود بالنظام." });
+      }
+
+      const groups = pkg.linkedGroups || [];
+      if (groups.length === 0) {
+        return res.status(400).json({ 
+          error: "هذا الفصل لا يحتوي على مجموعات دراسية مربوطة بعد. يرجى ربط مجموعات المواد بالفصل أولاً." 
+        });
+      }
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+      const enrolledGroupNames: string[] = [];
+
+      // Create a master payment record for the Class package subscription
+      let masterPayment: Payment | null = null;
+      if (amount && Number(amount) > 0) {
+        masterPayment = new Payment();
+        masterPayment.student = student;
+        masterPayment.amount = Number(amount);
+        masterPayment.currency = "EGP";
+        masterPayment.type = "COURSE_ENROLLMENT";
+        masterPayment.status = "SUCCESS";
+        masterPayment.provider = provider || "CASH_OR_WALLET";
+        masterPayment.providerTransactionId = providerTransactionId || "";
+        masterPayment.receiptUrl = receiptUrl || "";
+        masterPayment.notes = notes || `اشتراك في ${pkg.name} (${groups.length} مجموعات مواد)`;
+        await paymentRepo.save(masterPayment);
+      }
+
+      for (const group of groups) {
+        let enrollment = await enrollmentRepo.findOne({
+          where: { student: { id: student.id }, group: { id: group.id } },
+          relations: ["student", "group", "course"]
+        });
+
+        if (!enrollment) {
+          enrollment = new Enrollment();
+          enrollment.student = student;
+          enrollment.group = group;
+          enrollment.course = group.course;
+          enrollment.progress = 0;
+          enrollment.completedLessons = [];
+        }
+
+        enrollment.status = "active";
+        if (masterPayment) {
+          enrollment.payment = masterPayment;
+          enrollment.paymentStatus = (paymentPlan === "PARTIAL") ? "PARTIAL" : (paymentPlan === "UNPAID" ? "UNPAID" : "PAID");
+        }
+        await enrollmentRepo.save(enrollment);
+        enrolledGroupNames.push(group.name);
+
+        // Notify teacher of the group
+        const teacher = group.teacher || group.course?.teacher;
+        if (teacher) {
+          try {
+            await NotificationController.createNotification(
+              teacher.id,
+              "طالب جديد انضم لمجموعتك عبر باقة الفصل 👨‍🎓",
+              `انضم الطالب "${student.name}" إلى مجموعة "${group.name}" عبر باقة "${pkg.name}". المعلم يحصل على مستحقات ساعته (${group.teacherHourlyRate || 100} ج.م/ساعة) عن كل حصة مكتملة تلقائياً.`,
+              "info",
+              "#teacher-dashboard/groups"
+            );
+          } catch (_) {}
+        }
+      }
+
+      // Also create or update the master ClassPackage enrollment
+      let masterClassEnrollment = await enrollmentRepo.findOne({
+        where: { student: { id: student.id }, classPackage: { id: pkg.id } }
+      });
+      if (!masterClassEnrollment) {
+        masterClassEnrollment = new Enrollment();
+        masterClassEnrollment.student = student;
+        masterClassEnrollment.classPackage = pkg;
+        masterClassEnrollment.course = null;
+        masterClassEnrollment.group = null;
+      }
+      masterClassEnrollment.status = "active";
+      masterClassEnrollment.paymentStatus = (paymentPlan === "PARTIAL") ? "PARTIAL" : (paymentPlan === "UNPAID" ? "UNPAID" : "PAID");
+      masterClassEnrollment.paidAmount = amount ? Number(amount) : 0;
+      masterClassEnrollment.remainingAmount = req.body.remainingAmount ? Number(req.body.remainingAmount) : 0;
+      masterClassEnrollment.dueDate = req.body.dueDate || null;
+      if (masterPayment) masterClassEnrollment.payment = masterPayment;
+      await enrollmentRepo.save(masterClassEnrollment);
+
+      // Notify Student
+      try {
+        await NotificationController.createNotification(
+          student.id,
+          "تم اشتراكك وتسكينك في جميع مجموعات الفصل بنجاح! 🎓",
+          `تم تفعيل اشتراكك في باقة "${pkg.name}" وتسكينك في ${groups.length} مجموعات دراسية (${enrolledGroupNames.join('، ')}). تم إدراج كافة الحصص في جدولك الدراسي.`,
+          "success",
+          "#student/groups"
+        );
+      } catch (_) {}
+
+      return res.status(200).json({
+        message: `تم تسكين الطالب بنجاح في ${groups.length} مجموعات تابعة للفصل! 🚀`,
+        classPackage: pkg.name,
+        enrolledGroups: enrolledGroupNames
+      });
+    } catch (err: any) {
+      console.error("Error in enrollStudentInClass:", err);
+      return res.status(500).json({ error: "فشل تسكين الطالب في مجموعات الفصل." });
+    }
+  }
+
+  // POST /curriculum/classes/:id/request-subscription
+  // Student requests subscription to a ClassPackage (PAID with receipt, PARTIAL installment, or UNPAID)
+  static async requestClassSubscription(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { paymentPlan, paidAmount, remainingAmount, dueDate, receiptUrl, notes, provider, providerTransactionId } = req.body;
+      const studentId = req.user?.id;
+
+      if (!studentId) {
+        return res.status(401).json({ error: "يجب تسجيل الدخول لتقديم طلب الاشتراك." });
+      }
+
+      const classRepo = AppDataSource.getRepository(ClassPackage);
+      const pkg = await classRepo.findOne({
+        where: { id },
+        relations: ["grade", "linkedGroups"]
+      });
+
+      if (!pkg) {
+        return res.status(404).json({ error: "الفصل الدراسي غير موجود." });
+      }
+
+      const userRepo = AppDataSource.getRepository(User);
+      const student = await userRepo.findOneBy({ id: studentId });
+      if (!student) {
+        return res.status(404).json({ error: "حساب الطالب غير موجود." });
+      }
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      let enrollment = await enrollmentRepo.findOne({
+        where: { student: { id: student.id }, classPackage: { id: pkg.id } },
+        relations: ["payment"]
+      });
+
+      if (enrollment && enrollment.status === "active") {
+        return res.status(400).json({ error: "أنت مشترك بالفعل في هذا الفصل الدراسي وهو نشط حالياً! ✅" });
+      }
+
+      if (!enrollment) {
+        enrollment = new Enrollment();
+        enrollment.student = student;
+        enrollment.classPackage = pkg;
+        enrollment.course = null;
+        enrollment.group = null;
+      }
+
+      enrollment.status = "pending";
+      const plan = paymentPlan === "PARTIAL" ? "PARTIAL" : (paymentPlan === "UNPAID" ? "UNPAID" : "PAID");
+      enrollment.paymentStatus = plan;
+      enrollment.paidAmount = Number(paidAmount) || 0;
+      enrollment.remainingAmount = Number(remainingAmount) || 0;
+      enrollment.dueDate = dueDate || null;
+
+      // Handle payment / receipt
+      let payment = enrollment.payment;
+      if (!payment && (receiptUrl || enrollment.paidAmount > 0)) {
+        payment = new Payment();
+        payment.student = student;
+        payment.currency = "EGP";
+        payment.type = "COURSE_ENROLLMENT";
+        payment.status = "PENDING";
+      }
+
+      if (payment) {
+        payment.amount = enrollment.paidAmount;
+        payment.receiptUrl = receiptUrl || payment.receiptUrl || "";
+        payment.provider = provider || payment.provider || "vodafone_cash";
+        payment.providerTransactionId = providerTransactionId || payment.providerTransactionId || "";
+        payment.notes = notes || `طلب اشتراك في باقة: ${pkg.name}`;
+        await paymentRepo.save(payment);
+        enrollment.payment = payment;
+      }
+
+      if (plan === "PARTIAL" && enrollment.paidAmount > 0) {
+        enrollment.installmentHistory = [
+          {
+            amount: enrollment.paidAmount,
+            paidAt: new Date().toISOString(),
+            receiptUrl: receiptUrl || "",
+            provider: provider || "vodafone_cash",
+            notes: "دفعة أولى عند تقديم طلب الاشتراك"
+          }
+        ];
+      }
+
+      await enrollmentRepo.save(enrollment);
+
+      // Notify Admins
+      try {
+        const admins = await userRepo.find({ where: { role: "admin" } });
+        for (const admin of admins) {
+          await NotificationController.createNotification(
+            admin.id,
+            "طلب اشتراك جديد في باقة فصل دراسي 🎒",
+            `قام الطالب "${student.name}" بطلب الاشتراك في "${pkg.name}" (${plan === 'PAID' ? 'دفع بالكامل' : (plan === 'PARTIAL' ? 'نظام تقسيط' : 'لم يدفع بعد')}). يرجى مراجعة واعتماد الطلب من لوحة الاشتراكات.`,
+            "info",
+            "#admin-dashboard/subscriptions"
+          );
+        }
+      } catch (_) {}
+
+      return res.status(201).json({
+        message: "تم إرسال طلب الاشتراك بنجاح! سيتم مراجعة الطلب واعتماده من قبل الإدارة فوراً.",
+        enrollment
+      });
+    } catch (err: any) {
+      console.error("Error in requestClassSubscription:", err);
+      return res.status(500).json({ error: "فشل إرسال طلب الاشتراك." });
+    }
+  }
+
+  // POST /admin/curriculum/class-subscriptions/:id/approve
+  // Admin approves class package subscription, confirms receipt/installment/payment, and enrolls student in all linked groups
+  static async approveClassSubscription(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { 
+        paymentStatus, 
+        paidAmount, 
+        remainingAmount, 
+        dueDate, 
+        receiptUrl, 
+        notes, 
+        provider, 
+        providerTransactionId 
+      } = req.body;
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: [
+          "student", 
+          "classPackage", 
+          "classPackage.linkedGroups", 
+          "classPackage.linkedGroups.teacher", 
+          "classPackage.linkedGroups.course",
+          "classPackage.linkedGroups.course.teacher",
+          "payment"
+        ]
+      });
+
+      if (!enrollment || !enrollment.classPackage) {
+        return res.status(404).json({ error: "طلب اشتراك الفصل غير موجود." });
+      }
+
+      const pkg = enrollment.classPackage;
+      const student = enrollment.student;
+
+      enrollment.status = "active";
+      if (paymentStatus) {
+        enrollment.paymentStatus = paymentStatus;
+      }
+      if (paidAmount !== undefined) enrollment.paidAmount = Number(paidAmount);
+      if (remainingAmount !== undefined) enrollment.remainingAmount = Number(remainingAmount);
+      if (dueDate !== undefined) enrollment.dueDate = dueDate;
+
+      // Handle payment record
+      let payment = enrollment.payment;
+      if (!payment && (receiptUrl || enrollment.paidAmount > 0)) {
+        payment = new Payment();
+        payment.student = student;
+        payment.type = "COURSE_ENROLLMENT";
+      }
+
+      if (payment) {
+        payment.amount = enrollment.paidAmount;
+        payment.currency = "EGP";
+        payment.status = "SUCCESS";
+        payment.receiptUrl = receiptUrl || payment.receiptUrl || "";
+        payment.provider = provider || payment.provider || "vodafone_cash";
+        payment.providerTransactionId = providerTransactionId || payment.providerTransactionId || "";
+        payment.notes = notes || payment.notes || `اعتماد اشتراك باقة: ${pkg.name}`;
+        await paymentRepo.save(payment);
+        enrollment.payment = payment;
+      }
+
+      await enrollmentRepo.save(enrollment);
+
+      // Auto-enroll student into all linked groups of this class package
+      const groups = pkg.linkedGroups || [];
+      const enrolledGroupNames: string[] = [];
+
+      for (const group of groups) {
+        let groupEnrollment = await enrollmentRepo.findOne({
+          where: { student: { id: student.id }, group: { id: group.id } },
+          relations: ["student", "group", "course"]
+        });
+
+        if (!groupEnrollment) {
+          groupEnrollment = new Enrollment();
+          groupEnrollment.student = student;
+          groupEnrollment.group = group;
+          groupEnrollment.course = group.course;
+          groupEnrollment.progress = 0;
+          groupEnrollment.completedLessons = [];
+        }
+
+        groupEnrollment.status = "active";
+        if (enrollment.payment) groupEnrollment.payment = enrollment.payment;
+        groupEnrollment.paymentStatus = enrollment.paymentStatus;
+        await enrollmentRepo.save(groupEnrollment);
+        enrolledGroupNames.push(group.name);
+
+        // Notify teacher of group
+        const teacher = group.teacher || group.course?.teacher;
+        if (teacher) {
+          try {
+            await NotificationController.createNotification(
+              teacher.id,
+              "طالب جديد انضم لمجموعتك عبر باقة الفصل 👨‍🎓",
+              `انضم الطالب "${student.name}" إلى مجموعة "${group.name}" بعد اعتماد اشتراكه في باقة "${pkg.name}".`,
+              "info",
+              "#teacher-dashboard/groups"
+            );
+          } catch (_) {}
+        }
+      }
+
+      // Notify student
+      try {
+        await NotificationController.createNotification(
+          student.id,
+          "تم قبول واعتماد اشتراكك في باقة الفصل الدراسي! 🎉",
+          `تهانينا! تم اعتماد اشتراكك في باقة "${pkg.name}" وتسكينك في ${groups.length} مجموعات دراسية بنجاح. يمكنك الآن بدء الحصص والتواصل مع المعلمين.`,
+          "success",
+          "#student/groups"
+        );
+      } catch (_) {}
+
+      return res.json({
+        message: `تم اعتماد وتفعيل اشتراك الفصل وتسكين الطالب في ${groups.length} مجموعات دراسية بنجاح! ✅`,
+        enrollment,
+        enrolledGroups: enrolledGroupNames
+      });
+    } catch (err: any) {
+      console.error("Error in approveClassSubscription:", err);
+      return res.status(500).json({ error: "فشل اعتماد اشتراك الفصل." });
+    }
+  }
+
+  // POST /admin/curriculum/class-subscriptions/:id/reject
+  static async rejectClassSubscription(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body || {};
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["student", "classPackage", "payment"]
+      });
+
+      if (!enrollment || !enrollment.classPackage) {
+        return res.status(404).json({ error: "طلب اشتراك الفصل غير موجود." });
+      }
+
+      enrollment.status = "rejected";
+      if (enrollment.payment) {
+        enrollment.payment.status = "FAILED";
+        if (reason) {
+          enrollment.payment.notes = (enrollment.payment.notes ? enrollment.payment.notes + " | " : "") + `سبب الرفض: ${reason}`;
+        }
+        await paymentRepo.save(enrollment.payment);
+      }
+      await enrollmentRepo.save(enrollment);
+
+      // Notify student
+      if (enrollment.student) {
+        try {
+          const reasonText = reason ? ` (السبب: ${reason})` : "";
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "إشعار بشأن طلب الاشتراك في الفصل ❌",
+            `تم رفض طلب التسجيل في باقة "${enrollment.classPackage.name}"${reasonText}. يرجى التواصل مع إدارة المنصة للمزيد من التفاصيل.`,
+            "warning",
+            "#student-classes"
+          );
+        } catch (_) {}
+      }
+
+      return res.json({ message: "تم رفض طلب اشتراك الفصل.", enrollment });
+    } catch (err: any) {
+      console.error("Error in rejectClassSubscription:", err);
+      return res.status(500).json({ error: "فشل رفض طلب الاشتراك." });
+    }
+  }
+
+  // PATCH /admin/curriculum/class-subscriptions/:id/payment
+  // Admin updates payment status, amounts, receipts, or logs a new installment
+  static async updateClassSubscriptionPayment(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { 
+        paymentStatus, 
+        paidAmount, 
+        remainingAmount, 
+        dueDate, 
+        receiptUrl, 
+        notes, 
+        newInstallment 
+      } = req.body;
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const paymentRepo = AppDataSource.getRepository(Payment);
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["student", "classPackage", "payment"]
+      });
+
+      if (!enrollment || !enrollment.classPackage) {
+        return res.status(404).json({ error: "اشتراك الفصل غير موجود." });
+      }
+
+      if (paymentStatus) enrollment.paymentStatus = paymentStatus;
+      if (paidAmount !== undefined) enrollment.paidAmount = Number(paidAmount);
+      if (remainingAmount !== undefined) enrollment.remainingAmount = Number(remainingAmount);
+      if (dueDate !== undefined) enrollment.dueDate = dueDate;
+
+      // Handle new installment addition
+      if (newInstallment && Number(newInstallment.amount) > 0) {
+        const instAmount = Number(newInstallment.amount);
+        const history = enrollment.installmentHistory || [];
+        history.push({
+          amount: instAmount,
+          paidAt: newInstallment.paidAt || new Date().toISOString(),
+          receiptUrl: newInstallment.receiptUrl || receiptUrl || "",
+          provider: newInstallment.provider || "vodafone_cash",
+          notes: newInstallment.notes || "سداد قسط"
+        });
+        enrollment.installmentHistory = history;
+
+        if (paidAmount === undefined) {
+          enrollment.paidAmount = (enrollment.paidAmount || 0) + instAmount;
+          enrollment.remainingAmount = Math.max(0, (enrollment.remainingAmount || 0) - instAmount);
+          if (enrollment.remainingAmount === 0) {
+            enrollment.paymentStatus = "PAID";
+          }
+        }
+      }
+
+      // Update or create linked payment
+      let payment = enrollment.payment;
+      if (!payment && (receiptUrl || enrollment.paidAmount > 0)) {
+        payment = new Payment();
+        payment.student = enrollment.student;
+        payment.type = "COURSE_ENROLLMENT";
+      }
+
+      if (payment) {
+        if (receiptUrl) payment.receiptUrl = receiptUrl;
+        payment.amount = enrollment.paidAmount;
+        if (notes) payment.notes = notes;
+        payment.status = enrollment.paymentStatus === "UNPAID" ? "PENDING" : "SUCCESS";
+        await paymentRepo.save(payment);
+        enrollment.payment = payment;
+      }
+
+      await enrollmentRepo.save(enrollment);
+
+      return res.json({
+        message: "تم تحديث بيانات الدفع والتقسيط بنجاح! 💳",
+        enrollment
+      });
+    } catch (err: any) {
+      console.error("Error in updateClassSubscriptionPayment:", err);
+      return res.status(500).json({ error: "فشل تحديث بيانات الدفع." });
+    }
+  }
+
+  // DELETE /admin/curriculum/class-subscriptions/:id
+  static async deleteClassSubscription(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["classPackage"]
+      });
+
+      if (!enrollment || !enrollment.classPackage) {
+        return res.status(404).json({ error: "اشتراك الفصل غير موجود." });
+      }
+
+      await enrollmentRepo.remove(enrollment);
+      return res.json({ message: "تم حذف اشتراك الفصل بنجاح." });
+    } catch (err: any) {
+      console.error("Error in deleteClassSubscription:", err);
+      return res.status(500).json({ error: "فشل حذف اشتراك الفصل." });
     }
   }
 }

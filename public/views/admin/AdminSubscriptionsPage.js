@@ -14,6 +14,20 @@ export const AdminSubscriptionsPage = {
       statusBadgeBg = 'rgba(239,68,68,0.2)';
       statusBadgeColor = '#ef4444';
       statusText = '🚨 اكتملت جميع الحصص (بحاجة للتجديد)';
+    } else if (s.isClass) {
+      if (s.status === 'PENDING_PAYMENT') {
+        statusBadgeBg = 'rgba(245,158,11,0.15)';
+        statusBadgeColor = '#f59e0b';
+        statusText = 'طلب اشتراك قيد المراجعة ⏳';
+      } else if (s.status === 'ACTIVE') {
+        statusBadgeBg = 'rgba(16,185,129,0.15)';
+        statusBadgeColor = '#10b981';
+        statusText = 'مشترك ونشط بالفصل ✅';
+      } else if (s.status === 'CANCELLED') {
+        statusBadgeBg = 'rgba(239,68,68,0.15)';
+        statusBadgeColor = '#ef4444';
+        statusText = 'تم رفض الطلب ❌';
+      }
     } else if (s.isGroup) {
       if (s.status === 'PENDING_PAYMENT') {
         statusBadgeBg = 'rgba(245,158,11,0.15)';
@@ -124,7 +138,11 @@ export const AdminSubscriptionsPage = {
       <td style="padding:12px;color:var(--text-muted);${isChild ? 'padding-inline-start:24px;' : ''}">
         ${isChild ? '<span style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-inline-end:4px;">↳</span>' : ''}#${s.id.substring(0, 8)}
         <div style="margin-top:4px;">
-          ${s.isGroup ? `
+          ${s.isClass ? `
+            <span class="badge" style="background:rgba(16,185,129,0.14); color:#059669; font-weight:800; font-size:0.7rem; padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+              <i data-lucide="graduation-cap" style="width:11px;height:11px;"></i> باقة فصل دراسي 🎒
+            </span>
+          ` : (s.isGroup ? `
             <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; font-size:0.7rem; padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
               <i data-lucide="users" style="width:11px;height:11px;"></i> مجموعة جماعية
             </span>
@@ -132,7 +150,7 @@ export const AdminSubscriptionsPage = {
             <span class="badge" style="background:rgba(236,72,153,0.12); color:#ec4899; font-weight:800; font-size:0.7rem; padding:2px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
               <i data-lucide="sparkles" style="width:11px;height:11px;"></i> باقة خاصة
             </span>
-          `}
+          `)}
         </div>
       </td>
       <td style="padding:12px;font-weight:600;">
@@ -142,20 +160,42 @@ export const AdminSubscriptionsPage = {
       <td style="padding:12px;">
         <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${s.plan?.name || '-'}</div> 
         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
+          ${s.isClass && s.classPackage?.grade?.name ? `<span style="color:#059669; font-weight:800;">الصف: ${s.classPackage.grade.name}</span> • ` : ''}
           ${s.isGroup && s.course?.title ? `<span style="color:var(--primary); font-weight:700;">كورس: ${s.course.title}</span> • ` : ''}
-          ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
+          ${s.isClass ? `${s.classPackage?.lessonsCount || 'باقة فصل'} - ${s.plan?.price || 0} ج.م` : `${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م`}
         </div>
         ${nextSessionBadgeHtml}
       </td>
       <td style="padding:12px;">
-        <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">${(typeof s.teacher === 'string' ? s.teacher : s.teacher?.name) || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>'}</div>
-        ${s.isGroup && s.group?.name ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">المجموعة: ${s.group.name}</div>` : ''}
+        <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
+          ${s.isClass ? `فريق المعلمين (${s.classPackage?.subjects?.length || 0} مواد)` : ((typeof s.teacher === 'string' ? s.teacher : s.teacher?.name) || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>')}
+        </div>
+        ${s.isClass && s.classPackage?.subjects ? `
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+            ${s.classPackage.subjects.map(sub => sub.name).slice(0, 3).join('، ')}${s.classPackage.subjects.length > 3 ? '...' : ''}
+          </div>
+        ` : (s.isGroup && s.group?.name ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">المجموعة: ${s.group.name}</div>` : '')}
       </td>
       <td style="padding:12px;">
         <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
           <span class="badge" style="background:${statusBadgeBg};color:${statusBadgeColor};font-weight:700; font-size:0.8rem; padding:4px 8px; border-radius:8px;">
             ${statusText}
           </span>
+          ${s.isClass ? `
+            ${s.paymentStatus === 'PAID' ? `
+              <span class="badge" style="background:rgba(16,185,129,0.15); color:#059669; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+                <i data-lucide="check-check" style="width:12px;height:12px;"></i> مدفوع بالكامل (${s.paidAmount || s.plan?.price || 0} ج.م)
+              </span>
+            ` : (s.paymentStatus === 'PARTIAL' ? `
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+                <i data-lucide="pie-chart" style="width:12px;height:12px;"></i> نظام تقسيط (مدفوع: ${s.paidAmount || 0} ج.م • متبقي: ${s.remainingAmount || 0} ج.م)
+              </span>
+            ` : `
+              <span class="badge" style="background:rgba(239,68,68,0.12); color:#dc2626; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
+                <i data-lucide="alert-circle" style="width:12px;height:12px;"></i> لم يدفع بعد (0 ج.م)
+              </span>
+            `)}
+          ` : ''}
           ${s.isAllCompleted ? `
             <span class="badge" style="background:#ef4444;color:#fff;font-weight:800;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(239,68,68,0.35);">
               <i data-lucide="bell-ring" style="width:12px;height:12px;"></i> تنبيه: انتهت كافة الحصص - تجديد مطلوب!
@@ -166,8 +206,8 @@ export const AdminSubscriptionsPage = {
             </span>
           ` : '')}
           ${s.receiptUrl ? `
-            <a href="${s.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; border-radius:6px; color:var(--primary); border-color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700;" title="عرض إيصال السداد المرفوع">
-              <i data-lucide="receipt" style="width:12px; height:12px;"></i> الإيصال المعتمد 📄
+            <a href="${s.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; border-radius:6px; color:#059669; border-color:#059669; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700;" title="عرض إيصال السداد المرفوع">
+              <i data-lucide="receipt" style="width:12px; height:12px;"></i> الإيصال 🧾
             </a>
           ` : ''}
         </div>
@@ -188,7 +228,30 @@ export const AdminSubscriptionsPage = {
       </td>
       <td style="padding:12px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-          ${s.isGroup ? `
+          ${s.isClass ? `
+            ${s.status === 'PENDING_PAYMENT' ? `
+              <button class="btn-primary admin-approve-class-sub-btn" data-id="${s.id}" style="padding:6px 11px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;font-weight:700;">
+                <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد الطلب ✅
+              </button>
+              <button class="btn-secondary admin-reject-class-sub-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;font-weight:700;">
+                <i data-lucide="x-circle" style="width:14px;height:14px;"></i> رفض ❌
+              </button>
+            ` : ''}
+
+            <button class="btn-secondary admin-edit-class-payment-btn" data-id="${s.id}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:#059669;border-color:#059669;" title="تعديل حالة الدفع، إضافة إيصال، أو تسجيل سداد قسط">
+              <i data-lucide="credit-card" style="width:13px;height:13px;"></i> تعديل الدفع والتقسيط 💳
+            </button>
+
+            ${cleanWa ? `
+              <a href="https://wa.me/${cleanWa}?text=${encodeURIComponent(`السلام عليكم ${s.student?.name || ''}، نتواصل معك بخصوص اشتراكك في باقة ${s.classPackage?.name || 'الفصل الدراسي'} في منصة انطلق 🌟.`)}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;">
+                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
+              </a>
+            ` : ''}
+
+            <button class="btn-secondary admin-delete-class-sub-btn" data-id="${s.id}" style="padding:5px 8px;font-size:0.75rem;color:#ef4444;border-color:#ef4444;gap:4px;font-weight:700;" title="إلغاء وحذف اشتراك الفصل">
+              <i data-lucide="trash-2" style="width:13px;height:13px;"></i> حذف
+            </button>
+          ` : (s.isGroup ? `
             ${s.status === 'PENDING_PAYMENT' ? `
               <button class="btn-primary admin-approve-group-enrollment-btn" data-id="${s.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;font-weight:700;">
                 <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد الإيصال ✅
@@ -266,7 +329,7 @@ export const AdminSubscriptionsPage = {
               <i data-lucide="user-plus" style="width:14px;height:14px;"></i> المعلم
             </button>
             ` : ''}
-          `}
+          `)}
         </div>
 
         ${s.isAllCompleted ? `
@@ -478,8 +541,57 @@ export const AdminSubscriptionsPage = {
       };
     });
 
-    // 3. Combine into unified subscriptions list
-    const allUnifiedSubs = [...privateSubsWithMetrics, ...groupSubsWithMetrics];
+    // 3. Process Class Package Subscriptions (Enrollments with a classPackage assigned)
+    const classEnrollments = (this.enrollments || []).filter(e => e.classPackage);
+    const classSubsWithMetrics = classEnrollments.map(e => {
+      const pkg = e.classPackage;
+      const price = (e.payment && e.payment.amount !== undefined && e.payment.amount !== null && Number(e.payment.amount) > 0)
+        ? Number(e.payment.amount)
+        : (pkg.priceEg ? parseFloat(pkg.priceEg) || 0 : (pkg.price ? parseFloat(pkg.price) || 0 : 0));
+
+      const normStatus = e.status === 'active' ? 'ACTIVE' : (e.status === 'rejected' ? 'CANCELLED' : 'PENDING_PAYMENT');
+      const groupsCount = (pkg.linkedGroups || []).length;
+      const subjectsCount = (pkg.subjects || []).length;
+
+      return {
+        id: e.id,
+        isClass: true,
+        isGroup: false,
+        classPackage: pkg,
+        student: e.student,
+        studentId: e.student?.id,
+        teacher: { name: subjectsCount > 0 ? `${subjectsCount} مواد دراسية` : 'فريق معلمي الفصل' },
+        plan: {
+          name: `فصل: ${pkg.name}`,
+          price: price,
+          sessionsCount: pkg.lessonsCount || `${groupsCount} مجموعات`
+        },
+        payment: e.payment,
+        paymentStatus: e.paymentStatus || (e.status === 'active' ? 'PAID' : 'UNPAID'),
+        paidAmount: e.paidAmount !== undefined ? e.paidAmount : (e.status === 'active' ? price : 0),
+        remainingAmount: e.remainingAmount !== undefined ? e.remainingAmount : 0,
+        dueDate: e.dueDate || null,
+        installmentHistory: e.installmentHistory || [],
+        receiptUrl: e.payment?.receiptUrl || null,
+        status: normStatus,
+        rawStatus: e.status,
+        totalSessions: groupsCount || subjectsCount || 1,
+        completedSessions: 0,
+        scheduledSessions: 0,
+        totalBooked: 0,
+        remainingToBook: 0,
+        remainingSessionsInPackage: 0,
+        isAllCompleted: false,
+        isLowBalance: false,
+        nextSession: null,
+        nextSessionTime: null,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt
+      };
+    });
+
+    // 4. Combine into unified subscriptions list
+    const allUnifiedSubs = [...privateSubsWithMetrics, ...groupSubsWithMetrics, ...classSubsWithMetrics];
 
     const completedSubsCount = allUnifiedSubs.filter(s => s.isAllCompleted).length;
     const lowBalanceCount = allUnifiedSubs.filter(s => s.isLowBalance).length;
@@ -488,6 +600,7 @@ export const AdminSubscriptionsPage = {
     const cancelledCount = allUnifiedSubs.filter(s => s.status === 'CANCELLED').length;
     const groupsCount = groupSubsWithMetrics.length;
     const privateCount = privateSubsWithMetrics.length;
+    const classesCount = classSubsWithMetrics.length;
 
     // Helper to calculate sorting priority (Nearest session date/time comes FIRST)
     const getSubSortScore = (s) => {
@@ -502,8 +615,9 @@ export const AdminSubscriptionsPage = {
     const filter = this.subFilter || "all";
     let filteredSubs = allUnifiedSubs.filter(s => {
       if (filter === "completed_renewal") return s.isAllCompleted;
+      if (filter === "classes") return s.isClass;
       if (filter === "groups") return s.isGroup;
-      if (filter === "private") return !s.isGroup;
+      if (filter === "private") return !s.isGroup && !s.isClass;
       if (filter === "low_sessions") return s.isLowBalance;
       if (filter === "pending") return s.status === "PENDING_PAYMENT";
       if (filter === "active") return s.status === "ACTIVE";
@@ -520,8 +634,10 @@ export const AdminSubscriptionsPage = {
         const planName = (s.plan?.name || '').toLowerCase();
         const courseTitle = (s.course?.title || '').toLowerCase();
         const groupName = (s.group?.name || '').toLowerCase();
+        const className = (s.classPackage?.name || '').toLowerCase();
+        const gradeName = (s.classPackage?.grade?.name || '').toLowerCase();
         const id = (s.id || '').toLowerCase();
-        return studentName.includes(q) || teacherName.includes(q) || planName.includes(q) || courseTitle.includes(q) || groupName.includes(q) || id.includes(q);
+        return studentName.includes(q) || teacherName.includes(q) || planName.includes(q) || courseTitle.includes(q) || groupName.includes(q) || className.includes(q) || gradeName.includes(q) || id.includes(q);
       });
     }
 
@@ -622,9 +738,29 @@ export const AdminSubscriptionsPage = {
           </button>
         `;
       } else if (latestSub.status === 'PENDING_PAYMENT') {
+        if (latestSub.isClass) {
+          primaryActionBtnHtml = `
+            <button class="btn-primary admin-approve-class-sub-btn" data-id="${latestSub.id}" style="padding:6px 11px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;font-weight:700;">
+              <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد الفصل ✅
+            </button>
+          `;
+        } else if (latestSub.isGroup) {
+          primaryActionBtnHtml = `
+            <button class="btn-primary admin-approve-group-enrollment-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;font-weight:700;">
+              <i data-lucide="check-circle" style="width:14px;height:14px;"></i> قبول واعتماد الإيصال ✅
+            </button>
+          `;
+        } else {
+          primaryActionBtnHtml = `
+            <button class="btn-primary admin-approve-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
+              <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
+            </button>
+          `;
+        }
+      } else if (latestSub.isClass) {
         primaryActionBtnHtml = `
-          <button class="btn-primary admin-approve-sub-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;background:#10b981;border-color:#10b981;gap:4px;">
-            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 1️⃣ قبول + رفع إيصال
+          <button class="btn-secondary admin-edit-class-payment-btn" data-id="${latestSub.id}" style="padding:6px 10px;font-size:0.75rem;gap:4px;color:#059669;border-color:#059669;font-weight:700;">
+            <i data-lucide="credit-card" style="width:13px;height:13px;"></i> تعديل الدفع والتقسيط 💳
           </button>
         `;
       } else if (latestSub.status === 'TEACHER_ASSIGNMENT_PENDING') {
@@ -778,6 +914,10 @@ export const AdminSubscriptionsPage = {
               <i data-lucide="users" style="width:15px;height:15px;"></i> ➕ تسكين طالب بمجموعة 👥
             </button>
 
+            <button class="btn-primary" id="admin-open-class-sub-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #059669 0%, #047857 100%); border-color:#059669; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(5,150,105,0.3); cursor:pointer;" title="تسجيل واشتراك طالب في باقة فصل دراسي شامل">
+              <i data-lucide="graduation-cap" style="width:15px;height:15px;"></i> ➕ اشتراك فصل دراسي 🎒
+            </button>
+
             <button class="btn-primary" id="admin-open-manual-sub-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
               <i data-lucide="sparkles" style="width:15px;height:15px;"></i> ➕ باقة خاصة لطالب 💎
             </button>
@@ -786,7 +926,7 @@ export const AdminSubscriptionsPage = {
           <!-- Filters & Search -->
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
             <div style="position:relative; min-width:220px;">
-              <input type="text" id="admin-sub-search-input" placeholder="بحث بالطالب أو المعلم أو المجموعة..." value="${this.subSearchQuery || ''}" style="width:100%; padding:7px 12px 7px 32px; border-radius:20px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--bg-app); color:var(--text-main);">
+              <input type="text" id="admin-sub-search-input" placeholder="بحث بالطالب أو المعلم أو الفصل أو المجموعة..." value="${this.subSearchQuery || ''}" style="width:100%; padding:7px 12px 7px 32px; border-radius:20px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--bg-app); color:var(--text-main);">
               <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);"></i>
             </div>
 
@@ -798,6 +938,9 @@ export const AdminSubscriptionsPage = {
                 🚨 بحاجة للتجديد (${completedSubsCount})
               </button>
             ` : ''}
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'classes' ? 'active' : ''}" data-filter="classes" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'classes' ? 'background:#059669;color:#fff;border-color:#059669;' : ''}">
+              🎒 فصول وباقات (${classesCount})
+            </button>
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'groups' ? 'active' : ''}" data-filter="groups" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'groups' ? 'background:#6366f1;color:#fff;border-color:#6366f1;' : ''}">
               👥 مجموعات (${groupsCount})
             </button>
@@ -2348,6 +2491,802 @@ export const AdminSubscriptionsPage = {
       GRADE_12: "الصف الثالث الثانوي (Sec 3 / Entlq 3 / BAC)",
     };
     return map[gradeKey] || "المرحلة والصف الدراسي";
+  },
+
+  // ── Render Approve Class Subscription Modal ──────────────────────────────
+  renderApproveClassSubModal(enrollmentId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const enrollment = (this.enrollments || []).find(e => e.id === enrollmentId);
+    if (!enrollment || !enrollment.classPackage) {
+      showToast("اشتراك الفصل غير موجود.", "error");
+      return;
+    }
+
+    const pkg = enrollment.classPackage;
+    const defaultAmount = enrollment.paidAmount || enrollment.payment?.amount || (pkg.priceEg ? parseFloat(pkg.priceEg) || 0 : (pkg.price ? parseFloat(pkg.price) || 0 : 0));
+    const totalPrice = (pkg.priceEg ? parseFloat(pkg.priceEg) || 0 : (pkg.price ? parseFloat(pkg.price) || 0 : defaultAmount)) || defaultAmount;
+    const defaultRemaining = enrollment.remainingAmount !== undefined ? enrollment.remainingAmount : Math.max(0, totalPrice - defaultAmount);
+    const existingReceipt = enrollment.payment?.receiptUrl;
+
+    const modalPhone = enrollment.student?.phone || '';
+    const modalCleanWa = modalPhone ? getCleanWhatsAppNumber(modalPhone) : '';
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="approve-class-sub-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:9999;">
+        <div class="modal-content" style="max-width:560px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); max-height:92vh; display:flex; flex-direction:column;">
+          
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(16,185,129,0.12), rgba(37,99,235,0.08)); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="check-circle-2" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">قبول واعتماد اشتراك الفصل 🎒</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">تأكيد حالة الدفع، إرفاق الإيصال، وتسكين الطالب في كافة مجموعات الفصل</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-approve-class-sub-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="approve-class-sub-form" style="display:flex; flex-direction:column; overflow-y:auto;">
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- Info Box -->
+              <div style="background:var(--bg-app); padding:16px 18px; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px; font-size:0.86rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <span style="color:var(--text-muted);">👨‍🎓 الطالب:</span>
+                  <div style="text-align:left;">
+                    <span style="font-weight:800; color:var(--text-main);">${enrollment.student?.name || 'طالب'}</span>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${enrollment.student?.email || ''}</div>
+                  </div>
+                </div>
+
+                ${modalPhone ? `
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:6px 10px; background:rgba(16,185,129,0.06); border-radius:10px; border:1px dashed rgba(16,185,129,0.25);">
+                    <span style="color:#059669; font-weight:700;">📞 هاتف الطالب:</span>
+                    <div style="display:inline-flex; align-items:center; gap:6px;">
+                      <strong style="color:var(--text-main); font-size:0.88rem;">${modalPhone}</strong>
+                      <a href="https://wa.me/${modalCleanWa}?text=${encodeURIComponent(`مرحباً ${enrollment.student?.name || ''}، نتواصل معك بخصوص تأكيد اشتراكك في باقة ${pkg.name}.`)}" target="_blank" class="btn-secondary" style="padding:2px 8px; font-size:0.72rem; font-weight:800; border-radius:8px; color:#10b981; border-color:#10b981; text-decoration:none;">
+                        💬 واتساب
+                      </a>
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">🎒 باقة الفصل:</span>
+                  <span style="font-weight:800; color:#059669;">${pkg.name} (${pkg.grade?.name || ''})</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">👥 المجموعات المربوطة:</span>
+                  <span style="font-weight:700; color:var(--text-main);">${(pkg.linkedGroups || []).length} مجموعات سيتم تسكين الطالب بها فوراً</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="color:var(--text-muted);">🏷️ السعر الإجمالي للباقة:</span>
+                  <span style="font-weight:900; color:#10b981;">${totalPrice} EGP</span>
+                </div>
+              </div>
+
+              <!-- Payment Status Option (PAID, PARTIAL, UNPAID) -->
+              <div>
+                <label style="font-weight:800; font-size:0.86rem; margin-bottom:8px; display:block; color:var(--text-main);">
+                  💳 تحديد حالة الدفع والتحصيل <span style="color:var(--error);">*</span>:
+                </label>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                  <label style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;" class="class-pay-status-label">
+                    <input type="radio" name="approvePaymentStatus" value="PAID" ${enrollment.paymentStatus === 'PAID' || !enrollment.paymentStatus ? 'checked' : ''} style="margin-bottom:4px; accent-color:#10b981;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#10b981;">مدفوع بالكامل ✅</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;" class="class-pay-status-label">
+                    <input type="radio" name="approvePaymentStatus" value="PARTIAL" ${enrollment.paymentStatus === 'PARTIAL' ? 'checked' : ''} style="margin-bottom:4px; accent-color:#f59e0b;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#d97706;">نظام تقسيط ⏳</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;" class="class-pay-status-label">
+                    <input type="radio" name="approvePaymentStatus" value="UNPAID" ${enrollment.paymentStatus === 'UNPAID' ? 'checked' : ''} style="margin-bottom:4px; accent-color:#ef4444;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#ef4444;">لم يدفع بعد 🏦</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Amounts Row (Paid & Remaining) -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-class-paid-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المدفوع (ج.م) <span style="color:var(--error);">*</span></label>
+                  <input type="number" id="approve-class-paid-amount" class="form-input" value="${defaultAmount}" min="0" step="1" required style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-class-remaining-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المتبقي (ج.م)</label>
+                  <input type="number" id="approve-class-remaining-amount" class="form-input" value="${defaultRemaining}" min="0" step="1" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+              </div>
+
+              <!-- Due Date for Next Installment (Visible when PARTIAL) -->
+              <div id="approve-class-due-date-container" style="display:${enrollment.paymentStatus === 'PARTIAL' ? 'block' : 'none'};">
+                <label for="approve-class-due-date" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">📅 موعد استحقاق القسط القادم:</label>
+                <input type="date" id="approve-class-due-date" class="form-input" value="${enrollment.dueDate || ''}" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+              </div>
+
+              <!-- Receipt Upload & Preview -->
+              <div class="form-group" style="margin:0; background:rgba(16,185,129,0.03); border:1.5px dashed var(--border-color); border-radius:14px; padding:14px;">
+                <label style="font-weight:800; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>🧾 صورة إيصال التحويل المالي (اختياري / مرفق):</span>
+                  ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:#059669; text-decoration:none; font-weight:800;">عرض الإيصال المرفق ↗</a>` : ''}
+                </label>
+                <input type="file" id="approve-class-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
+                
+                <div id="approve-class-receipt-preview-container" style="${existingReceipt ? 'display:block;' : 'display:none;'} margin-top:10px; text-align:center;">
+                  <img id="approve-class-receipt-preview" src="${existingReceipt || ''}" style="max-height:130px; border-radius:10px; border:2px solid var(--border-color); object-fit:contain;">
+                  <div style="font-size:0.74rem; color:var(--text-muted); margin-top:4px;">معاينة الإيصال المالي</div>
+                </div>
+              </div>
+
+              <!-- Provider & Transaction ID -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-class-provider" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">طريقة التحويل</label>
+                  <select id="approve-class-provider" class="form-select" style="border-radius:12px; padding:10px 12px; font-size:0.86rem;">
+                    <option value="vodafone_cash" ${enrollment.payment?.provider === 'vodafone_cash' ? 'selected' : ''}>Vodafone Cash (فودافون كاش)</option>
+                    <option value="instapay" ${enrollment.payment?.provider === 'instapay' ? 'selected' : ''}>InstaPay (إنستاباي)</option>
+                    <option value="bank_transfer" ${enrollment.payment?.provider === 'bank_transfer' ? 'selected' : ''}>تحويل بنكي</option>
+                    <option value="orange_cash" ${enrollment.payment?.provider === 'orange_cash' ? 'selected' : ''}>أورنج كاش</option>
+                    <option value="etisalat_cash" ${enrollment.payment?.provider === 'etisalat_cash' ? 'selected' : ''}>اتصالات كاش</option>
+                    <option value="cash" ${enrollment.payment?.provider === 'cash' ? 'selected' : ''}>نقداً بالإدارة</option>
+                    <option value="other" ${enrollment.payment?.provider === 'other' ? 'selected' : ''}>أخرى</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="approve-class-txid" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">رقم هاتف المحول / العملية</label>
+                  <input type="text" id="approve-class-txid" class="form-input" value="${enrollment.payment?.providerTransactionId || enrollment.student?.phone || ''}" placeholder="010xxxxxxxx" style="border-radius:12px; padding:10px 14px; font-size:0.86rem;">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label for="approve-class-notes" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">ملاحظات وسند القيد</label>
+                <input type="text" id="approve-class-notes" class="form-input" value="${enrollment.payment?.notes || ''}" placeholder="ملاحظات توثيق الاعتماد..." style="border-radius:12px; padding:10px 14px; font-size:0.86rem;">
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-approve-class-sub-modal" style="padding:8px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" id="submit-approve-class-sub-btn" class="btn-primary" style="padding:8px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#10b981; border-color:#10b981; gap:6px; display:inline-flex; align-items:center;">
+                <i data-lucide="check" style="width:16px; height:16px;"></i> تأكيد وقبول الاشتراك وتسكين الطالب ✅
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const modal = document.getElementById("approve-class-sub-modal");
+    const closeModal = () => modal?.remove();
+
+    document.getElementById("close-approve-class-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-approve-class-sub-modal")?.addEventListener("click", closeModal);
+
+    const paidInput = document.getElementById("approve-class-paid-amount");
+    const remainingInput = document.getElementById("approve-class-remaining-amount");
+    const dueDateContainer = document.getElementById("approve-class-due-date-container");
+    const fileInput = document.getElementById("approve-class-receipt-file");
+    const previewContainer = document.getElementById("approve-class-receipt-preview-container");
+    const previewImg = document.getElementById("approve-class-receipt-preview");
+
+    document.querySelectorAll('input[name="approvePaymentStatus"]').forEach(radio => {
+      radio.addEventListener("change", () => {
+        const val = radio.value;
+        if (val === "PAID") {
+          paidInput.value = totalPrice;
+          remainingInput.value = 0;
+          dueDateContainer.style.display = "none";
+        } else if (val === "PARTIAL") {
+          const half = Math.round(totalPrice / 2);
+          paidInput.value = half;
+          remainingInput.value = Math.max(0, totalPrice - half);
+          dueDateContainer.style.display = "block";
+        } else { // UNPAID
+          paidInput.value = 0;
+          remainingInput.value = totalPrice;
+          dueDateContainer.style.display = "none";
+        }
+      });
+    });
+
+    paidInput?.addEventListener("input", () => {
+      const p = Number(paidInput.value) || 0;
+      remainingInput.value = Math.max(0, totalPrice - p);
+    });
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById("approve-class-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-approve-class-sub-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري الاعتماد والتسكين...";
+      }
+
+      try {
+        let receiptUrl = existingReceipt || "";
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          }
+        }
+
+        const selectedStatus = document.querySelector('input[name="approvePaymentStatus"]:checked')?.value || "PAID";
+        const paidAmount = Number(paidInput.value) || 0;
+        const remainingAmount = Number(remainingInput.value) || 0;
+        const dueDate = document.getElementById("approve-class-due-date")?.value || null;
+        const provider = document.getElementById("approve-class-provider")?.value;
+        const providerTransactionId = document.getElementById("approve-class-txid")?.value.trim() || "";
+        const notes = document.getElementById("approve-class-notes")?.value.trim() || "";
+
+        const res = await apiFetch(`/admin/curriculum/class-subscriptions/${enrollmentId}/approve`, {
+          method: "POST",
+          body: JSON.stringify({
+            paymentStatus: selectedStatus,
+            paidAmount,
+            remainingAmount,
+            dueDate,
+            receiptUrl,
+            provider,
+            providerTransactionId,
+            notes
+          })
+        });
+
+        closeModal();
+        showToast(res.message || "تم اعتماد اشتراك الفصل بنجاح وتسكين الطالب!", "success");
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل اعتماد اشتراك الفصل.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="check" style="width:16px; height:16px;"></i> تأكيد وقبول الاشتراك وتسكين الطالب ✅`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    });
+  },
+
+  // ── Render Edit Class Payment & Installment Modal ──────────────────────────────
+  renderEditClassPaymentModal(enrollmentId) {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const enrollment = (this.enrollments || []).find(e => e.id === enrollmentId);
+    if (!enrollment || !enrollment.classPackage) {
+      showToast("اشتراك الفصل غير موجود.", "error");
+      return;
+    }
+
+    const pkg = enrollment.classPackage;
+    const paidAmount = enrollment.paidAmount !== undefined ? enrollment.paidAmount : (enrollment.payment?.amount || 0);
+    const remainingAmount = enrollment.remainingAmount !== undefined ? enrollment.remainingAmount : 0;
+    const currentStatus = enrollment.paymentStatus || (enrollment.status === 'active' ? 'PAID' : 'UNPAID');
+    const existingReceipt = enrollment.payment?.receiptUrl || "";
+    const history = enrollment.installmentHistory || [];
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="edit-class-payment-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:9999;">
+        <div class="modal-content" style="max-width:580px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); max-height:92vh; display:flex; flex-direction:column;">
+          
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(5,150,105,0.12), rgba(99,102,241,0.08)); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(5,150,105,0.15); color:#059669; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="credit-card" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">تعديل الدفع والأقساط 💳</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">${enrollment.student?.name || 'الطالب'} • باقة ${pkg.name}</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-edit-class-payment-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="edit-class-payment-form" style="display:flex; flex-direction:column; overflow-y:auto;">
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- Payment Status Radio -->
+              <div>
+                <label style="font-weight:800; font-size:0.86rem; margin-bottom:8px; display:block; color:var(--text-main);">
+                  حالة الدفع:
+                </label>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="editPaymentStatus" value="PAID" ${currentStatus === 'PAID' ? 'checked' : ''} style="margin-bottom:4px; accent-color:#10b981;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#10b981;">مدفوع بالكامل ✅</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="editPaymentStatus" value="PARTIAL" ${currentStatus === 'PARTIAL' ? 'checked' : ''} style="margin-bottom:4px; accent-color:#f59e0b;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#d97706;">نظام تقسيط ⏳</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="editPaymentStatus" value="UNPAID" ${currentStatus === 'UNPAID' ? 'checked' : ''} style="margin-bottom:4px; accent-color:#ef4444;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#ef4444;">لم يدفع بعد 🏦</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Amounts -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="edit-class-paid-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المدفوع الكلي (ج.م)</label>
+                  <input type="number" id="edit-class-paid-amount" class="form-input" value="${paidAmount}" min="0" step="1" required style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="edit-class-remaining-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المتبقي (ج.م)</label>
+                  <input type="number" id="edit-class-remaining-amount" class="form-input" value="${remainingAmount}" min="0" step="1" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+              </div>
+
+              <!-- Next Installment Due Date -->
+              <div class="form-group" style="margin:0;">
+                <label for="edit-class-due-date" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">📅 موعد استحقاق القسط القادم:</label>
+                <input type="date" id="edit-class-due-date" class="form-input" value="${enrollment.dueDate || ''}" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+              </div>
+
+              <!-- Receipt Upload / Update -->
+              <div class="form-group" style="margin:0; background:rgba(5,150,105,0.03); border:1.5px dashed var(--border-color); border-radius:14px; padding:14px;">
+                <label style="font-weight:800; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>🧾 تحديث صورة إيصال الدفع:</span>
+                  ${existingReceipt ? `<a href="${existingReceipt}" target="_blank" style="font-size:0.75rem; color:#059669; text-decoration:none; font-weight:800;">عرض الإيصال الحالي ↗</a>` : ''}
+                </label>
+                <input type="file" id="edit-class-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
+                <div id="edit-class-receipt-preview-container" style="${existingReceipt ? 'display:block;' : 'display:none;'} margin-top:10px; text-align:center;">
+                  <img id="edit-class-receipt-preview" src="${existingReceipt || ''}" style="max-height:120px; border-radius:10px; border:2px solid var(--border-color); object-fit:contain;">
+                </div>
+              </div>
+
+              <!-- Add New Installment Box -->
+              <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; padding:16px;">
+                <div style="font-weight:800; font-size:0.9rem; color:var(--text-main); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="plus-circle" style="width:16px; height:16px; color:#059669;"></i>
+                  <span>تسجيل سداد قسط جديد ➕ (اختياري)</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div class="form-group" style="margin:0;">
+                    <label for="new-installment-amount" style="font-size:0.78rem; font-weight:700; margin-bottom:3px; display:block;">مبلغ القسط المسدد (ج.م):</label>
+                    <input type="number" id="new-installment-amount" class="form-input" placeholder="0" min="0" step="1" style="border-radius:10px; padding:8px 12px; font-size:0.84rem;">
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label for="new-installment-date" style="font-size:0.78rem; font-weight:700; margin-bottom:3px; display:block;">تاريخ السداد:</label>
+                    <input type="date" id="new-installment-date" class="form-input" value="${new Date().toISOString().split('T')[0]}" style="border-radius:10px; padding:8px 12px; font-size:0.84rem;">
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:8px; margin-bottom:0;">
+                  <label for="new-installment-notes" style="font-size:0.78rem; font-weight:700; margin-bottom:3px; display:block;">ملاحظات القسط:</label>
+                  <input type="text" id="new-installment-notes" class="form-input" placeholder="مثال: القسط الثاني - تحويل إنستاباي" style="border-radius:10px; padding:8px 12px; font-size:0.84rem;">
+                </div>
+              </div>
+
+              <!-- Installment History List -->
+              ${history.length > 0 ? `
+                <div>
+                  <div style="font-weight:800; font-size:0.85rem; color:var(--text-main); margin-bottom:6px;">سجل الدفعات والأقساط السابقة:</div>
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${history.map((inst, idx) => `
+                      <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+                        <div>
+                          <strong style="color:#059669;">قسط #${idx + 1}: ${inst.amount} ج.م</strong>
+                          <span style="color:var(--text-muted); margin-inline-start:6px;">(${inst.notes || 'سداد'})</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <span style="color:var(--text-muted); font-size:0.74rem;">${inst.paidAt ? new Date(inst.paidAt).toLocaleDateString('ar-EG') : ''}</span>
+                          ${inst.receiptUrl ? `<a href="${inst.receiptUrl}" target="_blank" style="color:#059669; font-weight:700; text-decoration:none;">إيصال ↗</a>` : ''}
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-edit-class-payment-modal" style="padding:8px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" id="submit-edit-class-payment-btn" class="btn-primary" style="padding:8px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#059669; border-color:#059669; gap:6px; display:inline-flex; align-items:center;">
+                <i data-lucide="save" style="width:16px; height:16px;"></i> حفظ التعديلات 💾
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const modal = document.getElementById("edit-class-payment-modal");
+    const closeModal = () => modal?.remove();
+
+    document.getElementById("close-edit-class-payment-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-edit-class-payment-modal")?.addEventListener("click", closeModal);
+
+    const fileInput = document.getElementById("edit-class-receipt-file");
+    const previewContainer = document.getElementById("edit-class-receipt-preview-container");
+    const previewImg = document.getElementById("edit-class-receipt-preview");
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById("edit-class-payment-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-edit-class-payment-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري الحفظ...";
+      }
+
+      try {
+        let receiptUrl = existingReceipt;
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          }
+        }
+
+        const selectedStatus = document.querySelector('input[name="editPaymentStatus"]:checked')?.value || "PAID";
+        const paidAmountVal = Number(document.getElementById("edit-class-paid-amount")?.value) || 0;
+        const remainingAmountVal = Number(document.getElementById("edit-class-remaining-amount")?.value) || 0;
+        const dueDate = document.getElementById("edit-class-due-date")?.value || null;
+
+        const newInstAmount = Number(document.getElementById("new-installment-amount")?.value) || 0;
+        let newInstallment = null;
+        if (newInstAmount > 0) {
+          newInstallment = {
+            amount: newInstAmount,
+            paidAt: document.getElementById("new-installment-date")?.value || new Date().toISOString(),
+            notes: document.getElementById("new-installment-notes")?.value.trim() || "سداد قسط",
+            receiptUrl: receiptUrl || ""
+          };
+        }
+
+        const res = await apiFetch(`/admin/curriculum/class-subscriptions/${enrollmentId}/payment`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            paymentStatus: selectedStatus,
+            paidAmount: paidAmountVal,
+            remainingAmount: remainingAmountVal,
+            dueDate,
+            receiptUrl,
+            newInstallment
+          })
+        });
+
+        closeModal();
+        showToast(res.message || "تم تحديث بيانات الدفع والتقسيط بنجاح!", "success");
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل تحديث بيانات الدفع.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="save" style="width:16px; height:16px;"></i> حفظ التعديلات 💾`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    });
+  },
+
+  // ── Render Manual Class Subscription Creation Modal ──────────────────────────────
+  async renderManualClassSubscriptionModal() {
+    const container = document.getElementById("admin-modal-container");
+    if (!container) return;
+
+    const students = (this.allMembers || []).filter(u => u.role === "student");
+    if (students.length === 0) {
+      showToast("لا يوجد طلاب مسجلون في المنصة حالياً لإضافتهم.", "warning");
+      return;
+    }
+
+    let classes = this.allClasses || [];
+    if (!classes || classes.length === 0) {
+      try {
+        classes = await apiFetch("/admin/curriculum/classes").catch(() => []);
+        this.allClasses = classes;
+      } catch (_) {}
+    }
+
+    if (!classes || classes.length === 0) {
+      showToast("الرجاء إنشاء باقة فصل دراسي واحدة على الأقل أولاً من تبويب إدارة الفصول.", "warning");
+      return;
+    }
+
+    const defaultClass = classes[0];
+    const defaultPrice = defaultClass.priceEg ? parseFloat(defaultClass.priceEg) || 800 : (defaultClass.price ? parseFloat(defaultClass.price) || 800 : 800);
+
+    container.innerHTML = `
+      <div class="modal-overlay" id="manual-class-sub-modal" style="display:flex; backdrop-filter:blur(8px); background:rgba(0,0,0,0.65); z-index:9999;">
+        <div class="modal-content" style="max-width:580px; width:92%; border-radius:24px; padding:0; overflow:hidden; border:1px solid var(--border-color); background:var(--bg-card); max-height:92vh; display:flex; flex-direction:column;">
+          
+          <div class="modal-header" style="padding:20px 24px; background:linear-gradient(135deg, rgba(5,150,105,0.12), rgba(37,99,235,0.08)); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:rgba(5,150,105,0.15); color:#059669; display:flex; align-items:center; justify-content:center;">
+                <i data-lucide="graduation-cap" style="width:22px; height:22px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-main);">➕ إضافة اشتراك فصل دراسي لطالب 🎒</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">تسجيل الطالب في باقة شاملة وتسكينه في مجموعات المواد تلقائياً</p>
+              </div>
+            </div>
+            <span class="modal-close-btn" id="close-manual-class-sub-modal" style="font-size:1.4rem; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bg-app); border:1px solid var(--border-color); color:var(--text-muted);">&times;</span>
+          </div>
+
+          <form id="manual-class-sub-form" style="display:flex; flex-direction:column; overflow-y:auto;">
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+              
+              <!-- 1. Select Student -->
+              <div class="form-group" style="margin:0;">
+                <label for="manual-class-student-select" style="font-size:0.86rem; font-weight:700; display:block; margin-bottom:6px;">
+                  1️⃣ اختر الطالب <span style="color:#ef4444;">*</span>:
+                </label>
+                <select id="manual-class-student-select" class="form-select" required style="width:100%; padding:10px; font-size:0.88rem; border-radius:12px;">
+                  <option value="" disabled selected>-- اختر طالباً من القائمة --</option>
+                  ${students.map(st => `
+                    <option value="${st.id}">
+                      ${st.name} (${st.email}${st.phone ? ' - ' + st.phone : ''})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- 2. Select Class Package -->
+              <div class="form-group" style="margin:0;">
+                <label for="manual-class-package-select" style="font-size:0.86rem; font-weight:700; display:block; margin-bottom:6px;">
+                  2️⃣ باقة الفصل الدراسي <span style="color:#ef4444;">*</span>:
+                </label>
+                <select id="manual-class-package-select" class="form-select" required style="width:100%; padding:10px; font-size:0.88rem; border-radius:12px;">
+                  ${classes.map((c, idx) => {
+                    const cPrice = c.priceEg ? parseFloat(c.priceEg) || 800 : (c.price ? parseFloat(c.price) || 800 : 800);
+                    return `
+                      <option value="${c.id}" data-price="${cPrice}" ${idx === 0 ? 'selected' : ''}>
+                        ${c.name} (${c.grade?.name || ''}) - ${cPrice} ج.م
+                      </option>
+                    `;
+                  }).join('')}
+                </select>
+              </div>
+
+              <!-- 3. Payment Status -->
+              <div>
+                <label style="font-weight:800; font-size:0.86rem; margin-bottom:8px; display:block; color:var(--text-main);">
+                  3️⃣ حالة السداد والتحصيل:
+                </label>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="manualClassPaymentPlan" value="PAID" checked style="margin-bottom:4px; accent-color:#10b981;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#10b981;">مدفوع بالكامل ✅</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="manualClassPaymentPlan" value="PARTIAL" style="margin-bottom:4px; accent-color:#f59e0b;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#d97706;">نظام تقسيط ⏳</span>
+                  </label>
+                  <label style="display:flex; flex-direction:column; align-items:center; padding:10px; border-radius:12px; border:1.5px solid var(--border-color); cursor:pointer; background:var(--bg-app); text-align:center;">
+                    <input type="radio" name="manualClassPaymentPlan" value="UNPAID" style="margin-bottom:4px; accent-color:#ef4444;">
+                    <span style="font-weight:800; font-size:0.82rem; color:#ef4444;">لم يدفع بعد 🏦</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Amounts -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label for="manual-class-paid-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المدفوع (ج.م) <span style="color:var(--error);">*</span></label>
+                  <input type="number" id="manual-class-paid-amount" class="form-input" value="${defaultPrice}" min="0" step="1" required style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label for="manual-class-remaining-amount" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">المبلغ المتبقي (ج.م)</label>
+                  <input type="number" id="manual-class-remaining-amount" class="form-input" value="0" min="0" step="1" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+                </div>
+              </div>
+
+              <!-- Due Date -->
+              <div id="manual-class-due-date-container" style="display:none;">
+                <label for="manual-class-due-date" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">📅 موعد استحقاق القسط:</label>
+                <input type="date" id="manual-class-due-date" class="form-input" style="border-radius:12px; padding:10px 14px; font-size:0.88rem;">
+              </div>
+
+              <!-- Receipt Upload -->
+              <div class="form-group" style="margin:0; background:rgba(5,150,105,0.03); border:1.5px dashed var(--border-color); border-radius:14px; padding:14px;">
+                <label style="font-weight:800; font-size:0.85rem; margin-bottom:6px; display:block;">
+                  🧾 رفع إيصال الدفع (اختياري):
+                </label>
+                <input type="file" id="manual-class-receipt-file" accept="image/*" class="form-input" style="border-radius:12px; padding:8px 12px; font-size:0.82rem; width:100%;">
+                <div id="manual-class-receipt-preview-container" style="display:none; margin-top:10px; text-align:center;">
+                  <img id="manual-class-receipt-preview" src="" style="max-height:120px; border-radius:10px; border:2px solid var(--border-color); object-fit:contain;">
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="form-group" style="margin:0;">
+                <label for="manual-class-notes" style="font-weight:700; font-size:0.82rem; margin-bottom:4px; display:block;">ملاحظات:</label>
+                <input type="text" id="manual-class-notes" class="form-input" placeholder="ملاحظات توثيق القيد..." style="border-radius:12px; padding:10px 14px; font-size:0.86rem;">
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding:16px 24px; background:var(--bg-app); border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+              <button type="button" class="btn-secondary" id="cancel-manual-class-sub-modal" style="padding:8px 18px; border-radius:24px; font-size:0.85rem;">إلغاء</button>
+              <button type="submit" id="submit-manual-class-sub-btn" class="btn-primary" style="padding:8px 22px; border-radius:24px; font-size:0.85rem; font-weight:800; background:#059669; border-color:#059669; gap:6px; display:inline-flex; align-items:center;">
+                <i data-lucide="check" style="width:16px; height:16px;"></i> تفعيل واشتراك الطالب فوراً 🚀
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    const modal = document.getElementById("manual-class-sub-modal");
+    const closeModal = () => modal?.remove();
+
+    document.getElementById("close-manual-class-sub-modal")?.addEventListener("click", closeModal);
+    document.getElementById("cancel-manual-class-sub-modal")?.addEventListener("click", closeModal);
+
+    const classSelect = document.getElementById("manual-class-package-select");
+    const paidInput = document.getElementById("manual-class-paid-amount");
+    const remainingInput = document.getElementById("manual-class-remaining-amount");
+    const dueDateContainer = document.getElementById("manual-class-due-date-container");
+    const fileInput = document.getElementById("manual-class-receipt-file");
+    const previewContainer = document.getElementById("manual-class-receipt-preview-container");
+    const previewImg = document.getElementById("manual-class-receipt-preview");
+
+    const updatePrice = () => {
+      const selectedOption = classSelect?.options[classSelect.selectedIndex];
+      const p = selectedOption ? parseFloat(selectedOption.getAttribute("data-price") || "800") : 800;
+      const plan = document.querySelector('input[name="manualClassPaymentPlan"]:checked')?.value || "PAID";
+      if (plan === "PAID") {
+        paidInput.value = p;
+        remainingInput.value = 0;
+        dueDateContainer.style.display = "none";
+      } else if (plan === "PARTIAL") {
+        const half = Math.round(p / 2);
+        paidInput.value = half;
+        remainingInput.value = Math.max(0, p - half);
+        dueDateContainer.style.display = "block";
+      } else {
+        paidInput.value = 0;
+        remainingInput.value = p;
+        dueDateContainer.style.display = "none";
+      }
+    };
+
+    classSelect?.addEventListener("change", updatePrice);
+    document.querySelectorAll('input[name="manualClassPaymentPlan"]').forEach(radio => {
+      radio.addEventListener("change", updatePrice);
+    });
+
+    paidInput?.addEventListener("input", () => {
+      const selectedOption = classSelect?.options[classSelect.selectedIndex];
+      const p = selectedOption ? parseFloat(selectedOption.getAttribute("data-price") || "800") : 800;
+      const paid = Number(paidInput.value) || 0;
+      remainingInput.value = Math.max(0, p - paid);
+    });
+
+    fileInput?.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById("manual-class-sub-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submit-manual-class-sub-btn");
+      const studentId = document.getElementById("manual-class-student-select")?.value;
+      const classId = classSelect?.value;
+
+      if (!studentId || !classId) {
+        showToast("يرجى اختيار الطالب وباقة الفصل.", "error");
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "جاري تفعيل الاشتراك والتسكين...";
+      }
+
+      try {
+        let receiptUrl = "";
+        if (fileInput?.files?.[0]) {
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          const token = state.token || localStorage.getItem("token");
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            receiptUrl = data.url;
+          }
+        }
+
+        const plan = document.querySelector('input[name="manualClassPaymentPlan"]:checked')?.value || "PAID";
+        const paidAmountVal = Number(paidInput.value) || 0;
+        const remainingAmountVal = Number(remainingInput.value) || 0;
+        const dueDate = document.getElementById("manual-class-due-date")?.value || null;
+        const notes = document.getElementById("manual-class-notes")?.value.trim() || "";
+
+        const res = await apiFetch(`/admin/curriculum/classes/${classId}/enroll-student`, {
+          method: "POST",
+          body: JSON.stringify({
+            studentId,
+            amount: paidAmountVal,
+            paymentPlan: plan,
+            remainingAmount: remainingAmountVal,
+            dueDate,
+            receiptUrl,
+            notes
+          })
+        });
+
+        closeModal();
+        showToast(res.message || "تم تسجيل الطالب وتسكينه في مجموعات الفصل بنجاح!", "success");
+        await this.loadAllData();
+        this.renderTab("subscriptions");
+      } catch (err) {
+        showToast(err.message || "فشل تسجيل الطالب بالفصل.", "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<i data-lucide="check" style="width:16px; height:16px;"></i> تفعيل واشتراك الطالب فوراً 🚀`;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      }
+    });
   }
 
 };

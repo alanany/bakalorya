@@ -157,7 +157,7 @@ export default class TeacherGroupsView {
         }
       });
 
-      const isCompleted = uniqueSessions.length > 0 && completedCount === uniqueSessions.length;
+      const isCompleted = (group.status === 'FINISHED' || group.status === 'finished') || (uniqueSessions.length > 0 && completedCount === uniqueSessions.length);
 
       return {
         ...group,
@@ -490,11 +490,12 @@ export default class TeacherGroupsView {
     const capacityPct = Math.min(100, Math.round((studentsCount / maxCapacity) * 100));
 
     const isPending = group.status === 'PENDING_APPROVAL' || group.status === 'PENDING' || group.status === 'pending';
+    const isFinished = group.status === 'FINISHED' || group.status === 'finished' || group.isCompleted;
     const isLive = Boolean(group.liveSession);
-    const isClosedOrTeaching = group.status === 'IN_PROGRESS' || group.status === 'CLOSED';
-    const isFull = group.isFull || group.status === 'FULL' || capacityPct >= 100;
+    const isClosedOrTeaching = !isFinished && (group.status === 'IN_PROGRESS' || group.status === 'CLOSED');
+    const isFull = !isFinished && (group.isFull || group.status === 'FULL' || capacityPct >= 100);
 
-    const accentColor = isLive ? '#10b981' : isPending ? '#f59e0b' : isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : '#10b981';
+    const accentColor = isLive ? '#10b981' : isPending ? '#f59e0b' : isFinished ? '#64748b' : isClosedOrTeaching ? '#6366f1' : isFull ? '#ef4444' : '#10b981';
 
     return `
       <div class="glass-card group-card-creative" data-group-id="${group.id}" data-key="${group.key}"
@@ -523,6 +524,10 @@ export default class TeacherGroupsView {
           ` : isPending ? `
             <span style="font-size:0.75rem; font-weight:900; padding:4px 10px; border-radius:12px; background:rgba(245,158,11,0.15); color:#d97706; border:1px solid rgba(245,158,11,0.3); white-space:nowrap; flex-shrink:0;">
               ⏳ قيد الاعتماد
+            </span>
+          ` : isFinished ? `
+            <span style="font-size:0.75rem; font-weight:900; padding:4px 10px; border-radius:12px; background:rgba(100,116,139,0.15); color:#475569; border:1px solid rgba(100,116,139,0.35); white-space:nowrap; flex-shrink:0;">
+              🏁 منتهية
             </span>
           ` : isClosedOrTeaching ? `
             <span style="font-size:0.75rem; font-weight:900; padding:4px 10px; border-radius:12px; background:rgba(99,102,241,0.15); color:#6366f1; border:1px solid rgba(99,102,241,0.35); white-space:nowrap; flex-shrink:0;">

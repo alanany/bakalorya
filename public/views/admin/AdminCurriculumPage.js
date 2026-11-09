@@ -86,6 +86,20 @@ export class AdminCurriculumPage {
         .curr-add-subject-card{background:transparent;border:2px dashed var(--border-color);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all 0.2s;min-height:140px;color:var(--text-muted);}
         .curr-add-subject-card:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,0.04);}
         .curr-add-subject-card span{font-size:0.82rem;font-weight:700;}
+        .curr-section-title-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 8px 20px;border-top:1px solid var(--border-color);margin-top:10px;flex-wrap:wrap;gap:10px;}
+        .curr-section-title{font-size:0.86rem;font-weight:900;color:var(--text-main);display:flex;align-items:center;gap:6px;}
+        .curr-classes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:12px 20px 20px 20px;}
+        .curr-class-card{background:var(--bg-app);border:1.5px solid var(--border-color);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;position:relative;transition:all 0.2s;}
+        .curr-class-card:hover{border-color:var(--primary);box-shadow:0 6px 18px rgba(0,0,0,0.06);}
+        .curr-class-card.hidden-class{opacity:0.6;border-style:dashed;}
+        .curr-class-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+        .curr-class-name{font-weight:900;font-size:0.92rem;color:var(--text-main);line-height:1.3;}
+        .curr-class-badge{padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:800;}
+        .curr-class-meta{font-size:0.78rem;color:var(--text-muted);font-weight:700;}
+        .curr-class-price{font-size:0.95rem;font-weight:900;color:var(--primary);margin-top:2px;}
+        .curr-add-class-card{background:transparent;border:2px dashed var(--border-color);border-radius:16px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all 0.2s;min-height:120px;color:var(--text-muted);}
+        .curr-add-class-card:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,0.04);}
+        .curr-add-class-card span{font-size:0.82rem;font-weight:700;}
         .curr-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s;}
         .curr-modal{background:var(--bg-card);border:1px solid var(--border-color);border-radius:24px;padding:32px 28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.25);animation:slideUp 0.25s cubic-bezier(0.16,1,0.3,1);}
         .curr-modal h3{font-size:1.15rem;font-weight:900;color:var(--text-main);margin:0 0 22px 0;}
@@ -127,13 +141,21 @@ export class AdminCurriculumPage {
     if (!grades.length) return `<div class="curr-empty"><div style="font-size:2.5rem;margin-bottom:12px;">📭</div><p>لا توجد صفوف دراسية في هذه المرحلة.</p></div>`;
     return grades.map((grade, idx) => {
       let subjects = grade.subjects || [];
-      if (q) subjects = subjects.filter(s => s.name?.toLowerCase().includes(q) || s.nameEn?.toLowerCase().includes(q) || grade.name?.toLowerCase().includes(q));
+      let classes = grade.classPackages || [];
+      if (q) {
+        subjects = subjects.filter(s => s.name?.toLowerCase().includes(q) || s.nameEn?.toLowerCase().includes(q) || grade.name?.toLowerCase().includes(q));
+        classes = classes.filter(c => c.name?.toLowerCase().includes(q) || c.badge?.toLowerCase().includes(q) || grade.name?.toLowerCase().includes(q));
+      }
       const activeCount = subjects.filter(s => s.isActive).length;
+      const activeClassesCount = classes.filter(c => c.isActive).length;
       const open = idx < 2;
       return `<div class="curr-grade-card" data-grade-id="${grade.id}">
         <div class="curr-grade-header" data-toggle-grade="${grade.id}">
           <div class="curr-grade-icon">🎒</div>
-          <div><div class="curr-grade-name">${grade.name}</div><div class="curr-grade-meta">${grade.nameEn||""} • ${subjects.length} مادة (${activeCount} ظاهرة)</div></div>
+          <div>
+            <div class="curr-grade-name">${grade.name}</div>
+            <div class="curr-grade-meta">${grade.nameEn||""} • ${subjects.length} مادة (${activeCount} ظاهرة) • ${classes.length} فصول وباقات (${activeClassesCount} ظاهرة)</div>
+          </div>
           <div class="curr-grade-actions">
             <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);background:var(--bg-app);padding:4px 10px;border-radius:20px;border:1px solid var(--border-color);">${grade.code||grade.stage}</span>
             <button class="curr-sub-btn danger curr-delete-grade-btn" data-grade-id="${grade.id}" data-grade-name="${grade.name}"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
@@ -141,6 +163,13 @@ export class AdminCurriculumPage {
           </div>
         </div>
         <div id="gp-${grade.id}" ${open?'':'style="display:none"'}>
+          <!-- قسم المواد الدراسية -->
+          <div style="padding:14px 20px 4px 20px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="font-size:0.86rem; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="book-open" style="width:15px;height:15px;"></i>
+              <span>المواد الدراسية المقررة (${subjects.length})</span>
+            </div>
+          </div>
           <div class="curr-subjects-grid">
             ${subjects.map(sub => this.renderSubjectCard(sub)).join("")}
             <div class="curr-add-subject-card" data-add-subject="${grade.id}">
@@ -148,9 +177,112 @@ export class AdminCurriculumPage {
               <span>إضافة مادة</span>
             </div>
           </div>
+
+          <!-- قسم الفصول والباقات الشاملة -->
+          <div class="curr-section-title-row">
+            <div class="curr-section-title">
+              <i data-lucide="layers" style="width:16px;height:16px;color:var(--primary);"></i>
+              <span>فصول وباقات الصف (${classes.length})</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="curr-btn curr-btn-primary curr-add-class-btn" data-grade-id="${grade.id}" style="padding:6px 14px; font-size:0.78rem;">
+                <i data-lucide="plus-circle" style="width:14px;height:14px;"></i>
+                <span>إضافة فصل جديد</span>
+              </button>
+              <button type="button" class="curr-btn curr-btn-outline curr-seed-classes-btn" data-grade-id="${grade.id}" data-grade-name="${grade.name}" style="padding:6px 14px; font-size:0.78rem;" title="توليد 3 باقات وفصول افتراضية متكاملة لهذا الصف">
+                <i data-lucide="sparkles" style="width:14px;height:14px;color:#f59e0b;"></i>
+                <span>توليد تلقائي ✨</span>
+              </button>
+            </div>
+          </div>
+          <div class="curr-classes-grid">
+            ${classes.map(pkg => this.renderClassCard(pkg, grade)).join("")}
+            <div class="curr-add-class-card" data-add-class="${grade.id}">
+              <i data-lucide="plus-circle" style="width:24px;height:24px;"></i>
+              <span>إضافة فصل أو باقة لهذا الصف</span>
+            </div>
+          </div>
         </div>
       </div>`;
     }).join("");
+  }
+
+  renderClassCard(pkg, grade) {
+    const isHidden = !pkg.isActive;
+    const themeColors = {
+      blue: "#0284c7",
+      green: "#10b981",
+      purple: "#8b5cf6",
+      amber: "#f59e0b"
+    };
+    const accentColor = themeColors[pkg.theme] || "#0284c7";
+    const rawData = JSON.stringify({
+      id: pkg.id,
+      name: pkg.name,
+      badge: pkg.badge || "",
+      lessonsCount: pkg.lessonsCount || "عدد الحصص: 64 حصة",
+      theme: pkg.theme || "blue",
+      priceEg: pkg.priceEg || "",
+      price: pkg.price || "",
+      description: pkg.description || "",
+      order: pkg.order || 0,
+      isActive: !!pkg.isActive,
+      groupIds: (pkg.linkedGroups || []).map(g => g.id)
+    }).replace(/"/g, "&quot;");
+
+    const linkedGroups = pkg.linkedGroups || [];
+
+    return `
+      <div class="curr-class-card${isHidden ? " hidden-class" : ""}">
+        <div class="curr-class-header">
+          <div style="flex:1;">
+            ${pkg.badge ? `<span class="curr-class-badge" style="background:${accentColor}18; color:${accentColor}; border:1px solid ${accentColor}33; display:inline-block; margin-bottom:4px;">${pkg.badge}</span>` : ''}
+            <div class="curr-class-name">${pkg.name}</div>
+          </div>
+          <span class="curr-badge ${isHidden ? "curr-badge-hidden" : "curr-badge-active"}">${isHidden ? "مخفية" : "ظاهرة"}</span>
+        </div>
+
+        <div class="curr-class-meta">
+          <div><i data-lucide="book" style="width:12px;height:12px;display:inline;"></i> ${pkg.lessonsCount || (linkedGroups.length > 0 ? `عدد الحصص: ${linkedGroups.length * 8} حصة` : "64 حصة")}</div>
+          ${pkg.priceEg ? `<div class="curr-class-price">${pkg.priceEg} / شهرياً</div>` : (pkg.price ? `<div class="curr-class-price">${pkg.price}</div>` : '')}
+        </div>
+
+        <!-- المجموعات المربوطة وأجور المعلمين بالساعة -->
+        <div style="margin: 6px 0; display:flex; flex-direction:column; gap:4px;">
+          <div style="font-size:0.74rem; font-weight:800; color:var(--text-muted); display:flex; justify-content:space-between;">
+            <span>المجموعات المربوطة (${linkedGroups.length}):</span>
+            <span style="color:#10b981; font-weight:800;">أجر الساعة للمعلم</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto; padding-inline-end:2px;">
+            ${linkedGroups.length > 0 ? linkedGroups.map(g => `
+              <div style="font-size:0.72rem; display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); padding:4px 8px; border-radius:8px; border:1px solid var(--border-color);">
+                <span style="font-weight:700; color:var(--text-main);">${g.course?.subject?.name || g.name} (${g.teacher?.name || 'معلم'})</span>
+                <span style="color:#10b981; font-weight:800;">${g.teacherHourlyRate || 100} ج.م/س</span>
+              </div>
+            `).join('') : '<span style="font-size:0.72rem; color:#f59e0b; padding:4px 0;">⚠️ لم يتم ربط مجموعات بعد</span>'}
+          </div>
+        </div>
+
+        <div class="curr-subject-actions" style="margin-top:auto; padding-top:8px; border-top:1px solid var(--border-color); flex-wrap:wrap;">
+          <button type="button" class="curr-sub-btn curr-class-enroll-btn" data-class-id="${pkg.id}" data-grade-id="${grade.id}" data-class-name="${pkg.name}" data-class-price="${pkg.priceEg || ''}" style="background:#10b98118; color:#10b981; border-color:#10b98140;" title="تسكين طالب في جميع مجموعات الفصل بنقرة واحدة">
+            <i data-lucide="user-plus" style="width:12px;height:12px;"></i>
+            <span>تسكين طالب</span>
+          </button>
+          <button type="button" class="curr-sub-btn curr-class-toggle-btn${isHidden ? " success" : ""}" data-class-id="${pkg.id}" title="${isHidden ? "إظهار الفصل" : "إخفاء الفصل"}">
+            <i data-lucide="${isHidden ? "eye" : "eye-off"}" style="width:12px;height:12px;"></i>
+            <span>${isHidden ? "إظهار" : "إخفاء"}</span>
+          </button>
+          <button type="button" class="curr-sub-btn curr-class-edit-btn" data-grade-id="${grade.id}" data-class="${rawData}" title="تعديل الفصل">
+            <i data-lucide="pencil" style="width:12px;height:12px;"></i>
+            <span>تعديل</span>
+          </button>
+          <button type="button" class="curr-sub-btn danger curr-class-del-btn" data-class-id="${pkg.id}" data-class-name="${pkg.name}" title="حذف الفصل">
+            <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+            <span>حذف</span>
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   renderSubjectCard(sub) {
@@ -232,6 +364,100 @@ export class AdminCurriculumPage {
         catch(err){ showToast(err.message||"فشل الحذف","error"); }
       });
     });
+
+    // Class Package Events
+    this.container.querySelectorAll(".curr-add-class-btn, [data-add-class]").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const gradeId = btn.getAttribute("data-grade-id") || btn.getAttribute("data-add-class");
+        const grade = this.grades.find(g => g.id === gradeId);
+        if (grade) this.openClassModal(grade, null);
+      });
+    });
+
+    this.container.querySelectorAll(".curr-seed-classes-btn").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        e.stopPropagation();
+        const gradeId = btn.getAttribute("data-grade-id");
+        const gradeName = btn.getAttribute("data-grade-name");
+        if (!await confirmDialog(`هل تريد إنشاء وتوليد 3 باقات وفصول متكاملة تلقائياً لصف "${gradeName}"؟`)) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/admin/curriculum/grades/${gradeId}/classes/seed-defaults?force=true`, { method: "POST" });
+          showToast("تم توليد الفصول الافتراضية بنجاح 🚀", "success");
+          await this.loadGrades();
+          this.renderPage();
+          this.bindEvents();
+        } catch (err) {
+          showToast(err.message || "فشل التوليد", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".curr-class-toggle-btn").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-class-id");
+        btn.disabled = true;
+        try {
+          const r = await apiFetch(`/admin/curriculum/classes/${id}/toggle`, { method: "PATCH" });
+          showToast(r.message || "تم تغيير حالة الفصل", "success");
+          await this.loadGrades();
+          this.renderPage();
+          this.bindEvents();
+        } catch (err) {
+          showToast(err.message || "فشل", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".curr-class-edit-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const gradeId = btn.getAttribute("data-grade-id");
+        const grade = this.grades.find(g => g.id === gradeId);
+        try {
+          const classData = JSON.parse(btn.getAttribute("data-class").replace(/&quot;/g, '"'));
+          this.openClassModal(grade, classData);
+        } catch {
+          showToast("خطأ في قراءة بيانات الفصل", "error");
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".curr-class-del-btn").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-class-id");
+        const name = btn.getAttribute("data-class-name");
+        if (!await confirmDialog(`حذف فصل "${name}"؟ لا يمكن التراجع.`)) return;
+        btn.disabled = true;
+        try {
+          const r = await apiFetch(`/admin/curriculum/classes/${id}`, { method: "DELETE" });
+          showToast(r.message || "تم حذف الفصل بنجاح", "success");
+          await this.loadGrades();
+          this.renderPage();
+          this.bindEvents();
+        } catch (err) {
+          showToast(err.message || "فشل حذف الفصل", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".curr-class-enroll-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const classId = btn.getAttribute("data-class-id");
+        const gradeId = btn.getAttribute("data-grade-id");
+        const grade = this.grades.find(g => g.id === gradeId);
+        const pkg = (grade?.classPackages || []).find(c => c.id === classId);
+        if (pkg) this.openEnrollStudentModal(pkg);
+        else showToast("تعذر العثور على بيانات الفصل", "error");
+      });
+    });
   }
 
   openAddGradeModal() {
@@ -308,6 +534,397 @@ export class AdminCurriculumPage {
         else { await apiFetch(`/admin/curriculum/grades/${grade.id}/subjects`,{method:"POST",body:JSON.stringify({name,nameEn,icon,isLanguageTrack})}); showToast("تمت الإضافة ✅","success"); }
         overlay.remove(); await this.loadGrades(); this.renderPage(); this.bindEvents();
       }catch(err){showToast(err.message||"فشل","error");btn.disabled=false;btn.textContent=isEdit?"حفظ التعديلات":"إضافة المادة";}
+    });
+  }
+
+  async openClassModal(grade, pkg = null) {
+    const isEdit = !!pkg;
+    let allGroups = [];
+    try {
+      allGroups = await apiFetch("/admin/all-groups").catch(() => []);
+    } catch (_) {
+      allGroups = [];
+    }
+
+    // Filter groups matching this grade or stage
+    const gradeGroups = (allGroups || []).filter(g => 
+      g.course?.grade?.id === grade?.id || 
+      g.course?.grade?.name === grade?.name || 
+      g.course?.grade?.stage === grade?.stage ||
+      (g.course?.degree && grade?.name && g.course.degree.includes(grade.name))
+    );
+    const groupsList = gradeGroups.length > 0 ? gradeGroups : allGroups;
+    const selectedGroupIds = (pkg?.groupIds || (pkg?.linkedGroups || []).map(g => g.id)).slice();
+
+    const overlay = document.createElement("div");
+    overlay.className = "acp-modal-overlay";
+    overlay.innerHTML = `
+      <div class="acp-modal-dialog">
+        <!-- رأس النافذة الثابت -->
+        <div class="acp-modal-header">
+          <div class="acp-modal-title-box">
+            <div class="acp-modal-title-icon">
+              <i data-lucide="${isEdit ? 'edit-3' : 'layers'}" style="width:22px;height:22px;"></i>
+            </div>
+            <div>
+              <h3 class="acp-modal-title">${isEdit ? "تعديل الفصل والباقة الشاملة" : "➕ إنشاء فصل وباقة شاملة جديدة"}${grade ? " — " + grade.name : ""}</h3>
+              <p class="acp-modal-subtitle">تجميع مجموعات المواد باشتراك شهري موحد للطالب وأجر ساعة معتمد للمعلمين</p>
+            </div>
+          </div>
+          <button type="button" class="acp-modal-close-btn" id="ccm-close-x" title="إغلاق">✕</button>
+        </div>
+
+        <!-- جسم النافذة القابل للتمرير -->
+        <div class="acp-modal-body">
+          <div class="acp-form-group">
+            <label>اسم الفصل / الباقة *</label>
+            <input class="acp-form-input" id="ccm-name" type="text" placeholder="مثال: فصل المتفوقين (باقة مجمعة - ${grade?.name || 'الصف الدراسي'})" value="${pkg?.name || ""}">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="acp-form-group">
+              <label>شارة التمييز (Badge)</label>
+              <input class="acp-form-input" id="ccm-badge" type="text" placeholder="مثال: متاح للاشتراك أو الأكثر طلباً" value="${pkg?.badge || "متاح للاشتراك"}">
+            </div>
+            <div class="acp-form-group">
+              <label>الثيم اللوني</label>
+              <select class="acp-form-select" id="ccm-theme">
+                <option value="blue"${(!pkg || pkg.theme === "blue") ? " selected" : ""}>🔵 أزرق (Blue)</option>
+                <option value="green"${pkg?.theme === "green" ? " selected" : ""}>🟢 أخضر (Green)</option>
+                <option value="purple"${pkg?.theme === "purple" ? " selected" : ""}>🟣 بنفسجي (Purple)</option>
+                <option value="amber"${pkg?.theme === "amber" ? " selected" : ""}>🟡 كهرماني ذهبي (Amber)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="acp-form-group">
+              <label>سعر اشتراك الفصل (شهرياً - EGP) *</label>
+              <input class="acp-form-input" id="ccm-price-eg" type="text" placeholder="مثال: 1200 جنيه" value="${pkg?.priceEg || ""}">
+            </div>
+            <div class="acp-form-group">
+              <label>السعر بالريال / النص الكامل</label>
+              <input class="acp-form-input" id="ccm-price" type="text" placeholder="مثال: 1200 ريال / شهرياً  •  1200 جنيه" value="${pkg?.price || ""}">
+            </div>
+          </div>
+
+          <!-- اختيار المجموعات المربوطة بالفصل ونظام أجر المعلم بالساعة -->
+          <div class="acp-form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="margin-bottom:0;">👥 مجموعات المواد التابعة لهذا الفصل</label>
+              <span id="ccm-selected-counter" style="font-size:0.78rem; color:#0284c7; font-weight:800; background:rgba(2,132,199,0.1); padding:2px 10px; border-radius:8px;">
+                0 مجموعات محددة
+              </span>
+            </div>
+            <p style="font-size:0.77rem; color:var(--text-muted); margin:0 0 10px 0; line-height:1.5;">
+              حدد مجموعات المواد التابعة لهذا الفصل. عند اشتراك الطالب يتم تسكينه تلقائياً في كل المجموعات المحددة، ويحصل المعلم على أجر ساعته عند إتمام حصصه بنجاح.
+            </p>
+            <div style="max-height:190px; overflow-y:auto; border:1.5px solid var(--border-color); border-radius:14px; padding:10px; background:var(--bg-app); display:flex; flex-direction:column; gap:8px;">
+              ${groupsList.length > 0 ? groupsList.map(g => {
+                const isChecked = selectedGroupIds.includes(g.id);
+                const teacherRate = g.teacherHourlyRate || 100;
+                return `
+                  <label class="acp-group-row ${isChecked ? 'selected' : ''}" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-radius:12px; background:${isChecked ? 'rgba(2,132,199,0.07)' : 'var(--bg-card)'}; border:1.5px solid ${isChecked ? '#0284c7' : 'var(--border-color)'}; cursor:pointer; user-select:none; transition:all 0.15s ease;">
+                    <div style="display:flex; align-items:center; gap:11px;">
+                      <input type="checkbox" class="ccm-group-check" value="${g.id}" data-rate="${teacherRate}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0284c7; cursor:pointer;">
+                      <div>
+                        <div style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${g.course?.subject?.name || g.name}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                          <strong style="color:var(--text-main);">${g.teacher?.name || g.course?.teacher?.name || 'معلم معتمد'}</strong>
+                          ${g.scheduleDays ? `• ${g.scheduleDays} ${g.scheduleTime || ''}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div style="font-size:0.8rem; font-weight:900; color:#10b981; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:8px; white-space:nowrap;">
+                      ${teacherRate} ج.م/ساعة
+                    </div>
+                  </label>
+                `;
+              }).join('') : '<div style="font-size:0.82rem; color:var(--text-muted); text-align:center; padding:16px;">لا توجد مجموعات متاحة لهذا الصف. يمكنك إنشاء مجموعات من صفحة الحصص أولاً.</div>'}
+            </div>
+          </div>
+
+          <!-- صندوق النموذج المالي والربحية -->
+          <div style="background:rgba(2, 132, 199, 0.05); border:1.5px solid rgba(2, 132, 199, 0.2); border-radius:16px; padding:12px 16px;">
+            <div style="font-size:0.82rem; font-weight:900; color:#0284c7; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="shield-check" style="width:16px;height:16px;"></i>
+              <span>النموذج المالي: اشتراك الطالب للمنصة + أجر الساعة للمعلمين</span>
+            </div>
+            <div style="font-size:0.77rem; color:var(--text-main); line-height:1.5;">
+              الطالب يدفع اشتراك الفصل كاملاً للمنصة، وتدفع المنصة للمعلمين أجور ساعاتهم المحددة فقط عن كل حصة مكتملة، مما يضمن أعلى ربحية صافية ومستقرة للمنصة.
+            </div>
+          </div>
+
+          <div class="acp-form-group">
+            <label>نبذة عن الباقة ومميزاتها للطلاب</label>
+            <textarea class="acp-form-textarea" id="ccm-desc" rows="2" placeholder="شرح مبسط ومميزات الباقة للطلاب...">${pkg?.description || ""}</textarea>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:center;">
+            <div class="acp-form-group">
+              <label>ترتيب الظهور</label>
+              <input class="acp-form-input" id="ccm-order" type="number" min="0" value="${pkg?.order || 0}">
+            </div>
+            <div class="acp-form-group" style="padding-top:20px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; text-transform:none;">
+                <input type="checkbox" id="ccm-active"${(!pkg || pkg.isActive) ? " checked" : ""} style="width:18px; height:18px; accent-color:#0284c7;">
+                <span>مفعل وظاهر للطلاب في الموقع</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- شريط الأزرار الثابت -->
+        <div class="acp-modal-footer">
+          <div id="ccm-footer-summary" style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">
+            <!-- يتم تحديثه ديناميكياً -->
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button type="button" class="acp-btn acp-btn-outline" id="ccm-cancel">إلغاء</button>
+            <button type="button" class="acp-btn acp-btn-primary" id="ccm-save">
+              <i data-lucide="check" style="width:16px;height:16px;"></i>
+              <span>${isEdit ? "حفظ التعديلات" : "إضافة الفصل وتأكيد الربط 🚀"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const counterBadge = overlay.querySelector("#ccm-selected-counter");
+    const footerSummary = overlay.querySelector("#ccm-footer-summary");
+
+    const updateSelectionStats = () => {
+      const checkedBoxes = Array.from(overlay.querySelectorAll(".ccm-group-check:checked"));
+      const count = checkedBoxes.length;
+      let totalHourly = 0;
+      checkedBoxes.forEach(cb => {
+        totalHourly += parseFloat(cb.getAttribute("data-rate")) || 0;
+      });
+
+      if (counterBadge) {
+        counterBadge.textContent = `${count} مجموعات محددة`;
+      }
+      if (footerSummary) {
+        footerSummary.innerHTML = count > 0 
+          ? `تم تحديد <strong style="color:#0284c7;">${count} مواد</strong> • تكلفة الحصة: <strong style="color:#10b981;">${totalHourly} ج.م/ساعة</strong>`
+          : `يرجى تحديد مجموعة واحدة على الأقل`;
+      }
+    };
+
+    overlay.querySelectorAll(".ccm-group-check").forEach(cb => {
+      cb.addEventListener("change", e => {
+        const row = e.target.closest("label");
+        if (row) {
+          if (e.target.checked) {
+            row.classList.add("selected");
+            row.style.background = "rgba(2,132,199,0.07)";
+            row.style.borderColor = "#0284c7";
+          } else {
+            row.classList.remove("selected");
+            row.style.background = "var(--bg-card)";
+            row.style.borderColor = "var(--border-color)";
+          }
+        }
+        updateSelectionStats();
+      });
+    });
+
+    updateSelectionStats();
+
+    const closeModal = () => overlay.remove();
+    overlay.querySelector("#ccm-close-x")?.addEventListener("click", closeModal);
+    overlay.querySelector("#ccm-cancel")?.addEventListener("click", closeModal);
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+
+    overlay.querySelector("#ccm-save").addEventListener("click", async () => {
+      const name = overlay.querySelector("#ccm-name").value.trim();
+      const badge = overlay.querySelector("#ccm-badge").value.trim();
+      const priceEg = overlay.querySelector("#ccm-price-eg").value.trim();
+      const price = overlay.querySelector("#ccm-price").value.trim();
+      const theme = overlay.querySelector("#ccm-theme").value;
+      const description = overlay.querySelector("#ccm-desc").value.trim();
+      const order = parseInt(overlay.querySelector("#ccm-order").value) || 0;
+      const isActive = overlay.querySelector("#ccm-active").checked;
+
+      const groupCheckboxes = overlay.querySelectorAll(".ccm-group-check:checked");
+      const groupIds = Array.from(groupCheckboxes).map(cb => cb.value);
+
+      if (!name) {
+        showToast("اسم الفصل أو الباقة مطلوب", "error");
+        return;
+      }
+
+      const saveBtn = overlay.querySelector("#ccm-save");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "جارٍ الحفظ...";
+
+      const payload = {
+        name,
+        badge,
+        priceEg,
+        price: price || (priceEg ? `${priceEg} / شهرياً` : ""),
+        theme,
+        description,
+        order,
+        isActive,
+        groupIds
+      };
+
+      try {
+        if (isEdit) {
+          await apiFetch(`/admin/curriculum/classes/${pkg.id}`, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          });
+          showToast("تم تحديث بيانات الفصل والمجموعات المربوطة بنجاح ✅", "success");
+        } else {
+          await apiFetch(`/admin/curriculum/grades/${grade.id}/classes`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          showToast("تمت إضافة الفصل وربط مجموعاته بنجاح 🚀", "success");
+        }
+        overlay.remove();
+        await this.loadGrades();
+        this.renderPage();
+        this.bindEvents();
+      } catch (err) {
+        showToast(err.message || "فشلت العملية", "error");
+        saveBtn.disabled = false;
+        saveBtn.textContent = isEdit ? "حفظ التعديلات" : "إضافة الفصل وتأكيد الربط";
+      }
+    });
+  }
+
+  // نافذة تسكين طالب في جميع مجموعات الفصل معاً بنقرة واحدة
+  async openEnrollStudentModal(pkg) {
+    let allUsers = [];
+    try {
+      allUsers = await apiFetch("/admin/users").catch(() => []);
+    } catch (_) {
+      allUsers = [];
+    }
+
+    const students = (allUsers || []).filter(u => u.role === "student");
+    const linkedGroups = pkg.linkedGroups || [];
+
+    if (linkedGroups.length === 0) {
+      showToast("يرجى ربط مجموعات بهذا الفصل أولاً قبل تسكين الطلاب.", "error");
+      return;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "curr-modal-overlay";
+    overlay.innerHTML = `
+      <div class="curr-modal" style="max-width:540px;">
+        <h3>🎓 تسكين طالب في فصل: ${pkg.name}</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin:-14px 0 16px 0;">
+          سيتم تسكين الطالب تلقائياً في جميع مجموعات الفصل المربوطة (${linkedGroups.length} مجموعات: ${linkedGroups.map(g => g.course?.subject?.name || g.name).join('، ')}).
+        </p>
+
+        <div class="curr-fgrp">
+          <label>اختر الطالب *</label>
+          <select id="ces-student-id">
+            <option value="">-- اختر طالباً من المنصة (${students.length} طالب) --</option>
+            ${students.map(s => `
+              <option value="${s.id}">${s.name} ${s.phone ? `(${s.phone})` : ''} - ${s.email || ''}</option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="curr-fgrp">
+            <label>مبلغ اشتراك الفصل (EGP)</label>
+            <input id="ces-amount" type="number" placeholder="المبلغ المدفوع" value="${parseInt(pkg.priceEg) || 1200}">
+          </div>
+          <div class="curr-fgrp">
+            <label>خطة السداد</label>
+            <select id="ces-plan">
+              <option value="PAID">مسدد بالكامل (PAID)</option>
+              <option value="PARTIAL">دفعة جزئية (PARTIAL)</option>
+              <option value="POSTPONED">سيدفع لاحقاً (POSTPONED)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="curr-fgrp">
+          <label>طريقة الدفع / التحويل</label>
+          <select id="ces-provider">
+            <option value="VODAFONE_CASH">فودافون كاش / محافظ إلكترونية</option>
+            <option value="INSTAPAY">انستاباي (InstaPay)</option>
+            <option value="BANK_TRANSFER">تحويل بنكي</option>
+            <option value="CASH">نقدي باليد</option>
+          </select>
+        </div>
+
+        <div class="curr-fgrp">
+          <label>رابط أو مسار صورة الإيصال (اختياري)</label>
+          <input id="ces-receipt" type="text" placeholder="رابط صورة التحويل أو الإيصال">
+        </div>
+
+        <div class="curr-fgrp">
+          <label>ملاحظات إدارية</label>
+          <input id="ces-notes" type="text" placeholder="مثال: اشتراك شهري في باقة الفصل المجمعة">
+        </div>
+
+        <div class="curr-modal-footer">
+          <button type="button" class="curr-btn curr-btn-outline" id="ces-cancel">إلغاء</button>
+          <button type="button" class="curr-btn curr-btn-primary" id="ces-save" style="background:linear-gradient(135deg, #10b981, #059669);">
+            <i data-lucide="check-circle" style="width:14px;height:14px;"></i>
+            <span>تسكين في كل المجموعات (${linkedGroups.length}) 🚀</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    overlay.querySelector("#ces-cancel").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelector("#ces-save").addEventListener("click", async () => {
+      const studentId = overlay.querySelector("#ces-student-id").value;
+      const amount = parseFloat(overlay.querySelector("#ces-amount").value) || 0;
+      const paymentPlan = overlay.querySelector("#ces-plan").value;
+      const provider = overlay.querySelector("#ces-provider").value;
+      const receiptUrl = overlay.querySelector("#ces-receipt").value.trim();
+      const notes = overlay.querySelector("#ces-notes").value.trim();
+
+      if (!studentId) {
+        showToast("يرجى اختيار الطالب أولاً", "error");
+        return;
+      }
+
+      const saveBtn = overlay.querySelector("#ces-save");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "جارٍ تسكين الطالب في جميع المجموعات...";
+
+      try {
+        const res = await apiFetch(`/admin/curriculum/classes/${pkg.id}/enroll-student`, {
+          method: "POST",
+          body: JSON.stringify({
+            studentId,
+            amount,
+            paymentPlan,
+            provider,
+            receiptUrl,
+            notes
+          })
+        });
+        showToast(res.message || "تم تسكين الطالب بنجاح في جميع مجموعات الفصل! 🎉", "success");
+        overlay.remove();
+        await this.loadGrades();
+        this.renderPage();
+        this.bindEvents();
+      } catch (err) {
+        showToast(err.message || "فشل تسكين الطالب", "error");
+        saveBtn.disabled = false;
+        saveBtn.textContent = `تسكين في كل المجموعات (${linkedGroups.length}) 🚀`;
+      }
     });
   }
 }

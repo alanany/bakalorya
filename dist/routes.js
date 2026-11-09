@@ -63,6 +63,7 @@ const CurriculumController_1 = require("./controller/CurriculumController");
 const CourseGroupController_1 = require("./controller/CourseGroupController");
 const ParentController_1 = require("./controller/ParentController");
 const AdminStudentController_1 = require("./controller/AdminStudentController");
+const MarketingCampaignController_1 = require("./controller/MarketingCampaignController");
 const auth_1 = require("./middleware/auth");
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const concurrencyLock_1 = require("./middleware/concurrencyLock");
@@ -92,6 +93,28 @@ const upload = (0, multer_1.default)({
     storage,
     limits: { fileSize: 20 * 1024 * 1024 } // 20MB max file size
 });
+const videoUpload = (0, multer_1.default)({
+    storage,
+    limits: { fileSize: 250 * 1024 * 1024 } // 250MB max video file size
+});
+const uploadSingleVideo = (req, res, next) => {
+    videoUpload.fields([{ name: "video", maxCount: 1 }, { name: "file", maxCount: 1 }])(req, res, (err) => {
+        if (err) {
+            console.error("Video upload error:", err);
+            if (err instanceof multer_1.default.MulterError) {
+                return res.status(400).json({ error: `حجم أو نوع ملف الفيديو غير مدعوم: ${err.message}` });
+            }
+            return res.status(500).json({ error: err.message || "فشل رفع الفيديو إلى السيرفر." });
+        }
+        if (req.files) {
+            if (req.files.video && req.files.video[0])
+                req.file = req.files.video[0];
+            else if (req.files.file && req.files.file[0])
+                req.file = req.files.file[0];
+        }
+        next();
+    });
+};
 const uploadSingleFile = (req, res, next) => {
     upload.single("file")(req, res, (err) => {
         if (err) {
@@ -149,6 +172,22 @@ router.post("/admin/curriculum/grades/:gradeId/subjects", auth_1.authMiddleware,
 router.put("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.updateSubject);
 router.patch("/admin/curriculum/subjects/:id/toggle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.toggleSubjectVisibility);
 router.delete("/admin/curriculum/subjects/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteSubject);
+// Class Packages (فصول وباقات الصفحة الرئيسية والصف)
+router.get("/curriculum/classes", CurriculumController_1.CurriculumController.getClasses);
+router.get("/curriculum/classes/:id", CurriculumController_1.CurriculumController.getClassById);
+router.get("/admin/curriculum/classes", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.getAllAdminClasses);
+router.get("/admin/curriculum/grades/:gradeId/classes", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.getAdminClasses);
+router.post("/admin/curriculum/grades/:gradeId/classes", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.createClassPackage);
+router.post("/admin/curriculum/grades/:gradeId/classes/seed-defaults", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.seedDefaultClasses);
+router.put("/admin/curriculum/classes/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.updateClassPackage);
+router.patch("/admin/curriculum/classes/:id/toggle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.toggleClassVisibility);
+router.delete("/admin/curriculum/classes/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteClassPackage);
+router.post("/admin/curriculum/classes/:id/enroll-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.enrollStudentInClass);
+router.post("/curriculum/classes/:id/request-subscription", auth_1.authMiddleware, CurriculumController_1.CurriculumController.requestClassSubscription);
+router.post("/admin/curriculum/class-subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.approveClassSubscription);
+router.post("/admin/curriculum/class-subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.rejectClassSubscription);
+router.patch("/admin/curriculum/class-subscriptions/:id/payment", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.updateClassSubscriptionPayment);
+router.delete("/admin/curriculum/class-subscriptions/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteClassSubscription);
 router.get("/groups/:id", CourseGroupController_1.CourseGroupController.getGroupById);
 router.post("/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController_1.CourseGroupController.getCourseGroups);
@@ -203,11 +242,22 @@ router.get("/admin/groups/pending-approval", auth_1.authMiddleware, (0, auth_1.r
 router.get("/admin/all-groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.getAllGroups);
 router.post("/admin/groups/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.approveGroup);
 router.post("/admin/groups/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.rejectGroup);
+router.post("/admin/groups/:id/finish", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.finishGroup);
 router.post("/admin/groups/:id/add-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.addStudentToGroup);
 router.post("/admin/groups/:id/students/:studentId/record-installment", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.recordInstallmentPayment);
+router.post("/admin/groups/:id/students/:studentId/update-payment-status", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.updateStudentPaymentStatus);
 router.post("/admin/groups/:id/remove-student", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.startTeachingAndGenerateSessions);
 router.post("/admin/groups/:id/renew-cycle", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor", "teacher"]), CourseGroupController_1.CourseGroupController.renewGroupCycle);
+router.post("/admin/groups/:id/trim-sessions", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.trimGroupSessions);
+// Marketing Campaigns & Ad Spend Tracking (Admin)
+router.get("/admin/marketing-campaigns", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.getCampaigns);
+router.get("/admin/marketing-campaigns/active", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.getActiveCampaigns);
+router.get("/admin/marketing-campaigns/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.getCampaignDetails);
+router.post("/admin/marketing-campaigns", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.createCampaign);
+router.put("/admin/marketing-campaigns/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.updateCampaign);
+router.post("/admin/marketing-campaigns/:id/add-spend", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.addCampaignSpend);
+router.delete("/admin/marketing-campaigns/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), MarketingCampaignController_1.MarketingCampaignController.deleteCampaign);
 // Admin Teacher Management
 router.post("/admin/teachers/invite", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), AdminTeacherController_1.AdminTeacherController.inviteTeacher);
 router.get("/admin/teachers", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), AdminTeacherController_1.AdminTeacherController.getAllTeachers);
@@ -253,6 +303,7 @@ router.post("/sessions/preview-package-schedule", auth_1.authMiddleware, Session
 router.post("/sessions/recheck-schedule-conflicts", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.recheckScheduleConflicts);
 router.post("/sessions/confirm-package-schedule", auth_1.authMiddleware, rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, idempotency_1.idempotency, SessionBookingController_1.SessionBookingController.confirmPackageSchedule);
 router.post("/sessions/:id/complete", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.completeSession);
+router.get("/sessions/:id/report-data", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.getSessionReportData);
 router.post("/sessions/:id/cancel", auth_1.authMiddleware, SessionBookingController_1.SessionBookingController.cancelSession);
 router.post("/sessions/:id/revert", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), (req, res) => { req.body.action = "revert"; return SessionBookingController_1.SessionBookingController.cancelSession(req, res); });
 router.post("/sessions/:id/no-show", auth_1.authMiddleware, (0, auth_1.requireCapability)("SESSION_TEACHER"), SessionBookingController_1.SessionBookingController.noShowSession);
@@ -303,6 +354,8 @@ router.delete("/reviews/:id", auth_1.authMiddleware, ReviewController_1.ReviewCo
 router.post("/teacher-applications", rateLimiter_1.sensitiveActionLimiter, concurrencyLock_1.concurrencyLock, TeacherApplicationController_1.TeacherApplicationController.apply);
 router.get("/teachers", UserController_1.UserController.getTeachers);
 router.get("/teachers/:id", UserController_1.UserController.getTeacherById);
+router.patch("/teachers/:id/video", auth_1.authMiddleware, UserController_1.UserController.updateTeacherVideo);
+router.post("/teachers/:id/video/upload", auth_1.authMiddleware, uploadSingleVideo, UserController_1.UserController.uploadTeacherVideo);
 router.get("/teachers/:id/groups", auth_1.optionalAuthMiddleware, CourseGroupController_1.CourseGroupController.getTeacherGroups);
 router.patch("/users/me", auth_1.authMiddleware, UserController_1.UserController.updateProfile);
 router.post("/users/request-phone-change", auth_1.authMiddleware, UserController_1.UserController.requestPhoneChange);

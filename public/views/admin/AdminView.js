@@ -11,6 +11,7 @@ import { AdminEarningsPage } from './AdminEarningsPage.js';
 import { AdminPlansPage } from './AdminPlansPage.js';
 import { AdminSettingsPage } from './AdminSettingsPage.js';
 import { AdminCurriculumPage } from './AdminCurriculumPage.js';
+import { AdminClassesPage } from './AdminClassesPage.js';
 import { AdminBlogsPage } from './AdminBlogsPage.js';
 import { AdminMarketingPage } from './AdminMarketingPage.js';
 import { AdminStudentDetailsPage } from './AdminStudentDetailsPage.js';
@@ -403,6 +404,11 @@ export default class AdminView {
             </button>
 
             <div class="admin-nav-section">إدارة المنصة</div>
+            <button class="admin-nav-btn ${this.activeTab === "classes" ? "active" : ""}" data-tab="classes">
+              <i data-lucide="layers"></i>
+              🏫 الفصول والباقات (Classes)
+              <span class="admin-nav-badge" id="admin-badge-classes" style="background:#0284c7; color:#fff;">0</span>
+            </button>
             <button class="admin-nav-btn ${this.activeTab === "curriculum" ? "active" : ""}" data-tab="curriculum">
               <i data-lucide="book-marked"></i>
               🎓 المراحل والمواد الدراسية
@@ -596,6 +602,9 @@ export default class AdminView {
     el("admin-badge-teacher-payouts", pendingTeacherPayouts > 0 ? `${pendingTeacherPayouts} معلق` : (earningsData.earnings || []).length);
     el("admin-badge-student-billings", pendingStudentPayments > 0 ? `${pendingStudentPayments} معلق` : (earningsData.payments || []).length);
     el("admin-badge-marketing", (this.marketingCampaignsData?.campaigns || []).length);
+    apiFetch("/curriculum/classes").then(cls => {
+      el("admin-badge-classes", (cls || []).length);
+    }).catch(() => {});
   }
 
 
@@ -640,6 +649,8 @@ export default class AdminView {
       this.allParents = parents || [];
       this.allSupervisors = supervisors || [];
       this.allGrades = allGrades || [];
+      const allClasses = await apiFetch("/admin/curriculum/classes").catch(() => []);
+      this.allClasses = Array.isArray(allClasses) ? allClasses : [];
       this.marketingCampaignsData = (arguments[0] && false) ? null : arguments[0]; // will set below
       // Set marketing campaigns
       const marketingData = await apiFetch("/admin/marketing-campaigns").catch(() => ({ campaigns: [], summary: {} }));
@@ -730,6 +741,7 @@ export default class AdminView {
   static TAB_META = {
     stats: { heading: "📊 الإحصائيات العامة", sub: "نظرة شاملة على مؤشرات أداء المنصة" },
     reports: { heading: "📈 التقارير والسجلات", sub: "تقارير مفصلة عن النشاط والأداء" },
+    classes: { heading: "🏫 إدارة الفصول والباقات الشاملة (Class Packages)", sub: "تجميع مجموعات المواد في فصول دراسية موحدة، تحديد اشتراك الفصل، وتسكين الطلاب بنظام أجر المعلم بالساعة" },
     curriculum: { heading: "🎓 إدارة المراحل والمواد الدراسية", sub: "إضافة وإخفاء وتعديل الصفوف الدراسية والمواد لكل مرحلة تعليمية" },
     categories: { heading: "🗂️ إدارة التصنيفات", sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
     courses: { heading: "📚 إدارة الدورات", sub: "مراجعة والإشراف على جميع دورات المنصة" },
@@ -799,6 +811,12 @@ export default class AdminView {
     if (tab === "stats") {
       content.innerHTML = this.renderStatsTab();
       this.bindAdminStatsEvents();
+    }
+    else if (tab === "classes") {
+      content.innerHTML = "";
+      const page = new AdminClassesPage(content, this);
+      page.render();
+      return;
     }
     else if (tab === "curriculum") {
       content.innerHTML = "";
@@ -987,64 +1005,6 @@ export default class AdminView {
       });
     });
 
-    // Admin Toggle Group Status (Close for Teaching / Reopen for Enrollment)
-    this.container.querySelectorAll(".admin-toggle-group-status-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        const action = btn.getAttribute("data-action");
-        const isClosing = action === "close";
-
-        const message = isClosing
-          ? "هل تريد بالتأكيد إغلاق هذه المجموعة وبدء التدريس؟\n• سيتم قفل باب التسجيل فوراً ولن يتمكن أي طالب جديد من الانضمام."
-          : "هل تريد إعادة فتح المجموعة وإتاحتها لتسجيل الطلاب مرة أخرى؟";
-
-        const confirmed = await confirmDialog(message);
-        if (!confirmed) return;
-
-        try {
-          btn.disabled = true;
-          const newStatus = isClosing ? "IN_PROGRESS" : "OPEN";
-          await apiFetch(`/groups/${id}`, {
-            method: "PUT",
-            body: JSON.stringify({ status: newStatus })
-          });
-
-          showToast(
-            isClosing
-              ? "تم إغلاق المجموعة وبدء التدريس وقفل التسجيل بنجاح! 🔒🚀"
-              : "تم فتح المجموعة للتسجيل بنجاح! 🔓✨",
-            "success"
-          );
-          await this.loadAllData();
-          this.renderTab("groups");
-        } catch (err) {
-          showToast(err.message || "فشل تغيير حالة المجموعة.", "error");
-          btn.disabled = false;
-        }
-      });
-    });
-
-    // Admin Delete Group
-    this.container.querySelectorAll(".admin-delete-group-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        const name = btn.getAttribute("data-name") || "هذه المجموعة";
-        const confirmed = await confirmDialog(`هل أنت متأكد من حذف "${name}" نهائياً؟`, { danger: true });
-        if (!confirmed) return;
-
-        try {
-          btn.disabled = true;
-          await apiFetch(`/groups/${id}`, { method: "DELETE" });
-          showToast("تم حذف المجموعة بنجاح.", "success");
-          await this.loadAllData();
-          this.renderTab("groups");
-        } catch (err) {
-          showToast(err.message || "فشل حذف المجموعة.", "error");
-          btn.disabled = false;
-        }
-      });
-    });
-
     // Admin Groups Search Input
     const adminGroupSearchInput = this.container.querySelector("#admin-groups-search-input");
     if (adminGroupSearchInput) {
@@ -1179,6 +1139,68 @@ export default class AdminView {
     // Admin Open Quick Group Enroll Modal
     this.container.querySelector("#admin-open-group-enroll-modal-btn")?.addEventListener("click", () => {
       this.renderQuickGroupEnrollModal();
+    });
+
+    // Admin Open Manual Class Subscription Modal
+    this.container.querySelector("#admin-open-class-sub-modal-btn")?.addEventListener("click", () => {
+      this.renderManualClassSubscriptionModal();
+    });
+
+    // Class Subscriptions Actions in Subscriptions Tab
+    this.container.querySelectorAll(".admin-approve-class-sub-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id) this.renderApproveClassSubModal(id);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-edit-class-payment-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (id) this.renderEditClassPaymentModal(id);
+      });
+    });
+
+    this.container.querySelectorAll(".admin-reject-class-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!id) return;
+        const reason = prompt("يرجى كتابة سبب رفض طلب اشتراك الفصل (اختياري):", "");
+        if (reason === null) return;
+        try {
+          const res = await apiFetch(`/admin/curriculum/class-subscriptions/${id}/reject`, {
+            method: "POST",
+            body: JSON.stringify({ reason: reason.trim() })
+          });
+          showToast(res.message || "تم رفض طلب اشتراك الفصل.", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل رفض طلب اشتراك الفصل.", "error");
+        }
+      });
+    });
+
+    this.container.querySelectorAll(".admin-delete-class-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!id) return;
+        const confirmed = await confirmDialog({
+          title: "حذف اشتراك الفصل",
+          message: "هل أنت متأكد من حذف هذا الاشتراك بالكامل من النظام؟"
+        });
+        if (!confirmed) return;
+        try {
+          const res = await apiFetch(`/admin/curriculum/class-subscriptions/${id}`, {
+            method: "DELETE"
+          });
+          showToast(res.message || "تم حذف اشتراك الفصل بنجاح.", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل حذف اشتراك الفصل.", "error");
+        }
+      });
     });
 
     // Search inside Subscriptions Tab
@@ -1724,9 +1746,16 @@ export default class AdminView {
 
     // Admin Renew Group Cycle Button
     this.container.querySelectorAll(".admin-renew-group-cycle-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
-        const group = (this.allCourseGroups || []).find(g => String(g.id) === String(id));
+        let group = (this.allCourseGroups || []).find(g => String(g.id) === String(id)) ||
+                    (this.pendingCourseGroups || []).find(g => String(g.id) === String(id));
+        if (!group && id) {
+          try {
+            const res = await apiFetch(`/groups/${id}`).catch(() => null);
+            if (res && (res.group || res.data)) group = res.group || res.data;
+          } catch (_) {}
+        }
         if (group) {
           this.renderRenewGroupCycleModal(group);
         } else {
@@ -1780,6 +1809,42 @@ export default class AdminView {
         } catch (err) {
           btn.disabled = false;
           showToast(err.message || "فشل تغيير حالة المجموعة.", "error");
+        }
+      });
+    });
+
+    // Admin Finish Group Button (Sets group status to FINISHED)
+    this.container.querySelectorAll(".admin-finish-group-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name") || "المجموعة";
+
+        const confirmed = await confirmDialog({
+          title: "إنهاء المجموعة الدراسية 🏁",
+          message: `هل أنت متأكد من رغبتك في إنهاء "${name}"؟\n• سيتم تغيير حالة المجموعة إلى "منتهية" (finished) وإغلاقها.`,
+          confirmText: "تأكيد الإنهاء 🏁",
+          cancelText: "تراجع",
+          danger: true
+        });
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        try {
+          await apiFetch(`/admin/groups/${id}/finish`, {
+            method: "POST"
+          }).catch(async () => {
+            return await apiFetch(`/groups/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({ status: "FINISHED" })
+            });
+          });
+
+          showToast(`تم إنهاء المجموعة "${name}" بنجاح وتغيير حالتها إلى منتهية 🏁`, "success");
+          await this.loadAllData();
+          this.renderTab("groups");
+        } catch (err) {
+          btn.disabled = false;
+          showToast(err.message || "فشل إنهاء المجموعة.", "error");
         }
       });
     });

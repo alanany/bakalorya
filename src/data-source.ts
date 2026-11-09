@@ -1,6 +1,8 @@
 import "reflect-metadata";
 import { DataSource, DataSourceOptions } from "typeorm";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
+
+// Load .env once at module level — do NOT call dotenv.config() again elsewhere
 dotenv.config();
 
 import { User } from "./entity/User";
@@ -34,6 +36,7 @@ import { Subject } from "./entity/Subject";
 import { CourseGroup } from "./entity/CourseGroup";
 import { ParentStudentLink } from "./entity/ParentStudentLink";
 import { MarketingCampaign } from "./entity/MarketingCampaign";
+import { ClassPackage } from "./entity/ClassPackage";
 
 export const allEntities = [
   User, Course, Lesson, Enrollment, Session,
@@ -42,11 +45,11 @@ export const allEntities = [
   QuestionAnswer, Notification, Review, SubscriptionPlan, Subscription,
   SessionCreditLedger, TeacherAvailability, SessionAttendance,
   TeacherEarning, Payment, AuditLog, PlatformSetting,
-  Grade, Subject, CourseGroup, ParentStudentLink, MarketingCampaign
+  Grade, Subject, CourseGroup, ParentStudentLink, MarketingCampaign,
+  ClassPackage
 ];
 
 export function getDataSourceOptions(): DataSourceOptions {
-  dotenv.config();
   const rawType = (process.env.DB_TYPE || "").trim().toLowerCase();
   const type: "mysql" | "sqlite" | "postgres" = (rawType === "mysql" || rawType === "postgres") ? rawType : (rawType === "sqlite" ? "sqlite" : "mysql");
 
@@ -80,7 +83,6 @@ export function getDataSourceOptions(): DataSourceOptions {
 export let AppDataSource = new DataSource(getDataSourceOptions());
 
 export async function initAppDataSource(): Promise<DataSource> {
-  dotenv.config();
   const options = getDataSourceOptions();
   AppDataSource = new DataSource(options);
 
@@ -94,7 +96,7 @@ export async function initAppDataSource(): Promise<DataSource> {
     }
     return AppDataSource;
   } catch (err: any) {
-    console.error(`❌ MYSQL CONNECTION FAILURE: Failed to connect to MySQL (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
+    console.error(`❌ DB connection failed — Host: ${process.env.DB_HOST}, DB: ${process.env.DB_NAME}`, err.message);
     console.warn(`⚠️ Safe Fallback: Initializing SQLite temporary database to keep site ONLINE (503 Prevention)...`);
     try {
       AppDataSource = new DataSource({

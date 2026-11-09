@@ -18,7 +18,7 @@ export class TestController {
                     where: { student: { id: user.userId } },
                     relations: ["course"]
                 });
-                const courseIds = enrollments.map(e => e.course.id);
+                const courseIds = enrollments.map(e => e.course?.id).filter((id): id is string => Boolean(id));
                 if (courseIds.length === 0) return res.json([]);
 
                 const tests = await testRepo.createQueryBuilder("test")

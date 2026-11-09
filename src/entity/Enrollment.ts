@@ -4,6 +4,7 @@ import { Course } from "./Course";
 import { Payment } from "./Payment";
 import { CourseGroup } from "./CourseGroup";
 import { MarketingCampaign } from "./MarketingCampaign";
+import { ClassPackage } from "./ClassPackage";
 
 @Entity()
 export class Enrollment {
@@ -13,8 +14,11 @@ export class Enrollment {
   @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
   student: User;
 
-  @ManyToOne(() => Course, { eager: true, onDelete: "CASCADE" })
-  course: Course;
+  @ManyToOne(() => Course, { eager: true, onDelete: "CASCADE", nullable: true })
+  course: Course | null;
+
+  @ManyToOne(() => ClassPackage, { nullable: true, eager: true, onDelete: "SET NULL" })
+  classPackage: ClassPackage | null;
 
   @ManyToOne(() => CourseGroup, group => group.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" })
   group: CourseGroup | null;

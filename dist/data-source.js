@@ -1,15 +1,46 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppDataSource = exports.allEntities = void 0;
 exports.getDataSourceOptions = getDataSourceOptions;
 exports.initAppDataSource = initAppDataSource;
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const dotenv = __importStar(require("dotenv"));
+// Load .env once at module level — do NOT call dotenv.config() again elsewhere
+dotenv.config();
 const User_1 = require("./entity/User");
 const Course_1 = require("./entity/Course");
 const Lesson_1 = require("./entity/Lesson");
@@ -40,6 +71,8 @@ const Grade_1 = require("./entity/Grade");
 const Subject_1 = require("./entity/Subject");
 const CourseGroup_1 = require("./entity/CourseGroup");
 const ParentStudentLink_1 = require("./entity/ParentStudentLink");
+const MarketingCampaign_1 = require("./entity/MarketingCampaign");
+const ClassPackage_1 = require("./entity/ClassPackage");
 exports.allEntities = [
     User_1.User, Course_1.Course, Lesson_1.Lesson, Enrollment_1.Enrollment, Session_1.Session,
     Assignment_1.Assignment, AssignmentSubmission_1.AssignmentSubmission, Resource_1.Resource, Test_1.Test,
@@ -47,10 +80,10 @@ exports.allEntities = [
     QuestionAnswer_1.QuestionAnswer, Notification_1.Notification, Review_1.Review, SubscriptionPlan_1.SubscriptionPlan, Subscription_1.Subscription,
     SessionCreditLedger_1.SessionCreditLedger, TeacherAvailability_1.TeacherAvailability, SessionAttendance_1.SessionAttendance,
     TeacherEarning_1.TeacherEarning, Payment_1.Payment, AuditLog_1.AuditLog, PlatformSetting_1.PlatformSetting,
-    Grade_1.Grade, Subject_1.Subject, CourseGroup_1.CourseGroup, ParentStudentLink_1.ParentStudentLink
+    Grade_1.Grade, Subject_1.Subject, CourseGroup_1.CourseGroup, ParentStudentLink_1.ParentStudentLink, MarketingCampaign_1.MarketingCampaign,
+    ClassPackage_1.ClassPackage
 ];
 function getDataSourceOptions() {
-    dotenv_1.default.config();
     const rawType = (process.env.DB_TYPE || "").trim().toLowerCase();
     const type = (rawType === "mysql" || rawType === "postgres") ? rawType : (rawType === "sqlite" ? "sqlite" : "mysql");
     const clean = (val) => (val || "").trim().replace(/^["']|["']$/g, "");
@@ -78,7 +111,6 @@ function getDataSourceOptions() {
 }
 exports.AppDataSource = new typeorm_1.DataSource(getDataSourceOptions());
 async function initAppDataSource() {
-    dotenv_1.default.config();
     const options = getDataSourceOptions();
     exports.AppDataSource = new typeorm_1.DataSource(options);
     try {
@@ -93,7 +125,7 @@ async function initAppDataSource() {
         return exports.AppDataSource;
     }
     catch (err) {
-        console.error(`❌ MYSQL CONNECTION FAILURE: Failed to connect to MySQL (Host: ${process.env.DB_HOST}, User: ${process.env.DB_USER}, DB: ${process.env.DB_NAME}): ${err.message || err}`);
+        console.error(`❌ DB connection failed — Host: ${process.env.DB_HOST}, DB: ${process.env.DB_NAME}`, err.message);
         console.warn(`⚠️ Safe Fallback: Initializing SQLite temporary database to keep site ONLINE (503 Prevention)...`);
         try {
             exports.AppDataSource = new typeorm_1.DataSource({

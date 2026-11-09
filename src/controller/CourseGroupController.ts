@@ -672,6 +672,47 @@ export class CourseGroupController {
     }
   }
 
+  // POST /admin/groups/:id/finish
+  static async finishGroup(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const group = await groupRepo.findOne({
+        where: { id },
+        relations: ["course", "course.teacher", "teacher"]
+      });
+
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      group.status = "FINISHED";
+      const saved = await groupRepo.save(group);
+
+      // Notify Teacher if exists
+      const teacher = group.teacher || group.course?.teacher;
+      if (teacher) {
+        try {
+          await NotificationController.createNotification(
+            teacher.id,
+            "تم إنهاء المجموعة الدراسية 🏁",
+            `قام المشرف / مدير المنصة بإنهاء مجموعة "${group.name}". حالتها الآن منتهية.`,
+            "info",
+            "#teacher-groups"
+          );
+        } catch (_) {}
+      }
+
+      return res.status(200).json({ 
+        message: "تم إنهاء المجموعة وتغيير حالتها إلى منتهية بنجاح 🏁", 
+        group: saved 
+      });
+    } catch (err: any) {
+      console.error("Error finishing group:", err);
+      return res.status(500).json({ error: "فشل إنهاء المجموعة." });
+    }
+  }
+
   // PUT /groups/:id
   static async updateGroup(req: AuthRequest, res: Response) {
     try {
@@ -695,7 +736,9 @@ export class CourseGroupController {
         billingCycle,
         monthlyPrice,
         platformCommissionPercent,
-        teacherId
+        teacherId,
+        subjectId,
+        gradeId
       } = req.body;
 
       const groupRepo = AppDataSource.getRepository(CourseGroup);
@@ -780,6 +823,43 @@ export class CourseGroupController {
         newTeacher = await userRepo.findOneBy({ id: teacherId });
         if (newTeacher) {
           group.teacher = newTeacher;
+        }
+      }
+
+      // Link or update Course / Grade / Subject if modified by Admin
+      if (req.user!.role === "admin" && (subjectId || gradeId)) {
+        const courseRepo = AppDataSource.getRepository(Course);
+        const subjectRepo = AppDataSource.getRepository(Subject);
+        const gradeRepo = AppDataSource.getRepository(Grade);
+
+        const currentCourse = group.course;
+        let newSubject = subjectId ? await subjectRepo.findOne({ where: { id: subjectId }, relations: ["grade"] }) : currentCourse?.subject;
+        let newGrade = gradeId ? await gradeRepo.findOneBy({ id: gradeId }) : (newSubject?.grade || currentCourse?.grade);
+
+        if (newSubject) {
+          let matchedCourse = await courseRepo.findOne({
+            where: {
+              subject: { id: newSubject.id },
+              grade: newGrade ? { id: newGrade.id } : undefined
+            },
+            relations: ["teacher", "grade", "subject"]
+          });
+
+          if (!matchedCourse) {
+            const teacherForCourse = newTeacher || group.teacher || currentCourse?.teacher || (await userRepo.findOne({ where: { role: "admin" } }));
+            matchedCourse = courseRepo.create({
+              title: `${newSubject.name} - ${newGrade?.name || ''}`.trim(),
+              description: `كورس مادة ${newSubject.name} للمرحلة التعليمية.`,
+              price: group.sessionPrice || 40,
+              subject: newSubject,
+              grade: newGrade || undefined,
+              teacher: teacherForCourse || undefined,
+              status: "PUBLISHED"
+            });
+            await courseRepo.save(matchedCourse);
+          }
+
+          group.course = matchedCourse;
         }
       }
 
@@ -1390,17 +1470,20 @@ export class CourseGroupController {
       }
 
       const isClosed = group.status === "CLOSED" || group.status === "IN_PROGRESS";
+      const isUnpaidPlan = paymentPlan === "UNPAID" || paymentPlan === "POSTPONED";
 
-      // Receipt image and financial data are strictly mandatory when adding/enrolling a student
-      if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
-        return res.status(400).json({ 
-          error: "يلزم إرفاق صورة إيصال التحويل / السداد لإتمام تسكين الطالب في المجموعة." 
-        });
-      }
-      if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) <= 0) {
-        return res.status(400).json({ 
-          error: "يلزم إدخال المبلغ المالي المدفوع بشكل صحيح." 
-        });
+      // Receipt image and financial data are mandatory unless plan is UNPAID / POSTPONED (سيدفع لاحقاً)
+      if (!isUnpaidPlan) {
+        if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
+          return res.status(400).json({ 
+            error: "يلزم إرفاق صورة إيصال التحويل / السداد لإتمام تسكين الطالب في المجموعة." 
+          });
+        }
+        if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) <= 0) {
+          return res.status(400).json({ 
+            error: "يلزم إدخال المبلغ المالي المدفوع بشكل صحيح." 
+          });
+        }
       }
 
       // Check current capacity and available seats
@@ -1463,14 +1546,19 @@ export class CourseGroupController {
         : (calculatedDefaultPrice || (unitPrice * effectiveSessions) || 320);
 
       let remAmount = 0;
-      let finalPaymentStatus: "PAID" | "PARTIAL" | "EXEMPT" = "PAID";
+      let finalPaymentStatus: "PAID" | "PARTIAL" | "UNPAID" | "EXEMPT" = "PAID";
 
-      if (paymentPlan === "PARTIAL") {
+      if (isUnpaidPlan) {
+        remAmount = remainingAmount !== undefined && !isNaN(Number(remainingAmount)) && Number(remainingAmount) > 0
+          ? Number(remainingAmount)
+          : groupExpectedPrice;
+        finalPaymentStatus = "UNPAID";
+      } else if (paymentPlan === "PARTIAL") {
         remAmount = remainingAmount !== undefined ? Number(remainingAmount) : Math.max(0, groupExpectedPrice - paidAmount);
         finalPaymentStatus = remAmount > 0 ? "PARTIAL" : "PAID";
-      } else if (paymentPlan === "DISCOUNT") {
+      } else if (paymentPlan === "DISCOUNT" || paymentPlan === "EXEMPT") {
         remAmount = 0;
-        finalPaymentStatus = "PAID";
+        finalPaymentStatus = "EXEMPT";
       } else {
         // FULL
         remAmount = 0;
@@ -1478,27 +1566,29 @@ export class CourseGroupController {
       }
 
       enrollment.paymentStatus = finalPaymentStatus;
-      enrollment.paidAmount = paidAmount;
+      enrollment.paidAmount = isUnpaidPlan ? 0 : paidAmount;
       enrollment.remainingAmount = remAmount;
-      enrollment.dueDate = (finalPaymentStatus === "PARTIAL" && dueDate) ? String(dueDate) : null;
+      enrollment.dueDate = ((finalPaymentStatus === "PARTIAL" || finalPaymentStatus === "UNPAID") && dueDate) ? String(dueDate) : null;
       if (marketingCampaign) {
         enrollment.campaign = marketingCampaign;
       }
 
       const initialHistoryItem = {
-        amount: paidAmount,
+        amount: isUnpaidPlan ? 0 : paidAmount,
         paidAt: new Date().toISOString(),
         receiptUrl: receiptUrl || undefined,
         provider: provider || "manual",
         providerTransactionId: providerTransactionId || undefined,
-        notes: notes || (paymentPlan === "PARTIAL" 
-          ? `قسط أول / دفعة مقدمة (متبقي: ${remAmount} ج.م)` 
-          : (paymentPlan === "DISCOUNT" ? `خصم معتمد: ${discountReason || 'سداد معتمد'}` : "سداد اشتراك المجموعة"))
+        notes: notes || (isUnpaidPlan
+          ? `تسكين بدون سداد فوري - سيدفع لاحقاً (مستحق: ${remAmount} ج.م)`
+          : (paymentPlan === "PARTIAL" 
+            ? `قسط أول / دفعة مقدمة (متبقي: ${remAmount} ج.م)` 
+            : (paymentPlan === "DISCOUNT" || paymentPlan === "EXEMPT" ? `خصم معتمد: ${discountReason || 'سداد معتمد'}` : "سداد اشتراك المجموعة")))
       };
       enrollment.installmentHistory = [initialHistoryItem];
 
-      // Handle Payment Record (Mandatory for closed groups, optional if entered for open groups)
-      const hasPaymentData = isClosed || !!receiptUrl || (amount !== undefined && Number(amount) > 0);
+      // Handle Payment Record (Only if student paid something or has receipt)
+      const hasPaymentData = !isUnpaidPlan && (isClosed || !!receiptUrl || (amount !== undefined && Number(amount) > 0));
       if (hasPaymentData) {
         let payment = enrollment.payment;
         if (!payment) {
@@ -1508,7 +1598,7 @@ export class CourseGroupController {
         const calculatedAmount = paidAmount > 0 ? paidAmount : groupExpectedPrice;
         const defaultPaymentNotes = paymentPlan === "PARTIAL"
           ? `قسط أول (${paidAmount} ج.م) - متبقي: ${remAmount} ج.م`
-          : (paymentPlan === "DISCOUNT"
+          : (paymentPlan === "DISCOUNT" || paymentPlan === "EXEMPT"
             ? `خصم معتمد: ${discountReason || 'سداد معتمد'}`
             : (isClosed ? "إضافة استثنائية لمجموعة مغلقة مع إيصال معتمد بواسطة الإدارة" : "تسجيل بواسطة الإدارة"));
 
@@ -1782,11 +1872,11 @@ export class CourseGroupController {
       const { amount, provider, providerTransactionId, receiptUrl, notes } = req.body || {};
 
       if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-        return res.status(400).json({ error: "يلزم إدخال مبلغ القسط المسدد بشكل صحيح." });
+        return res.status(400).json({ error: "يلزم إدخال مبلغ السداد بشكل صحيح." });
       }
 
-      if (!receiptUrl || typeof receiptUrl !== "string" || !receiptUrl.trim()) {
-        return res.status(400).json({ error: "يلزم إرفاق صورة إيصال سداد القسط المتبقي." });
+      if (!receiptUrl && provider !== "cash") {
+        return res.status(400).json({ error: "يلزم إرفاق صورة إيصال سداد المبلغ / القسط." });
       }
 
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
@@ -1810,7 +1900,10 @@ export class CourseGroupController {
       const installmentNum = (enrollment.installmentHistory?.length || 0) + 1;
       const addAmount = Number(amount);
       const prevPaid = enrollment.paidAmount || (enrollment.payment?.amount || 0);
-      const prevRemaining = enrollment.remainingAmount || 0;
+      const groupExpectedPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * (group.totalSessions || 8) : 320);
+      const prevRemaining = (enrollment.remainingAmount !== undefined && enrollment.remainingAmount > 0)
+        ? enrollment.remainingAmount
+        : (enrollment.paymentStatus === "UNPAID" ? groupExpectedPrice : 0);
       const newPaid = prevPaid + addAmount;
       const newRemaining = Math.max(0, prevRemaining - addAmount);
 
@@ -1827,10 +1920,10 @@ export class CourseGroupController {
       history.push({
         amount: addAmount,
         paidAt: new Date().toISOString(),
-        receiptUrl,
+        receiptUrl: receiptUrl || undefined,
         provider: provider || "manual",
         providerTransactionId,
-        notes: notes || `سداد القسط رقم ${installmentNum}`
+        notes: notes || `سداد دفعة / قسط (${addAmount} ج.م)`
       });
       enrollment.installmentHistory = history;
 
@@ -1842,8 +1935,8 @@ export class CourseGroupController {
       payment.type = "GROUP_ENROLLMENT";
       payment.provider = provider || "manual";
       if (providerTransactionId) payment.providerTransactionId = providerTransactionId;
-      payment.receiptUrl = receiptUrl;
-      payment.notes = notes || `سداد قسط (${addAmount} ج.م) لمجموعة "${group.name}". متبقي: ${newRemaining} ج.م`;
+      if (receiptUrl) payment.receiptUrl = receiptUrl;
+      payment.notes = notes || `سداد رسوم / قسط (${addAmount} ج.م) لمجموعة "${group.name}". متبقي: ${newRemaining} ج.م`;
       payment.status = "SUCCESS";
       payment.courseEnrollment = enrollment;
 
@@ -1854,15 +1947,15 @@ export class CourseGroupController {
       try {
         await NotificationController.createNotification(
           enrollment.student.id,
-          "تم تأكيد استلام سداد القسط بنجاح! 🧾🎉",
-          `تم توثيق واعتماد سداد مبلغ (${addAmount} ج.م) لمجموعة "${group.name}". ${newRemaining <= 0 ? "تهانينا! تم سداد كامل الرسوم بنجاح ✅" : `المتبقي: ${newRemaining} ج.م.`}`,
+          "تم تأكيد استلام سداد الرسوم بنجاح! 🧾🎉",
+          `تم توثيق واعتماد سداد مبلغ (${addAmount} ج.م) لمجموعة "${group.name}". ${newRemaining <= 0 ? "تهانينا! تم سداد كامل الرسوم بنجاح وتفعيل مقعدك ✅" : `المتبقي: ${newRemaining} ج.م.`}`,
           "success",
           `/student/groups`
         );
       } catch (e) { }
 
       return res.status(200).json({
-        message: newRemaining <= 0 ? "تم سداد كامل المبلغ واعتماد الإيصال بنجاح! 🎉✅" : `تم تسجيل سداد القسط (${addAmount} ج.م) بنجاح. المتبقي: ${newRemaining} ج.م.`,
+        message: newRemaining <= 0 ? "تم سداد كامل المبلغ واعتماد الإيصال بنجاح! 🎉✅" : `تم تسجيل سداد (${addAmount} ج.م) بنجاح. المتبقي: ${newRemaining} ج.م.`,
         enrollment: {
           id: enrollment.id,
           paymentStatus: enrollment.paymentStatus,
@@ -1875,6 +1968,97 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error in recordInstallmentPayment:", err);
       return res.status(500).json({ error: "فشل تسجيل سداد القسط." });
+    }
+  }
+
+  // POST /admin/groups/:id/students/:studentId/update-payment-status
+  static async updateStudentPaymentStatus(req: AuthRequest, res: Response) {
+    try {
+      const { id, studentId } = req.params;
+      const { paymentStatus, paidAmount, remainingAmount, dueDate, notes } = req.body || {};
+
+      if (!paymentStatus || !["PAID", "PARTIAL", "UNPAID", "EXEMPT"].includes(paymentStatus)) {
+        return res.status(400).json({ error: "حالة دفع غير صالحة. القيم المسموحة: PAID, PARTIAL, UNPAID, EXEMPT" });
+      }
+
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+
+      const group = await groupRepo.findOne({ where: { id } });
+      if (!group) {
+        return res.status(404).json({ error: "المجموعة الدراسية غير موجودة." });
+      }
+
+      const enrollment = await enrollmentRepo.findOne({
+        where: { student: { id: studentId }, group: { id } },
+        relations: ["student", "payment", "group"]
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "الطالب غير مقيد في هذه المجموعة." });
+      }
+
+      const groupExpectedPrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * (group.totalSessions || 8) : 320);
+
+      enrollment.paymentStatus = paymentStatus;
+      if (paidAmount !== undefined && !isNaN(Number(paidAmount))) {
+        enrollment.paidAmount = Number(paidAmount);
+      } else if (paymentStatus === "PAID") {
+        enrollment.paidAmount = groupExpectedPrice;
+      } else if (paymentStatus === "UNPAID") {
+        enrollment.paidAmount = 0;
+      }
+
+      if (remainingAmount !== undefined && !isNaN(Number(remainingAmount))) {
+        enrollment.remainingAmount = Number(remainingAmount);
+      } else if (paymentStatus === "PAID" || paymentStatus === "EXEMPT") {
+        enrollment.remainingAmount = 0;
+      } else if (paymentStatus === "UNPAID") {
+        enrollment.remainingAmount = groupExpectedPrice;
+      }
+
+      if (dueDate !== undefined) {
+        enrollment.dueDate = dueDate ? String(dueDate) : null;
+      } else if (paymentStatus === "PAID") {
+        enrollment.dueDate = null;
+      }
+
+      const history = Array.isArray(enrollment.installmentHistory) ? [...enrollment.installmentHistory] : [];
+      history.push({
+        amount: enrollment.paidAmount,
+        paidAt: new Date().toISOString(),
+        notes: notes || `تعديل يدوي لحالة الدفع إلى (${paymentStatus}) بواسطة الإدارة`
+      });
+      enrollment.installmentHistory = history;
+
+      await enrollmentRepo.save(enrollment);
+
+      // Notify student if marked PAID
+      if (paymentStatus === "PAID") {
+        try {
+          await NotificationController.createNotification(
+            enrollment.student.id,
+            "تم تحديث حالة السداد إلى (مسدد بالكامل) ✅",
+            `تم اعتماد سدادك لمجموعة "${group.name}". مقعدك مفعّل بالكامل.`,
+            "success",
+            "#student/groups"
+          );
+        } catch (e) {}
+      }
+
+      return res.status(200).json({
+        message: "تم تحديث حالة دفع الطالب بنجاح! ✅",
+        enrollment: {
+          id: enrollment.id,
+          paymentStatus: enrollment.paymentStatus,
+          paidAmount: enrollment.paidAmount,
+          remainingAmount: enrollment.remainingAmount,
+          dueDate: enrollment.dueDate
+        }
+      });
+    } catch (err: any) {
+      console.error("Error in updateStudentPaymentStatus:", err);
+      return res.status(500).json({ error: err.message || "فشل تحديث حالة الدفع للطالب." });
     }
   }
 
@@ -2040,6 +2224,7 @@ export class CourseGroupController {
       const { id } = req.params;
       const {
         additionalSessions,
+        sessionsList,
         startDate,
         scheduleDays,
         scheduleTime,
@@ -2047,12 +2232,14 @@ export class CourseGroupController {
         meetingLink,
         monthlyPrice,
         teacherHourlyRate,
+        studentHourlyRate,
+        sessionPrice,
         cycleTitle,
         notifyStudents = true,
         studentIdsToKeep
       } = req.body || {};
 
-      const countToAdd = parseInt(additionalSessions, 10) || 8;
+      const countToAdd = parseInt(additionalSessions, 10) || (Array.isArray(sessionsList) && sessionsList.length > 0 ? sessionsList.length : 8);
       if (countToAdd < 1 || countToAdd > 100) {
         return res.status(400).json({ error: "يرجى تحديد عدد حصص صالح للتجديد (بين 1 و 100 حصة)." });
       }
@@ -2082,16 +2269,31 @@ export class CourseGroupController {
       if (!teacher) {
         return res.status(400).json({ error: "يجب تعيين معلم مشرف للمجموعة لتجديد دورتها وجدولة الحصص." });
       }
+      if (!group.teacher && teacher) {
+        group.teacher = teacher;
+      }
 
       // Update group configuration if provided
       if (meetingLink) group.meetingLink = meetingLink;
       if (scheduleDays) group.scheduleDays = scheduleDays;
       if (scheduleTime) group.scheduleTime = scheduleTime;
+      if (group.scheduleDays || group.scheduleTime) {
+        group.scheduleText = `${group.scheduleDays || ''} في تمام الساعة ${group.scheduleTime || ''}`.trim();
+      }
       if (sessionDuration) group.sessionDuration = parseInt(sessionDuration, 10);
-      if (monthlyPrice !== undefined && monthlyPrice !== null && !isNaN(parseFloat(monthlyPrice))) {
+      const hoursPerSession = ((group.sessionDuration || 60) > 0 ? (group.sessionDuration || 60) : 60) / 60;
+      if (studentHourlyRate !== undefined && studentHourlyRate !== null && !isNaN(parseFloat(studentHourlyRate))) {
+        group.studentHourlyRate = parseFloat(studentHourlyRate);
+        group.sessionPrice = sessionPrice !== undefined && !isNaN(parseFloat(sessionPrice))
+          ? parseFloat(sessionPrice)
+          : Math.round(group.studentHourlyRate * hoursPerSession * 100) / 100;
+        group.monthlyPrice = monthlyPrice !== undefined && !isNaN(parseFloat(monthlyPrice))
+          ? parseFloat(monthlyPrice)
+          : Math.round(group.sessionPrice * countToAdd);
+      } else if (monthlyPrice !== undefined && monthlyPrice !== null && !isNaN(parseFloat(monthlyPrice))) {
         group.monthlyPrice = parseFloat(monthlyPrice);
         group.sessionPrice = Math.round((group.monthlyPrice / countToAdd) * 100) / 100;
-        group.studentHourlyRate = group.sessionPrice;
+        group.studentHourlyRate = Math.round((group.sessionPrice / hoursPerSession) * 100) / 100;
       }
       if (req.user?.role !== "teacher" && teacherHourlyRate !== undefined && teacherHourlyRate !== null && !isNaN(parseFloat(teacherHourlyRate))) {
         group.teacherHourlyRate = parseFloat(teacherHourlyRate);
@@ -2104,6 +2306,9 @@ export class CourseGroupController {
         where: { group: { id } },
         relations: ["student"]
       });
+
+      const newCyclePrice = group.monthlyPrice || (group.sessionPrice ? group.sessionPrice * countToAdd : 320);
+      const newCycleDueDate = startDate ? (typeof startDate === "string" ? startDate.slice(0, 10) : new Date(startDate).toISOString().slice(0, 10)) : null;
 
       if (Array.isArray(studentIdsToKeep)) {
         const keepSet = new Set(studentIdsToKeep.map((sId: any) => String(sId)));
@@ -2131,10 +2336,23 @@ export class CourseGroupController {
             }
           } else {
             keptStudentsCount++;
+            // Setup payment status and remaining balance for the new cycle with the new price
+            enr.paymentStatus = "UNPAID";
+            enr.paidAmount = 0;
+            enr.remainingAmount = newCyclePrice;
+            if (newCycleDueDate) enr.dueDate = newCycleDueDate;
+            await enrollmentRepo.save(enr);
           }
         }
       } else {
         keptStudentsCount = currentEnrollments.length;
+        for (const enr of currentEnrollments) {
+          enr.paymentStatus = "UNPAID";
+          enr.paidAmount = 0;
+          enr.remainingAmount = newCyclePrice;
+          if (newCycleDueDate) enr.dueDate = newCycleDueDate;
+          await enrollmentRepo.save(enr);
+        }
       }
 
       // Find existing sessions count to continue numbering
@@ -2145,73 +2363,108 @@ export class CourseGroupController {
       const previousSessionCount = existingSessions.length;
       const lastSession = existingSessions[existingSessions.length - 1];
 
-      // Determine starting date
-      const daysArr = (group.scheduleDays || "الأحد، الثلاثاء").split(/[,،]+/).map((d: string) => d.trim());
-      const dayIndexMap: Record<string, number> = {
-        'الأحد': 0, 'الاثنين': 1, 'الإثنين': 1, 'الثلاثاء': 2,
-        'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6
-      };
-      const targetDays = daysArr.map((d: string) => dayIndexMap[d]).filter((d: any) => d !== undefined);
       const duration = group.sessionDuration || 60;
-
-      let hour = 18;
-      let min = 0;
-      const timeStr = group.scheduleTime || "18:00";
-      const isPM = timeStr.includes("م") || timeStr.toLowerCase().includes("pm");
-      const isAM = timeStr.includes("ص") || timeStr.toLowerCase().includes("am");
-      const cleanTime = timeStr.replace(/[^0-9:]/g, "");
-      const parts = cleanTime.split(":");
-      if (parts.length >= 1) {
-        hour = parseInt(parts[0], 10) || 18;
-        if (isPM && hour < 12) hour += 12;
-        if (isAM && hour === 12) hour = 0;
-      }
-      if (parts.length >= 2) {
-        min = parseInt(parts[1], 10) || 0;
-      }
-
-      let currDate: Date;
-      if (startDate) {
-        currDate = new Date(startDate);
-      } else if (lastSession && new Date(lastSession.scheduledAt) > new Date()) {
-        // Start after the last scheduled session
-        currDate = new Date(lastSession.scheduledAt);
-        currDate.setDate(currDate.getDate() + 1);
-      } else {
-        currDate = new Date();
-        currDate.setDate(currDate.getDate() + 1);
-      }
-      currDate.setHours(hour, min, 0, 0);
-
       const createdSessions: Session[] = [];
-      let added = 0;
-      let safety = 0;
-      while (added < countToAdd && safety < 1000) {
-        safety++;
-        if (targetDays.length === 0 || targetDays.includes(currDate.getDay())) {
-          added++;
-          const sessionIndex = previousSessionCount + added;
+
+      // If client provided a verified list of sessions from preview
+      if (Array.isArray(sessionsList) && sessionsList.length > 0) {
+        for (let i = 0; i < sessionsList.length; i++) {
+          const item = sessionsList[i];
+          const sessionIndex = item.sessionNumber || (previousSessionCount + i + 1);
           const sess = new Session();
-          sess.title = `${group.name} - حصة ${sessionIndex}${cycleTitle ? ` (${cycleTitle})` : ''}`;
+          sess.title = item.title || `${group.name} - حصة ${sessionIndex}${cycleTitle ? ` (${cycleTitle})` : ''}`;
           sess.description = `حصة تفاعلية مباشرة ضمن الدورة المجددة لمجموعة ${group.name}`;
           sess.course = group.course;
           sess.group = group;
           sess.teacher = teacher;
           sess.student = null as any;
-          sess.scheduledAt = new Date(currDate);
-          sess.duration = duration;
+          sess.scheduledAt = new Date(item.scheduledAt);
+          sess.duration = item.duration || duration;
+          sess.meetingLink = group.meetingLink || meetingLink || null;
           sess.status = "SCHEDULED";
           createdSessions.push(sess);
         }
-        currDate.setDate(currDate.getDate() + 1);
+      } else {
+        // Fallback automatic schedule generation
+        const daysArr = (group.scheduleDays || "الأحد، الثلاثاء").split(/[,،]+/).map((d: string) => d.trim());
+        const dayIndexMap: Record<string, number> = {
+          'الأحد': 0, 'الاحد': 0, 'Sunday': 0, 'sun': 0,
+          'الاثنين': 1, 'الإثنين': 1, 'اثنين': 1, 'Monday': 1, 'mon': 1,
+          'الثلاثاء': 2, 'ثلاثاء': 2, 'Tuesday': 2, 'tue': 2,
+          'الأربعاء': 3, 'الاربعاء': 3, 'اربعاء': 3, 'Wednesday': 3, 'wed': 3,
+          'الخميس': 4, 'خميس': 4, 'Thursday': 4, 'thu': 4,
+          'الجمعة': 5, 'جمعة': 5, 'Friday': 5, 'fri': 5,
+          'السبت': 6, 'سبت': 6, 'Saturday': 6, 'sat': 6
+        };
+        const targetDays = daysArr.map((d: string) => dayIndexMap[d]).filter((d: any) => d !== undefined);
+
+        let hour = 18;
+        let min = 0;
+        const timeStr = group.scheduleTime || "18:00";
+        const isPM = timeStr.includes("م") || timeStr.toLowerCase().includes("pm");
+        const isAM = timeStr.includes("ص") || timeStr.toLowerCase().includes("am");
+        const cleanTime = timeStr.replace(/[^0-9:]/g, "");
+        const parts = cleanTime.split(":");
+        if (parts.length >= 1) {
+          hour = parseInt(parts[0], 10) || 18;
+          if (isPM && hour < 12) hour += 12;
+          if (isAM && hour === 12) hour = 0;
+        }
+        if (parts.length >= 2) {
+          min = parseInt(parts[1], 10) || 0;
+        }
+
+        let currDate: Date;
+        if (startDate && typeof startDate === "string" && startDate.includes("-")) {
+          const [sy, sm, sd] = startDate.split("-").map(Number);
+          currDate = new Date(sy, sm - 1, sd, hour, min, 0, 0);
+        } else if (startDate) {
+          currDate = new Date(startDate);
+          currDate.setHours(hour, min, 0, 0);
+        } else if (lastSession && new Date(lastSession.scheduledAt) > new Date()) {
+          currDate = new Date(lastSession.scheduledAt);
+          currDate.setDate(currDate.getDate() + 1);
+          currDate.setHours(hour, min, 0, 0);
+        } else {
+          currDate = new Date();
+          currDate.setDate(currDate.getDate() + 1);
+          currDate.setHours(hour, min, 0, 0);
+        }
+
+        let added = 0;
+        let safety = 0;
+        while (added < countToAdd && safety < 1000) {
+          safety++;
+          if (targetDays.length === 0 || targetDays.includes(currDate.getDay())) {
+            added++;
+            const sessionIndex = previousSessionCount + added;
+            const sess = new Session();
+            sess.title = `${group.name} - حصة ${sessionIndex}${cycleTitle ? ` (${cycleTitle})` : ''}`;
+            sess.description = `حصة تفاعلية مباشرة ضمن الدورة المجددة لمجموعة ${group.name}`;
+            sess.course = group.course;
+            sess.group = group;
+            sess.teacher = teacher;
+            sess.student = null as any;
+            sess.scheduledAt = new Date(currDate);
+            sess.duration = duration;
+            sess.meetingLink = group.meetingLink || meetingLink || null;
+            sess.status = "SCHEDULED";
+            createdSessions.push(sess);
+          }
+          currDate.setDate(currDate.getDate() + 1);
+        }
       }
 
       await sessionRepo.save(createdSessions);
 
       // Update group overall counters and status
-      group.totalSessions = (group.totalSessions || previousSessionCount) + countToAdd;
+      const totalSessionsInDb = await sessionRepo.count({ where: { group: { id: group.id } } });
+      group.totalSessions = totalSessionsInDb;
       group.status = "IN_PROGRESS";
       if (createdSessions.length > 0) {
+        if (!group.startDate) {
+          group.startDate = new Date(createdSessions[0].scheduledAt);
+        }
         group.endDate = new Date(createdSessions[createdSessions.length - 1].scheduledAt);
       }
 
@@ -2222,13 +2475,23 @@ export class CourseGroupController {
         const announcementObj = {
           id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
           title: `🔄 تم تجديد دورة المجموعة بنجاح${cycleLabel}`,
-          content: `أعزاءنا طلاب مجموعة "${group.name}"، تم بحمد الله تجديد الدورة وجدولة ${countToAdd} حصص جديدة تبدأ يوم ${firstDateStr}. مواعيدنا: ${group.scheduleDays} في تمام الساعة ${group.scheduleTime}. نرجو من الجميع الالتزام بمواعيد الحصص وتأكيد سداد اشتراك الدورة الجديدة (${group.monthlyPrice || monthlyPrice || 320} ج.م). بالتوفيق والنجاح! 🚀📚`,
+          content: `أعزاءنا طلاب مجموعة "${group.name}"، تم بحمد الله تجديد الدورة وجدولة ${createdSessions.length} حصص جديدة تبدأ يوم ${firstDateStr}. مواعيدنا: ${group.scheduleDays} في تمام الساعة ${group.scheduleTime}. نرجو من الجميع الالتزام بمواعيد الحصص وتأكيد سداد اشتراك الدورة الجديدة (${group.monthlyPrice || monthlyPrice || 320} ج.م). بالتوفيق والنجاح! 🚀📚`,
           authorName: (req.user as any)?.name || (req.user?.role === "teacher" ? teacher.name : "إدارة المنصة"),
           authorRole: req.user?.role === "teacher" ? "معلم المادة" : "إدارة المنصة",
           createdAt: new Date().toISOString(),
           isPinned: true
         };
-        group.announcements = [announcementObj, ...(group.announcements || [])];
+
+        let currentAnnouncements: any[] = [];
+        if (Array.isArray(group.announcements)) {
+          currentAnnouncements = group.announcements;
+        } else if (typeof group.announcements === "string") {
+          try {
+            const parsed = JSON.parse(group.announcements);
+            if (Array.isArray(parsed)) currentAnnouncements = parsed;
+          } catch (_) {}
+        }
+        group.announcements = [announcementObj, ...currentAnnouncements];
       } catch (_) {}
 
       await groupRepo.save(group);
@@ -2261,7 +2524,7 @@ export class CourseGroupController {
               await NotificationController.createNotification(
                 enr.student.id,
                 `تجديد دورة مجموعتك الدراسية! 🔄📚${cycleLabel}`,
-                `تم تجديد دورة مجموعة "${group.name}" وإضافة ${countToAdd} حصص تفاعلية جديدة! موعد أول حصة: ${firstDateStr}. ${priceStr} يرجى مراجعة الجدول.`,
+                `تم تجديد دورة مجموعة "${group.name}" وإضافة ${createdSessions.length} حصص تفاعلية جديدة! موعد أول حصة: ${firstDateStr}. ${priceStr} يرجى مراجعة الجدول.`,
                 "info",
                 "#student-groups"
               );
@@ -2270,9 +2533,36 @@ export class CourseGroupController {
         } catch (e) {}
       }
 
+      const safeGroup = {
+        id: group.id,
+        name: group.name,
+        status: group.status,
+        startDate: group.startDate,
+        endDate: group.endDate,
+        totalSessions: group.totalSessions,
+        sessionDuration: group.sessionDuration,
+        sessionPrice: group.sessionPrice,
+        monthlyPrice: group.monthlyPrice,
+        studentHourlyRate: group.studentHourlyRate,
+        teacherHourlyRate: group.teacherHourlyRate,
+        scheduleDays: group.scheduleDays,
+        scheduleTime: group.scheduleTime,
+        scheduleText: group.scheduleText,
+        meetingLink: group.meetingLink
+      };
+
+      const safeSessions = createdSessions.map(s => ({
+        id: s.id,
+        title: s.title,
+        scheduledAt: s.scheduledAt,
+        duration: s.duration,
+        status: s.status,
+        meetingLink: s.meetingLink
+      }));
+
       return res.status(200).json({
         message: `تم تجديد دورة المجموعة بنجاح وإضافة (${createdSessions.length}) حصص جديدة! استمر (${keptStudentsCount}) طالب في الدورة. 🔄🎉`,
-        group,
+        group: safeGroup,
         previousSessionsCount: previousSessionCount,
         addedSessionsCount: createdSessions.length,
         totalSessionsCount: group.totalSessions,
@@ -2280,7 +2570,7 @@ export class CourseGroupController {
         removedStudentsCount,
         firstNewSession: createdSessions[0]?.scheduledAt,
         lastNewSession: createdSessions[createdSessions.length - 1]?.scheduledAt,
-        sessions: createdSessions
+        sessions: safeSessions
       });
     } catch (err: any) {
       console.error("Error renewing group cycle:", err);
@@ -3531,10 +3821,76 @@ export class CourseGroupController {
       }
 
       await sessionRepo.remove(session);
-      return res.status(200).json({ message: "تم حذف الحصة بنجاح." });
+      const remainingCount = await sessionRepo.count({ where: { group: { id: group.id } } });
+      group.totalSessions = remainingCount;
+      const lastRemainingSession = await sessionRepo.findOne({
+        where: { group: { id: group.id } },
+        order: { scheduledAt: "DESC" }
+      });
+      if (lastRemainingSession) {
+        group.endDate = lastRemainingSession.scheduledAt;
+      }
+      await groupRepo.save(group);
+
+      return res.status(200).json({ message: "تم حذف الحصة بنجاح.", remainingCount });
     } catch (err: any) {
       console.error("Error deleting group session:", err);
       return res.status(500).json({ error: "فشل حذف الحصة." });
+    }
+  }
+
+  // POST /admin/groups/:id/trim-sessions
+  static async trimGroupSessions(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { keepCount } = req.body || {};
+      const groupRepo = AppDataSource.getRepository(CourseGroup);
+      const sessionRepo = AppDataSource.getRepository(Session);
+
+      const group = await groupRepo.findOne({ where: { id } });
+      if (!group) return res.status(404).json({ error: "المجموعة غير موجودة." });
+
+      const allSessions = await sessionRepo.find({
+        where: { group: { id } },
+        order: { scheduledAt: "ASC" }
+      });
+
+      const maxToKeep = parseInt(keepCount, 10);
+      if (isNaN(maxToKeep) || maxToKeep < 0) {
+        return res.status(400).json({ error: "يرجى تحديد عدد الحصص المطلوب الإبقاء عليها." });
+      }
+
+      if (allSessions.length <= maxToKeep) {
+        return res.status(200).json({
+          message: "عدد الحصص الحالي مطابق أو أقل من العدد المطلوب.",
+          remainingCount: allSessions.length
+        });
+      }
+
+      // Only delete scheduled (non-completed) sessions from the tail
+      const sessionsToRemove = allSessions.slice(maxToKeep).filter(s => s.status !== "COMPLETED");
+      if (sessionsToRemove.length > 0) {
+        await sessionRepo.remove(sessionsToRemove);
+      }
+
+      const updatedCount = await sessionRepo.count({ where: { group: { id } } });
+      group.totalSessions = updatedCount;
+      const remainingSessions = await sessionRepo.find({
+        where: { group: { id } },
+        order: { scheduledAt: "ASC" }
+      });
+      if (remainingSessions.length > 0) {
+        group.endDate = remainingSessions[remainingSessions.length - 1].scheduledAt;
+      }
+      await groupRepo.save(group);
+
+      return res.status(200).json({
+        message: `تم حذف (${sessionsToRemove.length}) حصة زائدة بنجاح، وأصبح إجمالي الحصص (${updatedCount}) حصة! ✅`,
+        remainingCount: updatedCount
+      });
+    } catch (err: any) {
+      console.error("Error trimming group sessions:", err);
+      return res.status(500).json({ error: "فشل حذف الحصص الزائدة." });
     }
   }
 }

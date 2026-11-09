@@ -30,6 +30,7 @@ let User = class User {
     avatar;
     githubId;
     meetingLink;
+    videoUrl; // Teacher introductory/promo video
     customCategories;
     location;
     education;
@@ -113,6 +114,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "meetingLink", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "videoUrl", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

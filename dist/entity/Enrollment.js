@@ -15,11 +15,15 @@ const User_1 = require("./User");
 const Course_1 = require("./Course");
 const Payment_1 = require("./Payment");
 const CourseGroup_1 = require("./CourseGroup");
+const MarketingCampaign_1 = require("./MarketingCampaign");
+const ClassPackage_1 = require("./ClassPackage");
 let Enrollment = class Enrollment {
     id;
     student;
     course;
+    classPackage;
     group;
+    campaign;
     progress; // 0 to 100
     status;
     completedLessons; // List of completed lesson IDs
@@ -45,13 +49,21 @@ __decorate([
     __metadata("design:type", User_1.User)
 ], Enrollment.prototype, "student", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, onDelete: "CASCADE" }),
-    __metadata("design:type", Course_1.Course)
+    (0, typeorm_1.ManyToOne)(() => Course_1.Course, { eager: true, onDelete: "CASCADE", nullable: true }),
+    __metadata("design:type", Object)
 ], Enrollment.prototype, "course", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => ClassPackage_1.ClassPackage, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "classPackage", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => CourseGroup_1.CourseGroup, group => group.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" }),
     __metadata("design:type", Object)
 ], Enrollment.prototype, "group", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => MarketingCampaign_1.MarketingCampaign, campaign => campaign.enrollments, { nullable: true, eager: true, onDelete: "SET NULL" }),
+    __metadata("design:type", Object)
+], Enrollment.prototype, "campaign", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)

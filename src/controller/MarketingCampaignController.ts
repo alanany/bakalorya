@@ -5,21 +5,57 @@ import { Enrollment } from "../entity/Enrollment";
 import { Payment } from "../entity/Payment";
 import { AuthRequest } from "../middleware/auth";
 
+// ─── Allowed values (whitelist) ──────────────────────────────────────────────
+const ALLOWED_PLATFORMS = ["facebook", "instagram", "tiktok", "google_ads", "snapchat", "whatsapp", "other"] as const;
+const ALLOWED_STATUSES  = ["active", "paused", "completed"] as const;
+type AllowedPlatform    = typeof ALLOWED_PLATFORMS[number];
+type AllowedStatus      = typeof ALLOWED_STATUSES[number];
+
+function sanitizePlatform(value: string | undefined): AllowedPlatform {
+  const v = (value || "").toLowerCase().trim() as AllowedPlatform;
+  return ALLOWED_PLATFORMS.includes(v) ? v : "other";
+}
+function sanitizeStatus(value: string | undefined): AllowedStatus {
+  const v = (value || "").trim() as AllowedStatus;
+  return ALLOWED_STATUSES.includes(v) ? v : "active";
+}
+
+/** Group an array by a key function */
+function groupBy<T>(arr: T[], keyFn: (item: T) => string | undefined): Record<string, T[]> {
+  return arr.reduce((acc, item) => {
+    const key = keyFn(item) ?? "__undefined__";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {} as Record<string, T[]>);
+}
+
 export class MarketingCampaignController {
   // GET /api/admin/marketing-campaigns - List all campaigns with calculated ROI, ROAS, CAC, and Revenue
   static async getCampaigns(req: AuthRequest, res: Response) {
     try {
-      const campaignRepo = AppDataSource.getRepository(MarketingCampaign);
+      const campaignRepo   = AppDataSource.getRepository(MarketingCampaign);
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
-      const paymentRepo = AppDataSource.getRepository(Payment);
+      const paymentRepo    = AppDataSource.getRepository(Payment);
 
-      const campaigns = await campaignRepo.find({
-        order: { createdAt: "DESC" }
+      const campaigns = await campaignRepo.find({ order: { createdAt: "DESC" } });
+
+      // ── Bulk-fetch all related data in 2 queries (fixes N+1) ────────────────
+      const allEnrollments = await enrollmentRepo.find({
+        relations: ["campaign", "student", "group", "course"]
+      });
+      const allPayments = await paymentRepo.find({
+        where: { status: "SUCCESS" },
+        relations: ["campaign"]
       });
 
-      let totalAdSpend = 0;
+      const enrollmentsByCampaign = groupBy(allEnrollments, e => e.campaign?.id);
+      const paymentsByCampaign    = groupBy(allPayments,    p => p.campaign?.id);
+      // ────────────────────────────────────────────────────────────────────────
+
+      let totalAdSpend          = 0;
       let totalAttributedRevenue = 0;
-      let totalStudentsAcquired = 0;
+      let totalStudentsAcquired  = 0;
 
       const platformBreakdown: Record<string, { spend: number; revenue: number; students: number }> = {
         facebook: { spend: 0, revenue: 0, students: 0 },
@@ -31,73 +67,64 @@ export class MarketingCampaignController {
         other: { spend: 0, revenue: 0, students: 0 }
       };
 
-      const enrichedCampaigns = await Promise.all(
-        campaigns.map(async (camp) => {
-          // Count active/approved enrollments
-          const enrollments = await enrollmentRepo.find({
-            where: { campaign: { id: camp.id } },
-            relations: ["student", "group", "course"]
-          });
+      const enrichedCampaigns = campaigns.map((camp) => {
+        const enrollments = enrollmentsByCampaign[camp.id] || [];
+        const payments    = paymentsByCampaign[camp.id]    || [];
 
-          // Unique students
-          const studentMap = new Map<string, any>();
-          enrollments.forEach(en => {
-            if (en.student?.id) studentMap.set(en.student.id, en.student);
-          });
-          const studentsCount = studentMap.size;
+        // Unique students
+        const studentMap = new Map<string, any>();
+        enrollments.forEach(en => {
+          if (en.student?.id) studentMap.set(en.student.id, en.student);
+        });
+        const studentsCount = studentMap.size;
 
-          // Sum successful payments
-          const payments = await paymentRepo.find({
-            where: { campaign: { id: camp.id }, status: "SUCCESS" }
-          });
-          const revenue = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+        const revenue = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
 
-          const spend = Number(camp.adSpend) || 0;
-          const netProfit = Number((revenue - spend).toFixed(2));
-          const roas = spend > 0 ? Number((revenue / spend).toFixed(2)) : (revenue > 0 ? 99 : 0);
-          const cac = studentsCount > 0 ? Number((spend / studentsCount).toFixed(2)) : 0;
-          const roiPercentage = spend > 0 ? Number((((revenue - spend) / spend) * 100).toFixed(1)) : 0;
+        const spend         = Number(camp.adSpend) || 0;
+        const netProfit     = Number((revenue - spend).toFixed(2));
+        const roas          = spend > 0 ? Number((revenue / spend).toFixed(2)) : (revenue > 0 ? 99 : 0);
+        const cac           = studentsCount > 0 ? Number((spend / studentsCount).toFixed(2)) : 0;
+        const roiPercentage = spend > 0 ? Number((((revenue - spend) / spend) * 100).toFixed(1)) : 0;
 
-          // Aggregates
-          totalAdSpend += spend;
-          totalAttributedRevenue += revenue;
-          totalStudentsAcquired += studentsCount;
+        // Aggregates
+        totalAdSpend          += spend;
+        totalAttributedRevenue += revenue;
+        totalStudentsAcquired  += studentsCount;
 
-          const pKey = camp.platform in platformBreakdown ? camp.platform : "other";
-          platformBreakdown[pKey].spend += spend;
-          platformBreakdown[pKey].revenue += revenue;
-          platformBreakdown[pKey].students += studentsCount;
+        const pKey = camp.platform in platformBreakdown ? camp.platform : "other";
+        platformBreakdown[pKey].spend    += spend;
+        platformBreakdown[pKey].revenue  += revenue;
+        platformBreakdown[pKey].students += studentsCount;
 
-          return {
-            id: camp.id,
-            name: camp.name,
-            platform: camp.platform,
-            adSpend: spend,
-            currency: camp.currency || "EGP",
-            status: camp.status || "active",
-            startDate: camp.startDate,
-            endDate: camp.endDate,
-            targetAudience: camp.targetAudience,
-            notes: camp.notes,
-            createdAt: camp.createdAt,
-            // Metrics
-            studentsCount,
-            enrollmentsCount: enrollments.length,
-            revenue,
-            netProfit,
-            roas,
-            cac,
-            roiPercentage
-          };
-        })
-      );
+        return {
+          id: camp.id,
+          name: camp.name,
+          platform: camp.platform,
+          adSpend: spend,
+          currency: camp.currency || "EGP",
+          status: camp.status || "active",
+          startDate: camp.startDate,
+          endDate: camp.endDate,
+          targetAudience: camp.targetAudience,
+          notes: camp.notes,
+          createdAt: camp.createdAt,
+          // Metrics
+          studentsCount,
+          enrollmentsCount: enrollments.length,
+          revenue,
+          netProfit,
+          roas,
+          cac,
+          roiPercentage
+        };
+      });
 
-      const overallRoas = totalAdSpend > 0 
-        ? Number((totalAttributedRevenue / totalAdSpend).toFixed(2)) 
+      const overallRoas      = totalAdSpend > 0
+        ? Number((totalAttributedRevenue / totalAdSpend).toFixed(2))
         : (totalAttributedRevenue > 0 ? 99 : 0);
       const overallNetProfit = Number((totalAttributedRevenue - totalAdSpend).toFixed(2));
-      const overallCac = totalStudentsAcquired > 0 
-        ? Number((totalAdSpend / totalStudentsAcquired).toFixed(2)) 
+      const overallCac       = totalStudentsAcquired > 0
+        ? Number((totalAdSpend / totalStudentsAcquired).toFixed(2))
         : 0;
 
       return res.status(200).json({
@@ -214,15 +241,15 @@ export class MarketingCampaignController {
       const campaignRepo = AppDataSource.getRepository(MarketingCampaign);
 
       const campaign = new MarketingCampaign();
-      campaign.name = name.trim();
-      campaign.platform = (platform || "facebook").toLowerCase().trim();
-      campaign.adSpend = adSpend !== undefined && !isNaN(Number(adSpend)) ? Number(adSpend) : 0;
-      campaign.currency = currency || "EGP";
-      campaign.status = "active";
-      campaign.startDate = startDate || null;
-      campaign.endDate = endDate || null;
+      campaign.name           = name.trim();
+      campaign.platform       = sanitizePlatform(platform);
+      campaign.adSpend        = adSpend !== undefined && !isNaN(Number(adSpend)) ? Number(adSpend) : 0;
+      campaign.currency       = currency || "EGP";
+      campaign.status         = "active";
+      campaign.startDate      = startDate || null;
+      campaign.endDate        = endDate || null;
       campaign.targetAudience = targetAudience ? targetAudience.trim() : null;
-      campaign.notes = notes ? notes.trim() : null;
+      campaign.notes          = notes ? notes.trim() : null;
 
       const saved = await campaignRepo.save(campaign);
 
@@ -248,15 +275,15 @@ export class MarketingCampaignController {
         return res.status(404).json({ error: "الحملة التسويقية غير موجودة." });
       }
 
-      if (name !== undefined) campaign.name = name.trim();
-      if (platform !== undefined) campaign.platform = platform.toLowerCase().trim();
+      if (name !== undefined)         campaign.name           = name.trim();
+      if (platform !== undefined)     campaign.platform       = sanitizePlatform(platform);
       if (adSpend !== undefined && !isNaN(Number(adSpend))) campaign.adSpend = Number(adSpend);
-      if (currency !== undefined) campaign.currency = currency;
-      if (status !== undefined) campaign.status = status;
-      if (startDate !== undefined) campaign.startDate = startDate || null;
-      if (endDate !== undefined) campaign.endDate = endDate || null;
+      if (currency !== undefined)     campaign.currency       = currency;
+      if (status !== undefined)       campaign.status         = sanitizeStatus(status);
+      if (startDate !== undefined)    campaign.startDate      = startDate || null;
+      if (endDate !== undefined)      campaign.endDate        = endDate || null;
       if (targetAudience !== undefined) campaign.targetAudience = targetAudience ? targetAudience.trim() : null;
-      if (notes !== undefined) campaign.notes = notes ? notes.trim() : null;
+      if (notes !== undefined)        campaign.notes          = notes ? notes.trim() : null;
 
       const saved = await campaignRepo.save(campaign);
 

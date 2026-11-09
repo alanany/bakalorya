@@ -36,7 +36,7 @@ export class Payment {
   @Column({ nullable: true })
   providerTransactionId: string;
 
-  @Column({ default: "SUCCESS" })
+  @Column({ default: "PENDING" })
   status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
 
   @Column({ nullable: true })

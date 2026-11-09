@@ -144,6 +144,23 @@ router.put("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin
 router.patch("/admin/curriculum/subjects/:id/toggle", authMiddleware, requireRole(["admin"]), CurriculumController.toggleSubjectVisibility);
 router.delete("/admin/curriculum/subjects/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteSubject);
 
+// Class Packages (فصول وباقات الصفحة الرئيسية والصف)
+router.get("/curriculum/classes", CurriculumController.getClasses);
+router.get("/curriculum/classes/:id", CurriculumController.getClassById);
+router.get("/admin/curriculum/classes", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.getAllAdminClasses);
+router.get("/admin/curriculum/grades/:gradeId/classes", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.getAdminClasses);
+router.post("/admin/curriculum/grades/:gradeId/classes", authMiddleware, requireRole(["admin"]), CurriculumController.createClassPackage);
+router.post("/admin/curriculum/grades/:gradeId/classes/seed-defaults", authMiddleware, requireRole(["admin"]), CurriculumController.seedDefaultClasses);
+router.put("/admin/curriculum/classes/:id", authMiddleware, requireRole(["admin"]), CurriculumController.updateClassPackage);
+router.patch("/admin/curriculum/classes/:id/toggle", authMiddleware, requireRole(["admin"]), CurriculumController.toggleClassVisibility);
+router.delete("/admin/curriculum/classes/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteClassPackage);
+router.post("/admin/curriculum/classes/:id/enroll-student", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.enrollStudentInClass);
+router.post("/curriculum/classes/:id/request-subscription", authMiddleware, CurriculumController.requestClassSubscription);
+router.post("/admin/curriculum/class-subscriptions/:id/approve", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.approveClassSubscription);
+router.post("/admin/curriculum/class-subscriptions/:id/reject", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.rejectClassSubscription);
+router.patch("/admin/curriculum/class-subscriptions/:id/payment", authMiddleware, requireRole(["admin", "supervisor"]), CurriculumController.updateClassSubscriptionPayment);
+router.delete("/admin/curriculum/class-subscriptions/:id", authMiddleware, requireRole(["admin"]), CurriculumController.deleteClassSubscription);
+
 router.get("/groups/:id", CourseGroupController.getGroupById);
 router.post("/groups", authMiddleware, requireRole(["teacher", "admin", "supervisor"]), CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController.getCourseGroups);
@@ -201,11 +218,14 @@ router.get("/admin/groups/pending-approval", authMiddleware, requireRole(["admin
 router.get("/admin/all-groups", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.getAllGroups);
 router.post("/admin/groups/:id/approve", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.approveGroup);
 router.post("/admin/groups/:id/reject", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.rejectGroup);
+router.post("/admin/groups/:id/finish", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.finishGroup);
 router.post("/admin/groups/:id/add-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.addStudentToGroup);
 router.post("/admin/groups/:id/students/:studentId/record-installment", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.recordInstallmentPayment);
+router.post("/admin/groups/:id/students/:studentId/update-payment-status", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.updateStudentPaymentStatus);
 router.post("/admin/groups/:id/remove-student", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.removeStudentFromGroup);
 router.post("/admin/groups/:id/start-teaching", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.startTeachingAndGenerateSessions);
 router.post("/admin/groups/:id/renew-cycle", authMiddleware, requireRole(["admin", "supervisor", "teacher"]), CourseGroupController.renewGroupCycle);
+router.post("/admin/groups/:id/trim-sessions", authMiddleware, requireRole(["admin", "supervisor"]), CourseGroupController.trimGroupSessions);
 
 // Marketing Campaigns & Ad Spend Tracking (Admin)
 router.get("/admin/marketing-campaigns", authMiddleware, requireRole(["admin", "supervisor"]), MarketingCampaignController.getCampaigns);

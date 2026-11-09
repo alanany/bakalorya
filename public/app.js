@@ -35,6 +35,7 @@ import StudentGroupsView from "./views/student/StudentGroupsView.js";
 import StudentSubscriptionsView from "./views/student/StudentSubscriptionsView.js";
 import StudentPrivateSessionsView from "./views/student/StudentPrivateSessionsView.js";
 import SubscriptionSessionsView from "./views/student/SubscriptionSessionsView.js";
+import StudentClassesView from "./views/student/StudentClassesView.js";
 
 // ── Shared Role Views ─────────────────────────────────────────────────────────
 import CoursePlayerView from "./views/shared/CoursePlayerView.js";
@@ -48,6 +49,7 @@ import GroupHubView from "./views/shared/GroupHubView.js";
 import { applyPageSEO } from "./seo.js";
 import { initGoogleAnalytics } from "./analytics.js";
 import ParentView from "./views/parent/ParentView.js";
+import ClassDetailsView from "./views/ClassDetailsView.js";
 
 
 // ─── Country Code & Phone Helpers ──────────────────────────────────────────────
@@ -1913,7 +1915,8 @@ export function updateHeader() {
         links += `
           ${createNavSection("المسار التعليمي")}
           ${createNavItem("#student-dashboard", "layout-dashboard", t("nav.dashboard") || "لوحة الطالب الرئيسية")}
-          ${createNavItem("#courses", "graduation-cap", "المقررات الدراسية 🇪🇬", "شامل")}
+          ${createNavItem("#student-classes", "package", "فصول وباقات صفي 🎒", "شامل")}
+          ${createNavItem("#courses", "graduation-cap", "المقررات الدراسية 🇪🇬")}
           ${createNavItem("#schedule", "calendar", t("nav.schedule") || "جدول الحصص والمواعيد")}
           
           ${createNavSection("الحصص والاشتراكات")}
@@ -2706,12 +2709,12 @@ export async function router() {
   // Handle in-page anchor navigation (e.g. #teacher-groups-section) without resetting active view
   const definedRoutes = new Set([
     "", "#", "#landing", "#login", "#signup", "#parent-login", "#staff-login", "#teacher-login", "#admin-login",
-    "#auth", "#student-dashboard", "#student-subscriptions", "#student-groups",
+    "#auth", "#student-dashboard", "#student-classes", "#student-subscriptions", "#student-groups",
     "#student-private-sessions", "#subscription-sessions", "#course", "#teacher-portal",
     "#teacher-financial", "#teacher-private-sessions", "#teacher-groups", "#teacher-assignments",
     "#teacher-availability", "#teacher", "#teacher-apply", "#enrollment-requests",
     "#teacher-blogs", "#blog", "#classroom", "#group", "#group-hub", "#admin-dashboard",
-    "#courses", "#manage-course", "#course-preview", "#course-details", "#schedule",
+    "#courses", "#manage-course", "#course-preview", "#course-details", "#class-details", "#schedule",
     "#assignments", "#resources", "#tests", "#students", "#settings", "#notifications",
     "#search", "#about", "#contact", "#faq", "#subscription-plans", "#subject-groups",
     "#course-groups", "#subject", "#parent-dashboard", "#free-trial"
@@ -2752,6 +2755,14 @@ export async function router() {
       ViewClass = FreeTrialView;
       break;
     case "#student-dashboard": ViewClass = StudentView; break;
+    case "#student-classes":
+      if (!state.user) {
+        showToast("يرجى تسجيل الدخول للوصول إلى فصول وباقات صفي 🎒", "info");
+        window.location.hash = "#login";
+        return;
+      }
+      ViewClass = StudentClassesView;
+      break;
     case "#student-subscriptions": ViewClass = StudentSubscriptionsView; break;
     case "#student-groups": ViewClass = StudentGroupsView; break;
     case "#student-private-sessions": ViewClass = StudentPrivateSessionsView; break;
@@ -2796,6 +2807,7 @@ export async function router() {
     case "#manage-course": ViewClass = CourseManageView; break;
     case "#course-preview":
     case "#course-details": ViewClass = CourseLandingView; break;
+    case "#class-details": ViewClass = ClassDetailsView; break;
     case "#schedule": ViewClass = ScheduleView; break;
     case "#assignments": ViewClass = (state.user?.role === 'teacher' ? TeacherAssignmentsReviewView : AssignmentsView); break;
     case "#resources": ViewClass = ResourcesView; break;

@@ -24,37 +24,6 @@ export default class LandingView {
     this.container.innerHTML = `
       <div class="landing-page-container" style="background:var(--bg-app); min-height:100vh; width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box;">
 
-        <!-- TOP UTILITY BAR -->
-        <div class="landing-utility-bar" style="background:#09090b; border-bottom:1px solid rgba(255,255,255,0.08); padding:8px 24px; font-size:0.83rem; color:var(--text-muted); width:100%; box-sizing:border-box;">
-          <div style="width:100%; margin:0 auto; display:flex; gap:20px; align-items:center; font-weight:700; justify-content:space-between; flex-wrap:wrap;">
-            
-            <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
-              <a href="#login" style="color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px; border-bottom:2px solid var(--primary); padding-bottom:3px; font-weight:800; transition:all 0.2s;" title="تسجيل دخول الطلاب والمتفوقين">
-                <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i>
-                <span>للطلاب والمتفوقين</span>
-              </a>
-
-              <a href="#teacher-login" style="color:rgba(255,255,255,0.7); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding-bottom:3px; font-weight:700; transition:all 0.2s;" onmouseenter="this.style.color='#10b981'; this.style.opacity='1'" onmouseleave="this.style.color='rgba(255,255,255,0.7)'; this.style.opacity='0.9'" title="بوابة تسجيل دخول المعلمين والأساتذة">
-                <i data-lucide="user-check" style="width:14px; height:14px;"></i>
-                <span>للمعلمين والأساتذة</span>
-              </a>
-
-              <a href="#admin-login" style="color:rgba(255,255,255,0.7); text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding-bottom:3px; font-weight:700; transition:all 0.2s;" onmouseenter="this.style.color='#8b5cf6'; this.style.opacity='1'" onmouseleave="this.style.color='rgba(255,255,255,0.7)'; this.style.opacity='0.9'" title="بوابة تسجيل دخول المدارس والمؤسسات والإدارة">
-                <i data-lucide="building-2" style="width:14px; height:14px;"></i>
-                <span>للمدارس والمؤسسات</span>
-              </a>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:16px; font-size:0.8rem;">
-              <a href="#parent-login" style="color:rgba(255,255,255,0.65); text-decoration:none; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;" onmouseenter="this.style.color='#a78bfa'" onmouseleave="this.style.color='rgba(255,255,255,0.65)'" title="بوابة متابعة أولياء الأمور">
-                <i data-lucide="users" style="width:13px; height:13px;"></i>
-                <span>بوابة أولياء الأمور 👨‍👩‍👧</span>
-              </a>
-            </div>
-
-          </div>
-        </div>
-
         <!-- 🔴 LIVE NOW URGENCY STRIP -->
         <div id="live-now-strip" style="background:linear-gradient(90deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%); border-bottom:1px solid rgba(99,102,241,0.3); padding:10px 0; overflow:hidden; position:relative; cursor:pointer; direction:ltr; width:100%;" onclick="window.location.hash='#courses'">
           <div id="live-now-track" style="display:flex; align-items:center; white-space:nowrap; width:max-content; will-change:transform;"></div>
@@ -112,81 +81,542 @@ export default class LandingView {
             <span class="hero-dot" style="width:10px; height:8px; border-radius:4px; background:var(--border-color); cursor:pointer;"></span>
           </div>
 
-          <!-- ⚡ QUICK GRADE FILTER -->
-          <div id="quick-grade-filter" style="margin-top:20px; padding:16px 20px; background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-            <span style="font-size:0.88rem; font-weight:900; color:var(--text-color); white-space:nowrap;">🎯 أنا في:</span>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1;">
-              <button class="quick-grade-btn active-grade" data-stage="SECONDARY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:var(--primary); color:#ffffff; border:2px solid var(--primary); cursor:pointer; transition:all 0.2s;">🎓 الثانوية</button>
-              <button class="quick-grade-btn" data-stage="PREPARATORY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">📘 الإعدادية</button>
-              <button class="quick-grade-btn" data-stage="PRIMARY" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🎒 الابتدائية</button>
-              <button class="quick-grade-btn" data-stage="AZHAR" style="padding:8px 18px; border-radius:20px; font-size:0.85rem; font-weight:800; background:transparent; color:var(--text-color); border:2px solid var(--border-color); cursor:pointer; transition:all 0.2s;">🕌 الأزهر</button>
-            </div>
-            <button id="quick-grade-go-btn" style="padding:9px 22px; border-radius:20px; font-size:0.85rem; font-weight:900; background:linear-gradient(135deg,#0056D2 0%,#1e40af 100%); color:#ffffff; border:none; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(0,86,210,0.3); transition:all 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">ابحث عن دورتي 🚀</button>
-          </div>
+      
         </section>
 
 
-        <!-- 🌟 CREATIVE CURRICULUM EXPLORER (HERO STAGE, GRADE & SUBJECTS SELECTOR) -->
-        <section id="interactive-curriculum-explorer" style="width:100%; margin:0 auto; padding:12px 20px 28px 20px; direction:rtl;">
-          <div style="background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:28px; padding:20px 16px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden;">
+  
+
+
+        <!-- 🎁 قسم طلب حصة تجريبية مجانية (Free Trial Section) -->
+        <section id="free-trial-session-section" style="width:100%; margin:0 auto; padding:12px 20px 28px 20px; direction:rtl; box-sizing:border-box;">
+          
+          <style>
+            .free-trial-section {
+                max-width: 100%;
+                margin: 0 auto;
+                background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                border-radius: 25px;
+                padding: 40px 50px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 10px 30px rgba(25, 118, 210, 0.15);
+                position: relative;
+                overflow: hidden;
+                border: 2px solid #90caf9;
+                box-sizing: border-box;
+            }
+
+            .trial-content {
+                flex: 1;
+                position: relative;
+                z-index: 1;
+                padding-left: 30px;
+            }
+
+            .trial-badge {
+                display: inline-block;
+                background-color: #d32f2f;
+                color: white;
+                padding: 5px 15px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 800;
+                margin-bottom: 15px;
+                box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
+            }
+
+            .trial-title {
+                font-size: clamp(1.4rem, 2.5vw, 2rem);
+                font-weight: 800;
+                color: #1a237e;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+            }
+
+            .trial-desc {
+                font-size: 17px;
+                color: #444;
+                font-weight: 600;
+                margin: 0 0 20px 0;
+                line-height: 1.6;
+                max-width: 720px;
+            }
+
+            .trial-features {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px 25px;
+            }
+
+            .trial-features li {
+                font-size: 15px;
+                font-weight: 700;
+                color: #1a237e;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .trial-action {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                background: white;
+                padding: 30px;
+                border-radius: 20px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+                text-align: center;
+                min-width: 250px;
+                box-sizing: border-box;
+            }
+
+            .trial-action p {
+                margin: 0 0 15px 0;
+                font-size: 16px;
+                font-weight: 700;
+                color: #555;
+            }
+
+            .btn-trial {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                background-color: #4a148c;
+                color: white;
+                text-decoration: none;
+                padding: 15px 30px;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: 800;
+                width: 100%;
+                box-sizing: border-box;
+                box-shadow: 0 6px 15px rgba(74, 20, 140, 0.3);
+                transition: all 0.3s ease;
+                border: none;
+                cursor: pointer;
+            }
+
+            .btn-trial:hover {
+                background-color: #31105e;
+                transform: translateY(-3px);
+                box-shadow: 0 10px 20px rgba(74, 20, 140, 0.4);
+            }
+
+            .spots-note {
+                font-size: 13px;
+                font-weight: 700;
+                color: #d32f2f;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            @media (max-width: 900px) {
+                .free-trial-section {
+                    flex-direction: column !important;
+                    padding: 30px 20px !important;
+                    text-align: center !important;
+                }
+                .trial-content {
+                    padding-left: 0 !important;
+                    margin-bottom: 30px !important;
+                }
+                .trial-features {
+                    justify-content: center !important;
+                }
+                .trial-action {
+                    width: 100% !important;
+                    min-width: auto !important;
+                }
+            }
+          </style>
+
+          <div class="free-trial-section">
+            <!-- أيقونة قبعة التخرج الزخرفية بالخلفية -->
+            <svg style="position:absolute; left:-30px; bottom:-40px; width:220px; height:220px; color:rgba(25, 118, 210, 0.06); transform:rotate(-15deg); z-index:0; pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
             
-            <!-- Floating Decorative Background Glows -->
-            <div style="position:absolute; top:-40px; right:-20px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.12) 0%, transparent 70%); pointer-events:none;"></div>
-
-            <!-- SECTION HEADER (CENTERED) -->
-            <div style="text-align:center; max-width:820px; margin:0 auto 32px auto; position:relative; z-index:1;">
-              <span style="font-size:0.85rem; font-weight:900; background:rgba(0,86,210,0.08); color:var(--primary); padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;">
-                <i data-lucide="compass" style="width:15px;height:15px;"></i> استكشف المناهج والمجموعات الدراسية
-              </span>
-              <h2 style="font-size:clamp(1.0rem, 3.0vw, 2.0rem); font-weight:500; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
-                اختر مرحلتك وصفك الدراسي 🎯
-              </h2>
-              <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0 auto; max-width:680px;">
-                افتح مرحلتك الدراسية لرؤية الصفوف والمواد المقررة، واستعراض الحصص والمجموعات المتاحة فوراً مع نخبة الأساتذة.
-              </p>
+            <div class="trial-content">
+                <span class="trial-badge">مجاناً 100%</span>
+                <h2 class="trial-title">جرب أسلوبنا التعليمي التفاعلي مجاناً!</h2>
+                <p class="trial-desc">
+                    اكتشف كيف يمكن لطفلك أن يتفوق معنا. احجز حصة تجريبية مجانية الآن وتعرف على منصة "انطلق" وأفضل المعلمين قبل اتخاذ قرار الاشتراك.
+                </p>
+                <ul class="trial-features">
+                    <li>
+                      <i data-lucide="check-circle-2" style="width:19px;height:19px;color:#388e3c;flex-shrink:0;"></i>
+                      <span>تقييم شامل لمستوى الطالب</span>
+                    </li>
+                    <li>
+                      <i data-lucide="check-circle-2" style="width:19px;height:19px;color:#388e3c;flex-shrink:0;"></i>
+                      <span>تفاعل حي ومباشر مع المعلم</span>
+                    </li>
+                    <li>
+                      <i data-lucide="check-circle-2" style="width:19px;height:19px;color:#388e3c;flex-shrink:0;"></i>
+                      <span>بدون أي التزام مالي أو رسوم خفية</span>
+                    </li>
+                </ul>
             </div>
 
-            <!-- WIDE ACCORDION CONTAINER -->
-            <div id="curriculum-accordion-container" style="max-width:100%; margin:0 auto; position:relative; z-index:1; min-height:80px;">
+            <div class="trial-action">
+                <p>اختر المادة والوقت المناسب لك</p>
+                <button type="button" id="landing-free-trial-cta-btn" class="btn-trial">
+                    <span>احجز حصتك الآن</span>
+                    <i data-lucide="calendar-check" style="width:20px;height:20px;"></i>
+                </button>
+                <span class="spots-note">
+                  <i data-lucide="flame" style="width:16px;height:16px;color:#d32f2f;"></i>
+                  <span>سارع بالحجز، المقاعد محدودة!</span>
+                </span>
             </div>
 
           </div>
         </section>
 
+        <!-- 🏫 CLASSES SECTION: جميع المواد والمجموعات في باقة واحدة (نفس التصميم المرفق تماماً مع صورة الطفل) -->
+        <section id="academic-classes-spotlight-section" style="width:100%; margin:0 auto; padding:12px 20px 32px 20px; direction:rtl;">
 
-        <!-- 🎁 ENROLL FREE TEST SESSION (حجز حصة تجريبية مجانية - TEXT & BUTTON ONLY) -->
-        <section id="free-trial-session-section" style="width:100%; margin:0 auto; padding:12px 20px 28px 20px; direction:rtl;">
-          <div style="background:linear-gradient(135deg, rgba(0, 86, 210, 0.08) 0%, rgba(16, 185, 129, 0.06) 50%, rgba(147, 51, 234, 0.05) 100%); border:1.5px solid var(--border-color); border-radius:28px; padding:36px 32px; box-shadow:0 16px 48px rgba(0,0,0,0.04); position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px;">
+          <style>
+            .class-stage-btn   { transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s; }
+            .class-stage-btn:hover { opacity:0.95; transform:translateY(-1px); }
+            .class-grade-pill  { transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s; cursor:pointer; }
+            .class-grade-pill:hover { transform:translateY(-2px); }
+            #class-rooms-container .room-photo-card { transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease; }
+            #class-rooms-container .room-photo-card:hover { transform:translateY(-6px); box-shadow:0 16px 36px rgba(0,0,0,0.1); }
+            
+            @media(max-width: 1200px) {
+              .classes-attached-child-wrap {
+                width: 280px !important;
+                height: 350px !important;
+                top: -45px !important;
+                right: 10px !important;
+              }
+            }
+            @media(max-width: 960px) {
+              .classes-attached-child-wrap {
+                width: 200px !important;
+                height: 260px !important;
+                right: 0px !important;
+                top: -20px !important;
+                opacity: 0.25 !important;
+              }
+            }
+            @media(max-width: 680px) {
+              .classes-attached-child-wrap {
+                display: none !important;
+              }
+            }
+          </style>
 
-            <!-- Subtle Decorative Radial Glows -->
-            <div style="position:absolute; top:-60px; right:-60px; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%); pointer-events:none;"></div>
-            <div style="position:absolute; bottom:-60px; left:-60px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(0,86,210,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+          <div class="glass-card" style="background:linear-gradient(180deg, #f0f7ff 0%, #e8f2fe 100%); border:1.5px solid var(--border-color); border-radius:32px; padding:36px 28px 24px 28px; position:relative; overflow:visible; box-shadow:0 12px 40px rgba(0,0,0,0.06);">
 
-            <!-- Content Info (Text) -->
-            <div style="max-width:680px; position:relative; z-index:1;">
-              <span style="font-size:0.82rem; font-weight:900; background:rgba(16,185,129,0.12); color:#10b981; padding:6px 18px; border-radius:20px; display:inline-flex; align-items:center; gap:8px; margin-bottom:12px; border:1px solid rgba(16,185,129,0.25);">
-                <span style="width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 10px #10b981;"></span>
-                عرض ترحيبي خاص • حصة تجريبية مجانية 100% بدون أي التزام
-              </span>
-              <h2 style="font-size:clamp(1.3rem, 3.2vw, 2.1rem); font-weight:900; color:var(--text-color); margin-bottom:10px; line-height:1.3; letter-spacing:-0.5px;">
-                احجز حصتك التجريبية المجانية وتفوق معنا 🎯
+            <!-- صورة البانر بحجم أكبر وفي طبقة خلفية متداخلة خلف العناصر (Layered in Background) -->
+            <div class="classes-attached-child-wrap" style="position:absolute; top:-65px; right:20px; width:340px; height:430px; pointer-events:none; z-index:1; display:flex; align-items:flex-end; justify-content:center;">
+              <!-- هالة دائرية زرقاء ناعمة -->
+              <div style="position:absolute; width:290px; height:290px; border-radius:50%; background:#dbeafe; top:45px; right:20px; z-index:1;"></div>
+              
+              <!-- إشعاعات كرتونية ذهبية بجانب اليد -->
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none" style="position:absolute; top:70px; right:-10px; z-index:4;">
+                <line x1="10" y1="10" x2="32" y2="18" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+                <line x1="5" y1="27" x2="28" y2="27" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+                <line x1="10" y1="44" x2="32" y2="36" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+              </svg>
+
+              <!-- صورة البانر بدقة كاملة وخلفية شفافة وتدرج ينساب خلف البطاقات -->
+              <img src="assets/child-student-portrait.png" alt="طالب متفوق" style="position:relative; z-index:2; height:100%; width:auto; object-fit:contain; object-position:bottom center; transform:scaleX(-1); filter:drop-shadow(0 12px 28px rgba(0,86,210,0.22));">
+            </div>
+
+          
+
+            <!-- المحتوى الرئيسي (في طبقة أمامية واضحة تعلو الصورة الخلفية) -->
+            <div id="classes-content-wrap" style="position:relative; z-index:2;">
+
+              <!-- العنوان الرئيسي -->
+              <h2 style="font-size:clamp(1.5rem,3.5vw,2.3rem); font-weight:900; color:var(--text-color); text-align:center; margin:0 0 6px 0; line-height:1.3; position:relative; z-index:3;">
+                جميع المواد والمجموعات في باقة واحدة
               </h2>
-              <p style="font-size:0.98rem; color:var(--text-muted); line-height:1.6; margin:0;">
-                عش تجربة الفصول الافتراضية التفاعلية مع نخبة مدرسي المنصة. احضر بثاً حياً، تفاعل بالصوت والأسئلة، واستلم ملخص الدرس وأوراق العمل مجاناً فور انتهاء الحصة!
+              <p style="text-align:center; color:var(--text-muted); font-size:0.96rem; margin:0 0 8px 0; font-weight:700; position:relative; z-index:3;">
+                اختر المرحلة والصف ثم الفصل المناسب لك ولطفلك
               </p>
-            </div>
+              <!-- تموج أصفر أنيق كما في الصورة -->
+              <div style="display:flex; justify-content:center; margin-bottom:20px; position:relative; z-index:3;">
+                <svg width="130" height="10" viewBox="0 0 130 10" fill="none">
+                  <path d="M4 7C42 2 88 2 126 7" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+              </div>
 
-            <!-- Action Button -->
-            <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px; min-width:240px;">
-              <button type="button" id="landing-free-trial-cta-btn" class="btn-primary" style="padding:15px 32px; font-weight:900; font-size:1.05rem; border-radius:30px; background:linear-gradient(135deg, #0056D2 0%, #1e40af 100%); border:none; color:#ffffff; box-shadow:0 10px 28px rgba(0,86,210,0.3); cursor:pointer; display:inline-flex; align-items:center; gap:10px; transition:all 0.25s;" onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 14px 34px rgba(0,86,210,0.4)';" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 28px rgba(0,86,210,0.3)';">
-                <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
-                <span>حجز حصة تجريبية مجانية 🚀</span>
-              </button>
-              <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
-                🔒 تجربة مجانية تماماً • متبقي 6 مقاعد اليوم
-              </span>
-            </div>
+              <!-- المستوى 1: تبويبات المرحلة الدراسية -->
+              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:20px; position:relative; z-index:3; direction:rtl;">
+                <button class="class-stage-btn" data-stage="primary" style="padding:10px 26px; border-radius:30px; font-weight:800; font-size:0.9rem; cursor:pointer; background:linear-gradient(135deg, #0056D2, #1e40af); color:#fff; border:2px solid #0056D2; box-shadow:0 4px 14px rgba(0,86,210,0.3); display:flex; align-items:center; gap:6px;">
+                  <span>المرحلة الابتدائية</span>
+                  <i data-lucide="graduation-cap" style="width:17px;height:17px;"></i>
+                </button>
+                <button class="class-stage-btn" data-stage="middle" style="padding:10px 26px; border-radius:30px; font-weight:800; font-size:0.9rem; cursor:pointer; background:rgba(239,246,255,0.85); color:#0056D2; border:2px solid transparent; display:flex; align-items:center; gap:6px;">
+                  <span>المرحلة الإعدادية</span>
+                  <i data-lucide="graduation-cap" style="width:17px;height:17px;"></i>
+                </button>
+                <button class="class-stage-btn" data-stage="secondary" style="padding:10px 26px; border-radius:30px; font-weight:800; font-size:0.9rem; cursor:pointer; background:rgba(239,246,255,0.85); color:#0056D2; border:2px solid transparent; display:flex; align-items:center; gap:6px;">
+                  <span>المرحلة الثانوية</span>
+                  <i data-lucide="graduation-cap" style="width:17px;height:17px;"></i>
+                </button>
+              </div>
 
+              <!-- المستوى 2: اختيار الصف الدراسي (الصفوف الفرعية) -->
+              <div id="class-grades-pills" style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; position:relative; z-index:3; direction:rtl;">
+                <!-- تُحقن بواسطة JS -->
+              </div>
+
+              <!-- الحاوية البيضاء الرئيسية للكروت في المقدمة فوق امتداد الصورة -->
+              <div style="background:#ffffff; border:1.5px solid var(--border-color); border-radius:28px; padding:28px 22px 20px 22px; box-shadow:0 10px 32px rgba(0,0,0,0.04); position:relative; z-index:4;">
+
+                <!-- فاصل "اختر الفصل" -->
+                <div style="display:flex; align-items:center; gap:16px; margin:0 auto 24px auto; max-width:850px;">
+                  <div style="flex:1; height:2px; background:linear-gradient(to right, transparent, var(--border-color));"></div>
+                  <span style="font-size:1.2rem; font-weight:900; color:#0056D2; white-space:nowrap; letter-spacing:-0.3px;">اختر الفصل</span>
+                  <div style="flex:1; height:2px; background:linear-gradient(to left, transparent, var(--border-color));"></div>
+                </div>
+
+                <!-- شبكة كروت الفصول الثلاثة لنفس الصف (من اليمين إلى اليسار تماماً) -->
+                <div id="class-rooms-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px; margin-bottom:24px; direction:rtl !important;">
+                  <!-- تُحقن بواسطة JS فوراً -->
+                </div>
+
+                <!-- شريط الثقة السفلي كما في الصورة المرفقة -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid var(--border-color); font-size:0.84rem; font-weight:800; color:var(--text-muted); direction:rtl;">
+                  <span>⭐ تعليم متميز .. بأسعار مناسبة</span>
+                  <span>✅ أفضل المعلمين</span>
+                  <span>✅ محتوى تفاعلي</span>
+                  <span>✅ متابعة مستمرة</span>
+                  <span>✅ متاح مجموعات عامة وحصص فردية</span>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 🧩 قسم اختيار وتخصيص المواد (صمم باقتك بنفسك) أسفل الفصول مباشرة -->
+        <section id="custom-enroll-section-wrap" style="width:100%; margin:0 auto; padding:8px 20px 32px 20px; direction:rtl; box-sizing:border-box;">
+          <style>
+            .custom-enroll-section {
+                max-width: 100%;
+                margin: 0 auto;
+                background: linear-gradient(135deg, #311b92 0%, #512da8 100%);
+                border-radius: 28px;
+                padding: 40px 48px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 15px 35px rgba(49, 27, 146, 0.22);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .custom-enroll-puzzle-bg {
+                position: absolute;
+                left: -30px;
+                top: -30px;
+                width: 260px;
+                height: 260px;
+                color: rgba(255, 255, 255, 0.05);
+                transform: rotate(15deg);
+                z-index: 0;
+                pointer-events: none;
+            }
+
+            .custom-content {
+                flex: 1;
+                position: relative;
+                z-index: 1;
+                padding-left: 36px;
+            }
+
+            .custom-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background-color: rgba(255, 255, 255, 0.15);
+                color: #fff;
+                padding: 6px 18px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 700;
+                margin-bottom: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                backdrop-filter: blur(5px);
+            }
+
+            .custom-title {
+                font-size: clamp(1.4rem, 2.5vw, 2rem);
+                font-weight: 800;
+                color: #ffffff;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+            }
+
+            .custom-desc {
+                font-size: 16px;
+                color: #e1bee7;
+                font-weight: 600;
+                margin: 0 0 25px 0;
+                line-height: 1.6;
+                max-width: 720px;
+            }
+
+            .custom-features {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px 25px;
+            }
+
+            .custom-features li {
+                font-size: 14.5px;
+                font-weight: 700;
+                color: #ffffff;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .custom-features li .feature-check-icon {
+                color: #ffca28;
+                background: rgba(255, 202, 40, 0.15);
+                padding: 6px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .custom-action {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                background: #ffffff;
+                padding: 32px 28px;
+                border-radius: 22px;
+                box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+                text-align: center;
+                min-width: 260px;
+            }
+
+            .custom-action h4 {
+                margin: 0;
+                font-size: 20px;
+                font-weight: 800;
+                color: #311b92;
+            }
+
+            .custom-action p {
+                margin: 0 0 12px 0;
+                font-size: 14px;
+                font-weight: 600;
+                color: #64748b;
+            }
+
+            .btn-custom-enroll {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                background-color: #ffca28;
+                color: #1a237e;
+                text-decoration: none;
+                padding: 14px 28px;
+                border-radius: 14px;
+                font-size: 17px;
+                font-weight: 800;
+                width: 100%;
+                box-sizing: border-box;
+                box-shadow: 0 6px 18px rgba(255, 202, 40, 0.35);
+                transition: all 0.25s ease;
+            }
+
+            .btn-custom-enroll:hover {
+                background-color: #ffb300;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 24px rgba(255, 202, 40, 0.45);
+            }
+
+            @media (max-width: 900px) {
+                .custom-enroll-section {
+                    flex-direction: column;
+                    padding: 32px 22px;
+                    text-align: center;
+                }
+                .custom-content {
+                    padding-left: 0;
+                    margin-bottom: 28px;
+                }
+                .custom-features {
+                    justify-content: center;
+                }
+                .custom-action {
+                    width: 100%;
+                    min-width: auto;
+                }
+            }
+          </style>
+
+          <div class="custom-enroll-section">
+              <!-- أيقونة البازل الزخرفية بالخلفية -->
+              <svg class="custom-enroll-puzzle-bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M19.439 7.85c0-1.57.802-2.54 2.14-2.54 1.35 0 2.421 1.07 2.421 2.54 0 1.48-1.071 2.55-2.421 2.55h-2.14V7.85zm0 8.3c0-1.48 1.07-2.55 2.421-2.55 1.338 0 2.14.97 2.14 2.55 0 1.47-1.071 2.54-2.421 2.54-1.338 0-2.14-.97-2.14-2.54zm-3.739 3.85c1.57 0 2.54.8 2.54 2.14 0 1.35-1.07 2.42-2.54 2.42-1.48 0-2.55-1.07-2.55-2.42v-2.14h2.55zm-8.3 0c1.48 0 2.55 1.07 2.55 2.42 0 1.34-.97 2.14-2.55 2.14-1.47 0-2.54-1.07-2.54-2.42 0-1.34.97-2.14 2.54-2.14z"/>
+              </svg>
+
+              <!-- الجزء الأيمن: النصوص والمميزات -->
+              <div class="custom-content">
+                  <span class="custom-badge">
+                      <i data-lucide="sliders" style="width:16px;height:16px;color:#ffca28;"></i>
+                      <span>مرونة تامة في الاختيار</span>
+                  </span>
+                  <h2 class="custom-title">صمم باقتك بنفسك.. واختر المواد التي تحتاجها فقط!</h2>
+                  <p class="custom-desc">
+                      لا داعي للاشتراك في باقة كاملة إذا كنت ترغب في التركيز على مواد معينة. في أكاديمية انطلق، نوفر لك حرية تامة لتفصيل جدولك واختيار موادك الفردية بما يناسب مستوى طفلك.
+                  </p>
+                  <ul class="custom-features">
+                      <li>
+                          <span class="feature-check-icon"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+                          <span>ادفع فقط مقابل المواد التي تختارها</span>
+                      </li>
+                      <li>
+                          <span class="feature-check-icon"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+                          <span>حرية اختيار المعلمين والمواعيد</span>
+                      </li>
+                      <li>
+                          <span class="feature-check-icon"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+                          <span>نفس جودة التعليم والمتابعة المستمرة</span>
+                      </li>
+                  </ul>
+              </div>
+
+              <!-- الجزء الأيسر: صندوق الإجراء (CTA Box) -->
+              <div class="custom-action">
+                  <h4>جاهز لتخصيص دراستك؟</h4>
+                  <p>تصفح المواد المتاحة وأضفها لباقتك</p>
+                  <a href="#courses" class="btn-custom-enroll" onclick="const exp=document.getElementById('interactive-curriculum-explorer'); if(exp){exp.scrollIntoView({behavior:'smooth'});}">
+                      <span>ابدأ باختيار المواد</span>
+                      <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
+                  </a>
+              </div>
           </div>
         </section>
 
@@ -933,21 +1363,26 @@ export default class LandingView {
               </div>
 
               <div>
-                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">المعلمين وأولياء الأمور</h4>
+                <h4 style="color:var(--text-color); font-weight:800; font-size:1rem; margin-bottom:18px;">بوابات الدخول والمنظومة</h4>
                 <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
                   <li>
-                    <a href="#parent-login" style="color:#8b5cf6; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="users" style="width:16px; height:16px;"></i> بوابة أولياء الأمور 👨‍👩‍👧
+                    <a href="#login" style="color:#3b82f6; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="graduation-cap" style="width:16px; height:16px;"></i> للطلاب والمتفوقين 🎓
                     </a>
                   </li>
                   <li>
                     <a href="#teacher-login" style="color:#10b981; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="user-check" style="width:16px; height:16px;"></i> بوابة المعلمين والأساتذة 👨‍🏫
+                      <i data-lucide="user-check" style="width:16px; height:16px;"></i> للمعلمين والأساتذة 👨‍🏫
                     </a>
                   </li>
                   <li>
                     <a href="#admin-login" style="color:var(--primary); font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                      <i data-lucide="building-2" style="width:16px; height:16px;"></i> للمدارس والمؤسسات (لوحة الإدارة) 🏫
+                      <i data-lucide="building-2" style="width:16px; height:16px;"></i> للمدارس والمؤسسات 🏫
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#parent-login" style="color:#8b5cf6; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                      <i data-lucide="users" style="width:16px; height:16px;"></i> بوابة أولياء الأمور 👨‍👩‍👧
                     </a>
                   </li>
                   <li>
@@ -991,12 +1426,18 @@ export default class LandingView {
             <div class="footer-bottom" style="padding-top:24px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:0.88rem;">
               <div style="font-weight:600;">جميع الحقوق محفوظة © 2026 منصة انطلق التعليمية</div>
               
-              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                <a href="#parent-login" style="color:#8b5cf6; font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(139,92,246,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(139,92,246,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(139,92,246,0.18)';" onmouseleave="this.style.background='rgba(139,92,246,0.08)';">
-                  <i data-lucide="users" style="width:14px; height:14px; color:#8b5cf6;"></i> بوابة أولياء الأمور
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <a href="#login" style="color:#3b82f6; font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(59,130,246,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(59,130,246,0.18)';" onmouseleave="this.style.background='rgba(59,130,246,0.08)';">
+                  <i data-lucide="graduation-cap" style="width:14px; height:14px; color:#3b82f6;"></i> للطلاب والمتفوقين
                 </a>
-                <a href="#staff-login" style="color:var(--primary); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(99,102,241,0.18)';" onmouseleave="this.style.background='rgba(99,102,241,0.08)';">
-                  <i data-lucide="shield-check" style="width:14px; height:14px; color:var(--primary);"></i> بوابة المعلمين والإدارة
+                <a href="#teacher-login" style="color:#10b981; font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(16,185,129,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(16,185,129,0.18)';" onmouseleave="this.style.background='rgba(16,185,129,0.08)';">
+                  <i data-lucide="user-check" style="width:14px; height:14px; color:#10b981;"></i> للمعلمين والأساتذة
+                </a>
+                <a href="#admin-login" style="color:var(--primary); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(99,102,241,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(99,102,241,0.18)';" onmouseleave="this.style.background='rgba(99,102,241,0.08)';">
+                  <i data-lucide="building-2" style="width:14px; height:14px; color:var(--primary);"></i> للمدارس والمؤسسات
+                </a>
+                <a href="#parent-login" style="color:#8b5cf6; font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:rgba(139,92,246,0.08); padding:6px 14px; border-radius:20px; border:1px solid rgba(139,92,246,0.25); transition:all 0.2s;" onmouseenter="this.style.background='rgba(139,92,246,0.18)';" onmouseleave="this.style.background='rgba(139,92,246,0.08)';">
+                  <i data-lucide="users" style="width:14px; height:14px; color:#8b5cf6;"></i> بوابة أولياء الأمور 👨‍👩‍👧
                 </a>
                 <a href="#about" style="color:var(--text-color); font-weight:800; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; background:var(--bg-app); padding:6px 14px; border-radius:20px; border:1px solid var(--border-color); transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--primary)';" onmouseleave="this.style.borderColor='var(--border-color)';">
                   <i data-lucide="info" style="width:14px; height:14px; color:var(--primary);"></i> عن المنصة
@@ -1047,6 +1488,7 @@ export default class LandingView {
       this.renderPlatformStats(this.platformStats);
       this.initLiveChart(this.platformStats, this.currentChartType);
       await this.initCurriculumExplorerAsync();
+      await this.initClassStageFilter();
       this.updateScrollToggleState?.();
       // Re-run live strip now that real groups & sessions data is loaded
       this.initLiveNowStrip();
@@ -1091,10 +1533,15 @@ export default class LandingView {
       const accordionContainer = document.getElementById("curriculum-accordion-container");
       if (!accordionContainer) return;
 
-      const grades = await apiFetch("/curriculum/grades");
+      const [grades, classes] = await Promise.all([
+        apiFetch("/curriculum/grades").catch(() => []),
+        apiFetch("/curriculum/classes").catch(() => [])
+      ]);
+
       if (Array.isArray(grades) && grades.length > 0) {
         this.allGradesData = grades;
       }
+      this.allClassesData = classes || [];
 
       if (!this.allGradesData || this.allGradesData.length === 0) {
         accordionContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:20px;">لا توجد بيانات مناهج متاحة حالياً.</p>`;
@@ -1285,148 +1732,246 @@ export default class LandingView {
                   </div>
 
                   <!-- Centered Section Label -->
-                  <div style="margin-bottom: 18px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
-                    <span style="font-size:1.05rem; font-weight:900; color:var(--text-color);">
-                      المواد المقررة لـ <span style="color:${stage.color};">${currentGrade ? currentGrade.name : ''}</span> 🎯
+                  <div style="margin-bottom: 22px; display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:1.1rem; font-weight:900; color:var(--text-color);">
+                      فصول وباقات <span style="color:${stage.color};">${currentGrade ? currentGrade.name : ''}</span> 🏫
                     </span>
-                    <span style="font-size:0.75rem; font-weight:800; background:${stage.color}15; color:${stage.color}; padding:2px 10px; border-radius:12px; border:1px solid ${stage.color}30;">
-                      ${currentGrade?.subjects?.length || 0} مواد متاحة
+                    <span style="font-size:0.75rem; font-weight:800; background:${stage.color}15; color:${stage.color}; padding:4px 12px; border-radius:12px; border:1px solid ${stage.color}30;">
+                      ${(() => {
+                const gradeSubjectNames = (currentGrade?.subjects || []).map(s => {
+                  const theme = this.getSubjectTheme(s.name);
+                  const icon = s.icon && s.icon.length <= 2 ? s.icon : theme.icon;
+                  return `${icon} ${s.name}`;
+                });
+                return gradeSubjectNames.length > 0 ? `${gradeSubjectNames.length} مواد مجمعة` : 'جميع المواد الأساسية';
+              })()}
+                    </span>
+                    <span style="font-size:0.75rem; font-weight:800; background:rgba(16,185,129,0.12); color:#10b981; padding:4px 12px; border-radius:12px; border:1px solid rgba(16,185,129,0.25);">
+                      ✨ اشتراك موحد لكل المواد
                     </span>
                   </div>
 
-                  <!-- Centered Creative Circle Cards Grid (Wide) -->
+                  <!-- Classes Cards Grid (Wide & Responsive) -->
                   <div style="
-                    display: flex;
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    gap: 16px;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 18px;
                     width: 100%;
-                    max-width: 100%;
+                    max-width: 1200px;
                     margin: 0 auto;
                   ">
-                    ${(!currentGrade || !currentGrade.subjects || currentGrade.subjects.length === 0) ? `
-                      <p style="color:var(--text-muted); font-size:0.9rem; padding:20px;">لا توجد مواد دراسية مسجلة لهذا الصف حالياً.</p>
-                    ` : currentGrade.subjects.map(subject => {
-            const theme = this.getSubjectTheme(subject.name);
-            const iconToDisplay = subject.icon && subject.icon.length <= 2 ? subject.icon : theme.icon;
+                    ${(() => {
+                const gradeSubjectNames = (currentGrade?.subjects || []).map(s => {
+                  const theme = this.getSubjectTheme(s.name);
+                  const icon = s.icon && s.icon.length <= 2 ? s.icon : theme.icon;
+                  return `${icon} ${s.name}`;
+                });
 
-            return `
-                        <a href="#subject-groups/${subject.id}" class="creative-circle-subject-card" style="
-                          width: 140px;
+                const defaultSubjectList = gradeSubjectNames.length > 0
+                  ? gradeSubjectNames
+                  : (stage.key === 'PRIMARY'
+                    ? ['📐 رياضيات', '📗 لغة عربية', '🇬🇧 English', '🔬 علوم']
+                    : stage.key === 'PREPARATORY'
+                      ? ['📐 رياضيات', '📗 لغة عربية', '🇬🇧 English', '🔬 علوم', '🌍 دراسات']
+                      : ['⚡ فيزياء', '🧪 كيمياء', '🧬 أحياء', '📐 رياضيات', '📗 لغة عربية']);
+
+                const basePrice = stage.key === 'PRIMARY' ? 150 : (stage.key === 'PREPARATORY' ? 180 : 250);
+
+                const realGradeClasses = (this.allClassesData || []).filter(c => 
+                  c.grade?.id === currentGrade?.id || 
+                  c.gradeId === currentGrade?.id || 
+                  c.grade?.name === currentGrade?.name
+                );
+
+                let classesForGrade = [];
+                if (realGradeClasses.length > 0) {
+                  classesForGrade = realGradeClasses.map(c => {
+                    const linkedGroups = c.linkedGroups || [];
+                    const subjectList = linkedGroups.length > 0
+                      ? linkedGroups.map(g => `${this.getSubjectTheme(g.course?.subject?.name || g.name).icon} ${g.course?.subject?.name || g.name}`)
+                      : (c.subjects?.length ? c.subjects.map(s => `${s.icon || '📚'} ${s.name}`) : defaultSubjectList);
+
+                    const schedText = linkedGroups.length > 0
+                      ? linkedGroups.slice(0, 2).map(g => `${g.scheduleDays || ''} ${g.scheduleTime || ''}`).filter(Boolean).join(' • ') || 'جدول أسبوعي موحد'
+                      : 'جدول أسبوعي موحد';
+
+                    return {
+                      id: c.id,
+                      title: c.name,
+                      badge: c.badge || 'متاح للاشتراك 🌟',
+                      badgeColor: stage.color,
+                      desc: c.description || 'باقة دراسية متكاملة تجمع كل المواد المقررة بجدول أسبوعي موحد مع صفوة المعلمين.',
+                      subjects: subjectList,
+                      schedule: schedText,
+                      seatsText: '✅ متاح التسجيل الآن',
+                      seatsColor: '#10b981',
+                      price: c.priceEg ? (parseInt(c.priceEg) || basePrice) : basePrice,
+                      rawPrice: c.priceEg ? `${c.priceEg} جنيه / شهرياً` : (c.price || `${basePrice} جنيه / شهرياً`),
+                      dbClass: c
+                    };
+                  });
+                } else {
+                  classesForGrade = [
+                    {
+                      id: `class-${currentGrade?.id || '1'}-morning`,
+                      title: `فصل النخبة — المجموعة الصباحية`,
+                      badge: `المجموعة الصباحية ☀️`,
+                      badgeColor: stage.color,
+                      desc: `جدول صباحي موحد وشامل لكافة المواد الأساسية مع صفوة المدرسين وتنسيق المواعيد.`,
+                      subjects: defaultSubjectList,
+                      schedule: `السبت • الإثنين • الأربعاء (10:00 ص)`,
+                      seatsText: `🔥 متبقي 6 مقاعد`,
+                      seatsColor: `#f59e0b`,
+                      price: basePrice,
+                    },
+                    {
+                      id: `class-${currentGrade?.id || '1'}-evening`,
+                      title: `فصل المتفوقين — المجموعة المسائية`,
+                      badge: `المجموعة المسائية 🌙`,
+                      badgeColor: `#3b82f6`,
+                      desc: `مواعيد مسائية تناسب دوام المدارس، مع حصص تفاعلية مباشرة وتسجيل فوري للمراجعة.`,
+                      subjects: defaultSubjectList,
+                      schedule: `الأحد • الثلاثاء • الخميس (5:30 م)`,
+                      seatsText: `✅ متاح التسجيل (8 مقاعد)`,
+                      seatsColor: `#10b981`,
+                      price: basePrice,
+                    },
+                    {
+                      id: `class-${currentGrade?.id || '1'}-intensive`,
+                      title: `فصل المتفوقين — المسار المكثف`,
+                      badge: `المسار المكثف ⚡`,
+                      badgeColor: `#8b5cf6`,
+                      desc: `تركيز على حل تدريبات الامتحانات وتطبيقات عملية ومتابعة أسبوعية دقيقة لتقييم المستوى.`,
+                      subjects: defaultSubjectList.slice(0, 4),
+                      schedule: `الجمعة والسبت (عطلة نهاية الأسبوع)`,
+                      seatsText: `🔥 آخر 3 مقاعد متاحة`,
+                      seatsColor: `#ef4444`,
+                      price: basePrice + 30,
+                    }
+                  ];
+
+                  const hasLanguages = (currentGrade?.subjects || []).some(s => s.isLanguageTrack || /لغات|english|math|science/i.test(s.name));
+                  if (hasLanguages || stage.key !== 'SECONDARY') {
+                    classesForGrade.push({
+                      id: `class-${currentGrade?.id || '1'}-languages`,
+                      title: `فصل اللغات والتجريبي (Languages Track)`,
+                      badge: `مسار اللغات 🌐`,
+                      badgeColor: `#06b6d4`,
+                      desc: `تدريس Math و Science باللغة الإنجليزية مع أفضل معلمي مدارس اللغات والتجريبي المتميز.`,
+                      subjects: ['📐 Math', '🔬 Science', '🇬🇧 English (High Level)', '📗 Arabic & Social'],
+                      schedule: `السبت والأربعاء (6:00 م)`,
+                      seatsText: `🌐 لغات وتجريبي`,
+                      seatsColor: `#06b6d4`,
+                      price: basePrice + 30,
+                    });
+                  }
+                }
+
+                this.curriculumClassesMap = this.curriculumClassesMap || {};
+                classesForGrade.forEach(c => { this.curriculumClassesMap[c.id] = c; });
+
+                return classesForGrade.map(cls => `
+                        <div class="class-card-item" style="
                           background: var(--bg-card);
                           border: 1.5px solid var(--border-color);
-                          border-radius: 24px;
-                          padding: 18px 12px 16px;
-                          text-decoration: none;
+                          border-radius: 20px;
+                          padding: 20px 18px;
                           display: flex;
                           flex-direction: column;
-                          align-items: center;
-                          text-align: center;
+                          justify-content: space-between;
+                          text-align: right;
+                          gap: 12px;
                           position: relative;
-                          overflow: hidden;
-                          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                          box-shadow: 0 4px 14px rgba(0,0,0,0.03);
-                          cursor: pointer;
-                        " onmouseenter="
-                            this.style.transform='translateY(-6px) scale(1.04)';
-                            this.style.borderColor='${theme.color}';
-                            this.style.boxShadow='0 12px 26px ${theme.color}25, 0 0 0 2px ${theme.color}33';
-                            this.querySelector('.circle-icon-inner').style.transform='scale(1.1) rotate(6deg)';
-                            this.querySelector('.circle-glow-bg').style.opacity='0.6';
-                          " 
-                          onmouseleave="
-                            this.style.transform='translateY(0) scale(1)';
-                            this.style.borderColor='var(--border-color)';
-                            this.style.boxShadow='0 4px 14px rgba(0,0,0,0.03)';
-                            this.querySelector('.circle-icon-inner').style.transform='scale(1) rotate(0deg)';
-                            this.querySelector('.circle-glow-bg').style.opacity='0';
-                          ">
-                          
-                          <!-- Subtle Glow Backdrop on Hover -->
-                          <div class="circle-glow-bg" style="
-                            position: absolute;
-                            top: 10px;
-                            width: 65px;
-                            height: 65px;
-                            border-radius: 50%;
-                            background: ${theme.color};
-                            filter: blur(18px);
-                            opacity: 0;
-                            transition: opacity 0.3s ease;
-                            pointer-events: none;
-                          "></div>
+                          transition: all 0.22s ease;
+                          box-shadow: 0 4px 14px rgba(0,0,0,0.02);
+                        " onmouseenter="this.style.transform='translateY(-4px)'; this.style.borderColor='${cls.badgeColor}'; this.style.boxShadow='0 12px 28px ${cls.badgeColor}20';" onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--border-color)'; this.style.boxShadow='0 4px 14px rgba(0,0,0,0.02)';">
 
-                          <!-- Circular Creative Icon -->
-                          <div class="circle-icon-inner" style="
-                            width: 62px;
-                            height: 62px;
-                            border-radius: 50%;
-                            background: ${theme.gradient};
-                            color: #ffffff;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 1.8rem;
-                            font-weight: 900;
-                            box-shadow: 0 6px 16px ${theme.color}40, inset 0 2px 4px rgba(255,255,255,0.35);
-                            margin-bottom: 10px;
-                            position: relative;
-                            z-index: 2;
-                            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                            border: 2.5px solid rgba(255,255,255,0.85);
-                          ">
-                            ${iconToDisplay}
+                          <!-- Top Area: Badges & Title -->
+                          <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                              <span style="background:${cls.badgeColor}15; color:${cls.badgeColor}; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:10px;">
+                                ${cls.badge}
+                              </span>
+                              <span style="font-size:0.75rem; font-weight:800; color:${cls.seatsColor};">
+                                ${cls.seatsText}
+                              </span>
+                            </div>
+
+                            <h4 style="font-size:1.05rem; font-weight:900; color:var(--text-color); margin:0 0 6px 0; line-height:1.35;">
+                              ${cls.title}
+                            </h4>
+
+                            <div style="font-size:0.78rem; font-weight:700; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                              <i data-lucide="clock" style="width:13px; height:13px; color:${cls.badgeColor}; flex-shrink:0;"></i>
+                              <span>${cls.schedule}</span>
+                            </div>
+
+                            <!-- Compact Subjects Pills -->
+                            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                              ${cls.subjects.map(s => `
+                                <span style="font-size:0.72rem; font-weight:700; background:var(--bg-app); color:var(--text-color); padding:3px 8px; border-radius:7px; border:1px solid var(--border-color);">
+                                  ${s}
+                                </span>
+                              `).join('')}
+                            </div>
                           </div>
 
-                          <!-- Subject Name -->
-                          <h4 style="
-                            font-size: 0.92rem;
-                            font-weight: 900;
-                            color: var(--text-color);
-                            margin: 0 0 5px 0;
-                            line-height: 1.25;
-                            width: 100%;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                            white-space: nowrap;
-                          " title="${subject.name}">
-                            ${subject.name}
-                          </h4>
+                          <!-- Bottom Area: Price + 2 Buttons -->
+                          <div style="padding-top:12px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                              <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">اشتراك شامل كل المواد:</span>
+                              <strong style="font-size:1.15rem; font-weight:900; color:${cls.badgeColor};">
+                                ${cls.price} ج.م <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">/ شهر</span>
+                              </strong>
+                            </div>
 
-                          <!-- Mini Track Tag -->
-                          <span style="
-                            font-size: 0.66rem;
-                            font-weight: 800;
-                            padding: 2px 7px;
-                            border-radius: 10px;
-                            background: ${subject.isLanguageTrack ? "rgba(59,130,246,0.1)" : "rgba(16,185,129,0.1)"};
-                            color: ${subject.isLanguageTrack ? "#2563eb" : "#059669"};
-                            border: 1px solid ${subject.isLanguageTrack ? "rgba(59,130,246,0.2)" : "rgba(16,185,129,0.2)"};
-                            margin-bottom: 8px;
-                          ">
-                            ${subject.isLanguageTrack ? "لغات 🌐" : "عام 🇪🇬"}
-                          </span>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                              <!-- Details Button -->
+                              <button type="button" class="class-details-btn" data-class-id="${cls.id}" style="
+                                padding: 9px 8px;
+                                border-radius: 12px;
+                                background: var(--bg-app);
+                                color: var(--text-color);
+                                border: 1.5px solid var(--border-color);
+                                font-weight: 800;
+                                font-size: 0.82rem;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 5px;
+                                transition: all 0.2s;
+                              " onmouseenter="this.style.borderColor='${cls.badgeColor}'; this.style.color='${cls.badgeColor}';" onmouseleave="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-color)';">
+                                <i data-lucide="info" style="width:14px; height:14px;"></i>
+                                <span>التفاصيل</span>
+                              </button>
 
-                          <!-- Action Link -->
-                          <div style="
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 4px;
-                            font-size: 0.72rem;
-                            font-weight: 800;
-                            color: ${theme.color};
-                            background: var(--bg-app);
-                            padding: 4px 10px;
-                            border-radius: 20px;
-                            border: 1px solid var(--border-color);
-                          ">
-                            <span>المجموعات</span>
-                            <i data-lucide="arrow-left" style="width:11px; height:11px;"></i>
+                              <!-- Subscribe Button -->
+                              <button type="button" onclick="window.location.hash='#courses'" style="
+                                padding: 9px 8px;
+                                border-radius: 12px;
+                                background: ${cls.badgeColor};
+                                color: #ffffff;
+                                border: none;
+                                font-weight: 800;
+                                font-size: 0.82rem;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 5px;
+                                box-shadow: 0 4px 10px ${cls.badgeColor}30;
+                                transition: opacity 0.2s, transform 0.15s;
+                              " onmouseenter="this.style.opacity='0.9'; this.style.transform='translateY(-1px)';" onmouseleave="this.style.opacity='1'; this.style.transform='translateY(0)';">
+                                <i data-lucide="shopping-cart" style="width:14px; height:14px;"></i>
+                                <span>اشترك الآن</span>
+                              </button>
+                            </div>
                           </div>
 
-                        </a>
-                      `;
-          }).join('')}
+                        </div>
+                      `).join('');
+              })()}
                   </div>
 
                 </div>
@@ -1437,6 +1982,18 @@ export default class LandingView {
         }).join('');
 
         if (window.lucide) window.lucide.createIcons();
+
+        // Bind Class Details Button Clicks
+        accordionContainer.querySelectorAll(".class-details-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const classId = btn.getAttribute("data-class-id");
+            const classData = this.curriculumClassesMap?.[classId];
+            if (classData) {
+              this.showClassDetailsModal(classData);
+            }
+          });
+        });
 
         // Bind Accordion Header Clicks
         accordionContainer.querySelectorAll(".accordion-header-btn").forEach(btn => {
@@ -1466,6 +2023,237 @@ export default class LandingView {
     } catch (err) {
       console.error("Error loading curriculum explorer:", err);
     }
+  }
+
+  showClassDetailsModal(cls) {
+    const existing = document.getElementById("class-details-modal-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "class-details-modal-overlay";
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      direction: rtl;
+    `;
+
+    const timetableRows = [
+      { day: "السبت", time: "10:00 ص - 11:30 ص", subject: cls.subjects?.[0] || "رياضيات", teacher: "أ/ محمد أحمد", room: "قاعة 1" },
+      { day: "الإثنين", time: "10:00 ص - 11:30 ص", subject: cls.subjects?.[1] || "لغة عربية", teacher: "أ/ إبراهيم حسن", room: "قاعة 2" },
+      { day: "الأربعاء", time: "10:00 ص - 11:30 ص", subject: cls.subjects?.[2] || "English", teacher: "Miss Sarah Adel", room: "قاعة 1" },
+      { day: "الخميس", time: "12:00 م - 01:30 م", subject: cls.subjects?.[3] || "علوم", teacher: "د/ خالد محمود", room: "قاعة 3" },
+    ];
+
+    overlay.innerHTML = `
+      <style>
+        @keyframes slideUpModal { from { transform: translateY(16px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+      </style>
+      <div style="
+        background: var(--bg-card);
+        border: 1.5px solid var(--border-color);
+        border-radius: 28px;
+        width: 100%;
+        max-width: 620px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+        padding: 28px 24px;
+        position: relative;
+        animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      ">
+        <!-- Close Button -->
+        <button type="button" id="close-class-modal-btn" style="
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: var(--bg-app);
+          border: 1px solid var(--border-color);
+          color: var(--text-muted);
+          font-size: 1.1rem;
+          font-weight: 900;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        " onmouseenter="this.style.background='rgba(239,68,68,0.1)'; this.style.color='#ef4444';" onmouseleave="this.style.background='var(--bg-app)'; this.style.color='var(--text-muted)';">
+          ✕
+        </button>
+
+        <!-- Header -->
+        <div style="margin-bottom: 20px; padding-left: 40px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:${cls.badgeColor || 'var(--primary)'}18; color:${cls.badgeColor || 'var(--primary)'}; font-size:0.75rem; font-weight:900; padding:4px 12px; border-radius:12px; border:1px solid ${cls.badgeColor || 'var(--primary)'}33;">
+              ${cls.badge || 'فصل شامل'}
+            </span>
+            <span style="font-size:0.75rem; font-weight:800; color:${cls.seatsColor || '#10b981'}; background:${cls.seatsColor || '#10b981'}15; padding:3px 10px; border-radius:10px;">
+              ${cls.seatsText || 'متاح التسجيل'}
+            </span>
+          </div>
+          <h3 style="font-size:1.3rem; font-weight:900; color:var(--text-color); margin:0 0 6px 0;">
+            ${cls.title}
+          </h3>
+          <p style="font-size:0.86rem; color:var(--text-muted); line-height:1.5; margin:0;">
+            ${cls.desc || 'باقة دراسية متكاملة تجمع كل المواد الأساسية بجدول موحد وبث مباشر وتفاعل دائم مع نخبة المعلمين.'}
+          </p>
+        </div>
+
+        <!-- Weekly Schedule Table -->
+        <div style="margin-bottom: 22px;">
+          <h4 style="font-size:0.92rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="calendar" style="width:16px;height:16px;color:${cls.badgeColor || 'var(--primary)'};"></i>
+            <span>الجدول الدراسي الأسبوعي للحصص:</span>
+          </h4>
+          <div style="background:var(--bg-app); border:1px solid var(--border-color); border-radius:16px; overflow:hidden;">
+            ${timetableRows.map((r, i) => `
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 14px;
+                font-size: 0.82rem;
+                ${i !== timetableRows.length - 1 ? 'border-bottom: 1px solid var(--border-color);' : ''}
+                background: ${i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)'};
+              ">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <strong style="color:var(--text-color); min-width:50px;">${r.day}</strong>
+                  <span style="color:var(--text-muted); font-size:0.75rem;">${r.time}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-weight:800; color:${cls.badgeColor || 'var(--primary)'};">${r.subject}</span>
+                  <span style="font-size:0.75rem; color:var(--text-muted);">(${r.teacher})</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Features Checklist -->
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size:0.92rem; font-weight:900; color:var(--text-color); margin:0 0 10px 0;">
+            ⭐ ما تتضمنه باقة الفصل:
+          </h4>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; font-weight:800; color:var(--text-color);">
+              <span style="color:#10b981;">✅</span>
+              <span>اشتراك واحد شامل كل المواد المذكورة</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; font-weight:800; color:var(--text-color);">
+              <span style="color:#10b981;">✅</span>
+              <span>بث مباشر تفاعلي مع المعلم وإمكانية السؤال</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; font-weight:800; color:var(--text-color);">
+              <span style="color:#10b981;">✅</span>
+              <span>تسجيل كامل لكل حصة متاح طوال الترم</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; font-weight:800; color:var(--text-color);">
+              <span style="color:#10b981;">✅</span>
+              <span>واجبات واختبارات وتقارير دورية لولي الأمر</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer / Pricing & Subscribe -->
+        <div style="padding-top: 18px; border-top: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+          <div>
+            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">الاشتراك الشهري الموحد:</span>
+            <strong style="font-size:1.4rem; font-weight:900; color:${cls.badgeColor || 'var(--primary)'};">
+              ${cls.price} ج.م <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">/ شهر</span>
+            </strong>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="modal-cancel-btn" style="
+              padding: 10px 18px;
+              border-radius: 12px;
+              background: var(--bg-app);
+              color: var(--text-color);
+              border: 1px solid var(--border-color);
+              font-weight: 800;
+              font-size: 0.86rem;
+              cursor: pointer;
+            ">
+              إغلاق
+            </button>
+            <button type="button" id="modal-view-full-page-btn" style="
+              padding: 10px 16px;
+              border-radius: 12px;
+              background: #0284c7;
+              color: #ffffff;
+              border: none;
+              font-weight: 800;
+              font-size: 0.86rem;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+            ">
+              <i data-lucide="external-link" style="width:14px;height:14px;"></i>
+              <span>صفحة الفصل كاملة</span>
+            </button>
+            <button type="button" id="modal-subscribe-btn" style="
+              padding: 10px 24px;
+              border-radius: 12px;
+              background: ${cls.badgeColor || 'var(--primary)'};
+              color: #ffffff;
+              border: none;
+              font-weight: 900;
+              font-size: 0.9rem;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              box-shadow: 0 4px 14px ${cls.badgeColor || 'var(--primary)'}40;
+            ">
+              <span>اشترك في هذا الفصل 🛒</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => overlay.remove();
+    overlay.querySelector("#close-class-modal-btn")?.addEventListener("click", closeModal);
+    overlay.querySelector("#modal-cancel-btn")?.addEventListener("click", closeModal);
+    overlay.querySelector("#modal-view-full-page-btn")?.addEventListener("click", () => {
+      closeModal();
+      const stageParam = encodeURIComponent(this.explorerStage || "");
+      const gradeParam = encodeURIComponent(cls.gradeName || "");
+      const roomParam = encodeURIComponent(cls.title || cls.name || "");
+      const priceParam = encodeURIComponent(cls.price || "");
+      window.location.hash = `#class-details?id=${encodeURIComponent(cls.id || "")}&stage=${stageParam}&grade=${gradeParam}&room=${roomParam}&price=${priceParam}`;
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal();
+    });
+    overlay.querySelector("#modal-subscribe-btn")?.addEventListener("click", () => {
+      closeModal();
+      window.location.hash = "#courses";
+    });
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+        document.removeEventListener("keydown", onKeyDown);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
   }
 
   renderDynamicLandingSections() {
@@ -1842,6 +2630,7 @@ export default class LandingView {
 
     this.bindChartEvents();
     this.initFreeTrialSection();
+    this.initClassStageFilter();
     this.initScrollToggleButton();
     this.initLiveNowStrip();
     this.initTestimonialsCarousel();
@@ -1915,17 +2704,17 @@ export default class LandingView {
         const availableSeats = Math.max(0, maxStudents - enrolled);
         if (availableSeats <= 0) return;
         openGroups.push({
-          groupName:      group.name || "",
-          teacherName:    group.teacher?.name || course.teacher?.name || "",
-          subject:        course.category || course.title || "",
-          grade:          course.grade?.name || course.degree || "",
-          scheduleDays:   group.scheduleDays || "",
-          scheduleTime:   group.scheduleTime || "",
-          scheduleText:   group.scheduleText || "",
+          groupName: group.name || "",
+          teacherName: group.teacher?.name || course.teacher?.name || "",
+          subject: course.category || course.title || "",
+          grade: course.grade?.name || course.degree || "",
+          scheduleDays: group.scheduleDays || "",
+          scheduleTime: group.scheduleTime || "",
+          scheduleText: group.scheduleText || "",
           availableSeats,
           maxStudents,
-          courseId:       course.id,
-          isLive:         false
+          courseId: course.id,
+          isLive: false
         });
       });
     });
@@ -1940,11 +2729,11 @@ export default class LandingView {
     liveSessions.forEach(s => {
       const subject = s.subject?.name || s.group?.course?.category || s.course?.category || "درس";
       const teacher = s.teacher?.name || s.group?.teacher?.name || "الأستاذ";
-      const grade   = s.group?.course?.grade?.name || s.group?.course?.degree || "";
+      const grade = s.group?.course?.grade?.name || s.group?.course?.degree || "";
       items.push({
-        dot:   "#ef4444",
+        dot: "#ef4444",
         badge: "🔴 بث مباشر الآن",
-        text:  `${subject}${grade ? " • " + grade : ""} مع أ/ ${teacher} — انضم الآن`,
+        text: `${subject}${grade ? " • " + grade : ""} مع أ/ ${teacher} — انضم الآن`,
         isLive: true
       });
     });
@@ -1952,15 +2741,15 @@ export default class LandingView {
     // Open groups → advertise with urgency
     openGroups.slice(0, 6).forEach(g => {
       const scheduleDisplay = g.scheduleText || (g.scheduleDays ? `${g.scheduleDays}${g.scheduleTime ? " " + g.scheduleTime : ""}` : "");
-      const urgency    = g.availableSeats <= 3 ? "🔥" : g.availableSeats <= 7 ? "⚡" : "📚";
+      const urgency = g.availableSeats <= 3 ? "🔥" : g.availableSeats <= 7 ? "⚡" : "📚";
       const seatsCountText = (g.availableSeats >= 3 && g.availableSeats <= 10) ? `${g.availableSeats} مقاعد` : `${g.availableSeats} مقعد`;
-      const seatsText  = `متبقي ${seatsCountText}`;
+      const seatsText = `متبقي ${seatsCountText}`;
       const teacherText = g.teacherName ? ` مع أ/ ${g.teacherName}` : "";
-      const schedText  = scheduleDisplay ? ` • ${scheduleDisplay}` : "";
+      const schedText = scheduleDisplay ? ` • ${scheduleDisplay}` : "";
       items.push({
-        dot:   g.availableSeats <= 3 ? "#ef4444" : g.availableSeats <= 7 ? "#f59e0b" : "#10b981",
+        dot: g.availableSeats <= 3 ? "#ef4444" : g.availableSeats <= 7 ? "#f59e0b" : "#10b981",
         badge: g.availableSeats <= 3 ? "🔥 مقاعد محدودة" : g.availableSeats <= 7 ? "⚡ يمتلئ قريباً" : "✅ مفتوحة للتسجيل",
-        text:  `${urgency} ${g.subject}${g.grade ? " • " + g.grade : ""}${teacherText}${schedText} • ${seatsText}`,
+        text: `${urgency} ${g.subject}${g.grade ? " • " + g.grade : ""}${teacherText}${schedText} • ${seatsText}`,
         isLive: false
       });
     });
@@ -1968,10 +2757,10 @@ export default class LandingView {
     // Fallback: if no real data yet, keep static placeholders
     if (items.length === 0) {
       items.push(
-        { dot: "#ef4444", badge: "🔴 بث مباشر الآن",    text: "📐 رياضيات ثانوي — انضم الآن",                          isLive: true  },
-        { dot: "#10b981", badge: "✅ مفتوحة للتسجيل",  text: "🎓 سجّل مجاناً واحجز مقعدك قبل امتلاء المجموعة",      isLive: false },
-        { dot: "#f59e0b", badge: "⚡ يمتلئ قريباً",    text: "⚡ فيزياء إعدادي — الحصة بدأت، لا تفوتها!",           isLive: true  },
-        { dot: "#ef4444", badge: "🔴 بث مباشر الآن",    text: "📖 مراجعة ليلية شاملة للثانوية — تبدأ بعد قليل",      isLive: false }
+        { dot: "#ef4444", badge: "🔴 بث مباشر الآن", text: "📐 رياضيات ثانوي — انضم الآن", isLive: true },
+        { dot: "#10b981", badge: "✅ مفتوحة للتسجيل", text: "🎓 سجّل مجاناً واحجز مقعدك قبل امتلاء المجموعة", isLive: false },
+        { dot: "#f59e0b", badge: "⚡ يمتلئ قريباً", text: "⚡ فيزياء إعدادي — الحصة بدأت، لا تفوتها!", isLive: true },
+        { dot: "#ef4444", badge: "🔴 بث مباشر الآن", text: "📖 مراجعة ليلية شاملة للثانوية — تبدأ بعد قليل", isLive: false }
       );
     }
 
@@ -2095,6 +2884,618 @@ export default class LandingView {
 
     const statsSection = document.getElementById("platform-analytics-section");
     if (statsSection) observer.observe(statsSection);
+  }
+
+  async initClassStageFilter() {
+    // ============================================================
+    // باقات الفصول الثلاثة الافتراضية كاحتياطي عند عدم وجود باقات مخصصة بعد
+    // ============================================================
+    const makePackagesForGrade = (stageKey, gradeName) => {
+      if (stageKey === 'secondary') {
+        return [
+          {
+            name: 'فصل المتفوقين (باقة مجمعة)',
+            badge: 'متاح للاشتراك',
+            lessonsCount: 'عدد الحصص: 64 حصة',
+            theme: {
+              bg: '#eff6ff',
+              border: '#93c5fd',
+              headerBg: '#1e40af',
+              badgeBg: '#dbeafe',
+              textColor: '#1e40af',
+            },
+            subjects: [
+              { name: 'الفيزياء', icon: '⚡', time: 'الأحد والثلاثاء - 5:00 مساءً' },
+              { name: 'الكيمياء', icon: '🧪', time: 'الاثنين والأربعاء - 6:00 مساءً' },
+              { name: 'الأحياء / الجيولوجيا', icon: '🧬', time: 'السبت والخميس - 7:00 مساءً' },
+              { name: 'الرياضيات واللغة العربية', icon: '📐', time: 'الأحد والأربعاء - 8:00 مساءً' },
+            ],
+            price: '800 ريال / شهرياً  •  800 جنيه / شهرياً',
+          },
+          {
+            name: 'فصل التأسيس (باقة مصغرة)',
+            badge: 'الأكثر طلباً',
+            lessonsCount: 'عدد الحصص: 32 حصة',
+            theme: {
+              bg: '#f0fdf4',
+              border: '#86efac',
+              headerBg: '#059669',
+              badgeBg: '#dcfce7',
+              textColor: '#047857',
+            },
+            subjects: [
+              { name: 'المواد الأساسية المشتركة', icon: '📙', time: 'السبت والخميس - 4:00 مساءً' },
+              { name: 'الرياضيات التخصصية', icon: '➕', time: 'الأحد والثلاثاء - 6:00 مساءً' },
+            ],
+            price: '450 ريال / شهرياً  •  450 جنيه / شهرياً',
+          },
+          {
+            name: 'فصل اللغات (باقة اللغات والعلوم المترجمة)',
+            badge: 'مسار اللغات',
+            lessonsCount: 'عدد الحصص: 48 حصة',
+            theme: {
+              bg: '#faf5ff',
+              border: '#d8b4fe',
+              headerBg: '#7c3aed',
+              badgeBg: '#f3e8ff',
+              textColor: '#6d28d9',
+            },
+            subjects: [
+              { name: 'English High Level', icon: '🇬🇧', time: 'الاثنين والأربعاء - 5:00 مساءً' },
+              { name: 'Pure & Applied Math', icon: '📐', time: 'السبت والخميس - 8:00 مساءً' },
+              { name: 'Physics & Chemistry', icon: '🔬', time: 'الأحد والأربعاء - 7:00 مساءً' },
+            ],
+            price: '900 ريال / شهرياً  •  900 جنيه / شهرياً',
+          },
+        ];
+      }
+
+      if (stageKey === 'middle') {
+        return [
+          {
+            name: 'فصل المتفوقين (باقة مجمعة)',
+            badge: 'متاح للاشتراك',
+            lessonsCount: 'عدد الحصص: 64 حصة',
+            theme: {
+              bg: '#eff6ff',
+              border: '#93c5fd',
+              headerBg: '#1e40af',
+              badgeBg: '#dbeafe',
+              textColor: '#1e40af',
+            },
+            subjects: [
+              { name: 'اللغة العربية', icon: '📙', time: 'الأحد والثلاثاء - 5:00 مساءً' },
+              { name: 'اللغة الإنجليزية', icon: '🔤', time: 'الاثنين والأربعاء - 6:00 مساءً' },
+              { name: 'الرياضيات', icon: '➕', time: 'السبت والخميس - 7:00 مساءً' },
+              { name: 'العلوم والدراسات', icon: '🧪', time: 'الأحد والأربعاء - 8:00 مساءً' },
+            ],
+            price: '600 ريال / شهرياً  •  600 جنيه / شهرياً',
+          },
+          {
+            name: 'فصل التأسيس (باقة مصغرة)',
+            badge: 'الأكثر طلباً',
+            lessonsCount: 'عدد الحصص: 32 حصة',
+            theme: {
+              bg: '#f0fdf4',
+              border: '#86efac',
+              headerBg: '#059669',
+              badgeBg: '#dcfce7',
+              textColor: '#047857',
+            },
+            subjects: [
+              { name: 'اللغة العربية', icon: '📙', time: 'السبت والخميس - 4:00 مساءً' },
+              { name: 'الرياضيات', icon: '➕', time: 'الأحد والثلاثاء - 6:00 مساءً' },
+            ],
+            price: '300 ريال / شهرياً  •  300 جنيه / شهرياً',
+          },
+          {
+            name: 'فصل اللغات (باقة اللغات والعلوم المترجمة)',
+            badge: 'مسار اللغات',
+            lessonsCount: 'عدد الحصص: 48 حصة',
+            theme: {
+              bg: '#faf5ff',
+              border: '#d8b4fe',
+              headerBg: '#7c3aed',
+              badgeBg: '#f3e8ff',
+              textColor: '#6d28d9',
+            },
+            subjects: [
+              { name: 'English', icon: '🇬🇧', time: 'الاثنين والأربعاء - 5:00 مساءً' },
+              { name: 'Math', icon: '📐', time: 'السبت والخميس - 8:00 مساءً' },
+              { name: 'Science', icon: '🔬', time: 'الأحد والأربعاء - 7:00 مساءً' },
+            ],
+            price: '700 ريال / شهرياً  •  700 جنيه / شهرياً',
+          },
+        ];
+      }
+
+      // الابتدائية الافتراضية
+      return [
+        {
+          name: 'فصل المتفوقين (باقة مجمعة)',
+          badge: 'متاح للاشتراك',
+          lessonsCount: 'عدد الحصص: 64 حصة',
+          theme: {
+            bg: '#eff6ff',
+            border: '#93c5fd',
+            headerBg: '#1e40af',
+            badgeBg: '#dbeafe',
+            textColor: '#1e40af',
+          },
+          subjects: [
+            { name: 'اللغة العربية', icon: '📙', time: 'الأحد والثلاثاء - 5:00 مساءً' },
+            { name: 'اللغة الإنجليزية', icon: '🔤', time: 'الاثنين والأربعاء - 6:00 مساءً' },
+            { name: 'الرياضيات', icon: '➕', time: 'السبت والخميس - 7:00 مساءً' },
+            { name: 'العلوم', icon: '🧪', time: 'الأحد والأربعاء - 8:00 مساءً' },
+          ],
+          price: '500 ريال / شهرياً  •  500 جنيه / شهرياً',
+        },
+        {
+          name: 'فصل التأسيس (باقة مصغرة)',
+          badge: 'الأكثر طلباً',
+          lessonsCount: 'عدد الحصص: 32 حصة',
+          theme: {
+            bg: '#f0fdf4',
+            border: '#86efac',
+            headerBg: '#059669',
+            badgeBg: '#dcfce7',
+            textColor: '#047857',
+          },
+          subjects: [
+            { name: 'اللغة العربية', icon: '📙', time: 'السبت والخميس - 4:00 مساءً' },
+            { name: 'الرياضيات', icon: '➕', time: 'الأحد والثلاثاء - 6:00 مساءً' },
+          ],
+          price: '250 ريال / شهرياً  •  250 جنيه / شهرياً',
+        },
+        {
+          name: 'فصل اللغات (باقة اللغات والعلوم المترجمة)',
+          badge: 'مسار اللغات',
+          lessonsCount: 'عدد الحصص: 48 حصة',
+          theme: {
+            bg: '#faf5ff',
+            border: '#d8b4fe',
+            headerBg: '#7c3aed',
+            badgeBg: '#f3e8ff',
+            textColor: '#6d28d9',
+          },
+          subjects: [
+            { name: 'English', icon: '🇬🇧', time: 'الاثنين والأربعاء - 5:00 مساءً' },
+            { name: 'Math', icon: '📐', time: 'السبت والخميس - 8:00 مساءً' },
+            { name: 'Science', icon: '🔬', time: 'الأحد والأربعاء - 7:00 مساءً' },
+          ],
+          price: '600 ريال / شهرياً  •  600 جنيه / شهرياً',
+        },
+      ];
+    };
+
+    // ============================================================
+    // DOM refs
+    // ============================================================
+    const stageBtns = this.container.querySelectorAll('.class-stage-btn');
+    const pillsWrap = this.container.querySelector('#class-grades-pills');
+    const roomsWrap = this.container.querySelector('#class-rooms-container');
+    if (!pillsWrap || !roomsWrap) return;
+
+    // جلب البيانات الحية من قاعدة البيانات للفصول والصفوف
+    let dbClasses = this.allClassesData || [];
+    let dbGrades = this.allGradesData || [];
+
+    if (!dbClasses.length || !dbGrades.length) {
+      try {
+        const [clsRes, grdRes] = await Promise.all([
+          apiFetch('/curriculum/classes').catch(() => []),
+          apiFetch('/curriculum/grades').catch(() => [])
+        ]);
+        dbClasses = clsRes || [];
+        dbGrades = grdRes || [];
+        this.allClassesData = dbClasses;
+        this.allGradesData = dbGrades;
+      } catch (e) {
+        console.warn("Could not fetch classes for landing filter:", e);
+      }
+    }
+
+    const stageMapping = {
+      primary: { key: 'PRIMARY', label: 'الابتدائية' },
+      middle: { key: 'PREPARATORY', label: 'الإعدادية' },
+      secondary: { key: 'SECONDARY', label: 'الثانوية' }
+    };
+
+    const themeStyles = {
+      blue: { bg: '#eff6ff', border: '#93c5fd', headerBg: '#1e40af', badgeBg: '#dbeafe', textColor: '#1e40af' },
+      green: { bg: '#f0fdf4', border: '#86efac', headerBg: '#059669', badgeBg: '#dcfce7', textColor: '#047857' },
+      purple: { bg: '#faf5ff', border: '#d8b4fe', headerBg: '#7c3aed', badgeBg: '#f3e8ff', textColor: '#6d28d9' },
+      amber: { bg: '#fffbeb', border: '#fcd34d', headerBg: '#d97706', badgeBg: '#fef3c7', textColor: '#b45309' }
+    };
+
+    const buildStageData = () => {
+      const data = {};
+
+      const formatClassRoom = (c, gradeName = '') => {
+        const th = themeStyles[c.theme] || themeStyles.blue;
+        const linkedGroups = c.linkedGroups || [];
+        let roomSubjects = [];
+        if (linkedGroups.length > 0) {
+          roomSubjects = linkedGroups.map(grp => {
+            const sName = grp.course?.subject?.name || grp.name;
+            const sTheme = this.getSubjectTheme(sName);
+            const tTime = grp.scheduleDays ? `${grp.scheduleDays} ${grp.scheduleTime || ''}`.trim() : (grp.scheduleText || 'مواعيد منتظمة');
+            return {
+              name: sName,
+              icon: sTheme.icon || '📚',
+              time: tTime
+            };
+          });
+        } else if (Array.isArray(c.subjects) && c.subjects.length > 0) {
+          roomSubjects = c.subjects.map(s => {
+            // Keep only dates and times, strip any teacher names in parentheses or duration bullet
+            let cleanTime = (s.time || 'مواعيد منتظمة').split('(')[0].split('•')[0].trim();
+            return {
+              name: s.name,
+              icon: s.icon || '📚',
+              time: cleanTime || s.time || 'مواعيد منتظمة'
+            };
+          });
+        } else {
+          roomSubjects = [
+            { name: 'جميع المواد المقررة', icon: '📚', time: 'جدول أسبوعي موحد' },
+            { name: 'متابعة دورية مباشرة', icon: '⭐', time: 'تنسيق كامل للمواعيد' }
+          ];
+        }
+
+        const lessonsCount = c.lessonsCount || (linkedGroups.length > 0 ? `${linkedGroups.length} مواد مجمعة • ${linkedGroups.length * 8} حصة شهرياً` : 'عدد الحصص: 64 حصة');
+        const priceText = c.priceEg ? `${c.priceEg} جنيه / شهرياً` : (c.price || '1,200 جنيه / شهرياً');
+
+        return {
+          id: c.id,
+          name: c.name,
+          gradeName: gradeName || c.grade?.name || '',
+          badge: c.badge || 'متاح للاشتراك',
+          lessonsCount: lessonsCount,
+          theme: th,
+          subjects: roomSubjects,
+          price: priceText,
+          dbClass: c
+        };
+      };
+
+      Object.entries(stageMapping).forEach(([stageKey, stageInfo]) => {
+        const stageGrades = (dbGrades || []).filter(g => g.stage === stageInfo.key);
+        let gradesList = [];
+
+        // All classes in this stage (matched by grade.stage or grade ID)
+        const stageDbClasses = (dbClasses || []).filter(c => 
+          c.grade?.stage === stageInfo.key || stageGrades.some(sg => sg.id === c.grade?.id || sg.id === c.gradeId)
+        );
+
+        if (stageGrades.length > 0) {
+          // If this stage has any real custom classes, add "🌟 جميع الفصول" as the first pill
+          if (stageDbClasses.length > 0) {
+            gradesList.push({
+              id: 'all',
+              name: `🌟 جميع الفصول (${stageDbClasses.length})`,
+              pillColor: '#0056D2',
+              rooms: stageDbClasses.map(c => formatClassRoom(c, c.grade?.name)),
+              hasDbClasses: true,
+              isAll: true
+            });
+          }
+
+          stageGrades.forEach(g => {
+            const gradeClasses = (dbClasses || []).filter(c => 
+              c.grade?.id === g.id || c.gradeId === g.id || c.grade?.name === g.name
+            );
+
+            let rooms = [];
+            if (gradeClasses.length > 0) {
+              rooms = gradeClasses.map(c => formatClassRoom(c, g.name));
+            } else {
+              rooms = makePackagesForGrade(stageKey, g.name);
+            }
+
+            gradesList.push({
+              id: g.id,
+              name: g.name,
+              pillColor: '#0056D2',
+              rooms: rooms,
+              hasDbClasses: gradeClasses.length > 0,
+              dbClassCount: gradeClasses.length
+            });
+          });
+        } else {
+          const defaultNames = stageKey === 'primary' 
+            ? ['الصف الأول الابتدائي', 'الصف الثاني الابتدائي', 'الصف الثالث الابتدائي', 'الصف الرابع الابتدائي', 'الصف الخامس الابتدائي', 'الصف السادس الابتدائي']
+            : (stageKey === 'middle'
+              ? ['الصف الأول الإعدادي', 'الصف الثاني الإعدادي', 'الصف الثالث الإعدادي (الشهادة الإعدادية)']
+              : ['الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي (ثانوية عامة)']);
+
+          gradesList = defaultNames.map(name => ({
+            name: name,
+            pillColor: '#0056D2',
+            rooms: makePackagesForGrade(stageKey, name),
+            hasDbClasses: false,
+            dbClassCount: 0
+          }));
+        }
+
+        data[stageKey] = {
+          label: stageInfo.label,
+          grades: gradesList,
+          customClassesCount: stageDbClasses.length
+        };
+      });
+
+      return data;
+    };
+
+    const STAGE_DATA = buildStageData();
+
+    // ============================================================
+    // Render class-room cards for selected grade (Exact Photo Design!)
+    // ============================================================
+    const renderRooms = (stage, gradeIdx, activePill) => {
+      const grade = STAGE_DATA[stage]?.grades[gradeIdx];
+      if (!grade) return;
+
+      // Highlight active grade pill with brand color from Logo
+      pillsWrap.querySelectorAll('.class-grade-pill').forEach(p => {
+        const isActive = p === activePill;
+        p.style.background = isActive ? 'linear-gradient(135deg, #0056D2, #1e40af)' : 'rgba(255,255,255,0.85)';
+        p.style.color = isActive ? '#ffffff' : '#1e3a8a';
+        p.style.borderColor = isActive ? '#0056D2' : 'var(--border-color)';
+        p.style.boxShadow = isActive ? '0 4px 12px rgba(0,86,210,0.25)' : 'none';
+      });
+
+      // Render the class cards from Right to Left
+      roomsWrap.innerHTML = grade.rooms.map((r, rIdx) => `
+        <div class="room-photo-card" style="
+          background: ${r.theme.bg};
+          border: 1.5px solid ${r.theme.border};
+          border-radius: 24px;
+          padding: 22px 18px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          text-align: right;
+          direction: rtl !important;
+          position: relative;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 4px 18px rgba(0,0,0,0.03);
+        ">
+
+          <!-- Top Section -->
+          <div>
+            <!-- Grade Name Badge (if present) -->
+            ${r.gradeName ? `
+              <div style="display:flex; justify-content:center; margin-bottom:6px;">
+                <span style="font-size:0.75rem; font-weight:800; color:#0056D2; background:#e0f2fe; padding:2px 10px; border-radius:8px; border:1px solid #bfdbfe;">
+                  ${r.gradeName}
+                </span>
+              </div>
+            ` : ''}
+
+            <!-- Badge -->
+            <div style="display:flex; justify-content:center; margin-bottom:8px; min-height:26px;">
+              ${r.badge ? `
+                <span style="background:#1e293b; color:#ffffff; font-size:0.75rem; font-weight:800; padding:4px 14px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.12);">
+                  ${r.badge}
+                </span>
+              ` : ''}
+            </div>
+
+            <!-- Title Banner -->
+            <div style="background:${r.theme.headerBg}; color:#ffffff; border-radius:16px; padding:12px 14px; text-align:center; font-size:1.1rem; font-weight:900; margin-bottom:8px; box-shadow:0 4px 14px ${r.theme.headerBg}35;">
+              ${r.name}
+            </div>
+
+            <!-- Lessons Count -->
+            <div style="text-align:center; font-size:0.86rem; font-weight:900; color:${r.theme.textColor}; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:6px;">
+              <i data-lucide="calendar" style="width:15px; height:15px;"></i>
+              <span>${r.lessonsCount}</span>
+            </div>
+
+            <!-- Subjects List (Subject on right, time on left) -->
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px; direction:rtl;">
+              ${r.subjects.map(s => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid rgba(0,0,0,0.05); border-radius:10px; padding:8px 12px; box-shadow:0 2px 4px rgba(0,0,0,0.02); direction:rtl;">
+                  <span style="font-size:0.84rem; font-weight:900; color:#1e293b; display:flex; align-items:center; gap:6px;">
+                    <span style="font-size:0.95rem;">${s.icon}</span>
+                    <span>${s.name}</span>
+                  </span>
+                  <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-align:left;">${s.time}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Bottom Section: Price + Two Buttons -->
+          <div>
+            <!-- Price Badge -->
+            <div style="background:${r.theme.badgeBg}; border:1px solid ${r.theme.border}; border-radius:14px; padding:9px 12px; margin-bottom:12px; text-align:center;">
+              <strong style="font-size:1.05rem; font-weight:900; color:${r.theme.textColor};">
+                ${r.price}
+              </strong>
+            </div>
+
+            <!-- Buttons Row: Subscribe (from Logo gradient) on right + Details on left -->
+            <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:8px; direction:rtl;">
+              <!-- Subscribe Button -->
+              <button type="button" class="spotlight-room-subscribe-btn" data-room-idx="${rIdx}" style="
+                padding: 11px 0;
+                border-radius: 12px;
+                background: linear-gradient(135deg, #0056D2, #1e40af);
+                color: #ffffff;
+                font-weight: 800;
+                font-size: 0.86rem;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.2s;
+                box-shadow: 0 4px 14px rgba(0,86,210,0.3);
+              " onmouseenter="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 18px rgba(0,86,210,0.4)';" onmouseleave="this.style.transform='none'; this.style.boxShadow='0 4px 14px rgba(0,86,210,0.3)';">
+                <span>اشترك الآن</span>
+                <span style="font-size:0.95rem;">🛒</span>
+              </button>
+
+              <!-- Details Button -->
+              <button type="button" class="spotlight-room-details-btn" data-room-idx="${rIdx}" style="
+                padding: 11px 0;
+                border-radius: 12px;
+                background: #ffffff;
+                color: #0056D2;
+                font-weight: 800;
+                font-size: 0.84rem;
+                border: 1.5px solid #bfdbfe;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                transition: all 0.2s;
+              " onmouseenter="this.style.background='#eff6ff'; this.style.borderColor='#93c5fd';" onmouseleave="this.style.background='#ffffff'; this.style.borderColor='#bfdbfe';">
+                <i data-lucide="info" style="width:14px; height:14px; color:#0056D2;"></i>
+                <span>التفاصيل</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+
+      roomsWrap.querySelectorAll('.spotlight-room-subscribe-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rIdx = Number(btn.getAttribute('data-room-idx'));
+          const r = grade.rooms[rIdx];
+          if (r?.id && !r.id.startsWith("class-temp-")) {
+            window.location.hash = `#class-details?id=${encodeURIComponent(r.id)}`;
+          } else if (r) {
+            const rawPrice = (r.price || "150 جنيه").split("•")[0].replace("/ شهرياً", "").trim();
+            window.location.hash = `#class-details?stage=${encodeURIComponent(stage)}&grade=${encodeURIComponent(grade.name)}&room=${encodeURIComponent(r.name)}&price=${encodeURIComponent(rawPrice)}`;
+          }
+        });
+      });
+
+      roomsWrap.querySelectorAll('.spotlight-room-details-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rIdx = Number(btn.getAttribute('data-room-idx'));
+          const r = grade.rooms[rIdx];
+          if (r?.id && !r.id.startsWith("class-temp-")) {
+            window.location.hash = `#class-details?id=${encodeURIComponent(r.id)}`;
+          } else if (r) {
+            const rawPrice = (r.price || "150 جنيه").split("•")[0].replace("/ شهرياً", "").trim();
+            window.location.hash = `#class-details?stage=${encodeURIComponent(stage)}&grade=${encodeURIComponent(grade.name)}&room=${encodeURIComponent(r.name)}&price=${encodeURIComponent(rawPrice)}`;
+          }
+        });
+      });
+    };
+
+    // ============================================================
+    // Render grade pills for selected stage & Auto-render 1st grade
+    // ============================================================
+    const renderGradePills = (stage) => {
+      const data = STAGE_DATA[stage];
+      if (!data) return;
+
+      pillsWrap.innerHTML = data.grades.map((g, i) => `
+        <button
+          class="class-grade-pill ${g.hasDbClasses ? 'has-custom-class' : ''}"
+          data-stage="${stage}"
+          data-grade-idx="${i}"
+          style="padding:8px 18px; border-radius:24px; font-weight:800; font-size:0.84rem;
+                 background:rgba(255,255,255,0.85); color:#1e3a8a;
+                 border:1.5px solid var(--border-color); cursor:pointer;">
+          ${g.name}
+          ${!g.isAll && g.dbClassCount ? `<span style="font-size:0.68rem; background:rgba(16,185,129,0.15); color:#10b981; padding:1px 6px; border-radius:6px; margin-inline-start:4px;">${g.dbClassCount}</span>` : ''}
+        </button>
+      `).join('');
+
+      // Bind pill clicks
+      pillsWrap.querySelectorAll('.class-grade-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const idx = Number(pill.getAttribute('data-grade-idx'));
+          const stKey = pill.getAttribute('data-stage');
+          renderRooms(stKey, idx, pill);
+        });
+      });
+
+      // Find first grade with custom classes or default to first
+      let targetIdx = 0;
+      const customIdx = data.grades.findIndex(g => g.hasDbClasses);
+      if (customIdx !== -1) targetIdx = customIdx;
+
+      const pills = pillsWrap.querySelectorAll('.class-grade-pill');
+      if (pills[targetIdx]) {
+        renderRooms(stage, targetIdx, pills[targetIdx]);
+      }
+    };
+
+    // Update stage buttons with count badge if they have custom classes
+    stageBtns.forEach(btn => {
+      const stgKey = btn.getAttribute('data-stage');
+      const stgInfo = stageMapping[stgKey];
+      if (stgInfo) {
+        const count = (dbClasses || []).filter(c => c.grade?.stage === stgInfo.key).length;
+        let badgeSpan = btn.querySelector('.stg-count-badge');
+        if (count > 0) {
+          if (!badgeSpan) {
+            badgeSpan = document.createElement('span');
+            badgeSpan.className = 'stg-count-badge';
+            badgeSpan.style.cssText = 'background:#10b981; color:#fff; font-size:0.72rem; font-weight:900; padding:2px 8px; border-radius:12px; margin-inline-start:6px;';
+            btn.appendChild(badgeSpan);
+          }
+          badgeSpan.textContent = `${count} ${count === 1 ? 'باقة' : 'باقات'}`;
+        } else if (badgeSpan) {
+          badgeSpan.remove();
+        }
+      }
+    });
+
+    // ============================================================
+    // Stage button interaction
+    // ============================================================
+    stageBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const stage = btn.getAttribute('data-stage');
+        stageBtns.forEach(b => {
+          const on = b === btn;
+          b.style.background = on ? 'linear-gradient(135deg, #0056D2, #1e40af)' : 'rgba(239,246,255,0.85)';
+          b.style.color = on ? '#fff' : '#0056D2';
+          b.style.borderColor = on ? '#0056D2' : 'transparent';
+          b.style.boxShadow = on ? '0 4px 14px rgba(0,86,210,0.3)' : 'none';
+        });
+        renderGradePills(stage);
+      });
+    });
+
+    // Auto-detect which stage has real DB classes and select it
+    let initialStage = 'primary';
+    if (dbClasses.length > 0) {
+      if (dbClasses.some(c => c.grade?.stage === 'SECONDARY')) {
+        initialStage = 'secondary';
+      } else if (dbClasses.some(c => c.grade?.stage === 'PREPARATORY')) {
+        initialStage = 'middle';
+      } else if (dbClasses.some(c => c.grade?.stage === 'PRIMARY')) {
+        initialStage = 'primary';
+      }
+    }
+
+    // Set active button style for initial stage
+    stageBtns.forEach(b => {
+      const on = b.getAttribute('data-stage') === initialStage;
+      b.style.background = on ? 'linear-gradient(135deg, #0056D2, #1e40af)' : 'rgba(239,246,255,0.85)';
+      b.style.color = on ? '#fff' : '#0056D2';
+      b.style.borderColor = on ? '#0056D2' : 'transparent';
+      b.style.boxShadow = on ? '0 4px 14px rgba(0,86,210,0.3)' : 'none';
+    });
+
+    renderGradePills(initialStage);
   }
 
   initFreeTrialSection() {

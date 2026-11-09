@@ -223,13 +223,18 @@
   </header>
 
   <!-- Viewport -->
-  <main id="app-viewport">
-    <div
-      style="min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-color);">
-      <div class="spinner" style="width: 44px; height: 44px; border-width: 4px; margin-bottom: 16px;"></div>
-      <p style="font-size: 0.95rem; font-weight: 700; opacity: 0.8;">جاري تحميل منصة انطلق...</p>
+  <main id="app-viewport"></main>
+
+  <!-- SEO Fallback for Search Crawlers without JS -->
+  <noscript>
+    <div style="padding: 40px 20px; text-align: center; max-width: 850px; margin: 0 auto; font-family: 'Cairo', sans-serif;">
+      <h1 style="font-size: 1.8rem; color: #1a237e; margin-bottom: 16px;">أكاديمية انطلق التعليمية | بوابة التعليم الإلكتروني التفاعلي والمناهج الدراسية</h1>
+      <p style="font-size: 1.1rem; color: #475569; line-height: 1.8; margin-bottom: 20px;">
+        منصة انطلق التعليمية الرائدة: دورات تفاعلية، حصص بث مباشر مع نخبة من أفضل المعلمين المعتمدين، ومجموعات دراسية مخصصة لجميع المراحل (الابتدائية، الإعدادية، والثانوية العامة).
+      </p>
+      <p style="color: #64748b; font-size: 0.95rem;">يرجى تفعيل الجافا سكريبت في متصفحك للاستمتاع بكافة مميزات المنصة وحضور الحصص المباشرة.</p>
     </div>
-  </main>
+  </noscript>
 
   <!-- Protocol Check Fallback -->
   <script>
