@@ -30,7 +30,7 @@ export class Enrollment {
   progress: number; // 0 to 100
 
   @Column({ default: "pending" })
-  status: "pending" | "active" | "banned" | "rejected";
+  status: "pending" | "active" | "banned" | "rejected" | "completed";
 
   @Column("simple-json", { nullable: true })
   completedLessons: string[]; // List of completed lesson IDs

@@ -28,7 +28,13 @@ export default class AdminView {
       mainTab = parts[0];
       subTab = parts.slice(1).join("/");
     }
+    if (mainTab === "class-subscriptions") {
+      mainTab = "classSubscriptions";
+    }
     this.activeTab = mainTab;
+    if (mainTab === "classSubscriptions") {
+      this.subFilter = "classes";
+    }
     if (mainTab === "settings" && subTab) {
       this._settingsSection = subTab;
     }
@@ -61,11 +67,18 @@ export default class AdminView {
     this.studentStatusFilter = "all";
     this.studentGradeFilter = "all";
     this.studentSearchQuery = "";
+    this.teacherStatusFilter = "all";
+    this.teacherSpecializationFilter = "all";
+    this.teacherCapabilityFilter = "all";
+    this.teacherActivityFilter = "all";
+    this.teacherSearchQuery = "";
+    this.teacherSort = "newest";
     this.adminGroupFilterStatus = "all";
     this.adminGroupGradeFilter = "all";
     this.adminGroupSearchQuery = "";
     this.adminGroupCourseFilter = "all";
     this.adminGroupTeacherFilter = "all";
+    this.adminGroupClassFilter = "all";
     this.adminGroupSort = "newest";
   }
 
@@ -409,6 +422,11 @@ export default class AdminView {
               🏫 الفصول والباقات (Classes)
               <span class="admin-nav-badge" id="admin-badge-classes" style="background:#0284c7; color:#fff;">0</span>
             </button>
+            <button class="admin-nav-btn ${this.activeTab === "classSubscriptions" ? "active" : ""}" data-tab="classSubscriptions">
+              <i data-lucide="graduation-cap" style="color:#059669;"></i>
+              🎒 اشتراكات الفصول والباقات
+              <span class="admin-nav-badge" id="admin-badge-class-subscriptions" style="background:#059669; color:#fff;">0</span>
+            </button>
             <button class="admin-nav-btn ${this.activeTab === "curriculum" ? "active" : ""}" data-tab="curriculum">
               <i data-lucide="book-marked"></i>
               🎓 المراحل والمواد الدراسية
@@ -591,6 +609,19 @@ export default class AdminView {
     el("admin-badge-applications", pendingApps.length);
     const groupSubsCount = (this.enrollments || []).filter(e => e.group).length;
     el("admin-badge-subscriptions", (this.subscriptions || []).length + groupSubsCount);
+    const classSubs = (this.enrollments || []).filter(e => e.classPackage);
+    const pendingClassSubs = classSubs.filter(e => e.status === 'pending' || e.paymentStatus === 'UNPAID');
+    el("admin-badge-class-subscriptions", pendingClassSubs.length > 0 ? `${pendingClassSubs.length} معلق` : classSubs.length);
+    const classSubBadge = document.getElementById("admin-badge-class-subscriptions");
+    if (classSubBadge) {
+      if (pendingClassSubs.length > 0) {
+        classSubBadge.style.background = "#f59e0b";
+        classSubBadge.style.color = "#fff";
+      } else {
+        classSubBadge.style.background = "#059669";
+        classSubBadge.style.color = "#fff";
+      }
+    }
     el("admin-badge-plans", (this.allPlans || []).length);
     const pendingBlogs = (this.allBlogs || []).filter(b => b.status === "PENDING");
     el("admin-badge-blogs", pendingBlogs.length > 0 ? `${pendingBlogs.length} معلق` : (this.allBlogs || []).length);
@@ -697,6 +728,11 @@ export default class AdminView {
         }
         if (tab === "students") this.selectedStudentId = null;
         if (tab === "teachers") this.selectedTeacherId = null;
+        if (tab === "classSubscriptions") {
+          this.subFilter = "classes";
+        } else if (tab === "subscriptions" && this.subFilter === "classes") {
+          this.subFilter = "all";
+        }
         this.container.querySelectorAll(".admin-nav-btn").forEach(b => {
           const bTab = b.getAttribute("data-tab");
           const bSub = b.getAttribute("data-subtab");
@@ -742,6 +778,7 @@ export default class AdminView {
     stats: { heading: "📊 الإحصائيات العامة", sub: "نظرة شاملة على مؤشرات أداء المنصة" },
     reports: { heading: "📈 التقارير والسجلات", sub: "تقارير مفصلة عن النشاط والأداء" },
     classes: { heading: "🏫 إدارة الفصول والباقات الشاملة (Class Packages)", sub: "تجميع مجموعات المواد في فصول دراسية موحدة، تحديد اشتراك الفصل، وتسكين الطلاب بنظام أجر المعلم بالساعة" },
+    classSubscriptions: { heading: "🎒 مركز اشتراكات الفصول والباقات الشاملة", sub: "متابعة تسجيل الطلاب في باقات الفصول المجمعة، اعتماد وقبول الطلبات، إدارة خطط السداد والتقسيط، وتدقيق إيصالات الدفع" },
     curriculum: { heading: "🎓 إدارة المراحل والمواد الدراسية", sub: "إضافة وإخفاء وتعديل الصفوف الدراسية والمواد لكل مرحلة تعليمية" },
     categories: { heading: "🗂️ إدارة التصنيفات", sub: "التصنيفات الرسمية المتاحة لجميع المعلمين" },
     courses: { heading: "📚 إدارة الدورات", sub: "مراجعة والإشراف على جميع دورات المنصة" },
@@ -789,7 +826,8 @@ export default class AdminView {
     if (!content) return;
 
     // Update top-bar heading
-    let meta = AdminView.TAB_META[tab] || {};
+    const activeMetaKey = (tab === "subscriptions" && this.activeTab === "classSubscriptions") ? "classSubscriptions" : tab;
+    let meta = AdminView.TAB_META[activeMetaKey] || {};
     if (tab === "earnings") {
       if (this.earningsSubTab === "students") {
         meta = {
@@ -856,6 +894,10 @@ export default class AdminView {
     else if (tab === "groups") content.innerHTML = this.renderGroupsTab(args);
     else if (tab === "reports") content.innerHTML = this.renderReportsTab();
     else if (tab === "subscriptions") content.innerHTML = this.renderSubscriptionsTab();
+    else if (tab === "classSubscriptions") {
+      this.subFilter = "classes";
+      content.innerHTML = this.renderSubscriptionsTab();
+    }
     else if (tab === "earnings") content.innerHTML = this.renderEarningsTab();
     else if (tab === "plans") content.innerHTML = this.renderPlansTab();
     else if (tab === "blogs") {
@@ -1059,6 +1101,24 @@ export default class AdminView {
       });
     }
 
+    // Admin Groups Class / Package Filter Dropdown
+    const adminGroupClassFilter = this.container.querySelector("#admin-groups-class-filter");
+    if (adminGroupClassFilter) {
+      adminGroupClassFilter.addEventListener("change", (e) => {
+        this.adminGroupClassFilter = e.target.value;
+        this.renderTab("groups");
+      });
+    }
+
+    // Admin Groups Class Tab Buttons (e.g. Quick Filter Pill)
+    this.container.querySelectorAll(".admin-group-class-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-class-filter") || "all";
+        this.adminGroupClassFilter = (this.adminGroupClassFilter === target) ? "all" : target;
+        this.renderTab("groups");
+      });
+    });
+
     // Admin Groups Sort Dropdown
     const adminGroupSort = this.container.querySelector("#admin-groups-sort");
     if (adminGroupSort) {
@@ -1075,6 +1135,7 @@ export default class AdminView {
       this.adminGroupGradeFilter = "all";
       this.adminGroupCourseFilter = "all";
       this.adminGroupTeacherFilter = "all";
+      this.adminGroupClassFilter = "all";
       this.adminGroupSort = "newest";
       this.renderTab("groups");
     };
@@ -1145,6 +1206,9 @@ export default class AdminView {
     this.container.querySelector("#admin-open-class-sub-modal-btn")?.addEventListener("click", () => {
       this.renderManualClassSubscriptionModal();
     });
+    this.container.querySelector("#admin-banner-open-class-sub-modal-btn")?.addEventListener("click", () => {
+      this.renderManualClassSubscriptionModal();
+    });
 
     // Class Subscriptions Actions in Subscriptions Tab
     this.container.querySelectorAll(".admin-approve-class-sub-btn").forEach(btn => {
@@ -1199,6 +1263,87 @@ export default class AdminView {
           this.renderTab("subscriptions");
         } catch (err) {
           showToast(err.message || "فشل حذف اشتراك الفصل.", "error");
+        }
+      });
+    });
+
+    // Finish Class Subscription
+    this.container.querySelectorAll(".admin-finish-class-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const studentName = btn.getAttribute("data-student") || "الطالب";
+        const targetName = btn.getAttribute("data-target-name") || "فصل دراسي";
+        if (!id) return;
+        const confirmed = await confirmDialog({
+          title: "إنهاء اشتراك الفصل 🏁",
+          message: `هل أنت متأكد من إنهاء اشتراك الطالب (${studentName}) في باقة (${targetName}) فقط؟\n\n📌 ملاحظة: سيتم إنهاء هذا الاشتراك الخاص بهذا الطالب فقط، ولن يؤثر ذلك على باقي المجموعات أو الطلاب.`
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/curriculum/class-subscriptions/${id}/finish`, {
+            method: "POST"
+          });
+          showToast(res.message || "تم إنهاء اشتراك الفصل لهذا الطالب بنجاح 🏁", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل إنهاء اشتراك الفصل.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Finish Group Subscription
+    this.container.querySelectorAll(".admin-finish-group-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const studentName = btn.getAttribute("data-student") || "الطالب";
+        const targetName = btn.getAttribute("data-target-name") || "المجموعة";
+        if (!id) return;
+        const confirmed = await confirmDialog({
+          title: "إنهاء اشتراك المجموعة 🏁",
+          message: `هل أنت متأكد من إنهاء اشتراك الطالب (${studentName}) في مجموعة (${targetName}) فقط؟\n\n📌 ملاحظة: سيتم إنهاء اشتراك هذا الطالب في هذه المجموعة فقط، وتبقى المجموعة نشطة لباقي الطلاب واشتراكاتهم.`
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/group-enrollments/${id}/finish`, {
+            method: "POST"
+          });
+          showToast(res.message || "تم إنهاء اشتراك المجموعة لهذا الطالب بنجاح 🏁", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل إنهاء اشتراك المجموعة.", "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Finish Private Subscription (1-on-1)
+    this.container.querySelectorAll(".admin-finish-private-sub-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const studentName = btn.getAttribute("data-student") || "الطالب";
+        const targetName = btn.getAttribute("data-target-name") || "الباقة الخاصة";
+        if (!id) return;
+        const confirmed = await confirmDialog({
+          title: "إنهاء واكتمال الاشتراك 🏁",
+          message: `هل أنت متأكد من إنهاء اشتراك الطالب (${studentName}) في باقة (${targetName}) فقط واعتباره مكتملاً؟`
+        });
+        if (!confirmed) return;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/admin/subscriptions/${id}/finish`, {
+            method: "PATCH"
+          });
+          showToast(res.message || "تم إنهاء هذا الاشتراك بنجاح 🏁", "success");
+          await this.loadAllData();
+          this.renderTab("subscriptions");
+        } catch (err) {
+          showToast(err.message || "فشل إنهاء الاشتراك.", "error");
+          btn.disabled = false;
         }
       });
     });
@@ -2097,6 +2242,92 @@ export default class AdminView {
         this.studentSearchQuery = "";
         this.renderTab("students");
       });
+    });
+
+    // ── Teacher Filters Event Listeners ──
+    // Teacher Quick Filter Status Tabs
+    this.container.querySelectorAll(".teacher-filter-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.teacherStatusFilter = btn.getAttribute("data-filter") || "all";
+        this.renderTab("teachers");
+      });
+    });
+
+    // Teacher Search Input (Debounced with cursor preservation)
+    const teacherSearchInput = this.container.querySelector("#teachers-search-input");
+    if (teacherSearchInput) {
+      teacherSearchInput.addEventListener("input", (e) => {
+        this.teacherSearchQuery = e.target.value;
+        clearTimeout(this._teacherSearchTimer);
+        this._teacherSearchTimer = setTimeout(() => {
+          this.renderTab("teachers");
+          const inputEl = this.container.querySelector("#teachers-search-input");
+          if (inputEl) {
+            inputEl.focus();
+            const len = inputEl.value.length;
+            inputEl.setSelectionRange(len, len);
+          }
+        }, 250);
+      });
+    }
+
+    // Teacher Status Filter Dropdown
+    const teacherStatusSelect = this.container.querySelector("#teacher-status-filter");
+    if (teacherStatusSelect) {
+      teacherStatusSelect.addEventListener("change", (e) => {
+        this.teacherStatusFilter = e.target.value;
+        this.renderTab("teachers");
+      });
+    }
+
+    // Teacher Specialization Filter Dropdown
+    const teacherSpecializationSelect = this.container.querySelector("#teacher-specialization-filter");
+    if (teacherSpecializationSelect) {
+      teacherSpecializationSelect.addEventListener("change", (e) => {
+        this.teacherSpecializationFilter = e.target.value;
+        this.renderTab("teachers");
+      });
+    }
+
+    // Teacher Capability Filter Dropdown
+    const teacherCapabilitySelect = this.container.querySelector("#teacher-capability-filter");
+    if (teacherCapabilitySelect) {
+      teacherCapabilitySelect.addEventListener("change", (e) => {
+        this.teacherCapabilityFilter = e.target.value;
+        this.renderTab("teachers");
+      });
+    }
+
+    // Teacher Activity Filter Dropdown
+    const teacherActivitySelect = this.container.querySelector("#teacher-activity-filter");
+    if (teacherActivitySelect) {
+      teacherActivitySelect.addEventListener("change", (e) => {
+        this.teacherActivityFilter = e.target.value;
+        this.renderTab("teachers");
+      });
+    }
+
+    // Teacher Sort Dropdown
+    const teacherSortSelect = this.container.querySelector("#teachers-sort");
+    if (teacherSortSelect) {
+      teacherSortSelect.addEventListener("change", (e) => {
+        this.teacherSort = e.target.value;
+        this.renderTab("teachers");
+      });
+    }
+
+    // Reset Teacher Filters Button
+    const resetTeacherFilters = () => {
+      this.teacherStatusFilter = "all";
+      this.teacherSpecializationFilter = "all";
+      this.teacherCapabilityFilter = "all";
+      this.teacherActivityFilter = "all";
+      this.teacherSearchQuery = "";
+      this.teacherSort = "newest";
+      this.renderTab("teachers");
+    };
+    this.container.querySelectorAll("#reset-teacher-filters-btn, #empty-reset-teacher-filters-btn").forEach(btn => {
+      btn.addEventListener("click", resetTeacherFilters);
     });
 
     // Toggle Block User (Teacher or Student)

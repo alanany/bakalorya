@@ -1,5 +1,150 @@
 import { state, t, apiFetch, showToast } from "../app.js";
 
+// Days of week sorting & normalization (Saturday -> Friday)
+const ARABIC_DAYS_ORDER = {
+    "السبت": 0,
+    "الأحد": 1,
+    "الاحد": 1,
+    "الإثنين": 2,
+    "الاثنين": 2,
+    "الثلاثاء": 3,
+    "الأربعاء": 4,
+    "الاربعاء": 4,
+    "الخميس": 5,
+    "الجمعة": 6,
+    "saturday": 0,
+    "sat": 0,
+    "sunday": 1,
+    "sun": 1,
+    "monday": 2,
+    "mon": 2,
+    "tuesday": 3,
+    "tue": 3,
+    "wednesday": 4,
+    "wed": 4,
+    "thursday": 5,
+    "thu": 5,
+    "friday": 6,
+    "fri": 6
+};
+
+const KNOWN_DAYS = ["السبت", "الأحد", "الاحد", "الإثنين", "الاثنين", "الثلاثاء", "الأربعاء", "الاربعاء", "الخميس", "الجمعة"];
+
+function getDayOrder(dayName) {
+    if (!dayName) return 99;
+    const clean = String(dayName).trim().replace(/^يوم\s+/, "").toLowerCase();
+    if (ARABIC_DAYS_ORDER[clean] !== undefined) return ARABIC_DAYS_ORDER[clean];
+    for (const [key, idx] of Object.entries(ARABIC_DAYS_ORDER)) {
+        if (clean.includes(key)) return idx;
+    }
+    return 99;
+}
+
+function getCanonicalDayName(dayName) {
+    if (!dayName) return "";
+    let clean = String(dayName).trim().replace(/^يوم\s+/, "");
+    if (clean === "الاحد") return "الأحد";
+    if (clean === "الاثنين") return "الإثنين";
+    if (clean === "الاربعاء") return "الأربعاء";
+    for (const key of Object.keys(ARABIC_DAYS_ORDER)) {
+        if (clean.includes(key)) {
+            if (key === "الاحد") return "الأحد";
+            if (key === "الاثنين") return "الإثنين";
+            if (key === "الاربعاء") return "الأربعاء";
+            return key;
+        }
+    }
+    return clean;
+}
+
+function parseTimeMinutes(timeStr) {
+    if (!timeStr) return 9999;
+    const s = String(timeStr).trim();
+    const match = s.match(/(\d{1,2}):?(\d{2})?\s*(ص|م|صباحاً|مساءً|am|pm)?/i);
+    if (!match) return 9999;
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2] ? parseInt(match[2], 10) : 0;
+    const period = match[3] ? match[3].toLowerCase() : "";
+
+    const isPm = period.includes("م") || period.includes("مساء") || period.includes("pm");
+    const isAm = period.includes("ص") || period.includes("صباح") || period.includes("am");
+
+    if (isPm && hours < 12) hours += 12;
+    if (isAm && hours === 12) hours = 0;
+
+    return hours * 60 + minutes;
+}
+
+function extractDaysFromSchedule(scheduleStr) {
+    if (!scheduleStr) return ["السبت", "الإثنين"];
+    const foundDays = [];
+    const tokens = String(scheduleStr).split(/[•,،\-–\n/;\\|]+|\s+و\s*|\s*و(?=ال[أإا-ي])/).map(t => t.trim()).filter(Boolean);
+    tokens.forEach(tok => {
+        const cleanTok = tok.replace(/^[•\s,،-]+|[•\s,،-]+$/g, "");
+        const matched = KNOWN_DAYS.find(kd => cleanTok.includes(kd));
+        if (matched) {
+            const canon = getCanonicalDayName(matched);
+            if (!foundDays.includes(canon)) foundDays.push(canon);
+        } else if (cleanTok) {
+            const canon = getCanonicalDayName(cleanTok);
+            if (!foundDays.includes(canon)) foundDays.push(canon);
+        }
+    });
+    return foundDays.length > 0 ? foundDays : ["السبت"];
+}
+
+const ALL_WEEK_DAYS = [
+    "السبت",
+    "الأحد",
+    "الإثنين",
+    "الثلاثاء",
+    "الأربعاء",
+    "الخميس",
+    "الجمعة"
+];
+
+function buildFullWeeklySchedule(rawScheduleOrDayMap) {
+    const sessionsByDay = {};
+    ALL_WEEK_DAYS.forEach(d => {
+        sessionsByDay[d] = [];
+    });
+
+    if (Array.isArray(rawScheduleOrDayMap)) {
+        rawScheduleOrDayMap.forEach(entry => {
+            const canonDay = getCanonicalDayName(entry.day);
+            if (canonDay && sessionsByDay[canonDay]) {
+                const items = Array.isArray(entry.items) ? entry.items : [];
+                items.forEach(it => {
+                    const exists = sessionsByDay[canonDay].some(x => x.subject === it.subject && x.time === it.time);
+                    if (!exists) sessionsByDay[canonDay].push(it);
+                });
+            }
+        });
+    } else if (rawScheduleOrDayMap && typeof rawScheduleOrDayMap === 'object') {
+        Object.entries(rawScheduleOrDayMap).forEach(([day, items]) => {
+            const canonDay = getCanonicalDayName(day);
+            if (canonDay && sessionsByDay[canonDay]) {
+                const arr = Array.isArray(items) ? items : [];
+                arr.forEach(it => {
+                    const exists = sessionsByDay[canonDay].some(x => x.subject === it.subject && x.time === it.time);
+                    if (!exists) sessionsByDay[canonDay].push(it);
+                });
+            }
+        });
+    }
+
+    return ALL_WEEK_DAYS.map(day => {
+        const items = sessionsByDay[day] || [];
+        items.sort((a, b) => parseTimeMinutes(a.time) - parseTimeMinutes(b.time));
+        const isFree = items.length === 0;
+        return {
+            day,
+            items,
+            isFree
+        };
+    });
+}
+
 export default class ClassDetailsView {
     constructor(container, routeParam) {
         this.container = container;
@@ -21,8 +166,8 @@ export default class ClassDetailsView {
         this.description = null;
         this.features = null;
 
-        // جدول مواعيد الأيام الستة من محتوى الـ HTML المرفق
-        this.weeklySchedule = [
+        // جدول مواعيد أيام الأسبوع الكاملة
+        this.weeklySchedule = buildFullWeeklySchedule([
             {
                 day: "السبت",
                 items: [
@@ -61,7 +206,7 @@ export default class ClassDetailsView {
                     { subject: "الرياضيات", time: "7:00 - 8:00 مساءً", duration: "40 دقيقة" }
                 ]
             }
-        ];
+        ]);
     }
 
     async render() {
@@ -83,7 +228,7 @@ export default class ClassDetailsView {
                         if (data.lessonsCount) this.lessonsCount = data.lessonsCount;
                         if (data.description) this.description = data.description;
                         if (Array.isArray(data.weeklySchedule) && data.weeklySchedule.length > 0) {
-                            this.weeklySchedule = data.weeklySchedule;
+                            this.weeklySchedule = buildFullWeeklySchedule(data.weeklySchedule);
                         }
                         if (Array.isArray(data.features) && data.features.length > 0) {
                             this.features = data.features;
@@ -110,26 +255,28 @@ export default class ClassDetailsView {
                             if (!Array.isArray(data.weeklySchedule) || data.weeklySchedule.length === 0) {
                                 const dayMap = {};
                                 data.linkedGroups.forEach(g => {
-                                    const days = (g.scheduleDays || "السبت • الإثنين").split(/[•,،-]/).map(d => d.trim()).filter(Boolean);
+                                    const days = extractDaysFromSchedule(g.scheduleDays || "السبت • الإثنين");
                                     const time = g.scheduleTime || "7:00 - 8:30 م";
                                     const subj = g.course?.subject?.name || g.name;
                                     const dur = `${g.sessionDuration || 40} دقيقة`;
                                     days.forEach(day => {
-                                        if (!dayMap[day]) dayMap[day] = [];
-                                        dayMap[day].push({ subject: subj, time: time, duration: dur });
+                                        const canonDay = getCanonicalDayName(day);
+                                        if (!dayMap[canonDay]) dayMap[canonDay] = [];
+                                        dayMap[canonDay].push({ subject: subj, time: time, duration: dur });
                                     });
                                 });
-                                if (Object.keys(dayMap).length > 0) {
-                                    this.weeklySchedule = Object.entries(dayMap).map(([day, items]) => ({ day, items }));
-                                }
+                                this.weeklySchedule = buildFullWeeklySchedule(dayMap);
                             }
                         }
+                        this.weeklySchedule = buildFullWeeklySchedule(this.weeklySchedule || []);
                     }
                 }
             } catch (err) {
                 console.warn("Could not load class details from API:", err);
             }
         }
+
+        this.weeklySchedule = buildFullWeeklySchedule(this.weeklySchedule || []);
 
         this.container.innerHTML = `
       <div class="class-details-page-root" dir="rtl">
@@ -374,8 +521,8 @@ export default class ClassDetailsView {
             .schedule-table-grid {
                 flex: 1;
                 display: grid;
-                grid-template-columns: repeat(6, 1fr);
-                gap: 10px;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 8px;
             }
 
             .schedule-day-column {
@@ -383,16 +530,26 @@ export default class ClassDetailsView {
                 flex-direction: column;
                 gap: 8px;
                 text-align: center;
+                min-width: 0;
             }
 
             .day-header-pill {
                 background: #1976d2;
                 color: #ffffff;
-                font-size: 14px;
+                font-size: 13.5px;
                 font-weight: 800;
-                padding: 8px 4px;
+                padding: 7px 3px;
                 border-radius: 12px;
                 box-shadow: 0 3px 8px rgba(25, 118, 210, 0.22);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .schedule-day-column.is-free-day .day-header-pill {
+                background: #64748b;
+                box-shadow: 0 2px 6px rgba(100, 116, 139, 0.2);
+                opacity: 0.92;
             }
 
             .day-time-box {
@@ -405,9 +562,14 @@ export default class ClassDetailsView {
                 align-items: center;
                 justify-content: center;
                 gap: 4px;
-                min-height: 82px;
+                min-height: 86px;
                 box-sizing: border-box;
                 transition: all 0.2s ease;
+            }
+
+            .schedule-day-column.is-free-day .day-time-box {
+                background: rgba(248, 250, 252, 0.85);
+                border: 1.5px dashed #cbd5e1;
             }
 
             .day-time-box:hover {
@@ -1051,26 +1213,42 @@ export default class ClassDetailsView {
                                 </svg>
                             </div>
 
-                            <!-- شبكة الأيام الستة مع المادة والتوقيت من ملف HTML -->
+                            <!-- شبكة أيام الأسبوع الكاملة مع الحصص وتحديد أيام الراحة -->
                             <div class="schedule-table-grid">
-                                ${this.weeklySchedule.map(s => `
-                                    <div class="schedule-day-column">
-                                        <div class="day-header-pill">${s.day}</div>
-                                        <div class="day-time-box">
-                                            ${s.items.map((item, idx) => `
-                                                ${idx > 0 ? '<hr class="mini-day-divider">' : ''}
-                                                <div class="session-entry">
-                                                    <span class="session-name">${item.subject}</span>
-                                                    <span class="session-hours">${item.time}</span>
-                                                    <span style="font-size:10.5px; font-weight:800; color:#0284c7; background:rgba(2,132,199,0.1); padding:2px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; margin-top:3px;">
-                                                        <i data-lucide="clock" style="width:11px;height:11px;"></i>
-                                                        <span>${item.duration || '40 دقيقة'}</span>
-                                                    </span>
+                                ${(this.weeklySchedule || []).map(s => {
+                                    if (s.isFree || !s.items || s.items.length === 0) {
+                                        return `
+                                            <div class="schedule-day-column is-free-day">
+                                                <div class="day-header-pill">${s.day}</div>
+                                                <div class="day-time-box">
+                                                    <div class="free-day-entry" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px 2px;">
+                                                        <span style="font-size:1.15rem; line-height:1;">🌿</span>
+                                                        <span style="font-size:11.5px; font-weight:900; color:#475569;">يوم حر</span>
+                                                        <span style="font-size:9.5px; font-weight:800; color:#059669; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:1px 6px; border-radius:6px;">راحة • Free</span>
+                                                    </div>
                                                 </div>
-                                            `).join('')}
+                                            </div>
+                                        `;
+                                    }
+                                    return `
+                                        <div class="schedule-day-column">
+                                            <div class="day-header-pill">${s.day}</div>
+                                            <div class="day-time-box">
+                                                ${s.items.map((item, idx) => `
+                                                    ${idx > 0 ? '<hr class="mini-day-divider">' : ''}
+                                                    <div class="session-entry">
+                                                        <span class="session-name">${item.subject}</span>
+                                                        <span class="session-hours">${item.time}</span>
+                                                        <span style="font-size:10px; font-weight:800; color:#0284c7; background:rgba(2,132,199,0.1); padding:2px 7px; border-radius:8px; display:inline-flex; align-items:center; gap:3px; margin-top:3px;">
+                                                            <i data-lucide="clock" style="width:11px;height:11px;"></i>
+                                                            <span>${item.duration || '40 دقيقة'}</span>
+                                                        </span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     </div>

@@ -47,7 +47,12 @@ export class AdminClassesPage {
   filteredClasses() {
     let list = this.classes || [];
     if (this.activeStage !== "ALL") {
-      list = list.filter(c => c.grade?.stage === this.activeStage);
+      list = list.filter(c => {
+        if (c.grades && c.grades.length > 0) {
+          return c.grades.some(g => g.stage === this.activeStage);
+        }
+        return c.grade?.stage === this.activeStage;
+      });
     }
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase().trim();
@@ -55,6 +60,7 @@ export class AdminClassesPage {
         c.name?.toLowerCase().includes(q) || 
         c.badge?.toLowerCase().includes(q) || 
         c.grade?.name?.toLowerCase().includes(q) ||
+        (c.grades || []).some(g => g.name?.toLowerCase().includes(q)) ||
         (c.linkedGroups || []).some(g => g.name?.toLowerCase().includes(q) || g.course?.subject?.name?.toLowerCase().includes(q) || g.teacher?.name?.toLowerCase().includes(q))
       );
     }
@@ -230,131 +236,416 @@ export class AdminClassesPage {
           color: #0284c7;
         }
 
-        /* ── CARDS GRID ── */
+        /* ── MODERN REDESIGNED CLASS CARDS ── */
         .acp-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+          gap: 24px;
+        }
+        @media (max-width: 640px) {
+          .acp-grid {
+            grid-template-columns: 1fr;
+          }
         }
         .acp-card {
           background: var(--bg-card, #ffffff);
-          border: 1.5px solid var(--border-color, #e2e8f0);
-          border-radius: 22px;
-          padding: 22px;
+          border: 1px solid var(--border-color, #e2e8f0);
+          border-top: 5px solid var(--card-accent, #0284c7);
+          border-radius: 26px;
+          padding: 24px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.03);
-          transition: all 0.25s ease;
+          gap: 16px;
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
+          transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
+          overflow: hidden;
+        }
+        .acp-card::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          right: 0;
+          left: 0;
+          height: 120px;
+          background: radial-gradient(circle at top right, var(--card-glow, rgba(2,132,199,0.08)), transparent 70%);
+          pointer-events: none;
+          z-index: 0;
         }
         .acp-card:hover {
-          border-color: #0284c7;
-          box-shadow: 0 12px 30px rgba(2, 132, 199, 0.1);
-          transform: translateY(-3px);
+          border-color: var(--card-accent, #0284c7);
+          box-shadow: 0 20px 38px -10px var(--card-glow, rgba(2,132,199,0.18)), 0 0 0 1.5px var(--card-accent, #0284c7);
+          transform: translateY(-4px);
         }
         .acp-card.hidden-card {
-          opacity: 0.68;
+          opacity: 0.78;
           border-style: dashed;
+          background: var(--bg-app, #f8fafc);
         }
-        .acp-card-top {
+        .acp-card > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        /* Top Header */
+        .acp-card-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
-        .acp-grade-badge {
-          background: rgba(2, 132, 199, 0.1);
-          color: #0284c7;
+        .acp-header-start {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+        .acp-class-icon-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          background: var(--card-avatar-bg, rgba(2,132,199,0.12));
+          color: var(--card-accent, #0284c7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: 0 4px 12px var(--card-glow, rgba(2,132,199,0.15));
+        }
+        .acp-grade-pill {
+          background: var(--card-avatar-bg, rgba(2, 132, 199, 0.1));
+          color: var(--card-accent, #0284c7);
           padding: 4px 12px;
-          border-radius: 12px;
+          border-radius: 20px;
           font-size: 0.76rem;
           font-weight: 800;
-          border: 1px solid rgba(2, 132, 199, 0.2);
+          border: 1px solid var(--card-border-light, rgba(2, 132, 199, 0.25));
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          max-width: 210px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .acp-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 12px;
+          border-radius: 20px;
+          font-size: 0.74rem;
+          font-weight: 800;
+          letter-spacing: -0.2px;
+          flex-shrink: 0;
+        }
+        .acp-status-badge.active {
+          background: rgba(16, 185, 129, 0.12);
+          color: #059669;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .acp-status-badge.hidden {
+          background: rgba(239, 68, 68, 0.1);
+          color: #dc2626;
+          border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+        .acp-pulse-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10b981;
+          display: inline-block;
+          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+          animation: acpPulse 1.8s infinite;
+        }
+        @keyframes acpPulse {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+          70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Title & Meta */
+        .acp-title-box {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .acp-badge-pill {
+          align-self: flex-start;
+          font-size: 0.73rem;
+          font-weight: 800;
+          color: var(--card-accent, #0284c7);
+          background: var(--card-avatar-bg, rgba(2, 132, 199, 0.1));
+          border: 1px solid var(--card-border-light, rgba(2, 132, 199, 0.25));
+          padding: 2px 10px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
         }
         .acp-card-title {
-          font-size: 1.15rem;
+          font-size: 1.22rem;
           font-weight: 900;
           color: var(--text-main, #0f172a);
           line-height: 1.35;
-          margin: 6px 0 4px 0;
+          margin: 0;
         }
-        .acp-price-row {
+        .acp-card-desc {
+          margin: 0;
+          font-size: 0.83rem;
+          color: var(--text-muted, #64748b);
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* Financial split card */
+        .acp-finance-card {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 12px;
+          padding: 13px 18px;
+          border-radius: 18px;
+          background: linear-gradient(135deg, var(--bg-app, #f8fafc) 0%, rgba(255,255,255,0.7) 100%);
+          border: 1.5px solid var(--border-color, #e2e8f0);
+        }
+        .acp-finance-item {
           display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          padding: 11px 16px;
-          border-radius: 14px;
-          background: var(--bg-app, #f8fafc);
-          border: 1px solid var(--border-color, #e2e8f0);
+          flex-direction: column;
+          gap: 3px;
         }
-        .acp-price-label {
-          font-size: 0.8rem;
+        .acp-finance-label {
+          font-size: 0.74rem;
           font-weight: 700;
           color: var(--text-muted, #64748b);
         }
-        .acp-price-val {
-          font-size: 1.25rem;
-          font-weight: 900;
-          color: #0284c7;
+        .acp-finance-value {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+          flex-wrap: wrap;
         }
+        .acp-finance-value.student-price strong {
+          font-size: 1.32rem;
+          font-weight: 900;
+          color: var(--card-accent, #0284c7);
+        }
+        .acp-finance-value.teacher-rate strong {
+          font-size: 1.15rem;
+          font-weight: 900;
+          color: #059669;
+        }
+        .acp-finance-sub {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+        }
+        .acp-finance-divider {
+          width: 1px;
+          height: 38px;
+          background: var(--border-color, #e2e8f0);
+        }
+
+        /* Quick KPI bar */
+        .acp-kpi-bar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          padding: 8px 12px;
+          border-radius: 12px;
+          background: var(--bg-app, #f8fafc);
+          font-size: 0.76rem;
+          color: var(--text-muted, #64748b);
+          border: 1px solid var(--border-color, #e2e8f0);
+        }
+        .acp-kpi-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .acp-kpi-item strong {
+          color: var(--text-main, #0f172a);
+          font-weight: 800;
+        }
+        .acp-kpi-sep {
+          color: var(--border-color, #cbd5e1);
+        }
+
+        /* Groups & Subjects Box */
         .acp-groups-box {
           border: 1.5px solid var(--border-color, #e2e8f0);
-          border-radius: 16px;
+          border-radius: 18px;
           padding: 12px 14px;
           background: var(--bg-app, #f8fafc);
           display: flex;
           flex-direction: column;
           gap: 8px;
         }
+        .acp-groups-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.78rem;
+          font-weight: 800;
+          color: var(--text-muted, #64748b);
+          padding-bottom: 4px;
+          border-bottom: 1px dashed var(--border-color, #e2e8f0);
+        }
+        .acp-groups-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          max-height: 140px;
+          overflow-y: auto;
+          padding-inline-end: 2px;
+        }
+        .acp-groups-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        .acp-groups-list::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
         .acp-group-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 7px 10px;
-          border-radius: 10px;
+          gap: 10px;
+          padding: 8px 12px;
+          border-radius: 12px;
           background: var(--bg-card, #ffffff);
           border: 1px solid var(--border-color, #e2e8f0);
           font-size: 0.78rem;
+          transition: border-color 0.15s ease;
         }
+        .acp-group-row:hover {
+          border-color: #0284c7;
+        }
+        .acp-group-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .acp-group-title {
+          font-weight: 800;
+          color: var(--text-main, #0f172a);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .acp-group-meta {
+          font-size: 0.72rem;
+          color: var(--text-muted, #64748b);
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .acp-rate-pill {
+          color: #059669;
+          background: rgba(5, 150, 105, 0.1);
+          border: 1px solid rgba(5, 150, 105, 0.22);
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 8px;
+          font-size: 0.74rem;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .acp-no-groups-notice {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          background: rgba(245, 158, 11, 0.08);
+          border: 1px dashed rgba(245, 158, 11, 0.35);
+          border-radius: 12px;
+          font-size: 0.78rem;
+          color: #b45309;
+          font-weight: 700;
+          gap: 8px;
+        }
+        .acp-link-now-btn {
+          background: #f59e0b;
+          color: #ffffff;
+          border: none;
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 0.72rem;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        /* Action Buttons */
         .acp-card-actions {
           display: flex;
+          flex-direction: column;
           gap: 8px;
-          flex-wrap: wrap;
           margin-top: auto;
           padding-top: 14px;
           border-top: 1px solid var(--border-color, #e2e8f0);
         }
-        .acp-action-btn {
-          padding: 7px 14px;
-          border-radius: 11px;
+        .acp-enroll-primary-btn {
+          width: 100%;
+          padding: 11px 16px;
+          border-radius: 14px;
+          border: none;
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          color: #ffffff;
+          font-size: 0.86rem;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+        .acp-enroll-primary-btn:hover {
+          background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+          box-shadow: 0 6px 18px rgba(5, 150, 105, 0.4);
+          transform: translateY(-1px);
+        }
+        .acp-sub-actions-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+        }
+        .acp-sub-action-btn {
+          padding: 8px 10px;
+          border-radius: 12px;
           border: 1px solid var(--border-color, #cbd5e1);
           background: var(--bg-card, #ffffff);
-          color: var(--text-muted, #64748b);
-          font-size: 0.8rem;
+          color: var(--text-main, #334155);
+          font-size: 0.78rem;
           font-weight: 800;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 5px;
-          transition: all 0.15s;
+          transition: all 0.15s ease;
           font-family: inherit;
         }
-        .acp-action-btn:hover {
+        .acp-sub-action-btn:hover {
           border-color: #0284c7;
           color: #0284c7;
+          background: rgba(2, 132, 199, 0.05);
         }
-        .acp-action-btn.enroll {
-          background: rgba(16, 185, 129, 0.12);
-          color: #10b981;
-          border-color: rgba(16, 185, 129, 0.35);
-        }
-        .acp-action-btn.enroll:hover {
-          background: #10b981;
-          color: #ffffff;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-        .acp-action-btn.danger:hover {
+        .acp-sub-action-btn.danger:hover {
           border-color: #ef4444;
           color: #ef4444;
           background: #fee2e2;
@@ -561,8 +852,56 @@ export class AdminClassesPage {
   renderClassCard(pkg) {
     const isHidden = !pkg.isActive;
     const linkedGroups = pkg.linkedGroups || [];
-    const themeColors = { blue: "#0284c7", green: "#10b981", purple: "#8b5cf6", amber: "#f59e0b" };
-    const accentColor = themeColors[pkg.theme] || "#0284c7";
+
+    // لوحة ألوان الثيمات لتخصيص الهوية البصرية للكارت
+    const themeStyles = {
+      blue: {
+        accent: "#0284c7",
+        glow: "rgba(2,132,199,0.2)",
+        avatarBg: "rgba(2,132,199,0.12)",
+        borderLight: "rgba(2,132,199,0.28)",
+        icon: "book-open"
+      },
+      green: {
+        accent: "#059669",
+        glow: "rgba(5,150,105,0.2)",
+        avatarBg: "rgba(5,150,105,0.12)",
+        borderLight: "rgba(5,150,105,0.28)",
+        icon: "graduation-cap"
+      },
+      purple: {
+        accent: "#7c3aed",
+        glow: "rgba(124,58,237,0.2)",
+        avatarBg: "rgba(124,58,237,0.12)",
+        borderLight: "rgba(124,58,237,0.28)",
+        icon: "sparkles"
+      },
+      amber: {
+        accent: "#d97706",
+        glow: "rgba(217,119,6,0.2)",
+        avatarBg: "rgba(217,119,6,0.12)",
+        borderLight: "rgba(217,119,6,0.28)",
+        icon: "award"
+      }
+    };
+    const currentTheme = themeStyles[pkg.theme] || themeStyles.blue;
+
+    const targetGrades = (pkg.grades && pkg.grades.length > 0) ? pkg.grades : (pkg.grade ? [pkg.grade] : []);
+    const gradesBadgeText = targetGrades.length > 1
+      ? `🎒 ${targetGrades.length} صفوف (${targetGrades.map(g => g.name).join('، ')})`
+      : (targetGrades[0]?.name ? `🎓 ${targetGrades[0].name}` : "🎓 صف دراسي عام");
+
+    // احتساب مؤشرات الفصل بدقة
+    const hourlyRates = linkedGroups.map(g => Number(g.teacherHourlyRate) || 100);
+    const minHourly = hourlyRates.length > 0 ? Math.min(...hourlyRates) : 100;
+    const maxHourly = hourlyRates.length > 0 ? Math.max(...hourlyRates) : 100;
+    const hourlyDisplay = hourlyRates.length === 0 
+      ? '100 ج.م' 
+      : (minHourly === maxHourly ? `${minHourly} ج.م` : `${minHourly} - ${maxHourly} ج.م`);
+
+    const totalSessions = linkedGroups.reduce((sum, g) => sum + (Number(g.totalSessions) || 8), 0);
+    const distinctTeachers = [...new Set(linkedGroups.map(g => g.teacher?.name || g.course?.teacher?.name).filter(Boolean))];
+    const priceFormatted = pkg.priceEg ? Number(pkg.priceEg).toLocaleString() : (pkg.price ? pkg.price.split('•')[0].trim() : '1,200');
 
     const rawData = JSON.stringify({
       id: pkg.id,
@@ -574,66 +913,157 @@ export class AdminClassesPage {
       description: pkg.description || "",
       order: pkg.order || 0,
       isActive: !!pkg.isActive,
-      gradeId: pkg.grade?.id,
+      gradeId: targetGrades[0]?.id || pkg.grade?.id,
+      gradeIds: targetGrades.map(g => g.id),
       groupIds: linkedGroups.map(g => g.id)
     }).replace(/"/g, "&quot;");
 
     return `
-      <div class="acp-card ${isHidden ? "hidden-card" : ""}">
-        <div class="acp-card-top">
-          <span class="acp-grade-badge">${pkg.grade?.name || "صف دراسي"}</span>
-          <span style="font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:10px; ${isHidden ? 'background:rgba(239,68,68,0.12); color:#ef4444;' : 'background:rgba(16,185,129,0.12); color:#10b981;'}">
-            ${isHidden ? "مخفي عن الموقع" : "ظاهر للطلاب"}
-          </span>
+      <div class="acp-card ${isHidden ? "hidden-card" : ""}" style="--card-accent:${currentTheme.accent}; --card-glow:${currentTheme.glow}; --card-avatar-bg:${currentTheme.avatarBg}; --card-border-light:${currentTheme.borderLight};">
+        
+        <!-- ترويسة الكارت العلوية -->
+        <div class="acp-card-header">
+          <div class="acp-header-start">
+            <div class="acp-class-icon-avatar">
+              <i data-lucide="${currentTheme.icon}" style="width:22px;height:22px;"></i>
+            </div>
+            <span class="acp-grade-pill" title="${targetGrades.map(g => g.name).join(' • ')}">
+              ${gradesBadgeText}
+            </span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="acp-status-badge ${isHidden ? 'hidden' : 'active'}">
+              ${isHidden ? `
+                <i data-lucide="eye-off" style="width:12px;height:12px;"></i>
+                <span>مخفي / مسودة</span>
+              ` : `
+                <span class="acp-pulse-dot"></span>
+                <span>معروض للطلاب</span>
+              `}
+            </span>
+          </div>
         </div>
 
-        <div>
-          ${pkg.badge ? `<span style="font-size:0.75rem; font-weight:800; color:${accentColor}; background:${accentColor}15; padding:3px 10px; border-radius:8px; display:inline-block; margin-bottom:6px;">${pkg.badge}</span>` : ''}
+        <!-- عنوان الفصل والشارة الترويجية والوصف -->
+        <div class="acp-title-box">
+          ${pkg.badge ? `
+            <div class="acp-badge-pill">
+              <i data-lucide="sparkles" style="width:12px;height:12px;"></i>
+              <span>${pkg.badge}</span>
+            </div>
+          ` : ''}
           <h3 class="acp-card-title">${pkg.name}</h3>
-          <p style="margin:0; font-size:0.82rem; color:var(--text-muted); line-height:1.45;">${pkg.description || "باقة دراسية متكاملة تجمع كل المواد المقررة بجدول أسبوعي موحد."}</p>
+          <p class="acp-card-desc" title="${pkg.description || ''}">
+            ${pkg.description || "باقة دراسية متكاملة تجمع كل المواد المقررة بجدول أسبوعي موحد وتسكين الطلاب آلياً."}
+          </p>
         </div>
 
-        <div class="acp-price-row">
-          <span class="acp-price-label">اشتراك الطالب الشهري:</span>
-          <strong class="acp-price-val">${pkg.priceEg || (pkg.price ? pkg.price.split('•')[0] : '1,200 جنيه')}</strong>
+        <!-- بطاقة النموذج المالي المقسم -->
+        <div class="acp-finance-card">
+          <div class="acp-finance-item">
+            <span class="acp-finance-label">اشتراك الطالب الشهري</span>
+            <div class="acp-finance-value student-price">
+              <strong>${priceFormatted}</strong>
+              <span class="acp-finance-sub">ج.م / شهر</span>
+            </div>
+          </div>
+          <div class="acp-finance-divider"></div>
+          <div class="acp-finance-item">
+            <span class="acp-finance-label">أجور ساعات المعلمين</span>
+            <div class="acp-finance-value teacher-rate">
+              <strong>${hourlyDisplay}</strong>
+              <span class="acp-finance-sub">/ ساعة</span>
+            </div>
+          </div>
         </div>
 
-        <!-- المجموعات المربوطة وأجور المعلمين بالساعة -->
+        <!-- شريط المؤشرات السريعة (KPIs) -->
+        <div class="acp-kpi-bar">
+          <div class="acp-kpi-item" title="عدد المواد والمجموعات المربوطة">
+            <i data-lucide="layers" style="width:13px;height:13px;color:var(--card-accent);"></i>
+            <span><strong>${linkedGroups.length}</strong> مواد دراسية</span>
+          </div>
+          <span class="acp-kpi-sep">•</span>
+          <div class="acp-kpi-item" title="عدد المعلمين المعتمدين بالفصل">
+            <i data-lucide="graduation-cap" style="width:13px;height:13px;color:#10b981;"></i>
+            <span><strong>${distinctTeachers.length}</strong> معلمين</span>
+          </div>
+          <span class="acp-kpi-sep">•</span>
+          <div class="acp-kpi-item" title="إجمالي الحصص المجدولة شهرياً">
+            <i data-lucide="video" style="width:13px;height:13px;color:#8b5cf6;"></i>
+            <span><strong>${totalSessions}</strong> حصة شهرياً</span>
+          </div>
+        </div>
+
+        <!-- صندوق مجموعات المواد المربوطة -->
         <div class="acp-groups-box">
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; font-weight:800; color:var(--text-muted);">
-            <span>المجموعات المربوطة بالفصل (${linkedGroups.length}):</span>
-            <span style="color:#10b981;">أجر الساعة</span>
+          <div class="acp-groups-header">
+            <span>📚 مجموعات المواد المربوطة بالفصل (${linkedGroups.length}):</span>
+            <span style="color:#059669; font-weight:800;">أجر الساعة</span>
           </div>
-          <div style="display:flex; flex-direction:column; gap:5px; max-height:130px; overflow-y:auto; padding-inline-end:2px;">
-            ${linkedGroups.length > 0 ? linkedGroups.map(g => `
-              <div class="acp-group-row">
-                <span style="font-weight:700; color:var(--text-main);">
-                  ${g.course?.subject?.name || g.name} • ${g.teacher?.name || 'معلم'} • ⏱️ ${g.sessionDuration || 40} دقيقة
-                </span>
-                <span style="color:#10b981; font-weight:800;">${g.teacherHourlyRate || 100} ج.م/س</span>
+          <div class="acp-groups-list">
+            ${linkedGroups.length > 0 ? linkedGroups.map(g => {
+              const teacherName = g.teacher?.name || g.course?.teacher?.name || 'معلم معتمد';
+              const subjectName = g.course?.subject?.name || g.name;
+              const scheduleStr = g.scheduleDays ? `${g.scheduleDays} ${g.scheduleTime || ''}` : '';
+              const duration = g.sessionDuration || 40;
+              const rate = g.teacherHourlyRate || 100;
+              return `
+                <div class="acp-group-row">
+                  <div class="acp-group-info">
+                    <div class="acp-group-title">
+                      <i data-lucide="book" style="width:13px;height:13px;color:var(--card-accent);flex-shrink:0;"></i>
+                      <span>${subjectName}</span>
+                    </div>
+                    <div class="acp-group-meta">
+                      <span>👨‍🏫 ${teacherName}</span>
+                      ${scheduleStr ? `<span>• 📅 ${scheduleStr}</span>` : ''}
+                      <span>• ⏱️ ${duration} د</span>
+                    </div>
+                  </div>
+                  <div class="acp-rate-pill">
+                    ${rate} ج.م/س
+                  </div>
+                </div>
+              `;
+            }).join('') : `
+              <div class="acp-no-groups-notice">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="alert-triangle" style="width:15px;height:15px;color:#d97706;flex-shrink:0;"></i>
+                  <span>لم يتم ربط مجموعات بعد بهذا الفصل.</span>
+                </div>
+                <button type="button" class="acp-link-now-btn acp-edit-btn" data-class="${rawData}" title="تعديل وربط مجموعات المواد">
+                  + ربط الآن
+                </button>
               </div>
-            `).join('') : '<div style="font-size:0.75rem; color:#f59e0b; padding:6px 0;">⚠️ لم يتم ربط مجموعات بعد. اضغط تعديل لربط المجموعات.</div>'}
+            `}
           </div>
         </div>
 
+        <!-- أزرار الإجراءات المتناسقة -->
         <div class="acp-card-actions">
-          <button type="button" class="acp-action-btn enroll acp-enroll-btn" data-class-id="${pkg.id}" title="تسكين طالب في جميع مجموعات الفصل">
-            <i data-lucide="user-plus" style="width:14px;height:14px;"></i>
-            <span>تسكين طالب</span>
+          <button type="button" class="acp-enroll-primary-btn acp-enroll-btn" data-class-id="${pkg.id}" title="تسكين طالب جديد في جميع مجموعات الفصل فوراً">
+            <i data-lucide="user-plus" style="width:16px;height:16px;"></i>
+            <span>تسكين طالب في الفصل 🚀</span>
           </button>
-          <button type="button" class="acp-action-btn acp-toggle-btn" data-class-id="${pkg.id}" title="${isHidden ? 'إظهار الفصل' : 'إخفاء الفصل'}">
-            <i data-lucide="${isHidden ? 'eye' : 'eye-off'}" style="width:14px;height:14px;"></i>
-            <span>${isHidden ? 'إظهار' : 'إخفاء'}</span>
-          </button>
-          <button type="button" class="acp-action-btn acp-edit-btn" data-class="${rawData}" title="تعديل الفصل والمجموعات المربوطة">
-            <i data-lucide="pencil" style="width:14px;height:14px;"></i>
-            <span>تعديل</span>
-          </button>
-          <button type="button" class="acp-action-btn danger acp-del-btn" data-class-id="${pkg.id}" data-class-name="${pkg.name}" title="حذف الفصل">
-            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-            <span>حذف</span>
-          </button>
+          
+          <div class="acp-sub-actions-row">
+            <button type="button" class="acp-sub-action-btn acp-toggle-btn" data-class-id="${pkg.id}" title="${isHidden ? 'إظهار الفصل للطلاب' : 'إخفاء الفصل عن الطلاب'}">
+              <i data-lucide="${isHidden ? 'eye' : 'eye-off'}" style="width:14px;height:14px;"></i>
+              <span>${isHidden ? 'إظهار' : 'إخفاء'}</span>
+            </button>
+            <button type="button" class="acp-sub-action-btn acp-edit-btn" data-class="${rawData}" title="تعديل بيانات الفصل ومجموعاته">
+              <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
+              <span>تعديل</span>
+            </button>
+            <button type="button" class="acp-sub-action-btn danger acp-del-btn" data-class-id="${pkg.id}" data-class-name="${pkg.name}" title="حذف الفصل نهائياً">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              <span>حذف</span>
+            </button>
+          </div>
         </div>
+
       </div>
     `;
   }
@@ -733,7 +1163,11 @@ export class AdminClassesPage {
   // نافذة إنشاء أو تعديل الفصل الدراسي وربط المجموعات بتصميم عصري وأنيق
   async openClassModal(pkg = null) {
     const isEdit = !!pkg;
-    const selectedGradeId = pkg?.gradeId || this.grades[0]?.id;
+    const initialSelectedGradeIds = (pkg?.gradeIds && pkg.gradeIds.length > 0)
+      ? pkg.gradeIds.map(String)
+      : (pkg?.grades && pkg.grades.length > 0)
+        ? pkg.grades.map(g => String(g.id))
+        : (pkg?.gradeId ? [String(pkg.gradeId)] : (this.grades[0] ? [String(this.grades[0].id)] : []));
     const selectedGroupIds = (pkg?.groupIds || []).slice();
 
     const overlay = document.createElement("div");
@@ -758,28 +1192,62 @@ export class AdminClassesPage {
         <!-- جسم النافذة القابل للتمرير -->
         <div class="acp-modal-body">
           
-          <!-- الصف والشارة -->
+          <!-- اختيار الصفوف الدراسية الموجه لها الفصل (متعدد) -->
+          <div class="acp-form-group" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <label style="margin-bottom:0; font-size:0.86rem; font-weight:800; color:var(--text-main);">
+                🎯 الصفوف الدراسية الموجه لها الفصل (يمكن اختيار أكثر من صف) *
+              </label>
+              <span id="acm-grades-counter" style="font-size:0.78rem; color:#0284c7; font-weight:800; background:rgba(2,132,199,0.1); padding:3px 10px; border-radius:10px;">
+                ${initialSelectedGradeIds.length} صفوف محددة
+              </span>
+            </div>
+
+            <!-- أزرار الاختيار السريع للمراحل -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+              <button type="button" class="acm-quick-stage-btn" data-stage="PRIMARY" style="padding:4px 10px; font-size:0.75rem; border-radius:8px; border:1px solid #0284c7; background:rgba(2,132,199,0.08); color:#0284c7; cursor:pointer; font-weight:700;">
+                🏫 كل الابتدائي
+              </button>
+              <button type="button" class="acm-quick-stage-btn" data-stage="PREPARATORY" style="padding:4px 10px; font-size:0.75rem; border-radius:8px; border:1px solid #8b5cf6; background:rgba(139,92,246,0.08); color:#8b5cf6; cursor:pointer; font-weight:700;">
+                📚 كل الإعدادي
+              </button>
+              <button type="button" class="acm-quick-stage-btn" data-stage="SECONDARY" style="padding:4px 10px; font-size:0.75rem; border-radius:8px; border:1px solid #10b981; background:rgba(16,185,129,0.08); color:#10b981; cursor:pointer; font-weight:700;">
+                🎓 كل الثانوي
+              </button>
+              <button type="button" class="acm-clear-grades-btn" style="padding:4px 10px; font-size:0.75rem; border-radius:8px; border:1px solid #cbd5e1; background:var(--bg-app); color:var(--text-muted); cursor:pointer; font-weight:700;">
+                إلغاء التحديد
+              </button>
+            </div>
+
+            <!-- قائمة الصفوف مصنفة بالمراحل -->
+            <div id="acm-grades-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap:8px; max-height:165px; overflow-y:auto; padding:10px; border:1.5px solid var(--border-color); border-radius:14px; background:var(--bg-app);">
+              ${this.grades.map(g => {
+                const isChecked = initialSelectedGradeIds.includes(String(g.id));
+                const stageLabel = g.stage === 'SECONDARY' ? 'ثانوي' : (g.stage === 'PREPARATORY' ? 'إعدادي' : 'ابتدائي');
+                const stageColor = g.stage === 'SECONDARY' ? '#10b981' : (g.stage === 'PREPARATORY' ? '#8b5cf6' : '#0284c7');
+                return `
+                  <label class="acm-grade-pill ${isChecked ? 'active' : ''}" data-stage="${g.stage}" style="display:flex; align-items:center; gap:8px; padding:7px 11px; border-radius:10px; background:${isChecked ? 'rgba(2,132,199,0.12)' : 'var(--bg-card)'}; border:1.5px solid ${isChecked ? '#0284c7' : 'var(--border-color)'}; cursor:pointer; user-select:none; transition:all 0.15s ease;">
+                    <input type="checkbox" class="acm-grade-check" value="${g.id}" data-stage="${g.stage}" ${isChecked ? 'checked' : ''} style="width:16px; height:16px; accent-color:#0284c7; cursor:pointer;">
+                    <div style="display:flex; flex-direction:column; line-height:1.2;">
+                      <span style="font-size:0.82rem; font-weight:800; color:var(--text-main);">${g.name}</span>
+                      <span style="font-size:0.68rem; color:${stageColor}; font-weight:700;">${stageLabel}</span>
+                    </div>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- اسم الفصل وشارة التمييز -->
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
             <div class="acp-form-group">
-              <label>الصف الدراسي الموجه له الفصل *</label>
-              <select class="acp-form-select" id="acm-grade-id">
-                ${this.grades.map(g => `
-                  <option value="${g.id}" ${g.id === selectedGradeId ? 'selected' : ''}>
-                    ${g.name} (${g.stage === 'SECONDARY' ? 'ثانوي' : (g.stage === 'PREPARATORY' ? 'إعدادي' : 'ابتدائي')})
-                  </option>
-                `).join('')}
-              </select>
+              <label>اسم الفصل / الباقة *</label>
+              <input class="acp-form-input" id="acm-name" type="text" placeholder="مثال: فصل المتفوقين (باقة شاملة)" value="${pkg?.name || ""}">
             </div>
             <div class="acp-form-group">
               <label>شارة التمييز الترويجية (Badge)</label>
               <input class="acp-form-input" id="acm-badge" type="text" placeholder="مثال: الأكثر طلباً ⭐ أو باقة شاملة" value="${pkg?.badge || "متاح للاشتراك"}">
             </div>
-          </div>
-
-          <!-- اسم الفصل -->
-          <div class="acp-form-group">
-            <label>اسم الفصل / الباقة *</label>
-            <input class="acp-form-input" id="acm-name" type="text" placeholder="مثال: فصل المتفوقين (باقة مجمعة - الصف الأول الثانوي)" value="${pkg?.name || ""}">
           </div>
 
           <!-- السعر والثيم -->
@@ -811,7 +1279,7 @@ export class AdminClassesPage {
               حدد المجموعات التي تشكل هذا الفصل. عند اشتراك الطالب يتم تسكينه تلقائياً في كل المجموعات المحددة، ويُصرف لكل معلم أجر ساعته المعتمد عن الحصص المكتملة.
             </p>
             <div id="acm-groups-list" style="max-height:190px; overflow-y:auto; border:1.5px solid var(--border-color); border-radius:14px; padding:10px; background:var(--bg-app); display:flex; flex-direction:column; gap:8px;">
-              <!-- تُحقن عبر JS عند تغيير الصف -->
+              <!-- تُحقن عبر JS عند تغيير الصفوف -->
             </div>
           </div>
 
@@ -864,10 +1332,21 @@ export class AdminClassesPage {
     document.body.appendChild(overlay);
     if (window.lucide) window.lucide.createIcons();
 
-    const gradeSelect = overlay.querySelector("#acm-grade-id");
     const groupsContainer = overlay.querySelector("#acm-groups-list");
     const counterBadge = overlay.querySelector("#acm-selected-counter");
+    const gradesCounterBadge = overlay.querySelector("#acm-grades-counter");
     const footerSummary = overlay.querySelector("#acm-footer-summary");
+
+    const getSelectedGradeIds = () => {
+      return Array.from(overlay.querySelectorAll(".acm-grade-check:checked")).map(cb => cb.value);
+    };
+
+    const updateGradeCounter = () => {
+      const ids = getSelectedGradeIds();
+      if (gradesCounterBadge) {
+        gradesCounterBadge.textContent = `${ids.length} صفوف محددة`;
+      }
+    };
 
     const updateSelectionStats = () => {
       const checkedBoxes = Array.from(overlay.querySelectorAll(".acm-group-check:checked"));
@@ -887,18 +1366,65 @@ export class AdminClassesPage {
       }
     };
 
-    const renderGroupsForGrade = (gradeId) => {
-      const selectedGrade = this.grades.find(g => g.id === gradeId);
-      const gradeGroups = (this.allGroups || []).filter(g => 
-        g.course?.grade?.id === gradeId || 
-        g.course?.grade?.name === selectedGrade?.name || 
-        g.course?.grade?.stage === selectedGrade?.stage ||
-        (g.course?.degree && selectedGrade?.name && g.course.degree.includes(selectedGrade.name))
-      );
-      const list = gradeGroups.length > 0 ? gradeGroups : this.allGroups;
+    const renderGroupsForSelectedGrades = (selectedIds) => {
+      // دالة مساعدة لتوحيد النصوص العربية لتفادي أي فروقات في كتابة الهمزات أو التاء المربوطة
+      const norm = (s) => (s || '').toString().toLowerCase().replace(/[إأآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
 
+      const selectedGrades = this.grades.filter(g => selectedIds.includes(String(g.id)));
+      const selectedGradeNames = selectedGrades.map(g => (g.name || '').trim()).filter(Boolean);
+      const normalizedSelectedNames = selectedGradeNames.map(norm).filter(Boolean);
+
+      let list = [];
+      if (selectedIds.length > 0) {
+        // حصر المجموعات التابعة حصراً للصفوف الدراسية المحددة فقط
+        list = (this.allGroups || []).filter(g => {
+          const courseGradeId = g.course?.grade?.id 
+            ? String(g.course.grade.id) 
+            : (g.course?.subject?.grade?.id ? String(g.course.subject.grade.id) : (g.course?.gradeId ? String(g.course.gradeId) : ''));
+          const courseGradeNameNorm = norm(g.course?.grade?.name || g.course?.subject?.grade?.name);
+          const courseDegreeNorm = norm(g.course?.degree);
+          const groupNameNorm = norm(g.name);
+
+          // 1. مطابقة مباشرة بالمعرف الخاص بالصف (Grade ID)
+          if (courseGradeId && selectedIds.includes(courseGradeId)) return true;
+
+          // 2. مطابقة بالاسم الرسمي للصف الدراسي
+          if (courseGradeNameNorm && normalizedSelectedNames.some(sn => courseGradeNameNorm === sn || courseGradeNameNorm.includes(sn) || sn.includes(courseGradeNameNorm))) return true;
+
+          // 3. مطابقة بنص المرحلة/الصف الدراسي المخزن في الكورس (Course Degree)
+          if (courseDegreeNorm && normalizedSelectedNames.some(sn => courseDegreeNorm === sn || courseDegreeNorm.includes(sn) || sn.includes(courseDegreeNorm))) return true;
+
+          // 4. مطابقة إذا كان اسم المجموعة نفسه يتضمن اسم الصف المحدد بوضوح
+          if (groupNameNorm && normalizedSelectedNames.some(sn => groupNameNorm.includes(sn))) return true;
+
+          return false;
+        });
+      }
+
+      // إذا لم يتم تحديد أي صف دراسي بعد
+      if (selectedIds.length === 0) {
+        groupsContainer.innerHTML = `
+          <div style="font-size:0.84rem; color:var(--text-muted); text-align:center; padding:22px; line-height:1.6;">
+            <i data-lucide="layers" style="width:24px;height:24px;margin-bottom:6px;display:inline-block;color:#0284c7;"></i><br>
+            يرجى تحديد صف دراسي واحد على الأقل من الأعلى لعرض المجموعات التابعة له فقط.
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        updateSelectionStats();
+        return;
+      }
+
+      // إذا لم توجد مجموعات تابعة لهذا الصف (لا نرجع لكل المجموعات بل نعرض رسالة واضحة)
       if (list.length === 0) {
-        groupsContainer.innerHTML = `<div style="font-size:0.82rem; color:var(--text-muted); text-align:center; padding:16px;">لا توجد مجموعات متاحة لهذا الصف بعد. يمكنك إنشاء مجموعات من صفحة الحصص أولاً.</div>`;
+        const gradeNamesDisplay = selectedGradeNames.join('، ') || 'الصف المحدد';
+        groupsContainer.innerHTML = `
+          <div style="font-size:0.84rem; color:var(--text-muted); text-align:center; padding:22px; line-height:1.6;">
+            <i data-lucide="alert-circle" style="width:24px;height:24px;margin-bottom:6px;display:inline-block;color:#f59e0b;"></i><br>
+            لا توجد أي مجموعات مسجلة تابعة لـ (<strong>${gradeNamesDisplay}</strong>) حالياً.<br>
+            <span style="font-size:0.76rem; color:var(--text-muted);">يتم إظهار المجموعات التابعة للصف المحدد فقط لضمان دقة ربط المواد، ويمكنك إنشاء مجموعة جديدة لهذا الصف من صفحة المجموعات.</span>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
         updateSelectionStats();
         return;
       }
@@ -906,12 +1432,16 @@ export class AdminClassesPage {
       groupsContainer.innerHTML = list.map(g => {
         const isChecked = selectedGroupIds.includes(g.id);
         const rate = g.teacherHourlyRate || 100;
+        const groupGradeLabel = g.course?.grade?.name || g.course?.subject?.grade?.name || g.course?.degree || '';
         return `
           <label class="acp-group-row ${isChecked ? 'selected' : ''}" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-radius:12px; background:${isChecked ? 'rgba(2,132,199,0.07)' : 'var(--bg-card)'}; border:1.5px solid ${isChecked ? '#0284c7' : 'var(--border-color)'}; cursor:pointer; user-select:none; transition:all 0.15s ease;">
             <div style="display:flex; align-items:center; gap:11px;">
               <input type="checkbox" class="acm-group-check" value="${g.id}" data-rate="${rate}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0284c7; cursor:pointer;">
               <div>
-                <div style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${g.course?.subject?.name || g.name}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${g.course?.subject?.name || g.name}</span>
+                  ${groupGradeLabel ? `<span class="badge" style="background:rgba(2,132,199,0.1); color:#0284c7; font-size:0.68rem; padding:2px 7px; border-radius:6px; font-weight:700;">🎓 ${groupGradeLabel}</span>` : ''}
+                </div>
                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
                   <strong style="color:var(--text-main);">${g.teacher?.name || g.course?.teacher?.name || 'معلم معتمد'}</strong> 
                   ${g.scheduleDays ? `• ${g.scheduleDays} ${g.scheduleTime || ''}` : ''}
@@ -926,9 +1456,17 @@ export class AdminClassesPage {
         `;
       }).join('');
 
-      // تفعيل تغيير الستايل عند النقر على الشيك بوكس
+      // تفعيل تغيير الستايل وتحديث قائمة المحدد عند النقر
       groupsContainer.querySelectorAll(".acm-group-check").forEach(cb => {
         cb.addEventListener("change", e => {
+          const val = e.target.value;
+          if (e.target.checked) {
+            if (!selectedGroupIds.includes(val)) selectedGroupIds.push(val);
+          } else {
+            const idx = selectedGroupIds.indexOf(val);
+            if (idx > -1) selectedGroupIds.splice(idx, 1);
+          }
+
           const row = e.target.closest("label");
           if (row) {
             if (e.target.checked) {
@@ -945,11 +1483,66 @@ export class AdminClassesPage {
         });
       });
 
+      if (window.lucide) window.lucide.createIcons();
       updateSelectionStats();
     };
 
-    renderGroupsForGrade(gradeSelect.value);
-    gradeSelect.addEventListener("change", () => renderGroupsForGrade(gradeSelect.value));
+    // ربط تفاعلات اختيار الصفوف
+    const bindGradeCheckEvents = () => {
+      overlay.querySelectorAll(".acm-grade-check").forEach(cb => {
+        cb.addEventListener("change", e => {
+          const pill = e.target.closest("label");
+          if (pill) {
+            if (e.target.checked) {
+              pill.classList.add("active");
+              pill.style.background = "rgba(2,132,199,0.12)";
+              pill.style.borderColor = "#0284c7";
+            } else {
+              pill.classList.remove("active");
+              pill.style.background = "var(--bg-card)";
+              pill.style.borderColor = "var(--border-color)";
+            }
+          }
+          updateGradeCounter();
+          renderGroupsForSelectedGrades(getSelectedGradeIds());
+        });
+      });
+    };
+
+    // أزرار الاختيار السريع للمراحل
+    overlay.querySelectorAll(".acm-quick-stage-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const stage = btn.getAttribute("data-stage");
+        overlay.querySelectorAll(`.acm-grade-check[data-stage="${stage}"]`).forEach(cb => {
+          cb.checked = true;
+          const pill = cb.closest("label");
+          if (pill) {
+            pill.classList.add("active");
+            pill.style.background = "rgba(2,132,199,0.12)";
+            pill.style.borderColor = "#0284c7";
+          }
+        });
+        updateGradeCounter();
+        renderGroupsForSelectedGrades(getSelectedGradeIds());
+      });
+    });
+
+    overlay.querySelector(".acm-clear-grades-btn")?.addEventListener("click", () => {
+      overlay.querySelectorAll(".acm-grade-check").forEach(cb => {
+        cb.checked = false;
+        const pill = cb.closest("label");
+        if (pill) {
+          pill.classList.remove("active");
+          pill.style.background = "var(--bg-card)";
+          pill.style.borderColor = "var(--border-color)";
+        }
+      });
+      updateGradeCounter();
+      renderGroupsForSelectedGrades([]);
+    });
+
+    bindGradeCheckEvents();
+    renderGroupsForSelectedGrades(initialSelectedGradeIds);
 
     const closeModal = () => overlay.remove();
     overlay.querySelector("#acm-close-x")?.addEventListener("click", closeModal);
@@ -958,12 +1551,18 @@ export class AdminClassesPage {
 
     overlay.querySelector("#acm-save").addEventListener("click", async () => {
       const name = overlay.querySelector("#acm-name").value.trim();
-      const gradeId = gradeSelect.value;
       const badge = overlay.querySelector("#acm-badge").value.trim();
       const priceEg = overlay.querySelector("#acm-price-eg").value.trim();
       const theme = overlay.querySelector("#acm-theme").value;
       const description = overlay.querySelector("#acm-desc").value.trim();
       const isActive = overlay.querySelector("#acm-active").checked;
+
+      const checkedGradeIds = getSelectedGradeIds();
+      if (checkedGradeIds.length === 0) {
+        showToast("يرجى اختيار صف دراسي واحد على الأقل", "error");
+        return;
+      }
+      const primaryGradeId = checkedGradeIds[0];
 
       const checkedGroups = Array.from(overlay.querySelectorAll(".acm-group-check:checked")).map(cb => cb.value);
 
@@ -984,6 +1583,8 @@ export class AdminClassesPage {
         theme,
         description,
         isActive,
+        gradeId: primaryGradeId,
+        gradeIds: checkedGradeIds,
         groupIds: checkedGroups
       };
 
@@ -995,7 +1596,7 @@ export class AdminClassesPage {
           });
           showToast("تم تحديث بيانات الفصل والمجموعات بنجاح ✅", "success");
         } else {
-          await apiFetch(`/admin/curriculum/grades/${gradeId}/classes`, {
+          await apiFetch(`/admin/curriculum/grades/${primaryGradeId}/classes`, {
             method: "POST",
             body: JSON.stringify(payload)
           });

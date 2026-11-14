@@ -1401,7 +1401,7 @@ export class CourseGroupController {
       const enrollmentRepo = AppDataSource.getRepository(Enrollment);
 
       const groups = await groupRepo.find({
-        relations: ["course", "course.grade", "course.subject", "teacher", "course.teacher"],
+        relations: ["course", "course.grade", "course.subject", "course.subject.grade", "teacher", "course.teacher"],
         order: { createdAt: "DESC" }
       });
 
@@ -3891,6 +3891,30 @@ export class CourseGroupController {
     } catch (err: any) {
       console.error("Error trimming group sessions:", err);
       return res.status(500).json({ error: "فشل حذف الحصص الزائدة." });
+    }
+  }
+
+  // POST /admin/group-enrollments/:id/finish
+  static async finishGroupEnrollment(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["student", "group", "course"]
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ error: "تسجيل المجموعة غير موجود." });
+      }
+
+      enrollment.status = "completed";
+      await enrollmentRepo.save(enrollment);
+
+      return res.status(200).json({ message: "تم إنهاء واكتمال اشتراك المجموعة بنجاح 🏁", enrollment });
+    } catch (err: any) {
+      console.error("Error in finishGroupEnrollment:", err);
+      return res.status(500).json({ error: "فشل إنهاء اشتراك المجموعة." });
     }
   }
 }

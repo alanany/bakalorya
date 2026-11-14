@@ -187,7 +187,9 @@ router.post("/curriculum/classes/:id/request-subscription", auth_1.authMiddlewar
 router.post("/admin/curriculum/class-subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.approveClassSubscription);
 router.post("/admin/curriculum/class-subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.rejectClassSubscription);
 router.patch("/admin/curriculum/class-subscriptions/:id/payment", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.updateClassSubscriptionPayment);
+router.post("/admin/curriculum/class-subscriptions/:id/finish", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CurriculumController_1.CurriculumController.finishClassSubscription);
 router.delete("/admin/curriculum/class-subscriptions/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), CurriculumController_1.CurriculumController.deleteClassSubscription);
+router.post("/admin/group-enrollments/:id/finish", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin", "supervisor"]), CourseGroupController_1.CourseGroupController.finishGroupEnrollment);
 router.get("/groups/:id", CourseGroupController_1.CourseGroupController.getGroupById);
 router.post("/groups", auth_1.authMiddleware, (0, auth_1.requireRole)(["teacher", "admin", "supervisor"]), CourseGroupController_1.CourseGroupController.createGroup);
 router.get("/courses/:courseId/groups", CourseGroupController_1.CourseGroupController.getCourseGroups);
@@ -281,6 +283,7 @@ router.patch("/admin/subscriptions/:id/assign-teacher", auth_1.authMiddleware, (
 router.patch("/admin/subscriptions/:id/approve", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.approveSubscription);
 router.patch("/admin/subscriptions/:id/reject", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.rejectSubscription);
 router.patch("/admin/subscriptions/:id/renew", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.renewSubscription);
+router.patch("/admin/subscriptions/:id/finish", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.finishSubscription);
 router.patch("/subscriptions/:id/cancel", auth_1.authMiddleware, SubscriptionController_1.SubscriptionController.cancelSubscription);
 router.delete("/subscription-plans/:id", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), SubscriptionController_1.SubscriptionController.deletePlan);
 router.patch("/admin/teacher-earnings/:id/pay", auth_1.authMiddleware, (0, auth_1.requireRole)(["admin"]), TeacherEarningController_1.TeacherEarningController.markAsPaid);

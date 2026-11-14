@@ -3149,7 +3149,7 @@ export default class LandingView {
         return {
           id: c.id,
           name: c.name,
-          gradeName: gradeName || c.grade?.name || '',
+          gradeName: gradeName || ((c.grades && c.grades.length > 1) ? c.grades.map(cg => cg.name).join('، ') : (c.grade?.name || '')),
           badge: c.badge || 'متاح للاشتراك',
           lessonsCount: lessonsCount,
           theme: th,
@@ -3163,9 +3163,11 @@ export default class LandingView {
         const stageGrades = (dbGrades || []).filter(g => g.stage === stageInfo.key);
         let gradesList = [];
 
-        // All classes in this stage (matched by grade.stage or grade ID)
+        // All classes in this stage (matched by grade.stage or grade ID or grades array)
         const stageDbClasses = (dbClasses || []).filter(c => 
-          c.grade?.stage === stageInfo.key || stageGrades.some(sg => sg.id === c.grade?.id || sg.id === c.gradeId)
+          c.grade?.stage === stageInfo.key || 
+          (c.grades || []).some(g => g.stage === stageInfo.key) ||
+          stageGrades.some(sg => sg.id === c.grade?.id || sg.id === c.gradeId || (c.grades || []).some(cg => cg.id === sg.id))
         );
 
         if (stageGrades.length > 0) {
@@ -3175,7 +3177,7 @@ export default class LandingView {
               id: 'all',
               name: `🌟 جميع الفصول (${stageDbClasses.length})`,
               pillColor: '#0056D2',
-              rooms: stageDbClasses.map(c => formatClassRoom(c, c.grade?.name)),
+              rooms: stageDbClasses.map(c => formatClassRoom(c, (c.grades && c.grades.length > 1) ? c.grades.map(cg => cg.name).join('، ') : c.grade?.name)),
               hasDbClasses: true,
               isAll: true
             });
@@ -3183,7 +3185,8 @@ export default class LandingView {
 
           stageGrades.forEach(g => {
             const gradeClasses = (dbClasses || []).filter(c => 
-              c.grade?.id === g.id || c.gradeId === g.id || c.grade?.name === g.name
+              c.grade?.id === g.id || c.gradeId === g.id || c.grade?.name === g.name ||
+              (c.grades || []).some(cg => cg.id === g.id || cg.name === g.name)
             );
 
             let rooms = [];

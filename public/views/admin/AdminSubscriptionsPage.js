@@ -23,6 +23,10 @@ export const AdminSubscriptionsPage = {
         statusBadgeBg = 'rgba(16,185,129,0.15)';
         statusBadgeColor = '#10b981';
         statusText = 'مشترك ونشط بالفصل ✅';
+      } else if (s.status === 'COMPLETED' || s.rawStatus === 'completed') {
+        statusBadgeBg = 'rgba(100,116,139,0.15)';
+        statusBadgeColor = '#64748b';
+        statusText = 'منتهي ومكتمل 🏁';
       } else if (s.status === 'CANCELLED') {
         statusBadgeBg = 'rgba(239,68,68,0.15)';
         statusBadgeColor = '#ef4444';
@@ -37,6 +41,10 @@ export const AdminSubscriptionsPage = {
         statusBadgeBg = 'rgba(16,185,129,0.15)';
         statusBadgeColor = '#10b981';
         statusText = 'نشط بالمجموعة ✅';
+      } else if (s.status === 'COMPLETED' || s.rawStatus === 'completed') {
+        statusBadgeBg = 'rgba(100,116,139,0.15)';
+        statusBadgeColor = '#64748b';
+        statusText = 'منتهي ومكتمل 🏁';
       } else if (s.status === 'CANCELLED') {
         statusBadgeBg = 'rgba(239,68,68,0.15)';
         statusBadgeColor = '#ef4444';
@@ -59,6 +67,10 @@ export const AdminSubscriptionsPage = {
         statusBadgeBg = 'rgba(16,185,129,0.15)';
         statusBadgeColor = '#10b981';
         statusText = 'نشط ✅';
+      } else if (s.status === 'COMPLETED') {
+        statusBadgeBg = 'rgba(100,116,139,0.15)';
+        statusBadgeColor = '#64748b';
+        statusText = 'منتهي ومكتمل 🏁';
       } else if (s.status === 'CANCELLED') {
         statusBadgeBg = 'rgba(239,68,68,0.15)';
         statusBadgeColor = '#ef4444';
@@ -68,7 +80,10 @@ export const AdminSubscriptionsPage = {
 
     let rowBg = '';
     let cardBorder = '';
-    if (s.isAllCompleted) {
+    if (s.isClass) {
+      rowBg = 'background:rgba(5, 150, 105, 0.04);';
+      cardBorder = 'border-inline-start:5px solid #059669; border-top:1px solid rgba(5,150,105,0.18); border-bottom:1px solid rgba(5,150,105,0.18);';
+    } else if (s.isAllCompleted) {
       rowBg = 'background:rgba(239,68,68,0.12);';
       cardBorder = 'border-inline-start:5px solid #ef4444; border-top:1px solid rgba(239,68,68,0.25); border-bottom:1px solid rgba(239,68,68,0.25);';
     } else if (s.isLowBalance) {
@@ -160,19 +175,29 @@ export const AdminSubscriptionsPage = {
       <td style="padding:12px;">
         <div style="font-weight:700; font-size:0.9rem; color:var(--text-main);">${s.plan?.name || '-'}</div> 
         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">
-          ${s.isClass && s.classPackage?.grade?.name ? `<span style="color:#059669; font-weight:800;">الصف: ${s.classPackage.grade.name}</span> • ` : ''}
-          ${s.isGroup && s.course?.title ? `<span style="color:var(--primary); font-weight:700;">كورس: ${s.course.title}</span> • ` : ''}
-          ${s.isClass ? `${s.classPackage?.lessonsCount || 'باقة فصل'} - ${s.plan?.price || 0} ج.م` : `${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م`}
+          ${s.isClass && s.classPackage ? `
+            <span style="color:#059669; font-weight:800; background:rgba(5,150,105,0.08); padding:2px 8px; border-radius:6px; display:inline-block; margin-bottom:3px;">
+              ${(s.classPackage.grades && s.classPackage.grades.length > 1) 
+                ? `🎒 موجه لـ ${s.classPackage.grades.length} صفوف (${s.classPackage.grades.map(g => g.name).join('، ')})` 
+                : `الصف: ${s.classPackage.grade?.name || 'محدد'}`}
+            </span> • 
+            <span style="color:var(--text-main); font-weight:700;">${s.plan?.price || 0} ج.م</span>
+          ` : (s.isGroup && s.course?.title ? `
+            <span style="color:var(--primary); font-weight:700;">كورس: ${s.course.title}</span> • ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
+          ` : `
+            ${s.totalSessions} حصص الإجمالي - ${s.plan?.price || 0} ج.م
+          `)}
         </div>
         ${nextSessionBadgeHtml}
       </td>
       <td style="padding:12px;">
         <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
-          ${s.isClass ? `فريق المعلمين (${s.classPackage?.subjects?.length || 0} مواد)` : ((typeof s.teacher === 'string' ? s.teacher : s.teacher?.name) || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>')}
+          ${s.isClass ? `فريق المعلمين (${(s.classPackage?.subjects || []).length} مواد)` : ((typeof s.teacher === 'string' ? s.teacher : s.teacher?.name) || '<span style="color:var(--warning,#f59e0b);">في الانتظار</span>')}
         </div>
         ${s.isClass && s.classPackage?.subjects ? `
-          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
-            ${s.classPackage.subjects.map(sub => sub.name).slice(0, 3).join('، ')}${s.classPackage.subjects.length > 3 ? '...' : ''}
+          <div style="font-size:0.74rem; color:var(--text-muted); margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;">
+            ${s.classPackage.subjects.map(sub => `<span style="background:var(--bg-app); border:1px solid var(--border-color); padding:1px 6px; border-radius:4px; font-weight:600;">${sub.icon || '📖'} ${sub.name}</span>`).slice(0, 4).join('')}
+            ${s.classPackage.subjects.length > 4 ? `<span style="font-size:0.7rem; color:var(--primary);">+${s.classPackage.subjects.length - 4} أخرى</span>` : ''}
           </div>
         ` : (s.isGroup && s.group?.name ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">المجموعة: ${s.group.name}</div>` : '')}
       </td>
@@ -182,19 +207,32 @@ export const AdminSubscriptionsPage = {
             ${statusText}
           </span>
           ${s.isClass ? `
-            ${s.paymentStatus === 'PAID' ? `
-              <span class="badge" style="background:rgba(16,185,129,0.15); color:#059669; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
-                <i data-lucide="check-check" style="width:12px;height:12px;"></i> مدفوع بالكامل (${s.paidAmount || s.plan?.price || 0} ج.م)
-              </span>
-            ` : (s.paymentStatus === 'PARTIAL' ? `
-              <span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
-                <i data-lucide="pie-chart" style="width:12px;height:12px;"></i> نظام تقسيط (مدفوع: ${s.paidAmount || 0} ج.م • متبقي: ${s.remainingAmount || 0} ج.م)
-              </span>
-            ` : `
-              <span class="badge" style="background:rgba(239,68,68,0.12); color:#dc2626; font-weight:800; font-size:0.72rem; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:3px;">
-                <i data-lucide="alert-circle" style="width:12px;height:12px;"></i> لم يدفع بعد (0 ج.م)
-              </span>
-            `)}
+            <div style="display:flex; flex-direction:column; gap:4px; width:100%; margin-top:2px;">
+              ${s.paymentStatus === 'PAID' ? `
+                <div style="background:rgba(16,185,129,0.14); border:1px solid rgba(16,185,129,0.3); color:#059669; font-weight:800; font-size:0.75rem; padding:4px 9px; border-radius:8px; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="check-check" style="width:13px;height:13px;"></i>
+                  <span>مدفوع بالكامل (${s.paidAmount || s.plan?.price || 0} ج.م)</span>
+                </div>
+              ` : (s.paymentStatus === 'PARTIAL' ? `
+                <div style="background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.3); color:#d97706; font-weight:800; font-size:0.75rem; padding:4px 9px; border-radius:8px; display:inline-flex; flex-direction:column; gap:2px;">
+                  <span style="display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="pie-chart" style="width:13px;height:13px;"></i> نظام تقسيط (مدفوع: ${s.paidAmount || 0} ج.م)
+                  </span>
+                  <span style="font-size:0.7rem; color:#b45309;">متبقي: ${s.remainingAmount || 0} ج.م ${s.dueDate ? `• استحقاق: ${new Date(s.dueDate).toLocaleDateString('ar-EG')}` : ''}</span>
+                </div>
+              ` : `
+                <div style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25); color:#dc2626; font-weight:800; font-size:0.75rem; padding:4px 9px; border-radius:8px; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="alert-circle" style="width:13px;height:13px;"></i>
+                  <span>لم يدفع بعد (0 ج.م)</span>
+                </div>
+              `)}
+
+              ${s.receiptUrl ? `
+                <a href="${s.receiptUrl}" target="_blank" class="btn-secondary" style="font-size:0.72rem; padding:3px 8px; border-radius:6px; color:#059669; border-color:#059669; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:800;" title="عرض إيصال السداد المرفوع">
+                  <i data-lucide="receipt" style="width:12px; height:12px;"></i> استعراض الإيصال 🧾
+                </a>
+              ` : ''}
+            </div>
           ` : ''}
           ${s.isAllCompleted ? `
             <span class="badge" style="background:#ef4444;color:#fff;font-weight:800;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(239,68,68,0.35);">
@@ -242,6 +280,12 @@ export const AdminSubscriptionsPage = {
               <i data-lucide="credit-card" style="width:13px;height:13px;"></i> تعديل الدفع والتقسيط 💳
             </button>
 
+            ${(s.status === 'ACTIVE' || s.rawStatus === 'active') ? `
+              <button class="btn-secondary admin-finish-class-sub-btn" data-id="${s.id}" data-student="${s.student?.name || 'الطالب'}" data-target-name="${s.classPackage?.name || 'الفصل'}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:#d97706;border-color:#d97706;" title="إنهاء اشتراك هذا الطالب في هذا الفصل فقط">
+                <i data-lucide="check-square" style="width:13px;height:13px;"></i> إنهاء هذا الاشتراك 🏁
+              </button>
+            ` : ''}
+
             ${cleanWa ? `
               <a href="https://wa.me/${cleanWa}?text=${encodeURIComponent(`السلام عليكم ${s.student?.name || ''}، نتواصل معك بخصوص اشتراكك في باقة ${s.classPackage?.name || 'الفصل الدراسي'} في منصة انطلق 🌟.`)}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;">
                 <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
@@ -267,6 +311,12 @@ export const AdminSubscriptionsPage = {
             <button class="btn-secondary admin-view-group-students-btn" data-group-id="${s.group?.id || ''}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:var(--text-main);" title="عرض تفاصيل المجموعة ومقاعد الطلاب">
               <i data-lucide="users" style="width:13px;height:13px;"></i> المجموعة 👥
             </button>
+
+            ${(s.status === 'ACTIVE' || s.rawStatus === 'active') ? `
+              <button class="btn-secondary admin-finish-group-sub-btn" data-id="${s.id}" data-student="${s.student?.name || 'الطالب'}" data-target-name="${s.group?.name || s.course?.title || 'المجموعة'}" style="padding:5px 9px;font-size:0.75rem;gap:4px;font-weight:700;color:#d97706;border-color:#d97706;" title="إنهاء اشتراك هذا الطالب في هذه المجموعة فقط">
+                <i data-lucide="check-square" style="width:13px;height:13px;"></i> إنهاء هذا الاشتراك 🏁
+              </button>
+            ` : ''}
 
             ${cleanWa ? `
               <a href="https://wa.me/${cleanWa}${s.isAllCompleted ? `?text=${encodeURIComponent(`السلام عليكم ${s.student?.name || ''}، نود تذكيركم بأن حصص اشتراككم (${s.plan?.name || s.group?.name || 'المجموعة'}) في منصة انطلق قد اكتملت بالكامل (${s.totalSessions} حصة) 🌟. يمكنكم الآن تجديد الاشتراك لمتابعة الدراسة.`)}` : ''}" target="_blank" class="btn-secondary" style="padding:5px 8px;font-size:0.75rem;gap:4px;color:#10b981;border-color:#10b981;text-decoration:none;display:inline-flex;align-items:center;font-weight:700;" title="${s.isAllCompleted ? 'تذكير الطالب بالتجديد عبر واتساب' : 'مراسلة الطالب عبر واتساب'}">
@@ -319,6 +369,9 @@ export const AdminSubscriptionsPage = {
             ` : ''}
 
             ${s.status === 'ACTIVE' ? `
+            <button class="btn-secondary admin-finish-private-sub-btn" data-id="${s.id}" data-student="${s.student?.name || 'الطالب'}" data-target-name="${s.plan?.name || 'الباقة الخاصة'}" style="padding:6px;font-size:0.75rem;gap:4px;border-color:#d97706;color:#d97706;font-weight:700;" title="إنهاء هذا الاشتراك الخاص بهذا الطالب فقط">
+              <i data-lucide="check-square" style="width:14px;height:14px;"></i> إنهاء هذا الاشتراك 🏁
+            </button>
             <button class="btn-secondary admin-edit-schedule-btn" data-id="${s.id}" data-teacher="${s.teacher?.id || ''}" style="padding:6px;font-size:0.75rem;gap:4px;border-color:var(--primary);color:var(--primary);font-weight:700;">
               <i data-lucide="edit-3" style="width:14px;height:14px;"></i> تعديل الجدولة ✏️
             </button>
@@ -332,7 +385,23 @@ export const AdminSubscriptionsPage = {
           `)}
         </div>
 
-        ${s.isAllCompleted ? `
+        ${s.isClass ? `
+        <div style="font-size:0.75rem; display:flex; gap:12px; flex-wrap:wrap; align-items:center; color:var(--text-main); background:rgba(5,150,105,0.06); border:1px solid rgba(5,150,105,0.22); padding:7px 12px; border-radius:8px; font-weight:700;">
+          <span style="color:#059669; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="layers" style="width:13px;height:13px;"></i> مواد الفصل: ${s.classPackage?.subjects?.length || 0} مادة
+          </span>
+          <span style="color:var(--text-main); font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="users" style="width:13px;height:13px;"></i> المجموعات المسكنة: ${s.classPackage?.linkedGroups?.length || 0}
+          </span>
+          <span style="color:#0284c7; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="banknote" style="width:13px;height:13px;"></i> الرسوم: ${s.plan?.price || 0} ج.م
+          </span>
+          <span style="color:${s.paymentStatus === 'PAID' ? '#059669' : (s.paymentStatus === 'PARTIAL' ? '#d97706' : '#ef4444')}; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="credit-card" style="width:13px;height:13px;"></i> السداد: ${s.paidAmount || (s.paymentStatus === 'PAID' ? s.plan?.price : 0)} / ${s.plan?.price || 0} ج.م
+          </span>
+          ${s.dueDate ? `<span style="color:#d97706; font-weight:800;">📅 استحقاق القسط: ${new Date(s.dueDate).toLocaleDateString('ar-EG')}</span>` : ''}
+        </div>
+        ` : (s.isAllCompleted ? `
         <div style="font-size:0.75rem; display:flex; gap:10px; flex-wrap:wrap; color:#ef4444; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); padding:6px 10px; border-radius:6px; font-weight:700;">
             <span style="color:#ef4444;font-weight:800;">🔴 مكتملة: ${s.completedSessions}/${s.totalSessions} (100%)</span>
             <span style="color:#ef4444;font-weight:800;">المتبقي بالباقة: 0 حصص (انتهت بالكامل)</span>
@@ -347,7 +416,7 @@ export const AdminSubscriptionsPage = {
             <span style="color:${s.remainingSessionsInPackage < 3 ? '#ef4444' : '#10b981'};font-weight:700;">المتبقي: ${s.remainingSessionsInPackage}</span>
             ${s.isGroup && s.group ? `<span style="color:var(--primary);font-weight:700;">سعة المجموعة: ${s.group.maxStudents || 25} طالب</span>` : ''}
         </div>
-        ` : '')}
+        ` : ''))}
       </td>
     </tr>
   `;
@@ -601,6 +670,11 @@ export const AdminSubscriptionsPage = {
     const groupsCount = groupSubsWithMetrics.length;
     const privateCount = privateSubsWithMetrics.length;
     const classesCount = classSubsWithMetrics.length;
+    const classPaidCount = classSubsWithMetrics.filter(s => s.paymentStatus === 'PAID').length;
+    const classPartialCount = classSubsWithMetrics.filter(s => s.paymentStatus === 'PARTIAL').length;
+    const classPendingCount = classSubsWithMetrics.filter(s => s.status === 'PENDING_PAYMENT' || s.paymentStatus === 'UNPAID').length;
+    const classRevenueSum = classSubsWithMetrics.reduce((sum, s) => sum + (Number(s.paidAmount) || 0), 0);
+    const classRemainingRevenue = classSubsWithMetrics.reduce((sum, s) => sum + (Number(s.remainingAmount) || 0), 0);
 
     // Helper to calculate sorting priority (Nearest session date/time comes FIRST)
     const getSubSortScore = (s) => {
@@ -612,8 +686,17 @@ export const AdminSubscriptionsPage = {
     };
 
     // Apply Filter
-    const filter = this.subFilter || "all";
+    const isClassTab = this.activeTab === "classSubscriptions";
+    const filter = this.subFilter || (isClassTab ? "classes" : "all");
     let filteredSubs = allUnifiedSubs.filter(s => {
+      if (isClassTab) {
+        if (!s.isClass) return false;
+        if (filter === "class_paid") return s.paymentStatus === "PAID";
+        if (filter === "class_partial") return s.paymentStatus === "PARTIAL";
+        if (filter === "class_pending") return s.status === "PENDING_PAYMENT" || s.paymentStatus === "UNPAID";
+        if (filter === "class_completed") return s.rawStatus === "completed";
+        return true;
+      }
       if (filter === "completed_renewal") return s.isAllCompleted;
       if (filter === "classes") return s.isClass;
       if (filter === "groups") return s.isGroup;
@@ -636,8 +719,9 @@ export const AdminSubscriptionsPage = {
         const groupName = (s.group?.name || '').toLowerCase();
         const className = (s.classPackage?.name || '').toLowerCase();
         const gradeName = (s.classPackage?.grade?.name || '').toLowerCase();
+        const classGrades = (s.classPackage?.grades || []).map(g => g.name || '').join(' ').toLowerCase();
         const id = (s.id || '').toLowerCase();
-        return studentName.includes(q) || teacherName.includes(q) || planName.includes(q) || courseTitle.includes(q) || groupName.includes(q) || className.includes(q) || gradeName.includes(q) || id.includes(q);
+        return studentName.includes(q) || teacherName.includes(q) || planName.includes(q) || courseTitle.includes(q) || groupName.includes(q) || className.includes(q) || gradeName.includes(q) || classGrades.includes(q) || id.includes(q);
       });
     }
 
@@ -865,7 +949,7 @@ export const AdminSubscriptionsPage = {
     }).join('');
 
     return `
-      ${completedSubsCount > 0 ? `
+      ${(completedSubsCount > 0 && !isClassTab && filter !== 'classes') ? `
       <div class="glass-card" style="background:linear-gradient(135deg, rgba(239,68,68,0.14) 0%, rgba(220,38,38,0.06) 100%); border:2px solid #ef4444; color:#ef4444; padding:18px 22px; border-radius:16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; box-shadow:0 4px 20px rgba(239,68,68,0.18);">
         <div style="display:flex; align-items:center; gap:14px;">
           <div style="width:46px; height:46px; border-radius:12px; background:#ef4444; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 12px rgba(239,68,68,0.4);">
@@ -887,7 +971,7 @@ export const AdminSubscriptionsPage = {
       </div>
       ` : ''}
 
-      ${lowBalanceCount > 0 ? `
+      ${(lowBalanceCount > 0 && !isClassTab && filter !== 'classes') ? `
       <div class="glass-card" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:16px 20px; border-radius:14px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
         <div style="display:flex; align-items:center; gap:12px;">
           <i data-lucide="alert-triangle" style="width:24px;height:24px;flex-shrink:0;"></i>
@@ -902,14 +986,65 @@ export const AdminSubscriptionsPage = {
       </div>
       ` : ''}
 
+      ${(filter === 'classes' || isClassTab) ? `
+      <div class="glass-card" style="background:linear-gradient(135deg, rgba(5,150,105,0.12) 0%, rgba(16,185,129,0.05) 100%); border:2px solid rgba(5,150,105,0.35); padding:22px 26px; border-radius:20px; margin-bottom:22px; display:flex; flex-direction:column; gap:16px; box-shadow:0 6px 24px rgba(5,150,105,0.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:50px; height:50px; border-radius:16px; background:#059669; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 14px rgba(5,150,105,0.35);">
+              <i data-lucide="graduation-cap" style="width:26px;height:26px;"></i>
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <h4 style="margin:0; font-size:1.18rem; font-weight:900; color:#047857;">مركز اشتراكات الفصول والباقات الشاملة 🎒</h4>
+                <span class="badge" style="background:#059669; color:#fff; font-weight:900; font-size:0.76rem; padding:3px 10px; border-radius:12px;">
+                  ${classesCount} طالب مسجل
+                </span>
+              </div>
+              <p style="margin:4px 0 0 0; font-size:0.86rem; color:var(--text-main); line-height:1.5; max-width:820px;">
+                تسجيل ومتابعة اشتراكات الطلاب في باقات الفصول المجمعة وتسكينهم الآلي في مجموعات المواد، مع تدقيق إيصالات الدفع وإدارة أقساط السداد.
+              </p>
+            </div>
+          </div>
+          <button class="btn-primary" id="admin-banner-open-class-sub-modal-btn" style="padding:10px 20px; font-size:0.86rem; font-weight:800; background:linear-gradient(135deg, #059669 0%, #047857 100%); border-color:#059669; color:#fff; border-radius:14px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(5,150,105,0.35); cursor:pointer;">
+            <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> تسجيل اشتراك فصل جديد
+          </button>
+        </div>
+
+        <!-- بطاقات مؤشرات سريعة للفصول -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:4px;">
+          <div style="background:var(--bg-card); border:1.5px solid rgba(5,150,105,0.25); border-radius:14px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">إجمالي المحصّل من الفصول</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#059669; margin-top:4px;">${classRevenueSum.toLocaleString()} ج.م</div>
+          </div>
+          <div style="background:var(--bg-card); border:1.5px solid rgba(16,185,129,0.25); border-radius:14px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">مدفوع بالكامل ✅</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#10b981; margin-top:4px;">${classPaidCount}</div>
+          </div>
+          <div style="background:var(--bg-card); border:1.5px solid rgba(245,158,11,0.25); border-radius:14px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">نظام تقسيط ⏳</div>
+            <div style="font-size:1.35rem; font-weight:900; color:#d97706; margin-top:4px;">${classPartialCount} ${classRemainingRevenue > 0 ? `<span style="font-size:0.72rem; color:var(--text-muted);">(${classRemainingRevenue} ج.م متبقي)</span>` : ''}</div>
+          </div>
+          <div style="background:var(--bg-card); border:1.5px solid rgba(239,68,68,0.2); border-radius:14px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">بانتظار السداد / المراجعة 🏦</div>
+            <div style="font-size:1.35rem; font-weight:900; color:${classPendingCount > 0 ? '#dc2626' : '#64748b'}; margin-top:4px;">${classPendingCount}</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
       <div class="glass-card" style="padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:14px;">
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             <h3 style="font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px; margin:0; color:var(--text-main);">
-              <i data-lucide="calendar-heart" style="color:var(--primary);width:22px;height:22px;"></i>
-              إدارة كافة الاشتراكات (${allUnifiedSubs.length})
+              <i data-lucide="${isClassTab ? 'graduation-cap' : 'calendar-heart'}" style="color:${isClassTab ? '#059669' : 'var(--primary)'};width:22px;height:22px;"></i>
+              ${isClassTab ? `سجل اشتراكات وتسجيلات الفصول الشاملة (${classesCount})` : `إدارة كافة الاشتراكات (${allUnifiedSubs.length})`}
             </h3>
             
+            ${isClassTab ? `
+            <button class="btn-primary" id="admin-open-class-sub-modal-btn" style="padding:9px 18px; font-size:0.84rem; font-weight:800; background:linear-gradient(135deg, #059669 0%, #047857 100%); border-color:#059669; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(5,150,105,0.35); cursor:pointer;" title="تسجيل واشتراك طالب في باقة فصل دراسي شامل">
+              <i data-lucide="graduation-cap" style="width:16px;height:16px;"></i> ➕ تسجيل اشتراك فصل جديد 🎒
+            </button>
+            ` : `
             <button class="btn-primary" id="admin-open-group-enroll-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-color:#6366f1; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(99,102,241,0.3); cursor:pointer;" title="تسكين واشتراك طالب في مجموعة دراسية مع رفع إيصال الدفع">
               <i data-lucide="users" style="width:15px;height:15px;"></i> ➕ تسكين طالب بمجموعة 👥
             </button>
@@ -921,6 +1056,7 @@ export const AdminSubscriptionsPage = {
             <button class="btn-primary" id="admin-open-manual-sub-modal-btn" style="padding:8px 16px; font-size:0.82rem; font-weight:800; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border-color:#10b981; color:#fff; border-radius:20px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
               <i data-lucide="sparkles" style="width:15px;height:15px;"></i> ➕ باقة خاصة لطالب 💎
             </button>
+            `}
           </div>
           
           <!-- Filters & Search -->
@@ -930,6 +1066,23 @@ export const AdminSubscriptionsPage = {
               <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);"></i>
             </div>
 
+            ${isClassTab ? `
+            <button class="btn-secondary admin-sub-filter-btn ${(!filter || filter === 'all' || filter === 'classes') ? 'active' : ''}" data-filter="classes" style="padding:7px 16px; font-size:0.82rem; font-weight:800; border-radius:20px; ${(!filter || filter === 'all' || filter === 'classes') ? 'background:linear-gradient(135deg, #059669 0%, #10b981 100%);color:#fff;border-color:#059669;box-shadow:0 4px 14px rgba(5,150,105,0.4);' : 'color:#059669;border-color:rgba(5,150,105,0.35);background:rgba(5,150,105,0.06);'}">
+              🎒 جميع طلاب الفصول (${classesCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'class_paid' ? 'active' : ''}" data-filter="class_paid" style="padding:6px 14px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'class_paid' ? 'background:#10b981;color:#fff;border-color:#10b981;' : 'color:#10b981;border-color:rgba(16,185,129,0.35);background:rgba(16,185,129,0.06);'}">
+              ✅ مدفوع بالكامل (${classPaidCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'class_partial' ? 'active' : ''}" data-filter="class_partial" style="padding:6px 14px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'class_partial' ? 'background:#d97706;color:#fff;border-color:#d97706;' : 'color:#d97706;border-color:rgba(245,158,11,0.35);background:rgba(245,158,11,0.06);'}">
+              ⏳ أقساط سارية (${classPartialCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'class_pending' ? 'active' : ''}" data-filter="class_pending" style="padding:6px 14px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'class_pending' ? 'background:#ef4444;color:#fff;border-color:#ef4444;' : 'color:#ef4444;border-color:rgba(239,68,68,0.35);background:rgba(239,68,68,0.06);'}">
+              🏦 بانتظار السداد (${classPendingCount})
+            </button>
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'class_completed' ? 'active' : ''}" data-filter="class_completed" style="padding:6px 14px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'class_completed' ? 'background:#64748b;color:#fff;border-color:#64748b;' : 'color:#64748b;border-color:rgba(100,116,139,0.35);background:rgba(100,116,139,0.06);'}">
+              🏁 منتهي ومكتمل (${classSubsWithMetrics.filter(s => s.rawStatus === 'completed').length})
+            </button>
+            ` : `
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'all' ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}">
               الكل (${allUnifiedSubs.length})
             </button>
@@ -938,7 +1091,7 @@ export const AdminSubscriptionsPage = {
                 🚨 بحاجة للتجديد (${completedSubsCount})
               </button>
             ` : ''}
-            <button class="btn-secondary admin-sub-filter-btn ${filter === 'classes' ? 'active' : ''}" data-filter="classes" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'classes' ? 'background:#059669;color:#fff;border-color:#059669;' : ''}">
+            <button class="btn-secondary admin-sub-filter-btn ${filter === 'classes' ? 'active' : ''}" data-filter="classes" style="padding:7px 16px; font-size:0.82rem; font-weight:800; border-radius:20px; transition:all 0.2s ease; ${filter === 'classes' ? 'background:linear-gradient(135deg, #059669 0%, #10b981 100%);color:#fff;border-color:#059669;box-shadow:0 4px 14px rgba(5,150,105,0.4);transform:scale(1.02);' : 'color:#059669;border-color:rgba(5,150,105,0.35);background:rgba(5,150,105,0.06);'}">
               🎒 فصول وباقات (${classesCount})
             </button>
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'groups' ? 'active' : ''}" data-filter="groups" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'groups' ? 'background:#6366f1;color:#fff;border-color:#6366f1;' : ''}">
@@ -959,6 +1112,7 @@ export const AdminSubscriptionsPage = {
             <button class="btn-secondary admin-sub-filter-btn ${filter === 'cancelled' ? 'active' : ''}" data-filter="cancelled" style="padding:6px 12px; font-size:0.8rem; font-weight:700; border-radius:20px; ${filter === 'cancelled' ? 'background:var(--border-color);' : ''}">
               ❌ ملغى (${cancelledCount})
             </button>
+            `}
           </div>
         </div>
 

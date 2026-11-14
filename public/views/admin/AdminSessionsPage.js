@@ -107,12 +107,54 @@ export const AdminSessionsPage = {
     }
     availableGrades.sort((a, b) => (a.order || 0) - (b.order || 0));
 
+    // 2. Fetch and map Classes/Packages for Group-to-Class Filtering
+    let allClasses = this.allClasses || [];
+    if (allClasses.length === 0 && !this._fetchingClasses) {
+      this._fetchingClasses = true;
+      if (typeof apiFetch === 'function') {
+        apiFetch("/admin/curriculum/classes").then(res => {
+          this._fetchingClasses = false;
+          if (Array.isArray(res) && res.length > 0) {
+            this.allClasses = res;
+            this.renderTab("groups");
+          }
+        }).catch(() => {
+          this._fetchingClasses = false;
+        });
+      }
+    }
+
+    // Build lookup map from groupId -> ClassPackage[]
+    const groupToClassesMap = new Map();
+    allClasses.forEach(c => {
+      const lgList = Array.isArray(c.linkedGroups) ? c.linkedGroups : [];
+      lgList.forEach(lg => {
+        if (!lg || !lg.id) return;
+        const gid = String(lg.id);
+        if (!groupToClassesMap.has(gid)) groupToClassesMap.set(gid, []);
+        if (!groupToClassesMap.get(gid).some(existing => String(existing.id) === String(c.id))) {
+          groupToClassesMap.get(gid).push(c);
+        }
+      });
+      if (c.linkedGroup && c.linkedGroup.id) {
+        const gid = String(c.linkedGroup.id);
+        if (!groupToClassesMap.has(gid)) groupToClassesMap.set(gid, []);
+        if (!groupToClassesMap.get(gid).some(existing => String(existing.id) === String(c.id))) {
+          groupToClassesMap.get(gid).push(c);
+        }
+      }
+    });
+
     // Map all CourseGroups from DB with comprehensive Grade & Subject mapping
     const groupsList = allCourseGroups.map(cg => {
       const teacherName = cg.teacher?.name || cg.course?.teacher?.name || "معلم المنصة";
       const teacherAvatar = cg.teacher?.avatar || cg.course?.teacher?.avatar || "";
       const courseObj = cg.course || (allCourses.find(c => String(c.id) === String(cg.courseId || cg.course?.id))) || {};
       const courseTitle = courseObj.title || cg.course?.title || "كورس تعليمي";
+
+      // Class/Package association
+      const relatedClasses = groupToClassesMap.get(String(cg.id)) || [];
+      const isLinkedToClass = relatedClasses.length > 0;
 
       // Robust Grade Resolution (relation or text matching)
       const directGrade = courseObj.grade || cg.grade || null;
@@ -202,6 +244,8 @@ export const AdminSessionsPage = {
         isFull,
         status: cg.status || "OPEN",
         meetingLink: cg.meetingLink || null,
+        relatedClasses,
+        isLinkedToClass,
         sessions: allSessions.filter(s => String(s.groupId) === String(cg.id) || (s.course && String(s.course.id) === String(courseObj.id)))
       };
     });
@@ -213,6 +257,8 @@ export const AdminSessionsPage = {
     const fullGroupsCount = groupsList.filter(g => g.isFull && g.status !== 'FINISHED' && g.status !== 'finished').length;
     const finishedGroupsCount = groupsList.filter(g => g.status === 'FINISHED' || g.status === 'finished').length;
     const pendingGroupsCount = (this.pendingCourseGroups || []).length;
+    const groupsLinkedToClassCount = groupsList.filter(g => g.isLinkedToClass).length;
+    const standaloneGroupsCount = groupsList.filter(g => !g.isLinkedToClass).length;
 
     // Apply Filters
     let filteredGroups = groupsList.filter(grp => {
@@ -328,6 +374,20 @@ export const AdminSessionsPage = {
         if (String(grp.teacher?.id) !== String(teacherFilter)) return false;
       }
 
+      // 6. Class / Package Filter
+      const classFilter = this.adminGroupClassFilter || 'all';
+      if (classFilter !== 'all') {
+        if (classFilter === 'any_class') {
+          if (!grp.isLinkedToClass) return false;
+        } else if (classFilter === 'standalone') {
+          if (grp.isLinkedToClass) return false;
+        } else {
+          // Specific class package ID
+          const matchClass = grp.relatedClasses && grp.relatedClasses.some(c => String(c.id) === String(classFilter));
+          if (!matchClass) return false;
+        }
+      }
+
       return true;
     });
 
@@ -352,6 +412,7 @@ export const AdminSessionsPage = {
       (this.adminGroupGradeFilter && this.adminGroupGradeFilter !== 'all') ||
       (this.adminGroupCourseFilter && this.adminGroupCourseFilter !== 'all') ||
       (this.adminGroupTeacherFilter && this.adminGroupTeacherFilter !== 'all') ||
+      (this.adminGroupClassFilter && this.adminGroupClassFilter !== 'all') ||
       (this.adminGroupSort && this.adminGroupSort !== 'newest')
     );
 
@@ -371,6 +432,7 @@ export const AdminSessionsPage = {
          this.adminGroupGradeFilter === 'STAGE_SECONDARY' ? 'المرحلة الثانوية' : this.adminGroupGradeFilter);
 
     const isGradeSelected = Boolean(this.adminGroupGradeFilter && this.adminGroupGradeFilter !== 'all');
+    const isClassSelected = Boolean(this.adminGroupClassFilter && this.adminGroupClassFilter !== 'all');
 
     // Filter courses for dropdown when grade filter is active
     const coursesForDropdown = isGradeSelected
@@ -543,6 +605,12 @@ export const AdminSessionsPage = {
                 style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupFilterStatus === 'finished' ? '#64748b' : 'var(--border-color)'}; background:${this.adminGroupFilterStatus === 'finished' ? '#64748b' : 'var(--bg-app)'}; color:${this.adminGroupFilterStatus === 'finished' ? '#fff' : 'var(--text-muted)'}; cursor:pointer; transition:all 0.2s;">
                 🏁 منتهية (${finishedGroupsCount})
               </button>
+              <button class="filter-tab-btn admin-group-class-tab-btn ${this.adminGroupClassFilter === 'any_class' ? 'active' : ''}" data-class-filter="any_class"
+                style="padding:6px 14px; border-radius:12px; font-size:0.8rem; font-weight:800; border:1px solid ${this.adminGroupClassFilter === 'any_class' ? '#059669' : 'rgba(5,150,105,0.35)'}; background:${this.adminGroupClassFilter === 'any_class' ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' : 'rgba(5,150,105,0.06)'}; color:${this.adminGroupClassFilter === 'any_class' ? '#fff' : '#059669'}; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:5px;"
+                title="عرض المجموعات المربوطة بفصول وباقات شاملة فقط">
+                <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i>
+                🎒 تابعة لفصول وباقات (${groupsLinkedToClassCount})
+              </button>
             </div>
 
             ${hasActiveFilters ? `
@@ -626,6 +694,27 @@ export const AdminSessionsPage = {
                   ${t.name}
                 </option>
               `).join('')}
+            </select>
+
+            <!-- 🎒 Class / Package Filter -->
+            <select id="admin-groups-class-filter"
+              style="flex:1.2; min-width:190px; padding:9px 12px; border-radius:12px; border:1px solid ${isClassSelected ? '#059669' : 'var(--border-color)'}; background:${isClassSelected ? 'rgba(5,150,105,0.08)' : 'var(--bg-app)'}; color:var(--text-main); font-size:0.82rem; font-weight:800; font-family:'Cairo',sans-serif; outline:none; cursor:pointer; box-sizing:border-box;">
+              <option value="all" ${(this.adminGroupClassFilter || 'all') === 'all' ? 'selected' : ''}>🎒 تصنيف الفصول (الكل: ${totalGroupsCount})</option>
+              <option value="any_class" ${this.adminGroupClassFilter === 'any_class' ? 'selected' : ''}>🎒 تابعة لفصول وباقات شاملة (${groupsLinkedToClassCount})</option>
+              <option value="standalone" ${this.adminGroupClassFilter === 'standalone' ? 'selected' : ''}>👥 مجموعات مستقلة فقط (${standaloneGroupsCount})</option>
+              ${allClasses.length > 0 ? `
+                <optgroup label="── تصفية حسب باقة فصل محدد ──">
+                  ${allClasses.map(c => {
+                    const count = groupsList.filter(g => g.relatedClasses.some(rc => String(rc.id) === String(c.id))).length;
+                    const gradeName = c.grade?.name || (c.grades && c.grades.length > 0 ? c.grades.map(g => g.name).join('، ') : '');
+                    return `
+                      <option value="${c.id}" ${String(this.adminGroupClassFilter) === String(c.id) ? 'selected' : ''}>
+                        🏫 ${c.name} ${gradeName ? `(${gradeName})` : ''} [${count} مجموعة]
+                      </option>
+                    `;
+                  }).join('')}
+                </optgroup>
+              ` : ''}
             </select>
 
             <!-- ⏱️ Sort Dropdown -->
@@ -727,6 +816,19 @@ export const AdminSessionsPage = {
                               📖 ${grp.subjectName}
                             </span>
                           ` : ''}
+                          ${grp.relatedClasses && grp.relatedClasses.length > 0 ? grp.relatedClasses.map(rc => `
+                            <span class="badge" title="انقر لتصفية مجموعات هذا الفصل: ${rc.name}" 
+                              onclick="event.stopPropagation(); if (window.adminViewInstance) window.adminViewInstance.setGroupClassFilter('${rc.id}');"
+                              style="background:rgba(5,150,105,0.12); color:#059669; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:8px; cursor:pointer; border:1px solid rgba(5,150,105,0.25); display:inline-flex; align-items:center; gap:3px;">
+                              🏫 فصل: ${rc.name}
+                            </span>
+                          `).join('') : `
+                            <span class="badge" title="انقر لعرض المجموعات المستقلة فقط" 
+                              onclick="event.stopPropagation(); if (window.adminViewInstance) window.adminViewInstance.setGroupClassFilter('standalone');"
+                              style="background:rgba(100,116,139,0.08); color:#64748b; font-size:0.7rem; font-weight:700; padding:2px 7px; border-radius:8px; cursor:pointer;">
+                              مجموعة مستقلة
+                            </span>
+                          `}
                         </div>
                       </div>
                     </div>
@@ -854,6 +956,18 @@ export const AdminSessionsPage = {
                             ${grp.meetingLink ? `<a href="${grp.meetingLink}" target="_blank" style="color:var(--primary); text-decoration:none;">رابط Zoom/Meet 🔗</a>` : 'قاعة المنصة التفاعلية 🎥'}
                           </span>
                         </div>
+                        ${grp.isLinkedToClass ? `
+                          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-color); padding-top:6px;">
+                            <span style="color:var(--text-muted);">الفصل / الباقة المرتبطة:</span>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                              ${grp.relatedClasses.map(c => `
+                                <span style="background:rgba(5,150,105,0.12); color:#059669; font-weight:800; padding:2px 8px; border-radius:8px; font-size:0.75rem; border:1px solid rgba(5,150,105,0.25);">
+                                  🏫 ${c.name}
+                                </span>
+                              `).join('')}
+                            </div>
+                          </div>
+                        ` : ''}
                       </div>
 
                     </div>
@@ -7817,6 +7931,11 @@ export const AdminSessionsPage = {
   setGroupGradeFilter(gradeVal) {
     this.adminGroupGradeFilter = gradeVal || "all";
     this.adminGroupCourseFilter = "all";
+    this.renderTab("groups");
+  },
+
+  setGroupClassFilter(classVal) {
+    this.adminGroupClassFilter = classVal || "all";
     this.renderTab("groups");
   },
 

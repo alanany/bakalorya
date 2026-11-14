@@ -546,14 +546,39 @@ export class AdminCurriculumPage {
       allGroups = [];
     }
 
-    // Filter groups matching this grade or stage
-    const gradeGroups = (allGroups || []).filter(g => 
-      g.course?.grade?.id === grade?.id || 
-      g.course?.grade?.name === grade?.name || 
-      g.course?.grade?.stage === grade?.stage ||
-      (g.course?.degree && grade?.name && g.course.degree.includes(grade.name))
-    );
-    const groupsList = gradeGroups.length > 0 ? gradeGroups : allGroups;
+    // دالة مساعدة لتوحيد النصوص العربية لتفادي أي فروقات في كتابة الهمزات أو التاء المربوطة
+    const norm = (s) => (s || '').toString().toLowerCase().replace(/[إأآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
+
+    const gradeId = grade?.id ? String(grade.id) : '';
+    const gradeName = (grade?.name || '').trim();
+    const gradeNameNorm = norm(gradeName);
+
+    // حصر المجموعات التابعة حصراً لهذا الصف الدراسي فقط ومنع أي مجموعات من صفوف أخرى
+    const gradeGroups = (allGroups || []).filter(g => {
+      const courseGradeId = g.course?.grade?.id 
+        ? String(g.course.grade.id) 
+        : (g.course?.subject?.grade?.id ? String(g.course.subject.grade.id) : (g.course?.gradeId ? String(g.course.gradeId) : ''));
+      const courseGradeNameNorm = norm(g.course?.grade?.name || g.course?.subject?.grade?.name);
+      const courseDegreeNorm = norm(g.course?.degree);
+      const groupNameNorm = norm(g.name);
+
+      // 1. مطابقة مباشرة بمعرف الصف الدراسي (Grade ID)
+      if (gradeId && courseGradeId && courseGradeId === gradeId) return true;
+
+      // 2. مطابقة بالاسم الرسمي للصف الدراسي
+      if (gradeNameNorm && courseGradeNameNorm && (courseGradeNameNorm === gradeNameNorm || courseGradeNameNorm.includes(gradeNameNorm) || gradeNameNorm.includes(courseGradeNameNorm))) return true;
+
+      // 3. مطابقة بنص المرحلة/الصف الدراسي المخزن في الكورس (Course Degree)
+      if (gradeNameNorm && courseDegreeNorm && (courseDegreeNorm === gradeNameNorm || courseDegreeNorm.includes(gradeNameNorm) || gradeNameNorm.includes(courseDegreeNorm))) return true;
+
+      // 4. مطابقة إذا كان اسم المجموعة نفسه يتضمن اسم الصف المحدد
+      if (gradeNameNorm && groupNameNorm && groupNameNorm.includes(gradeNameNorm)) return true;
+
+      return false;
+    });
+
+    // الالتزام التام بالمجموعات التابعة لهذا الصف فقط - دون العودة لكافة مجموعات المنصة
+    const groupsList = gradeGroups;
     const selectedGroupIds = (pkg?.groupIds || (pkg?.linkedGroups || []).map(g => g.id)).slice();
 
     const overlay = document.createElement("div");
@@ -623,15 +648,20 @@ export class AdminCurriculumPage {
               ${groupsList.length > 0 ? groupsList.map(g => {
                 const isChecked = selectedGroupIds.includes(g.id);
                 const teacherRate = g.teacherHourlyRate || 100;
+                const groupGradeLabel = g.course?.grade?.name || g.course?.subject?.grade?.name || g.course?.degree || '';
                 return `
                   <label class="acp-group-row ${isChecked ? 'selected' : ''}" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-radius:12px; background:${isChecked ? 'rgba(2,132,199,0.07)' : 'var(--bg-card)'}; border:1.5px solid ${isChecked ? '#0284c7' : 'var(--border-color)'}; cursor:pointer; user-select:none; transition:all 0.15s ease;">
                     <div style="display:flex; align-items:center; gap:11px;">
                       <input type="checkbox" class="ccm-group-check" value="${g.id}" data-rate="${teacherRate}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0284c7; cursor:pointer;">
                       <div>
-                        <div style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${g.course?.subject?.name || g.name}</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <span style="font-weight:900; font-size:0.88rem; color:var(--text-main);">${g.course?.subject?.name || g.name}</span>
+                          ${groupGradeLabel ? `<span class="badge" style="background:rgba(2,132,199,0.1); color:#0284c7; font-size:0.68rem; padding:2px 7px; border-radius:6px; font-weight:700;">🎓 ${groupGradeLabel}</span>` : ''}
+                        </div>
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
                           <strong style="color:var(--text-main);">${g.teacher?.name || g.course?.teacher?.name || 'معلم معتمد'}</strong>
                           ${g.scheduleDays ? `• ${g.scheduleDays} ${g.scheduleTime || ''}` : ''}
+                          • ⏱️ ${g.sessionDuration || 40} دقيقة
                         </div>
                       </div>
                     </div>
@@ -640,7 +670,13 @@ export class AdminCurriculumPage {
                     </div>
                   </label>
                 `;
-              }).join('') : '<div style="font-size:0.82rem; color:var(--text-muted); text-align:center; padding:16px;">لا توجد مجموعات متاحة لهذا الصف. يمكنك إنشاء مجموعات من صفحة الحصص أولاً.</div>'}
+              }).join('') : `
+                <div style="font-size:0.84rem; color:var(--text-muted); text-align:center; padding:22px; line-height:1.6;">
+                  <i data-lucide="alert-circle" style="width:24px;height:24px;margin-bottom:6px;display:inline-block;color:#f59e0b;"></i><br>
+                  لا توجد أي مجموعات مسجلة تابعة لـ (<strong>${grade?.name || 'هذا الصف'}</strong>) حالياً.<br>
+                  <span style="font-size:0.76rem; color:var(--text-muted);">يتم حصر المجموعات التابعة لهذا الصف فقط لضمان دقة ربط المواد، ويمكنك إنشاء مجموعة جديدة لهذا الصف من صفحة المجموعات.</span>
+                </div>
+              `}
             </div>
           </div>
 

@@ -6,10 +6,20 @@ import { apiFetch, state, showToast, t, confirmDialog, renderPhoneInputGroup, ge
 export const AdminUsersPage = {
 
   renderTeachersTab() {
-    const teachers = this.allMembers.filter(u => u.role === "teacher");
+    const teachers = (this.allMembers || []).filter(u => u.role === "teacher");
     const allSessions = this.allSessions || [];
+    const allCourses = this.courses || [];
+    const allCourseGroups = this.allCourseGroups || [];
+
+    const activeStatus = this.teacherStatusFilter || "all";
+    const activeSpecialization = this.teacherSpecializationFilter || "all";
+    const activeCapability = this.teacherCapabilityFilter || "all";
+    const activeActivity = this.teacherActivityFilter || "all";
+    const searchQuery = (this.teacherSearchQuery || "").trim().toLowerCase();
+    const activeSort = this.teacherSort || "newest";
 
     const teacherData = teachers.map(t => {
+      const isBlocked = Boolean(t.isBlocked || t.status === 'BLOCKED' || t.status === 'SUSPENDED');
       const completedSessions = allSessions.filter(s =>
         (s.teacher?.id === t.id || s.teacherId === t.id) &&
         (s.status === 'COMPLETED' || s.status === 'completed')
@@ -19,171 +29,462 @@ export const AdminUsersPage = {
       const rate = t.hourlyRate !== undefined ? t.hourlyRate : 150;
       const totalSalary = Math.round(completedHours * rate);
 
+      // Teacher courses & groups
+      const teacherCourses = allCourses.filter(c =>
+        (c.teacher?.id && String(c.teacher.id) === String(t.id)) ||
+        (c.teacherId && String(c.teacherId) === String(t.id))
+      );
+      const teacherGroups = allCourseGroups.filter(g =>
+        (g.teacher?.id && String(g.teacher.id) === String(t.id)) ||
+        (g.course?.teacher?.id && String(g.course.teacher.id) === String(t.id))
+      );
+
+      // Specializations / Subjects
+      const specializations = new Set();
+      if (t.education) specializations.add(t.education.trim());
+      teacherCourses.forEach(c => {
+        if (c.subject?.name) specializations.add(c.subject.name.trim());
+      });
+      teacherGroups.forEach(g => {
+        if (g.subject?.name) specializations.add(g.subject.name.trim());
+        if (g.course?.subject?.name) specializations.add(g.course.subject.name.trim());
+      });
+
+      const capabilities = Array.isArray(t.teacherCapabilities) && t.teacherCapabilities.length > 0
+        ? t.teacherCapabilities
+        : ["COURSE_INSTRUCTOR", "SESSION_TEACHER"];
+
       return {
         teacher: t,
+        isBlocked,
         completedCount: completedSessions.length,
         completedHours,
         rate,
-        totalSalary
+        totalSalary,
+        coursesCount: teacherCourses.length,
+        groupsCount: teacherGroups.length,
+        specializations: Array.from(specializations),
+        capabilities
       };
     });
 
-    const grandTotalSalary = teacherData.reduce((sum, d) => sum + d.totalSalary, 0);
-    const grandTotalHours = teacherData.reduce((sum, d) => sum + d.completedHours, 0);
+    // Collect all unique specializations across all teachers
+    const allSpecializations = new Set();
+    teacherData.forEach(d => {
+      d.specializations.forEach(s => allSpecializations.add(s));
+    });
+    const specializationsList = Array.from(allSpecializations).filter(Boolean).sort();
+
+    // Summary counts across all teachers
+    const totalTeachersCount = teacherData.length;
+    const activeTeachersCount = teacherData.filter(d => !d.isBlocked).length;
+    const blockedTeachersCount = teacherData.filter(d => d.isBlocked).length;
+    const withSessionsCount = teacherData.filter(d => d.completedCount > 0).length;
+    const courseInstructorCount = teacherData.filter(d => d.capabilities.includes("COURSE_INSTRUCTOR")).length;
+    const sessionTeacherCount = teacherData.filter(d => d.capabilities.includes("SESSION_TEACHER")).length;
+
+    // Filter teachers
+    let filteredTeachers = teacherData.filter(item => {
+      const u = item.teacher;
+
+      // 1. Search Query
+      if (searchQuery) {
+        const textToSearch = `${u.name || ''} ${u.email || ''} ${u.phone || ''} ${u.education || ''} ${u.notes || ''} ${item.specializations.join(' ')}`.toLowerCase();
+        if (!textToSearch.includes(searchQuery)) return false;
+      }
+
+      // 2. Status Filter
+      if (activeStatus === "active") {
+        if (item.isBlocked) return false;
+      } else if (activeStatus === "blocked") {
+        if (!item.isBlocked) return false;
+      }
+
+      // 3. Specialization Filter
+      if (activeSpecialization !== "all") {
+        const specLower = activeSpecialization.toLowerCase();
+        const hasSpec = item.specializations.some(s => s.toLowerCase() === specLower || s.toLowerCase().includes(specLower));
+        if (!hasSpec) return false;
+      }
+
+      // 4. Capability Filter
+      if (activeCapability !== "all") {
+        if (!item.capabilities.includes(activeCapability)) return false;
+      }
+
+      // 5. Activity Filter
+      if (activeActivity === "with_sessions") {
+        if (item.completedCount === 0) return false;
+      } else if (activeActivity === "no_sessions") {
+        if (item.completedCount > 0) return false;
+      } else if (activeActivity === "with_groups") {
+        if (item.groupsCount === 0) return false;
+      }
+
+      return true;
+    });
+
+    // Sort teachers
+    if (activeSort === "oldest") {
+      filteredTeachers.sort((a, b) => new Date(a.teacher.createdAt || 0) - new Date(b.teacher.createdAt || 0));
+    } else if (activeSort === "name_asc") {
+      filteredTeachers.sort((a, b) => (a.teacher.name || "").localeCompare(b.teacher.name || "", 'ar'));
+    } else if (activeSort === "most_hours") {
+      filteredTeachers.sort((a, b) => b.completedHours - a.completedHours || b.completedCount - a.completedCount);
+    } else if (activeSort === "highest_rate") {
+      filteredTeachers.sort((a, b) => (b.rate || 0) - (a.rate || 0));
+    } else if (activeSort === "lowest_rate") {
+      filteredTeachers.sort((a, b) => (a.rate || 0) - (b.rate || 0));
+    } else {
+      // Default: newest
+      filteredTeachers.sort((a, b) => new Date(b.teacher.createdAt || 0) - new Date(a.teacher.createdAt || 0));
+    }
+
+    const hasActiveFilters = Boolean(
+      (activeStatus && activeStatus !== "all") ||
+      (activeSpecialization && activeSpecialization !== "all") ||
+      (activeCapability && activeCapability !== "all") ||
+      (activeActivity && activeActivity !== "all") ||
+      (searchQuery && searchQuery.length > 0) ||
+      (activeSort && activeSort !== "newest")
+    );
+
+    const filteredTotalSalary = filteredTeachers.reduce((sum, d) => sum + d.totalSalary, 0);
+    const filteredTotalHours = filteredTeachers.reduce((sum, d) => sum + d.completedHours, 0);
+    const filteredTotalSessions = filteredTeachers.reduce((sum, d) => sum + d.completedCount, 0);
 
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+      <!-- Header Bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
         <div>
-          <h3 style="font-weight:700;margin-bottom:4px;">${t("admin.tab.teachers")} (${teachers.length})</h3>
-          <p style="font-size:0.83rem;color:var(--text-muted);margin:0;">إدارة بيانات المعلمين، تحديد أجر الساعة، واحتساب الراتب المستحق عن الحصص المنفذة</p>
+          <h3 style="font-weight:800; margin-bottom:4px; font-size:1.4rem;">${t("admin.tab.teachers")} (${totalTeachersCount}) 👨‍🏫</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">إدارة بيانات المعلمين، تحديد أجر الساعة، واحتساب الراتب المستحق عن الحصص المنفذة</p>
         </div>
         ${state.user?.role === "admin" ? `
-        <button class="btn-primary" id="open-create-teacher-btn" style="font-size:0.85rem;padding:10px 18px;">
-          <i data-lucide="user-plus"></i> ${t("admin.addTeacher")}
+        <button class="btn-primary" id="open-create-teacher-btn" style="font-size:0.85rem; padding:10px 18px; border-radius:12px; font-weight:800; display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="user-plus" style="width:16px; height:16px;"></i> ${t("admin.addTeacher")}
         </button>
         ` : ""}
       </div>
 
-      <!-- Salary Summary Strip -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+      <!-- Quick Status Filter Pills -->
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">
+        <button class="filter-tab-btn teacher-filter-tab-btn ${activeStatus === 'all' ? 'active' : ''}" data-filter="all"
+          style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+          الكل (${totalTeachersCount})
+        </button>
+        <button class="filter-tab-btn teacher-filter-tab-btn ${activeStatus === 'active' ? 'active' : ''}" data-filter="active"
+          style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+          ✅ النشطون (${activeTeachersCount})
+        </button>
+        <button class="filter-tab-btn teacher-filter-tab-btn ${activeStatus === 'blocked' ? 'active' : ''}" data-filter="blocked"
+          style="padding:7px 16px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer; ${blockedTeachersCount > 0 ? 'background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3);' : ''}">
+          🚫 المحظورون (${blockedTeachersCount})
+        </button>
+      </div>
 
-        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid var(--success);">
-          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">إجمالي ساعات الحصص المكتملة</div>
-          <div style="font-size:1.5rem; font-weight:800; color:var(--success); margin-top:4px;">${grandTotalHours} ساعة</div>
+      <!-- Unified Filter & Search Toolbar -->
+      <div class="glass-card" style="padding:16px 18px; margin-bottom:20px; border-radius:16px; display:flex; flex-direction:column; gap:12px; background:var(--bg-card); border:1px solid var(--border-color); box-shadow:0 4px 14px rgba(0,0,0,0.02);">
+        
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          
+          <!-- Search Input -->
+          <div style="flex:1.5; min-width:240px; position:relative;">
+            <i data-lucide="search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
+            <input type="text" id="teachers-search-input" value="${this.teacherSearchQuery || ''}" class="form-input"
+              placeholder="ابحث بالاسم، البريد، الهاتف، التخصص، أو الملاحظات..."
+              style="width:100%; padding:9px 34px 9px 12px; font-size:0.85rem; border-radius:10px; background:var(--bg-app); color:var(--text-main); font-family:'Cairo',sans-serif; box-sizing:border-box;">
+          </div>
+
+          <!-- Status Filter Select -->
+          <select id="teacher-status-filter" class="form-input"
+            style="flex:1; min-width:140px; padding:9px 12px; font-size:0.82rem; font-weight:800; border-radius:10px; background:var(--bg-app); color:var(--text-main); cursor:pointer; font-family:'Cairo',sans-serif;">
+            <option value="all" ${activeStatus === 'all' ? 'selected' : ''}>🛡️ جميع الحالات (${totalTeachersCount})</option>
+            <option value="active" ${activeStatus === 'active' ? 'selected' : ''}>✅ المعلمون النشطون (${activeTeachersCount})</option>
+            <option value="blocked" ${activeStatus === 'blocked' ? 'selected' : ''}>🚫 المحظورون فقط (${blockedTeachersCount})</option>
+          </select>
+
+          <!-- Specialization / Subject Filter Select -->
+          <select id="teacher-specialization-filter" class="form-input"
+            style="flex:1.2; min-width:170px; padding:9px 12px; font-size:0.82rem; font-weight:800; border-radius:10px; background:var(--bg-app); color:var(--text-main); cursor:pointer; font-family:'Cairo',sans-serif;">
+            <option value="all" ${activeSpecialization === 'all' ? 'selected' : ''}>🎓 جميع المواد والتخصصات (${specializationsList.length})</option>
+            ${specializationsList.map(spec => `
+              <option value="${spec}" ${activeSpecialization === spec ? 'selected' : ''}>
+                📖 ${spec}
+              </option>
+            `).join('')}
+          </select>
+
+          <!-- Capability Filter Select -->
+          <select id="teacher-capability-filter" class="form-input"
+            style="flex:1.1; min-width:160px; padding:9px 12px; font-size:0.82rem; font-weight:800; border-radius:10px; background:var(--bg-app); color:var(--text-main); cursor:pointer; font-family:'Cairo',sans-serif;">
+            <option value="all" ${activeCapability === 'all' ? 'selected' : ''}>⚡ جميع الصلاحيات والخدمات</option>
+            <option value="COURSE_INSTRUCTOR" ${activeCapability === 'COURSE_INSTRUCTOR' ? 'selected' : ''}>📚 إنشاء وتدريس دورات (${courseInstructorCount})</option>
+            <option value="SESSION_TEACHER" ${activeCapability === 'SESSION_TEACHER' ? 'selected' : ''}>⏱️ حصص تفاعلية ومجموعات (${sessionTeacherCount})</option>
+          </select>
+
+          <!-- Activity Filter Select -->
+          <select id="teacher-activity-filter" class="form-input"
+            style="flex:1.1; min-width:160px; padding:9px 12px; font-size:0.82rem; font-weight:800; border-radius:10px; background:var(--bg-app); color:var(--text-main); cursor:pointer; font-family:'Cairo',sans-serif;">
+            <option value="all" ${activeActivity === 'all' ? 'selected' : ''}>📊 جميع مستويات النشاط</option>
+            <option value="with_sessions" ${activeActivity === 'with_sessions' ? 'selected' : ''}>🔥 لديه حصص منفذة (${withSessionsCount})</option>
+            <option value="no_sessions" ${activeActivity === 'no_sessions' ? 'selected' : ''}>⏳ لم ينفذ حصص بعد (${totalTeachersCount - withSessionsCount})</option>
+            <option value="with_groups" ${activeActivity === 'with_groups' ? 'selected' : ''}>👥 يدير مجموعات دراسية (${teacherData.filter(d => d.groupsCount > 0).length})</option>
+          </select>
+
+          <!-- Sort Dropdown -->
+          <select id="teachers-sort" class="form-input"
+            style="min-width:150px; padding:9px 12px; font-size:0.82rem; font-weight:800; border-radius:10px; background:var(--bg-app); color:var(--text-main); cursor:pointer; font-family:'Cairo',sans-serif;">
+            <option value="newest" ${activeSort === 'newest' ? 'selected' : ''}>⏱️ الأحدث انضماماً</option>
+            <option value="oldest" ${activeSort === 'oldest' ? 'selected' : ''}>📅 الأقدم انضماماً</option>
+            <option value="name_asc" ${activeSort === 'name_asc' ? 'selected' : ''}>🔤 الترتيب الأبجدي (أ - ي)</option>
+            <option value="most_hours" ${activeSort === 'most_hours' ? 'selected' : ''}>🏆 الأكثر ساعات عمل وحصص</option>
+            <option value="highest_rate" ${activeSort === 'highest_rate' ? 'selected' : ''}>💰 سعر الساعة (الأعلى)</option>
+            <option value="lowest_rate" ${activeSort === 'lowest_rate' ? 'selected' : ''}>💵 سعر الساعة (الأقل)</option>
+          </select>
+
         </div>
-        <div class="glass-card" style="padding:18px 20px; border-inline-start:4px solid #f59e0b;">
-          <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">عدد المعلمين المسجلين</div>
-          <div style="font-size:1.5rem; font-weight:800; color:#f59e0b; margin-top:4px;">${teachers.length} معلم</div>
+
+        <!-- Toolbar Bottom Bar: Results & Reset -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid var(--border-color); padding-top:10px;">
+          <div style="font-size:0.82rem; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <span>النتائج:</span>
+            <span class="badge" style="background:var(--primary-glow); color:var(--primary); font-size:0.8rem; padding:3px 10px; border-radius:8px; font-weight:800;">
+              عرض ${filteredTeachers.length} من أصل ${totalTeachersCount} معلم
+            </span>
+          </div>
+
+          ${hasActiveFilters ? `
+          <button id="reset-teacher-filters-btn" class="btn-secondary" style="padding:6px 14px; font-size:0.78rem; border-radius:10px; display:inline-flex; align-items:center; gap:5px; font-weight:800; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); cursor:pointer;">
+            <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> إعادة ضبط الفلاتر
+          </button>
+          ` : ''}
+        </div>
+
+      </div>
+
+      <!-- Salary & Metrics Summary Strip -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:20px;">
+        <div class="glass-card" style="padding:16px 18px; border-inline-start:4px solid var(--success); border-radius:14px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">ساعات الحصص المكتملة</div>
+          <div style="font-size:1.4rem; font-weight:800; color:var(--success); margin-top:4px;">${filteredTotalHours} ساعة</div>
+        </div>
+        <div class="glass-card" style="padding:16px 18px; border-inline-start:4px solid #6366f1; border-radius:14px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">إجمالي الحصص المنفذة</div>
+          <div style="font-size:1.4rem; font-weight:800; color:#6366f1; margin-top:4px;">${filteredTotalSessions} حصة</div>
+        </div>
+        <div class="glass-card" style="padding:16px 18px; border-inline-start:4px solid #10b981; border-radius:14px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">إجمالي الرواتب المستحقة</div>
+          <div style="font-size:1.4rem; font-weight:800; color:#10b981; margin-top:4px;">${filteredTotalSalary.toLocaleString()} ج.م</div>
+        </div>
+        <div class="glass-card" style="padding:16px 18px; border-inline-start:4px solid #f59e0b; border-radius:14px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">المعلمون المعروضون</div>
+          <div style="font-size:1.4rem; font-weight:800; color:#f59e0b; margin-top:4px;">${filteredTeachers.length} معلم</div>
         </div>
       </div>
 
-      ${teachers.length === 0
-        ? `<div class="glass-card" style="text-align:center;padding:40px;color:var(--text-muted);">${t("admin.noTeachers")}</div>`
-        : `<div class="glass-card" style="overflow:hidden;padding:0;">
-            <div style="overflow-x:auto;">
-              <table style="width:100%;border-collapse:collapse;text-align:start;font-size:0.88rem;">
-                <thead>
-                  <tr style="background:var(--bg-card);border-bottom:1px solid var(--border-color);">
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">المعلم</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">البريد والتواصل</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">سعر الساعة</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">الحصص المنفذة</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">ملاحظات</th>
-                    <th style="padding:14px 20px;text-align:start;font-size:0.8rem;font-weight:700;color:var(--text-muted);">${t("admin.col.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${teacherData.map(item => {
-          const u = item.teacher;
-          const joinDate = new Date(u.createdAt).toLocaleDateString();
-          const isBlocked = u.isBlocked || u.status === 'BLOCKED' || u.status === 'SUSPENDED';
-          return `
-                      <tr style="border-bottom:1px solid var(--border-color);${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
-                        <td style="padding:14px 20px;">
-                          <div style="display:flex;align-items:center;gap:12px;">
-                            <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}" onerror="this.src='assets/logo.png'" class="view-teacher-profile-btn" data-id="${u.id}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;cursor:pointer;${isBlocked ? 'filter:grayscale(60%);border:2px solid var(--error,#ef4444);' : ''}" title="عرض الملف الأكاديمي والجدول للمعلم">
-                            <div>
-                              <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                <span class="view-teacher-profile-btn" data-id="${u.id}" style="cursor:pointer;color:var(--text-main);transition:color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="عرض الملف الأكاديمي والجدول للمعلم">${u.name}</span>
-                                ${isBlocked
-              ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error,#ef4444);font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">🚫 محظور من الدخول</span>`
-              : `<span class="badge" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:0.68rem;padding:2px 7px;border-radius:6px;font-weight:800;">✅ نشط</span>`
-            }
-                              </div>
-                              ${u.education ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">🎓 ${u.education}</div>` : ''}
-                              <div style="font-size:0.75rem;color:var(--primary);font-weight:600;">انضمام: ${joinDate}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style="padding:14px 20px;color:var(--text-muted);font-size:0.85rem;">
+      <!-- Teachers Table / Empty State -->
+      ${filteredTeachers.length === 0 ? `
+        <div class="glass-card" style="text-align:center; padding:50px 20px; color:var(--text-muted); border-radius:18px;">
+          <i data-lucide="search-x" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px; color:var(--primary);"></i>
+          <h4 style="font-weight:800; margin:0 0 6px 0; color:var(--text-main);">
+            ${hasActiveFilters ? 'لا يوجد معلمون يطابقون خيارات التصفية' : 'لا يوجد معلمون مسجلون حالياً'}
+          </h4>
+          <p style="font-size:0.85rem; margin:0 0 16px 0;">
+            ${hasActiveFilters ? 'جرب تغيير أو إعادة ضبط الفلاتر لعرض المعلمين.' : 'اضغط على "إضافة معلم جديد" لإضافة معلمين للمنصة.'}
+          </p>
+          ${hasActiveFilters ? `
+            <button id="empty-reset-teacher-filters-btn" class="btn-secondary" style="padding:8px 18px; border-radius:12px; font-weight:800; font-size:0.82rem; cursor:pointer;">
+              إعادة ضبط جميع الفلاتر 🔄
+            </button>
+          ` : ''}
+        </div>
+      ` : `
+        <div class="glass-card" style="overflow:hidden; padding:0; border-radius:16px;">
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; text-align:start; font-size:0.88rem;">
+              <thead>
+                <tr style="background:var(--bg-card); border-bottom:1px solid var(--border-color);">
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">المعلم</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">البريد والتواصل</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">سعر الساعة</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">الحصص المنفذة</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">المجموعات والدورات</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">ملاحظات</th>
+                  <th style="padding:14px 20px; text-align:start; font-size:0.8rem; font-weight:800; color:var(--text-muted);">${t("admin.col.actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredTeachers.map(item => {
+                  const u = item.teacher;
+                  const joinDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-";
+                  const isBlocked = item.isBlocked;
+                  return `
+                    <tr style="border-bottom:1px solid var(--border-color); ${isBlocked ? 'background:rgba(239,68,68,0.03);' : ''}">
+                      <td style="padding:14px 20px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <img src="${(u.avatar && !u.avatar.includes('dicebear.com')) ? u.avatar : 'assets/logo.png'}"
+                               onerror="this.src='assets/logo.png'"
+                               class="view-teacher-profile-btn" data-id="${u.id}"
+                               style="width:40px; height:40px; border-radius:50%; object-fit:cover; cursor:pointer; flex-shrink:0; ${isBlocked ? 'filter:grayscale(60%); border:2px solid var(--error,#ef4444);' : 'border:1.5px solid var(--border-color);'}"
+                               title="عرض الملف الأكاديمي والجدول للمعلم">
                           <div>
-                            <a href="mailto:${u.email}" style="color:var(--text-color); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;" title="إرسال بريد إلكتروني">
-                              <i data-lucide="mail" style="width:13px;height:13px;color:var(--primary);"></i> ${u.email}
+                            <div style="font-weight:800; font-size:0.92rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                              <span class="view-teacher-profile-btn" data-id="${u.id}"
+                                style="cursor:pointer; color:var(--text-main); transition:color 0.2s;"
+                                onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'"
+                                title="عرض الملف الأكاديمي والجدول للمعلم">${u.name}</span>
+                              ${isBlocked
+                                ? `<span class="badge" style="background:rgba(239,68,68,0.15); color:var(--error,#ef4444); font-size:0.68rem; padding:2px 7px; border-radius:6px; font-weight:800;">🚫 محظور</span>`
+                                : `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.68rem; padding:2px 7px; border-radius:6px; font-weight:800;">✅ نشط</span>`
+                              }
+                            </div>
+                            ${u.education ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">🎓 ${u.education}</div>` : ''}
+                            <div style="font-size:0.72rem; color:var(--primary); font-weight:700; margin-top:2px;">انضمام: ${joinDate}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td style="padding:14px 20px; color:var(--text-muted); font-size:0.85rem;">
+                        <div>
+                          <a href="mailto:${u.email}" style="color:var(--text-color); text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600;" title="إرسال بريد إلكتروني">
+                            <i data-lucide="mail" style="width:13px; height:13px; color:var(--primary);"></i> ${u.email}
+                          </a>
+                        </div>
+                        ${u.plainPassword ? `
+                          <div style="margin-top:3px;">
+                            <span style="background:rgba(245,158,11,0.1); color:#d97706; padding:2px 7px; border-radius:6px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="كلمة المرور الحالية">
+                              🔑 <code style="font-family:monospace; letter-spacing:0.5px;">${u.plainPassword}</code>
+                            </span>
+                          </div>
+                        ` : ''}
+                        ${u.phone ? `
+                          <div style="margin-top:4px;">
+                            <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank"
+                               style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:3px 8px; border-radius:8px;" title="فتح محادثة واتساب">
+                              <i data-lucide="message-circle" style="width:12px; height:12px;"></i> ${u.phone}
                             </a>
                           </div>
-                          ${u.plainPassword ? `
-                            <div style="margin-top:3px;">
-                              <span style="background:rgba(245,158,11,0.1);color:#d97706;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;" title="كلمة المرور الحالية">
-                                🔑 <code style="font-family:monospace;letter-spacing:0.5px;">${u.plainPassword}</code>
-                              </span>
+                        ` : '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">بدون هاتف</div>'}
+                        ${u.meetingLink ? `
+                          <div style="font-size:0.72rem; margin-top:4px; font-weight:700;">
+                            <a href="${u.meetingLink}" target="_blank" style="color:var(--primary); text-decoration:underline;">🔗 قاعة الاجتماع الثابتة</a>
+                          </div>
+                        ` : ''}
+                        <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                          ${(!u.teacherCapabilities || u.teacherCapabilities.includes("COURSE_INSTRUCTOR")) ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.65rem; font-weight:800;">📚 دورات</span>` : ''}
+                          ${(!u.teacherCapabilities || u.teacherCapabilities.includes("SESSION_TEACHER")) ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.65rem; font-weight:800;">⏱️ حصص</span>` : ''}
+                        </div>
+                      </td>
+
+                      <td style="padding:14px 20px;">
+                        <span style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:900; padding:5px 12px; border-radius:12px; font-size:0.85rem; display:inline-flex; align-items:center; gap:4px;">
+                          💵 ${item.rate} ج.م / ساعة
+                        </span>
+                      </td>
+
+                      <td style="padding:14px 20px;">
+                        <div style="font-weight:800; font-size:0.9rem; color:var(--text-main);">${item.completedCount} حصص</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${item.completedHours} ساعة عمل</div>
+                        <div style="font-size:0.75rem; color:var(--success); font-weight:700; margin-top:2px;">المستحق: ${item.totalSalary.toLocaleString()} ج.م</div>
+                      </td>
+
+                      <td style="padding:14px 20px;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                          <span style="font-size:0.78rem; font-weight:800; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
+                            👥 ${item.groupsCount} مجموعات
+                          </span>
+                          <span style="font-size:0.78rem; font-weight:800; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">
+                            📚 ${item.coursesCount} كورسات
+                          </span>
+                          ${item.specializations.length > 0 ? `
+                            <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:3px;">
+                              ${item.specializations.slice(0, 2).map(s => `
+                                <span class="badge" style="background:rgba(99,102,241,0.08); color:var(--primary); font-size:0.65rem; padding:1px 6px; border-radius:6px;">
+                                  ${s}
+                                </span>
+                              `).join('')}
+                              ${item.specializations.length > 2 ? `<span style="font-size:0.65rem; color:var(--text-muted);">+${item.specializations.length - 2}</span>` : ''}
                             </div>
                           ` : ''}
+                        </div>
+                      </td>
+
+                      <td style="padding:14px 20px;">
+                        ${u.notes ? `
+                          <div style="font-size:0.78rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:180px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
+                            ${u.notes}
+                          </div>
+                        ` : `<span style="font-size:0.75rem; color:var(--text-muted);">-</span>`}
+                      </td>
+
+                      <td style="padding:14px 20px;">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                          <button class="btn-primary view-teacher-profile-btn" data-id="${u.id}"
+                            style="font-size:0.75rem; padding:5px 12px; background:linear-gradient(135deg,var(--primary),#7c3aed); color:#fff; border:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,0.25);"
+                            title="عرض الملف الأكاديمي والجدول والمجموعات والطلاب والماليات للمعلم">
+                            <i data-lucide="calendar" style="width:12px; height:12px;"></i> الملف والجدول 👤
+                          </button>
+
+                          ${state.user?.role === "admin" ? `
+                          <button class="btn-primary impersonate-user-btn" data-id="${u.id}" data-name="${u.name}"
+                            style="font-size:0.75rem; padding:5px 11px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; display:inline-flex; align-items:center; gap:4px; font-weight:800; border-radius:10px; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.25);"
+                            title="الدخول المباشر لحساب المعلم">
+                            <i data-lucide="log-in" style="width:12px; height:12px;"></i> دخول 🚀
+                          </button>
+                          ` : ''}
+
                           ${u.phone ? `
-                            <div style="margin-top:4px;">
-                              <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" style="color:#10b981; text-decoration:none; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); padding:3px 8px; border-radius:8px;" title="فتح محادثة واتساب">
-                                <i data-lucide="message-circle" style="width:12px;height:12px;"></i> ${u.phone}
-                              </a>
-                            </div>
-                          ` : '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">بدون هاتف</div>'}
-                          ${u.meetingLink ? `<div style="font-size:0.72rem;color:var(--primary);margin-top:4px;font-weight:700;"><a href="${u.meetingLink}" target="_blank" style="color:var(--primary);text-decoration:underline;">🔗 رابط الاجتماع الثابت</a></div>` : ''}
-                          <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
-                            ${(!u.teacherCapabilities || u.teacherCapabilities.includes("COURSE_INSTRUCTOR")) ? `<span class="badge" style="background:rgba(99,102,241,0.12); color:#6366f1; font-size:0.65rem; font-weight:800;">📚 إنشاء دورات</span>` : ''}
-                            ${(!u.teacherCapabilities || u.teacherCapabilities.includes("SESSION_TEACHER")) ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.65rem; font-weight:800;">⏱️ حصص خاصة</span>` : ''}
-                          </div>
-                        </td>
-                        <td style="padding:14px 20px;">
-                          <span style="background:rgba(99,102,241,0.12); color:var(--primary); font-weight:800; padding:4px 12px; border-radius:12px; font-size:0.82rem; display:inline-flex; align-items:center; gap:4px;">
-                            💵 ${item.rate} ج.م / ساعة
-                          </span>
-                        </td>
-                        <td style="padding:14px 20px;">
-                          <div style="font-weight:700;">${item.completedCount} حصص</div>
-                          <div style="font-size:0.75rem;color:var(--text-muted);">${item.completedHours} ساعة عمل</div>
-                        </td>
-                        <td style="padding:14px 20px;">
-                          ${u.notes ? `
-                            <div style="font-size:0.8rem; color:var(--text-main); background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); border-radius:8px; padding:6px 10px; max-width:200px; white-space:pre-wrap; word-break:break-word; line-height:1.4;">
-                              ${u.notes}
-                            </div>
-                          ` : `<span style="font-size:0.75rem;color:var(--text-muted);">-</span>`}
-                        </td>
-                      
-                        <td style="padding:14px 20px;">
-                          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                            <button class="btn-primary view-teacher-profile-btn" data-id="${u.id}" style="font-size:0.75rem;padding:5px 12px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.25);" title="عرض الملف الأكاديمي والجدول والمجموعات والطلاب والماليات للمعلم">
-                              <i data-lucide="calendar" style="width:12px;height:12px;"></i> الملف والجدول 👤
+                            <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank"
+                               class="btn-secondary" style="font-size:0.75rem; padding:6px 11px; border-color:#10b981; color:#10b981; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; border-radius:10px; background:rgba(16,185,129,0.08);"
+                               title="محادثة واتساب مباشرة">
+                              <i data-lucide="message-circle" style="width:13px; height:13px;"></i> واتساب
+                            </a>
+                          ` : `
+                            <button class="btn-secondary" disabled style="font-size:0.75rem; padding:6px 11px; opacity:0.4; cursor:not-allowed; border-radius:10px; display:inline-flex; align-items:center; gap:4px;" title="لا يتوفر هاتف مسجل">
+                              <i data-lucide="message-circle" style="width:13px; height:13px;"></i> واتساب
                             </button>
-                            ${state.user?.role === "admin" ? `
-                            <button class="btn-primary impersonate-user-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:5px 11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;display:inline-flex;align-items:center;gap:4px;font-weight:800;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,0.25);" title="الدخول المباشر لحساب المعلم">
-                              <i data-lucide="log-in" style="width:12px;height:12px;"></i> دخول 🚀
-                            </button>
-                            ` : ''}
-                            ${u.phone ? `
-                              <a href="https://wa.me/${getCleanWhatsAppNumber(u.phone)}?text=${encodeURIComponent(`مرحباً الأستاذ ${u.name}، نتواصل معك من إدارة منصة انطلق.`)}" target="_blank" class="btn-secondary" style="font-size:0.75rem;padding:6px 11px;border-color:#10b981;color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(16,185,129,0.08);" title="محادثة واتساب مباشرة">
-                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
-                              </a>
-                            ` : `
-                              <button class="btn-secondary" disabled style="font-size:0.75rem;padding:6px 11px;opacity:0.4;cursor:not-allowed;border-radius:10px;display:inline-flex;align-items:center;gap:4px;" title="لا يتوفر هاتف مسجل">
-                                <i data-lucide="message-circle" style="width:13px;height:13px;"></i> واتساب
-                              </button>
-                            `}
-                            <button class="btn-secondary communicate-user-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:4px;font-weight:700;border-radius:10px;background:rgba(99,102,241,0.08);" title="خيارات ونماذج التواصل">
-                              <i data-lucide="send" style="width:12px;height:12px;"></i> تواصل
-                            </button>
-                            ${state.user?.role === "admin" ? `
-                            <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="teacher" data-blocked="${isBlocked ? 'true' : 'false'}" style="font-size:0.75rem;padding:6px 11px;border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'};display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};font-weight:700;" title="${isBlocked ? 'إلغاء حظر المعلم والسماح له بتسجيل الدخول' : 'حظر المعلم ومنعه من تسجيل الدخول إلى الأكاديمية'}">
-                              <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px;height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر المعلم'}
-                            </button>
-                            <button class="btn-secondary edit-member-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--border-color);color:var(--text-color);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
-                              <i data-lucide="edit" style="width:12px;height:12px;"></i> تعديل
-                            </button>
-                            <button class="btn-secondary reset-user-pwd-btn" data-id="${u.id}" data-name="${u.name}" style="font-size:0.75rem;padding:6px 11px;border-color:#f59e0b;color:#d97706;display:inline-flex;align-items:center;gap:4px;border-radius:10px;background:rgba(245,158,11,0.08);font-weight:700;" title="إعادة تعيين كلمة المرور إلى 123456">
-                              <i data-lucide="key" style="width:12px;height:12px;"></i> كلمة المرور (123456)
-                            </button>
-                            ` : ""}
-                            <button class="btn-secondary view-transcript-btn" data-id="${u.id}" style="font-size:0.75rem;padding:6px 11px;border-color:var(--info);color:var(--info);display:inline-flex;align-items:center;gap:4px;border-radius:10px;">
-                              <i data-lucide="file-text" style="width:12px;height:12px;"></i> السجل
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    `;
-        }).join("")}
-                </tbody>
-              </table>
-            </div>
-          </div>`
-      }
+                          `}
+
+                          <button class="btn-secondary communicate-user-btn" data-id="${u.id}"
+                            style="font-size:0.75rem; padding:6px 11px; border-color:var(--primary); color:var(--primary); display:inline-flex; align-items:center; gap:4px; font-weight:700; border-radius:10px; background:rgba(99,102,241,0.08);"
+                            title="خيارات ونماذج التواصل">
+                            <i data-lucide="send" style="width:12px; height:12px;"></i> تواصل
+                          </button>
+
+                          ${state.user?.role === "admin" ? `
+                          <button class="btn-secondary toggle-block-btn" data-id="${u.id}" data-name="${u.name}" data-role="teacher" data-blocked="${isBlocked ? 'true' : 'false'}"
+                            style="font-size:0.75rem; padding:6px 11px; border-color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'}; color:${isBlocked ? '#10b981' : 'var(--error,#ef4444)'}; display:inline-flex; align-items:center; gap:4px; border-radius:10px; background:${isBlocked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'}; font-weight:700;"
+                            title="${isBlocked ? 'إلغاء حظر المعلم والسماح له بتسجيل الدخول' : 'حظر المعلم ومنعه من تسجيل الدخول إلى الأكاديمية'}">
+                            <i data-lucide="${isBlocked ? 'check-circle' : 'shield-alert'}" style="width:12px; height:12px;"></i> ${isBlocked ? 'إلغاء الحظر' : 'حظر'}
+                          </button>
+
+                          <button class="btn-secondary edit-member-btn" data-id="${u.id}"
+                            style="font-size:0.75rem; padding:6px 11px; border-color:var(--border-color); color:var(--text-color); display:inline-flex; align-items:center; gap:4px; border-radius:10px;">
+                            <i data-lucide="edit" style="width:12px; height:12px;"></i> تعديل
+                          </button>
+
+                          <button class="btn-secondary reset-user-pwd-btn" data-id="${u.id}" data-name="${u.name}"
+                            style="font-size:0.75rem; padding:6px 11px; border-color:#f59e0b; color:#d97706; display:inline-flex; align-items:center; gap:4px; border-radius:10px; background:rgba(245,158,11,0.08); font-weight:700;"
+                            title="إعادة تعيين كلمة المرور إلى 123456">
+                            <i data-lucide="key" style="width:12px; height:12px;"></i> 123456
+                          </button>
+                          ` : ""}
+
+                          <button class="btn-secondary view-transcript-btn" data-id="${u.id}"
+                            style="font-size:0.75rem; padding:6px 11px; border-color:var(--info); color:var(--info); display:inline-flex; align-items:center; gap:4px; border-radius:10px;">
+                            <i data-lucide="file-text" style="width:12px; height:12px;"></i> السجل
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `}
     `;
   },
 

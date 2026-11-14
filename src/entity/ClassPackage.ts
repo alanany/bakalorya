@@ -57,8 +57,12 @@ export class ClassPackage {
     }>;
   }>;
 
-  @ManyToOne(() => Grade, grade => grade.classPackages, { onDelete: "CASCADE", eager: true })
-  grade: Grade;
+  @ManyToOne(() => Grade, grade => grade.classPackages, { onDelete: "CASCADE", eager: true, nullable: true })
+  grade: Grade | null;
+
+  @ManyToMany(() => Grade, { eager: true })
+  @JoinTable({ name: "class_package_grades" })
+  grades: Grade[];
 
   @ManyToOne(() => CourseGroup, { nullable: true, onDelete: "SET NULL", eager: true })
   linkedGroup: CourseGroup | null;

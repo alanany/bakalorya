@@ -63,10 +63,19 @@ export default class StudentClassesView {
     // Filter classes matching student's grade
     const myGradeClasses = (this.allClasses || []).filter(c => {
       if (!c) return false;
-      if (currentGrade && (c.grade?.id === currentGrade.id || c.gradeId === currentGrade.id)) return true;
-      if (currentGrade?.name && c.grade?.name && normalizeGradeKey(c.grade.name) === normalizeGradeKey(currentGrade.name)) return true;
-      if (studentEdu && c.grade?.name && normalizeGradeKey(c.grade.name) === sKey) return true;
-      if (studentEdu && c.grade?.code && normalizeGradeKey(c.grade.code) === sKey) return true;
+      const targetGrades = (Array.isArray(c.grades) && c.grades.length > 0)
+        ? c.grades
+        : (c.grade ? [c.grade] : []);
+
+      if (targetGrades.length > 0) {
+        return targetGrades.some(g => {
+          if (currentGrade && (g.id === currentGrade.id || c.gradeId === currentGrade.id)) return true;
+          if (currentGrade?.name && g.name && normalizeGradeKey(g.name) === normalizeGradeKey(currentGrade.name)) return true;
+          if (studentEdu && g.name && normalizeGradeKey(g.name) === sKey) return true;
+          if (studentEdu && g.code && normalizeGradeKey(g.code) === sKey) return true;
+          return false;
+        });
+      }
       return false;
     });
 
@@ -167,7 +176,12 @@ export default class StudentClassesView {
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:24px;">
             ${displayClasses.map(c => {
               const theme = themeStyles[c.theme] || themeStyles.blue;
-              const gradeName = c.grade?.name || 'الصف الدراسي';
+              const targetGrades = (Array.isArray(c.grades) && c.grades.length > 0)
+                ? c.grades
+                : (c.grade ? [c.grade] : []);
+              const gradeName = targetGrades.length > 1
+                ? targetGrades.map(g => g.name).join('، ')
+                : (targetGrades[0]?.name || 'الصف الدراسي');
               const subjectsList = Array.isArray(c.subjects) ? c.subjects : [];
               const featuresList = Array.isArray(c.features) ? c.features : [];
 

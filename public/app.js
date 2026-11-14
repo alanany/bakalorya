@@ -1867,6 +1867,7 @@ export function updateHeader() {
           ${createNavItem("#admin-dashboard/courses", "book-open", "إدارة المقررات والكورسات")}
           
           ${createNavSection("الاشتراكات والعمليات")}
+          ${createNavItem("#admin-dashboard/classSubscriptions", "graduation-cap", "🎒 اشتراكات الفصول والباقات")}
           ${createNavItem("#admin-dashboard/enrollments", "graduation-cap", "طلبات تسجيل الكورسات")}
           ${createNavItem("#admin-dashboard/subscriptions", "credit-card", "الاشتراكات والمدفوعات")}
           ${createNavItem("#admin-dashboard/plans", "sparkles", "خطط وباقات الحصص")}

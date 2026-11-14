@@ -838,6 +838,41 @@ export class SubscriptionController {
     }
   }
 
+  // Admin finish/complete subscription
+  static async finishSubscription(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    try {
+      const subscriptionRepository = AppDataSource.getRepository(Subscription);
+      const auditRepository = AppDataSource.getRepository(AuditLog);
+
+      const subscription = await subscriptionRepository.findOne({
+        where: { id },
+        relations: ["student", "plan"]
+      });
+
+      if (!subscription) return res.status(404).json({ error: "الاشتراك غير موجود." });
+
+      subscription.status = "COMPLETED" as any;
+      await subscriptionRepository.save(subscription);
+
+      const audit = new AuditLog();
+      audit.actor = { id: req.user!.id } as User;
+      audit.action = "SUBSCRIPTION_FINISHED";
+      audit.entityType = "Subscription";
+      audit.entityId = subscription.id;
+      audit.metadata = JSON.stringify({
+        studentName: subscription.student?.name,
+        planName: subscription.plan?.name
+      });
+      await auditRepository.save(audit);
+
+      return res.status(200).json({ message: "تم إنهاء واكتمال الاشتراك بنجاح 🏁", subscription });
+    } catch (err) {
+      console.error("Finish subscription error:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
   static async deletePlan(req: AuthRequest, res: Response) {
     const { id } = req.params;
     try {

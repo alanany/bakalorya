@@ -1019,6 +1019,7 @@ export class CurriculumController {
         ],
         relations: [
           "grade",
+          "grades",
           "linkedGroups",
           "linkedGroups.teacher",
           "linkedGroups.course",
@@ -1043,6 +1044,7 @@ export class CurriculumController {
         where: { id },
         relations: [
           "grade",
+          "grades",
           "linkedGroups",
           "linkedGroups.teacher",
           "linkedGroups.course",
@@ -1069,6 +1071,7 @@ export class CurriculumController {
       const classes = await classRepo.find({
         relations: [
           "grade",
+          "grades",
           "linkedGroups",
           "linkedGroups.teacher",
           "linkedGroups.course",
@@ -1089,17 +1092,17 @@ export class CurriculumController {
       const { gradeId } = req.params;
       const classRepo = AppDataSource.getRepository(ClassPackage);
 
-      const classes = await classRepo.find({
-        where: { grade: { id: gradeId } },
-        relations: [
-          "grade",
-          "linkedGroups",
-          "linkedGroups.teacher",
-          "linkedGroups.course",
-          "linkedGroups.course.subject"
-        ],
-        order: { order: "ASC", createdAt: "ASC" }
-      });
+      const classes = await classRepo.createQueryBuilder("pkg")
+        .leftJoinAndSelect("pkg.grade", "grade")
+        .leftJoinAndSelect("pkg.grades", "grades")
+        .leftJoinAndSelect("pkg.linkedGroups", "linkedGroups")
+        .leftJoinAndSelect("linkedGroups.teacher", "teacher")
+        .leftJoinAndSelect("linkedGroups.course", "course")
+        .leftJoinAndSelect("course.subject", "subject")
+        .where("grade.id = :gradeId OR grades.id = :gradeId", { gradeId })
+        .orderBy("pkg.order", "ASC")
+        .addOrderBy("pkg.createdAt", "ASC")
+        .getMany();
 
       return res.status(200).json(classes);
     } catch (err: any) {
@@ -1125,6 +1128,7 @@ export class CurriculumController {
         weeklySchedule,
         linkedGroupId,
         groupIds,
+        gradeIds,
         order,
         isActive
       } = req.body;
@@ -1134,7 +1138,18 @@ export class CurriculumController {
       }
 
       const gradeRepo = AppDataSource.getRepository(Grade);
-      const grade = await gradeRepo.findOneBy({ id: gradeId });
+      let targetGrades: Grade[] = [];
+      const idsToFetch = Array.isArray(gradeIds) && gradeIds.length > 0 
+        ? gradeIds 
+        : (gradeId ? [gradeId] : []);
+
+      if (idsToFetch.length > 0) {
+        targetGrades = await gradeRepo.find({
+          where: { id: In(idsToFetch) }
+        });
+      }
+
+      const grade = targetGrades[0] || (gradeId ? await gradeRepo.findOneBy({ id: gradeId }) : null);
       if (!grade) {
         return res.status(404).json({ error: "الصف الدراسي غير موجود." });
       }
@@ -1166,6 +1181,7 @@ export class CurriculumController {
       pkg.description = description?.trim() || null;
       pkg.features = Array.isArray(features) ? features : [];
       pkg.grade = grade;
+      pkg.grades = targetGrades.length > 0 ? targetGrades : [grade];
       pkg.linkedGroups = linkedGroups;
       pkg.linkedGroup = linkedGroups[0] || null;
       pkg.order = Number(order) || 0;
@@ -1210,7 +1226,7 @@ export class CurriculumController {
       const classRepo = AppDataSource.getRepository(ClassPackage);
       const pkg = await classRepo.findOne({
         where: { id },
-        relations: ["grade", "linkedGroups", "linkedGroups.teacher", "linkedGroups.course"]
+        relations: ["grade", "grades", "linkedGroups", "linkedGroups.teacher", "linkedGroups.course"]
       });
 
       if (!pkg) {
@@ -1230,6 +1246,7 @@ export class CurriculumController {
         weeklySchedule,
         linkedGroupId,
         groupIds,
+        gradeIds,
         order,
         isActive
       } = req.body;
@@ -1246,6 +1263,17 @@ export class CurriculumController {
       if (weeklySchedule !== undefined && Array.isArray(weeklySchedule)) pkg.weeklySchedule = weeklySchedule;
       if (order !== undefined) pkg.order = Number(order);
       if (isActive !== undefined) pkg.isActive = Boolean(isActive);
+
+      if (Array.isArray(gradeIds)) {
+        const gradeRepo = AppDataSource.getRepository(Grade);
+        if (gradeIds.length > 0) {
+          const targetGrades = await gradeRepo.find({ where: { id: In(gradeIds) } });
+          pkg.grades = targetGrades;
+          if (targetGrades.length > 0) {
+            pkg.grade = targetGrades[0];
+          }
+        }
+      }
 
       const groupRepo = AppDataSource.getRepository(CourseGroup);
       if (Array.isArray(groupIds)) {
@@ -2016,6 +2044,34 @@ export class CurriculumController {
     } catch (err: any) {
       console.error("Error in deleteClassSubscription:", err);
       return res.status(500).json({ error: "فشل حذف اشتراك الفصل." });
+    }
+  }
+
+  // POST /admin/curriculum/class-subscriptions/:id/finish
+  static async finishClassSubscription(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const enrollmentRepo = AppDataSource.getRepository(Enrollment);
+      const enrollment = await enrollmentRepo.findOne({
+        where: { id },
+        relations: ["classPackage", "student"]
+      });
+
+      if (!enrollment || !enrollment.classPackage) {
+        return res.status(404).json({ error: "اشتراك الفصل غير موجود." });
+      }
+
+      // Mark only this specific student's class package subscription as completed
+      enrollment.status = "completed";
+      await enrollmentRepo.save(enrollment);
+
+      return res.json({ 
+        message: `تم إنهاء اشتراك الطالب (${enrollment.student?.name || ''}) في باقة فصل (${enrollment.classPackage.name}) فقط بنجاح 🏁`, 
+        enrollment 
+      });
+    } catch (err: any) {
+      console.error("Error in finishClassSubscription:", err);
+      return res.status(500).json({ error: "فشل إنهاء اشتراك الفصل." });
     }
   }
 }
